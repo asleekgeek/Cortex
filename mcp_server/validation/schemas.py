@@ -106,7 +106,7 @@ SCHEMAS: dict[str, dict] = {
     "recall": {
         "properties": {
             "query": {"type": "string", "maxLength": 10000},
-            "limit": {"type": "number"},
+            "max_results": {"type": "number"},
             "domain": {"type": "string", "maxLength": 200},
             "directory": {"type": "string", "maxLength": 500},
             "agent_topic": {"type": "string", "maxLength": 200},
