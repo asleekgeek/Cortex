@@ -46,7 +46,7 @@ def is_mechanism_disabled(mechanism: "Mechanism | str") -> bool:
 
 
 class Mechanism(Enum):
-    """Enumeration of the 28 ablatable units (the 23 neuroscience-grounded
+    """Enumeration of the 29 ablatable units (the 23 neuroscience-grounded
     mechanisms plus retrieval/maintenance flags; some mechanisms expose more
     than one ablation flag)."""
 
@@ -78,6 +78,7 @@ class Mechanism(Enum):
     MOOD_CONGRUENT_RERANK = "mood_congruent_rerank"
     ENTITY_DEDUP = "entity_dedup"
     COMPRESSION = "compression"
+    ACTIVE_FORGETTING = "active_forgetting"
 
 
 @dataclass

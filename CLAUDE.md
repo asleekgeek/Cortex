@@ -132,7 +132,8 @@ Handlers are the **composition roots**: they wire infrastructure (I/O) to core (
 - `two_stage_transfer.py` — Transfer protocol execution
 - `emergence_tracker.py` — System-level metrics: forgetting curve, spacing effect, schema acceleration
 - `emergence_metrics.py` — Emergence metric definitions
-- `ablation.py` — Lesion study framework (28 ablatable units spanning the 23 neuroscience-grounded mechanisms)
+- `ablation.py` — Lesion study framework (29 ablatable units spanning the 24 neuroscience-grounded mechanisms)
+- `active_forgetting.py` — Two independent dopaminergic forgetting circuits: permanent Rac1 trace erosion (chronic interference × stage vulnerability) + transient DAMB retrieval block (Davis & Zhong 2017, Sabandal et al. 2021)
 - `ablation_report.py` — Ablation report generation
 
 *Consolidation:*

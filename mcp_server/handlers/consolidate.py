@@ -16,6 +16,7 @@ from mcp_server.handlers.consolidation.cls import run_cls_cycle
 from mcp_server.handlers.consolidation.compression import run_compression_cycle
 from mcp_server.handlers.consolidation.decay import run_decay_cycle
 from mcp_server.handlers.consolidation.entity_merge import run_entity_merge_cycle
+from mcp_server.handlers.consolidation.forgetting import run_forgetting_cycle
 from mcp_server.handlers.consolidation.homeostatic import run_homeostatic_cycle
 from mcp_server.handlers.consolidation.memify import run_memify_cycle
 from mcp_server.handlers.consolidation.plasticity import run_plasticity_cycle
@@ -300,7 +301,18 @@ def _run_cycles(
         stats["memify"] = _timed(run_memify_cycle, store, None)
 
     if args.get("deep", False):
-        stats["deep_sleep"] = _timed(run_deep_sleep, store, embeddings, None)
+        deep = _timed(run_deep_sleep, store, embeddings, None)
+        stats["deep_sleep"] = deep
+        # Active forgetting runs AFTER replay (sleep-protect order): memories
+        # replayed this cycle are exempt from the ongoing forgetting signal
+        # (Davis & Zhong 2017). ``replayed_ids`` is plumbing — pop it so it
+        # never bloats the MCP response. Skip forgetting when replay errored:
+        # without the sleep-protection set, the pass would over-forget.
+        recently_active = set(deep.pop("replayed_ids", []))
+        if "error" not in deep:
+            stats["forgetting"] = _timed(
+                run_forgetting_cycle, store, recently_active
+            )
 
     return stats
 

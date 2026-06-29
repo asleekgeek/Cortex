@@ -830,6 +830,35 @@ class PgMemoryStore(
         ).fetchall()
         return [(r["id"], r["distance"]) for r in rows]
 
+    def search_newer_neighbors(
+        self,
+        query_embedding: bytes,
+        after: str,
+        exclude_id: int,
+        top_k: int = 10,
+    ) -> list[tuple[float, float]]:
+        """Vector neighbors created strictly after ``after``, nearest first.
+
+        Returns ``(similarity, age_hours)`` per newer neighbor — similarity is
+        ``1 - cosine_distance`` (pgvector ``<=>``) and ``age_hours`` is the
+        neighbor's age from ``NOW()``. Excludes ``exclude_id`` and stale rows.
+
+        The "newer" (retroactive) filter is the I/O half of the active-
+        forgetting signal: the caller aggregates the similarities into the
+        chronic noisy-OR and reads the strongest pair as the acute interferer.
+        """
+        emb = self._bytes_to_vector(query_embedding)
+        rows = self._execute(
+            "SELECT 1 - (embedding <=> %s) AS similarity, "
+            "EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0 AS age_hours "
+            "FROM memories "
+            "WHERE created_at > %s::timestamptz AND id <> %s "
+            "AND NOT is_stale AND embedding IS NOT NULL "
+            "ORDER BY embedding <=> %s LIMIT %s",
+            (emb, after, exclude_id, emb, top_k),
+        ).fetchall()
+        return [(float(r["similarity"]), float(r["age_hours"])) for r in rows]
+
     # ── Compression ───────────────────────────────────────────────────
 
     def update_memory_compression(

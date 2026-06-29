@@ -38,7 +38,7 @@ def run_deep_sleep(
     else:
         plan = run_sleep_compute(memories, clusters=[], directory="")
 
-    replayed = _apply_dream_replay(store, embeddings, plan["replay_updates"])
+    replayed_ids = _apply_dream_replay(store, embeddings, plan["replay_updates"])
     reembedded = _fix_stale_embeddings(
         store,
         embeddings,
@@ -48,7 +48,13 @@ def run_deep_sleep(
 
     narrative_text = plan.get("narration", {}).get("narrative_text", "")
     return {
-        "replayed": replayed,
+        "replayed": len(replayed_ids),
+        # IDs replayed this cycle: the active-forgetting pass reads these as the
+        # sleep-protection (recently_active) signal — replayed memories are
+        # exempt from the ongoing forgetting signal (Davis & Zhong 2017). The
+        # consolidate orchestrator pops this key before returning (plumbing,
+        # not a reported metric).
+        "replayed_ids": replayed_ids,
         "reembedded": reembedded,
         "cluster_summaries": len(plan["cluster_summaries"]),
         "narration_stored": narration_stored,
@@ -60,9 +66,9 @@ def _apply_dream_replay(
     store: MemoryStore,
     embeddings: EmbeddingEngine,
     replay_updates: list[dict],
-) -> int:
-    """Update enriched content for replayed memories."""
-    count = 0
+) -> list[int]:
+    """Update enriched content for replayed memories; return the IDs replayed."""
+    replayed: list[int] = []
     for upd in replay_updates:
         try:
             new_content = upd["enriched_content"]
@@ -73,13 +79,13 @@ def _apply_dream_replay(
                 new_emb,
                 compression_level=0,
             )
-            count += 1
+            replayed.append(int(upd["memory_id"]))
         except Exception:
             logger.exception(
                 "Dream replay failed for memory %s",
                 upd.get("memory_id"),
             )
-    return count
+    return replayed
 
 
 def _fix_stale_embeddings(
