@@ -132,7 +132,8 @@ Handlers are the **composition roots**: they wire infrastructure (I/O) to core (
 - `two_stage_transfer.py` — Transfer protocol execution
 - `emergence_tracker.py` — System-level metrics: forgetting curve, spacing effect, schema acceleration
 - `emergence_metrics.py` — Emergence metric definitions
-- `ablation.py` — Lesion study framework (28 ablatable units spanning the 23 neuroscience-grounded mechanisms)
+- `ablation.py` — Lesion study framework (29 ablatable units spanning the 24 neuroscience-grounded mechanisms)
+- `active_forgetting.py` — Two independent dopaminergic forgetting circuits: permanent Rac1 trace erosion (chronic interference × stage vulnerability) + transient DAMB retrieval block (Davis & Zhong 2017, Sabandal et al. 2021)
 - `ablation_report.py` — Ablation report generation
 
 *Consolidation:*
@@ -365,6 +366,19 @@ python3 benchmarks/episodic/run_benchmark.py --events 20           # Episodic Me
 | LoCoMo R@10 | **94.2%** | -- |
 | LoCoMo MRR | **0.8278** | 0.794 |
 | BEAM-100K MRR (retrieval-proxy) | **0.591** | -- |
+
+Consolidation note: these retrieval scores are measured `--with-consolidation`.
+The benchmark runners default to consolidation OFF, in which mode every loaded
+memory keeps its ingest-time `heat_base_set_at`/`stage_entered_at`
+(`hours_elapsed ≈ 0`), so the consolidation stage never advances past *labile*,
+`effective_heat` stays at the labile floor (`≈1e-4`, see `pg_schema.py`
+`effective_heat` and `core/pg_recall.py`), and the read-path heat gate
+(`min_heat = 0.01`) prefilters every candidate — retrieval collapses to ≈0%.
+This is a harness artifact of the OFF default, not a property of the stored
+memories; it reproduces identically across branches. Subset reconfirmation
+(`cortex_bench`, 2026-06-30, `--with-consolidation` vs OFF): LongMemEval-s n=50
+R@10 94.0% / MRR 0.854 vs 0%; LoCoMo n=10 (1982 Qs) R@10 93.8% / MRR 0.821 vs
+9.3%.
 
 BEAM note: 0.591 is a retrieval-proxy MRR (the rank of the first gold-matching
 memory), which is **not** commensurable with BEAM's end-to-end LLM-as-judge

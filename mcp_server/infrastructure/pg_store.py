@@ -450,10 +450,19 @@ class PgMemoryStore(
             from mcp_server.core.temporal import normalize_date_to_iso
 
             raw_created = normalize_date_to_iso(raw_created) or raw_created
+        # A3 decay clock: anchor heat_base_set_at to the event date, not NOW().
+        # effective_heat() decays from COALESCE(heat_base_set_at, last_accessed,
+        # created_at); for a never-touched insert the faithful "last canonical
+        # touch" IS the event (created_at), so a historical-dated memory
+        # (import / benchmark loader) engages the SQL forgetting law instead of
+        # reading hours_elapsed≈0. No-op for fresh writes where created_at≈now.
+        # Source: docs/program/phase-3-a3-migration-design.md §3.1 (clock = last
+        # touch); benchmark root-cause memory 4202968.
+        heat_base_anchor = data.get("heat_base_set_at") or raw_created or now
         row = self._execute(
             """INSERT INTO memories (
                 content, embedding, tags, source, domain,
-                directory_context, created_at, last_accessed,
+                directory_context, created_at, last_accessed, heat_base_set_at,
                 heat_base, surprise_score, importance,
                 emotional_valence, confidence, store_type,
                 is_protected, consolidation_stage,
@@ -465,7 +474,7 @@ class PgMemoryStore(
                 arousal, dominant_emotion, supersedes_id
             ) VALUES (
                 %(content)s, %(embedding)s, %(tags)s::jsonb, %(source)s, %(domain)s,
-                %(directory_context)s, %(created_at)s, %(last_accessed)s,
+                %(directory_context)s, %(created_at)s, %(last_accessed)s, %(heat_base_set_at)s,
                 %(heat)s, %(surprise_score)s, %(importance)s,
                 %(emotional_valence)s, %(confidence)s, %(store_type)s,
                 %(is_protected)s, %(consolidation_stage)s,
@@ -485,6 +494,7 @@ class PgMemoryStore(
                 "directory_context": data.get("directory_context", ""),
                 "created_at": raw_created or now,
                 "last_accessed": now,
+                "heat_base_set_at": heat_base_anchor,
                 "heat": data.get("heat", 1.0),
                 "surprise_score": data.get("surprise_score", 0.0),
                 "importance": data.get("importance", 0.5),
@@ -754,6 +764,20 @@ class PgMemoryStore(
         )
         self._conn.commit()
 
+    def update_forgetting_pressure_accum(self, memory_id: int, accum: float) -> None:
+        """Persist the permanent-circuit leaky-integrator state for one memory.
+
+        Written every forgetting cycle (including leak-down when interference
+        abates), so the accumulator carries sustained-pressure history across
+        cycles — the faithful discretization of gradual Rac1 erosion.
+        source: mcp_server/core/active_forgetting.py (update_pressure_accum).
+        """
+        self._execute(
+            "UPDATE memories SET forgetting_pressure_accum = %s WHERE id = %s",
+            (accum, memory_id),
+        )
+        self._conn.commit()
+
     # ── Search (delegates to PL/pgSQL) ────────────────────────────────
 
     def recall_memories(
@@ -829,6 +853,35 @@ class PgMemoryStore(
             (emb, min_heat, emb, top_k),
         ).fetchall()
         return [(r["id"], r["distance"]) for r in rows]
+
+    def search_newer_neighbors(
+        self,
+        query_embedding: bytes,
+        after: str,
+        exclude_id: int,
+        top_k: int = 10,
+    ) -> list[tuple[float, float]]:
+        """Vector neighbors created strictly after ``after``, nearest first.
+
+        Returns ``(similarity, age_hours)`` per newer neighbor — similarity is
+        ``1 - cosine_distance`` (pgvector ``<=>``) and ``age_hours`` is the
+        neighbor's age from ``NOW()``. Excludes ``exclude_id`` and stale rows.
+
+        The "newer" (retroactive) filter is the I/O half of the active-
+        forgetting signal: the caller aggregates the similarities into the
+        chronic noisy-OR and reads the strongest pair as the acute interferer.
+        """
+        emb = self._bytes_to_vector(query_embedding)
+        rows = self._execute(
+            "SELECT 1 - (embedding <=> %s) AS similarity, "
+            "EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0 AS age_hours "
+            "FROM memories "
+            "WHERE created_at > %s::timestamptz AND id <> %s "
+            "AND NOT is_stale AND embedding IS NOT NULL "
+            "ORDER BY embedding <=> %s LIMIT %s",
+            (emb, after, exclude_id, emb, top_k),
+        ).fetchall()
+        return [(float(r["similarity"]), float(r["age_hours"])) for r in rows]
 
     # ── Compression ───────────────────────────────────────────────────
 
