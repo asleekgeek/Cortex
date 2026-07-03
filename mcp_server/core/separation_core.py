@@ -51,7 +51,7 @@ _MIN_POST_SEPARATION_SIMILARITY = 0.3
 
 # DG granule cell activation sparsity: 2-5% of cells active.
 # Leutgeb et al. (2007) Science 315:961-966; Rolls (2013) Front Syst Neurosci.
-# We use 4% as the midpoint of the published range.
+# We use 4%, within the published 2-5% range (toward the active end).
 _SPARSITY_TARGET = 0.04
 
 

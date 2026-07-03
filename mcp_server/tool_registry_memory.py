@@ -23,6 +23,21 @@ from mcp_server.tool_error_handler import safe_handler
 from mcp_server.handlers._tool_meta import tool_kwargs
 
 
+# Tool name → handler schema; __main__ hands the merged map to
+# _tool_meta.apply_param_docs after registration.
+SCHEMAS: dict[str, dict] = {
+    "remember": remember.schema,
+    "recall": recall.schema,
+    "memory_stats": memory_stats.schema,
+    "checkpoint": checkpoint.schema,
+    "narrative": narrative.schema,
+    "consolidate": consolidate.schema,
+    "import_sessions": import_sessions.schema,
+    "unified_search": unified_search.schema,
+    "get_telemetry": get_telemetry.schema,
+}
+
+
 def register(mcp: FastMCP) -> None:
     """Register Tier 1 memory read/write tools on the FastMCP instance."""
     _register_remember(mcp)

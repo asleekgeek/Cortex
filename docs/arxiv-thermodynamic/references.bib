@@ -32,6 +32,23 @@
   doi       = {10.1145/1571941.1572114}
 }
 
+% Verified against Crossref (10.1145/3596512): authors, title, journal,
+% volume 42, issue 1, page range 1--35, and 2023 all confirmed. arXiv
+% preprint id 2210.11934. (Crossref returns page range only, no ACM
+% article number; do not add articleno without confirming it.)
+@article{Bruch2023,
+  author    = {Bruch, Sebastian and Gai, Siyu and Ingber, Amir},
+  title     = {An Analysis of Fusion Functions for Hybrid Retrieval},
+  journal   = {ACM Transactions on Information Systems},
+  volume    = {42},
+  number    = {1},
+  pages     = {1--35},
+  year      = {2023},
+  doi       = {10.1145/3596512},
+  eprint    = {2210.11934},
+  archivePrefix = {arXiv}
+}
+
 @inproceedings{Karpukhin2020,
   author    = {Karpukhin, Vladimir and Oguz, Barlas and Min, Sewon and Lewis, Patrick and Wu, Ledell and Edunov, Sergey and Chen, Danqi and Yih, Wen-tau},
   title     = {Dense Passage Retrieval for Open-Domain Question Answering},
@@ -51,17 +68,19 @@
 }
 
 @inproceedings{Maharana2024,
-  author    = {Maharana, Adyasha and others},
-  title     = {{LoCoMo}: Long-Context Conversation Memory Benchmark},
+  author    = {Maharana, Adyasha and Lee, Dong-Ho and Tulyakov, Sergey and Bansal, Mohit and Barbieri, Francesco and Fang, Yuwei},
+  title     = {Evaluating Very Long-Term Conversational Memory of {LLM} Agents},
   booktitle = {Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)},
-  year      = {2024}
+  year      = {2024},
+  note      = {LoCoMo dataset; arXiv:2402.17753}
 }
 
 @inproceedings{Wu2025,
-  author    = {Wu, Yucheng and others},
-  title     = {{LongMemEval}: Benchmarking Long-Term Memory in {AI} Assistants},
+  author    = {Wu, Di and Wang, Hongwei and Yu, Wenhao and Zhang, Yuwei and Chang, Kai-Wei and Yu, Dong},
+  title     = {{LongMemEval}: Benchmarking Chat Assistants on Long-Term Interactive Memory},
   booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},
-  year      = {2025}
+  year      = {2025},
+  note      = {arXiv:2410.10813}
 }
 
 @inproceedings{Tavakoli2026,
@@ -232,6 +251,22 @@
   doi       = {10.1126/science.aaz2288}
 }
 
+% Verified against Crossref (10.1037/h0041823). The arousal-performance
+% inverted-U ("Hebb's curve") is Hebb 1955, not Yerkes-Dodson 1908 --- the
+% latter measured stimulus strength vs. habit-formation, never plotting
+% performance against arousal. The code docstring (emotional_tagging.py)
+% already makes this distinction; the paper now matches it.
+@article{Hebb1955,
+  author    = {Hebb, Donald O.},
+  title     = {Drives and the {C.N.S.} (Conceptual Nervous System)},
+  journal   = {Psychological Review},
+  volume    = {62},
+  number    = {4},
+  pages     = {243--254},
+  year      = {1955},
+  doi       = {10.1037/h0041823}
+}
+
 @article{Yerkes1908,
   author    = {Yerkes, Robert M. and Dodson, John D.},
   title     = {The Relation of Strength of Stimulus to Rapidity of Habit-Formation},
@@ -241,11 +276,19 @@
   year      = {1908}
 }
 
-@article{Wang2024,
-  author    = {Wang, Xiaoyan and Bhatt, Rajiv},
-  title     = {Amygdala Priority Encoding of Emotionally Salient Memories},
-  journal   = {Cell Reports},
-  year      = {2024}
+% Verified against Crossref (10.1038/s41562-022-01502-8) and PubMed
+% (36646837). Replaces a fabricated "Wang & Bhatt 2024, Cell Reports"
+% placeholder that described this mechanism (amygdala-hippocampal HFA
+% prioritising emotionally salient encoding) but had no matching record.
+@article{Qasim2023,
+  author    = {Qasim, Salman E. and Mohan, Uma R. and Stein, Joel M. and Jacobs, Joshua},
+  title     = {Neuronal Activity in the Human Amygdala and Hippocampus Enhances Emotional Memory Encoding},
+  journal   = {Nature Human Behaviour},
+  volume    = {7},
+  number    = {5},
+  pages     = {754--764},
+  year      = {2023},
+  doi       = {10.1038/s41562-022-01502-8}
 }
 
 @article{Yonelinas2015,

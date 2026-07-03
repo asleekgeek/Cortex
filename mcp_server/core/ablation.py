@@ -46,9 +46,25 @@ def is_mechanism_disabled(mechanism: "Mechanism | str") -> bool:
 
 
 class Mechanism(Enum):
-    """Enumeration of the 29 ablatable units (the 23 neuroscience-grounded
+    """Enumeration of the ablatable units (the neuroscience-grounded
     mechanisms plus retrieval/maintenance flags; some mechanisms expose more
-    than one ablation flag)."""
+    than one ablation flag). CONFABULATION_GATE (C1 source/reality-monitoring
+    read-side enforcement — gates the consolidation-time confabulation check
+    that flags an episodic->semantic promotion whose combined source evidence is
+    INFERRED with zero perceptual grounding, plus the per-hit recall
+    confabulation_risk annotation; disabled makes both a no-op, so a promotion is
+    annotated exactly as it was pre-C1-read-side and recall hits carry no risk
+    flag — with no change to recall ordering/membership either way).
+    ATTENTIONAL_CONTROL (A1 central-executive read-side — a soft attentional
+    re-weight over the FULL recall candidate set:
+    recall_pipeline.attentional_focus_rerank runs the same allocate_attention
+    pass A1 already provides, using the recall query as the top-down cue plus
+    bottom-up salience, and applies a small multiplicative nudge
+    ``score·(1 + weight·(attn − 1/n))`` to each candidate; uniform/no-signal
+    attention gives a per-candidate factor of exactly 1.0 so recall ordering is
+    unchanged, and the candidate set is NEVER truncated to the Cowan working-set
+    ceiling; disabled returns the candidate list untouched) is the most recent
+    addition."""
 
     OSCILLATORY_CLOCK = "oscillatory_clock"
     CASCADE = "consolidation_cascade"
@@ -79,6 +95,18 @@ class Mechanism(Enum):
     ENTITY_DEDUP = "entity_dedup"
     COMPRESSION = "compression"
     ACTIVE_FORGETTING = "active_forgetting"
+    VALUE_PRIORITY = "value_priority"
+    HABITUATION = "habituation"
+    CONFLICT_MONITOR = "conflict_monitor"
+    DUAL_PROCESS = "dual_process"
+    SLEEP_PHASES = "sleep_phases"
+    TARGETED_REACTIVATION = "targeted_reactivation"
+    EXTINCTION = "extinction"
+    STRESS_MODULATION = "stress_modulation"
+    GOAL_MAINTENANCE = "goal_maintenance"
+    FORWARD_MODEL = "forward_model"
+    CONFABULATION_GATE = "confabulation_gate"
+    ATTENTIONAL_CONTROL = "attentional_control"
 
 
 @dataclass

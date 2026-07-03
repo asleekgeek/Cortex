@@ -5,7 +5,17 @@ Based on Nader et al. (Nature, 2000) and Osan-Tort-Amaral (PLoS ONE, 2011).
 Three outcomes based on mismatch between stored memory and current context:
   - mismatch < low_threshold: Passive retrieval, no change
   - low <= mismatch < high: RECONSOLIDATE — update memory with current context
-  - mismatch >= high: EXTINCTION — archive old memory, create new one
+  - mismatch >= high: destabilize — archive the old memory (heat-penalty /
+    soft-delete regime, ``action == "archive"``)
+
+E2 reversible extinction (Bouton 2004; Milad & Quirk 2012) is a SEPARATE,
+non-erasing route: instead of archiving a high-mismatch memory, a caller may
+"deprecate" it by growing a reversible inhibitory tag (``extinction_strength``)
+that suppresses its effective retrieval weight without deleting the trace, so it
+can spontaneously recover (decay) or be reinstated (cleared). See
+``mcp_server.core.extinction`` and ``compute_extinction_action`` below. This is
+deliberately distinct from the archive branch above — extinction keeps the
+memory fully present.
 
 Emotional modulation (Yonelinas & Ritchey 2015, Lee 2009):
   - Prediction error gate: PE = mismatch * (1 - stability * 0.5)
@@ -253,6 +263,16 @@ class ReconsolidationOutcome:
     update_last_accessed: bool = False
     mismatch: float = 0.0
     prediction_error: float = 0.0
+    # E2 fear extinction / inhibitory learning (Bouton 2004; Milad & Quirk 2012).
+    # When set (not None), the store should write this value to the memory's
+    # ``extinction_strength`` column — a REVERSIBLE inhibitory tag that suppresses
+    # the effective retrieval weight WITHOUT deleting the trace, so the
+    # association can spontaneously recover (decay) or be reinstated (cleared).
+    # None (the default) means "leave the extinction tag untouched" — no
+    # behaviour change. This is distinct from ``action == "archive"`` (the
+    # erasure-style heat penalty / soft-delete regime): extinction keeps the
+    # memory fully present.
+    extinction_strength: float | None = None
 
 
 # Engineering defaults (calibration pending — see docs/provenance/blend-weight-calibration.md).
@@ -376,3 +396,92 @@ def compute_reconsolidation_action(
         mismatch=mismatch,
         prediction_error=decision.prediction_error,
     )
+
+
+# ── E2 reversible extinction (Bouton 2004; Milad & Quirk 2012) ─────────────
+#
+# A reversible, non-erasing alternative to the "archive" destabilization
+# regime. Where `active_forgetting` deletes/soft-deletes a memory and the
+# reconsolidation "archive" branch applies an erasure-style heat penalty,
+# extinction grows a REVERSIBLE inhibitory tag that suppresses the effective
+# retrieval weight while leaving the trace fully intact. The original
+# association returns on its own over time (spontaneous_recovery) and is
+# restored in full on reinstatement. Delegates all tag arithmetic to
+# `mcp_server.core.extinction`; this bridge only maps a memory dict +
+# operation to a ReconsolidationOutcome the caller persists via
+# `store.update_memory_extinction`.
+
+
+def compute_extinction_action(
+    memory: dict,
+    *,
+    operation: Literal["deprecate", "recover", "reinstate"] = "deprecate",
+    trials: int = 1,
+    hours_elapsed: float = 0.0,
+) -> ReconsolidationOutcome:
+    """Compute a reversible extinction update for a memory (E2).
+
+    Pure: reads the memory's current ``extinction_strength`` (defaulting to 0
+    for un-migrated rows / new memories) and returns a ReconsolidationOutcome
+    whose ``extinction_strength`` field is the new tag to persist. The memory's
+    heat / content are NOT touched — extinction suppresses the effective
+    retrieval weight without erasing the trace (Bouton 2004), so:
+
+      - ``operation="deprecate"`` grows the inhibitory tag by ``trials``
+        unreinforced extinction trials (the reversible counterpart to
+        active_forgetting's delete).
+      - ``operation="recover"`` decays the tag over ``hours_elapsed``
+        (spontaneous recovery — the association returns on its own).
+      - ``operation="reinstate"`` clears the tag in one step (the original
+        association is restored in full).
+
+    Honors ``CORTEX_ABLATE_EXTINCTION=1`` via `extinction.deprecate` (for the
+    deprecate path) and a direct guard here (for recover/reinstate): when
+    ablated the tag is returned unchanged and ``extinction_strength`` is None so
+    the store leaves the column untouched (behaviour-preserving no-op).
+
+    Preconditions: ``memory`` is a dict (may be empty); ``trials >= 0``;
+    ``hours_elapsed >= 0``.
+    Postconditions: returns a ReconsolidationOutcome with ``action == "none"``
+    (extinction never re-stores content) and ``update_last_accessed == False``
+    (a deprecation is not a retrieval); ``extinction_strength`` is the new tag
+    in [0, 1], or None when ablated.
+    """
+    from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
+    from mcp_server.core.extinction import (
+        deprecate as _deprecate,
+        spontaneous_recovery as _recover,
+        reinstate as _reinstate,
+    )
+
+    if memory is None:
+        return ReconsolidationOutcome(action="none")
+
+    current = float(memory.get("extinction_strength", 0.0) or 0.0)
+    base_heat = float(memory.get("heat", memory.get("heat_base", 0.0)) or 0.0)
+
+    ablated = is_mechanism_disabled(Mechanism.EXTINCTION)
+
+    if operation == "deprecate":
+        out = _deprecate(base_heat, current, trials=trials)
+        # _deprecate already applies the ablation guard: when ablated it returns
+        # operation="noop" with the tag unchanged. Surface None so the store
+        # leaves the column untouched in that case.
+        new_tag = None if out.operation == "noop" else out.new_extinction_strength
+        return ReconsolidationOutcome(
+            action="none",
+            extinction_strength=new_tag,
+        )
+
+    if ablated:
+        # recover / reinstate are no-ops under ablation too.
+        return ReconsolidationOutcome(action="none", extinction_strength=None)
+
+    if operation == "recover":
+        new_tag = _recover(current, hours_elapsed)
+    elif operation == "reinstate":
+        new_tag = _reinstate(current)
+    else:  # pragma: no cover - guarded by Literal typing
+        return ReconsolidationOutcome(action="none", extinction_strength=None)
+
+    return ReconsolidationOutcome(action="none", extinction_strength=new_tag)

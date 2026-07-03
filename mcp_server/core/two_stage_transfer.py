@@ -22,10 +22,13 @@ import math
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
-# Cortical learning rate from C-HORSE model (Ketz et al., eLife 12:e77185, 2023).
-# C-HORSE specifies hippocampal LR = 0.02 and cortical LR = 0.002 (10:1 ratio).
-# We use the cortical rate here because this constant governs cortical trace
-# strengthening during replay-driven transfer.
+# Per-replay transfer rate, grounded in the C-HORSE model
+# (Ketz et al., eLife 12:e77185, 2023), which specifies hippocampal LR = 0.02
+# and cortical LR = 0.002 (10:1 ratio). We use 0.02 (C-HORSE's HIPPOCAMPAL LR)
+# as the per-replay transfer rate — an engineering choice: the cortical LR of
+# 0.002 would transfer 10x slower than this system's hours-timescale replay
+# cadence tolerates. (This is not the cortical rate, despite driving cortical
+# trace strengthening.)
 _REPLAY_TRANSFER_RATE = 0.02
 
 # Schema-accelerated transfer multiplier for schema-consistent memories.
@@ -62,8 +65,9 @@ def compute_transfer_delta(
     """Compute how much hippocampal dependency decreases from one replay event.
 
     Each SWR replay strengthens the cortical trace and weakens hippocampal
-    dependency. The base rate is the cortical learning rate from C-HORSE
-    (Ketz et al., 2023, eLife 12:e77185). Schema consistency accelerates
+    dependency. The base rate (0.02) is C-HORSE's hippocampal learning rate
+    (Ketz et al., 2023, eLife 12:e77185), used here as the per-replay transfer
+    rate — an engineering choice (see module constant note). Schema consistency accelerates
     transfer per Tse et al. (2007), adapted to compressed timescale.
 
     Args:
@@ -71,7 +75,8 @@ def compute_transfer_delta(
         replay_count: Total replays so far (including this one).
         schema_match: Schema match score [0, 1].
         importance: Memory importance [0, 1].
-        transfer_rate: Base cortical learning rate per replay (default: 0.02).
+        transfer_rate: Base per-replay transfer rate (default: 0.02, C-HORSE
+            hippocampal LR; see module constant note).
         schema_acceleration: Schema-consistent speedup factor (default: 2.5).
         min_replays: Minimum replays before any transfer begins.
 

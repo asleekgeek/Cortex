@@ -1,0 +1,16 @@
+{
+  "benchmark": "replay_evb",
+  "date": "2026-06-29T12:33:20.104179+00:00",
+  "fixture_zero_gain_evb_is_zero": true,
+  "fixture_sr_need_scaling": true,
+  "fixture_co_access_degree": true,
+  "evb_ranking_correct": true,
+  "evb_false_selections": [],
+  "heat_false_selections": [
+    4,
+    5,
+    6
+  ],
+  "end_to_end_no_false_selection": true,
+  "passed": true
+}

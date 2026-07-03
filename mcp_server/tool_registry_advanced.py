@@ -20,6 +20,19 @@ from mcp_server.tool_error_handler import safe_handler
 from mcp_server.handlers._tool_meta import tool_kwargs
 
 
+# Tool name → handler schema; __main__ hands the merged map to
+# _tool_meta.apply_param_docs after registration.
+SCHEMAS: dict[str, dict] = {
+    "add_rule": add_rule.schema,
+    "assess_coverage": assess_coverage.schema,
+    "create_trigger": create_trigger.schema,
+    "curate_wiki": curate_wiki.schema,
+    "get_project_story": get_project_story.schema,
+    "get_rules": get_rules.schema,
+    "sync_instructions": sync_instructions.schema,
+}
+
+
 def register(mcp: FastMCP) -> None:
     """Register Tier 3 advanced tools."""
     _register_sync_instructions(mcp)

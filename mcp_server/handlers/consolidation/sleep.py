@@ -8,10 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from mcp_server.core.sleep_compute import (
-    run_sleep_compute,
-    run_sleep_compute_streamed,
-)
+from mcp_server.core.sleep_phases import run_two_phase_consolidation
 from mcp_server.infrastructure.embedding_engine import EmbeddingEngine
 from mcp_server.infrastructure.memory_store import MemoryStore
 
@@ -22,8 +19,28 @@ def run_deep_sleep(
     store: MemoryStore,
     embeddings: EmbeddingEngine,
     memories: list[dict] | None = None,
+    cue: str | None = None,
 ) -> dict:
-    """Run deep sleep compute: dream replay, summarization, re-embedding.
+    """Run deep sleep compute as an NREM/REM two-phase consolidation (F1).
+
+    The offline pass is routed through ``run_two_phase_consolidation``: an
+    NREM-like exact-replay phase (delegating verbatim to the existing
+    ``sleep_compute`` single pass — dream replay, summarization, re-embedding,
+    narration) followed by a REM-like recombination/abstraction phase (schema
+    formation + merge over any provided clusters). The NREM plan keys
+    (``replay_updates`` / ``stale_embeddings`` / ``cluster_summaries`` /
+    ``narration``) are unchanged, so the downstream apply steps are unaffected;
+    the split adds a ``sleep_phases`` block with per-phase counts.
+
+    F2 targeted reactivation. An optional ``cue`` (topic / tag / entity /
+    free-text) biases *which* memories preferentially replay in the NREM phase.
+    With no cue (the default) replay is chosen purely by heat, exactly as
+    pre-F2 — identity.
+
+    Ablation: ``CORTEX_ABLATE_SLEEP_PHASES=1`` (Mechanism.SLEEP_PHASES) skips
+    the REM phase, falling back to exactly the single-pass NREM consolidation.
+    ``CORTEX_ABLATE_TARGETED_REACTIVATION=1`` (Mechanism.TARGETED_REACTIVATION)
+    forces the cue off so replay selection is heat-only, as pre-F2.
 
     When the consolidate handler pre-loads the memory list (issue #13) we
     reduce over it directly. When called standalone (``memories is None``) we
@@ -32,11 +49,10 @@ def run_deep_sleep(
     old ``get_all_memories_for_decay()`` materialized 500k+ rows at once).
     """
     if memories is None:
-        plan = run_sleep_compute_streamed(
-            store.iter_memories_for_decay(), clusters=[], directory=""
-        )
+        chunks: object = store.iter_memories_for_decay()
     else:
-        plan = run_sleep_compute(memories, clusters=[], directory="")
+        chunks = [memories]
+    plan = run_two_phase_consolidation(chunks, clusters=[], directory="", cue=cue)
 
     replayed_ids = _apply_dream_replay(store, embeddings, plan["replay_updates"])
     reembedded = _fix_stale_embeddings(
@@ -47,7 +63,12 @@ def run_deep_sleep(
     narration_stored = _store_narration(store, embeddings, plan.get("narration", {}))
 
     narrative_text = plan.get("narration", {}).get("narrative_text", "")
+    # F1 phase telemetry: last-cycle NREM/REM counts + the phase order actually
+    # run (["nrem","rem"] normally; ["nrem"] when SLEEP_PHASES is ablated). The
+    # consolidate orchestrator forwards this to system_vitals for cortex-viz.
+    phases = plan.get("sleep_phases", {})
     return {
+        "sleep_phases": phases,
         "replayed": len(replayed_ids),
         # IDs replayed this cycle: the active-forgetting pass reads these as the
         # sleep-protection (recently_active) signal — replayed memories are

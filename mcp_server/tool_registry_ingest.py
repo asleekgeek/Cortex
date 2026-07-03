@@ -25,6 +25,16 @@ from mcp_server.tool_error_handler import safe_handler
 from mcp_server.handlers._tool_meta import tool_kwargs
 
 
+# Tool name → handler schema; __main__ hands the merged map to
+# _tool_meta.apply_param_docs after registration. Unregistered upstream
+# tools are skipped there (the merge walks registered tools only).
+SCHEMAS: dict[str, dict] = {
+    "ingest_codebase": ingest_codebase.schema,
+    "change_impact": change_impact.schema,
+    "ingest_prd": ingest_prd.schema,
+}
+
+
 def register(mcp: FastMCP, *, codebase: bool = True, prd: bool = True) -> None:
     """Register the upstream-integration tools, gated by upstream availability.
 

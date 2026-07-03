@@ -23,6 +23,7 @@ from mcp_server import (
     tool_registry_nav,
     tool_registry_wiki,
 )
+from mcp_server.handlers._tool_meta import apply_param_docs
 from mcp_server.infrastructure.mcp_client_pool import close_all
 from mcp_server.infrastructure.upstream_availability import (
     codebase_upstream_available,
@@ -60,6 +61,21 @@ def register_all(mcp: FastMCP, *, codebase: bool, prd: bool) -> None:
     tool_registry_advanced.register(mcp)
     tool_registry_wiki.register(mcp)
     tool_registry_ingest.register(mcp, codebase=codebase, prd=prd)
+    # FastMCP derives input schemas from function signatures; project the
+    # hand-written inputSchema parameter descriptions onto them so clients
+    # (and registry graders) see documented parameters.
+    apply_param_docs(
+        mcp,
+        {
+            **tool_registry_core.SCHEMAS,
+            **tool_registry_memory.SCHEMAS,
+            **tool_registry_manage.SCHEMAS,
+            **tool_registry_nav.SCHEMAS,
+            **tool_registry_advanced.SCHEMAS,
+            **tool_registry_wiki.SCHEMAS,
+            **tool_registry_ingest.SCHEMAS,
+        },
+    )
 
 
 register_all(

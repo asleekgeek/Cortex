@@ -158,6 +158,23 @@ def evaluate_gate(
     score = compute_novelty_score(emb_nov, ent_nov, temp_nov, struct_nov)
     if get_memory_settings().WRITE_GATE_HIERARCHICAL:
         score = _hierarchical_novelty_score(content, ent_names, known, recent)
+    # E1 habituation & sensitization: damp the novelty of a repeated identical
+    # low-salience input toward rejection (exponential response decrement,
+    # Rankin 2009), and transiently amplify it just after a salient event
+    # (dishabituation / sensitization). Non-fatal, behavior-preserving on a
+    # first-seen signature, and ablatable via CORTEX_ABLATE_HABITUATION=1.
+    score, habituation_info = write_gate.apply_habituation(
+        score, content, importance, store
+    )
+    # A3 goal / task-set maintenance: while a goal (promoted from active
+    # prospective triggers) is in play, favor goal-relevant inputs at the gate
+    # with a small multiplicative novelty gain (Miller & Cohen 2001 task-set
+    # biasing). No active goal / off-task input => gain 1.0 => score unchanged.
+    # Non-fatal, ablatable via CORTEX_ABLATE_GOAL_MAINTENANCE=1. DESIGN
+    # INFERENCE — a keyword/entity goal-match nudge, not a learned PFC controller.
+    score, goal_info = write_gate.apply_goal_maintenance(
+        score, content, ent_names, store
+    )
     should_store, gate_reason, threshold = _compute_gate_decision(
         score, force, content, tags, domain=domain
     )
@@ -193,6 +210,8 @@ def evaluate_gate(
         "should_store": should_store,
         "gate_reason": gate_reason,
         "gate_threshold": threshold,
+        "habituation": habituation_info,
+        "goal_maintenance": goal_info,
     }
 
 
@@ -425,6 +444,29 @@ def _build_insert_record(
         "schema_id": mod["schema_id"],
         "hippocampal_dependency": 1.0,
     }
+    # C1 source / reality monitoring: attribute the memory's epistemic origin
+    # (perceived / told / inferred) from its content + ingestion pathway, so a
+    # self-generated inference is not stored indistinguishably from a file-
+    # grounded observation (Johnson, Hashtroudi & Lindsay 1993). Best-effort —
+    # a classification failure must never block a write.
+    try:
+        from mcp_server.core import source_monitoring
+
+        record["source_attribution"] = source_monitoring.classify_source(
+            content, source_field=source
+        ).attribution
+    except Exception:
+        record["source_attribution"] = "unknown"
+    # E1 habituation: persist the normalised stimulus-identity key so that the
+    # next presentation of this same content is counted as a repeat by the write
+    # gate (signature_repeat_stats -> response decrement, Rankin 2009).
+    # Best-effort — a signature failure must never block a write.
+    try:
+        from mcp_server.core import habituation
+
+        record["stimulus_signature"] = habituation.stimulus_signature(content)
+    except Exception:
+        record["stimulus_signature"] = ""
     etag = mod.get("emotional_tag")
     record["arousal"] = round(etag["arousal"], 4) if etag and "arousal" in etag else 0.0
     record["dominant_emotion"] = (
@@ -548,7 +590,7 @@ def insert_and_post_process(
         store,
         source=source,
     )
-    return build_response(
+    response = build_response(
         mem_id,
         action,
         stype,
@@ -562,6 +604,15 @@ def insert_and_post_process(
         sep,
         interf,
     )
+    # C1 source / reality monitoring: surface the stored epistemic attribution
+    # so the caller can see whether this memory was perceived / told / inferred.
+    # Flag the confabulation risk — an inferred memory carries no external
+    # grounding and should not later be cited as observed fact (Johnson 1993).
+    attribution = record.get("source_attribution", "unknown")
+    response["source_attribution"] = attribution
+    if attribution == "inferred":
+        response["confabulation_risk"] = True
+    return response
 
 
 # ── User-mood EMA hook (Bower 1981 mood-congruent recall, signal side) ──

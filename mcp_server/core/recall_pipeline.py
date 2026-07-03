@@ -166,6 +166,118 @@ def _rrf_blend(
     return [c for _, c in scored]
 
 
+# ── FAMILIARITY_TRIAGE stage (C2 recollection vs. familiarity) ──────────
+# Yonelinas (2002), J. Mem. Lang. 46(3):441-517; Diana, Yonelinas & Ranganath
+# (2007), Trends Cogn. Sci. 11(9):379-386. Familiarity is a fast, a-contextual
+# prior-exposure scalar (perirhinal); recollection is slow contextual
+# reconstruction (hippocampal). Two-stage retrieval — cheap recall + expensive
+# rerank — is the standard IR analogue. This stage runs EARLY, before the
+# expensive post-WRRF rerank chain, and reads a lightweight familiarity signal
+# (MAX query↔candidate cosine similarity, NO context assembly) so an
+# overwhelmingly-familiar query can OPTIONALLY skip full reconstruction.
+#
+# PARITY GUARANTEE: by default the stage only ANNOTATES each candidate with its
+# per-candidate familiarity and returns them in unchanged order/membership; the
+# recollection short-circuit is opt-in (allow_shortcut) and fires only on an
+# overwhelming, single-dominant vector hit. With the default recall() the full
+# recollection chain always runs, so recall output is byte-for-byte unchanged
+# apart from the added annotation key.
+
+
+def familiarity_triage(
+    candidates: list[dict[str, Any]],
+    q_emb: bytes | None,
+    store: Any,
+    *,
+    allow_shortcut: bool = False,
+):
+    """Early a-contextual familiarity triage over the WRRF candidates (C2).
+
+    Reads each candidate's embedding in ONE bulk PG round trip (the same
+    ``get_embeddings_for_memories`` path the Hopfield stage uses), computes the
+    query↔candidate cosine similarity for each, and hands the similarity vector
+    to ``dual_process_retrieval.triage``. The result carries:
+
+      - ``candidates`` — annotated with per-candidate ``familiarity`` (order and
+        membership UNCHANGED);
+      - ``signal`` — the set-level FamiliaritySignal (max/mean/margin/method);
+      - ``recollection_needed`` — the decision (default assumption True);
+      - ``shortcut`` — True only when ``allow_shortcut`` AND familiarity is an
+        overwhelming single-dominant vector hit.
+
+    Disabled when ``CORTEX_ABLATE_DUAL_PROCESS=1`` — returns a TriageResult that
+    leaves the candidates untouched (no annotation), recollection_needed=True,
+    shortcut=False, so the full recollection chain always runs (identity).
+
+    Returns a ``dual_process_retrieval.TriageResult`` (NOT a bare list) because
+    the caller needs the shortcut decision, not just a reordering. It performs no
+    reordering itself — recollection is the pre-existing rerank chain in
+    ``pg_recall.recall``; this stage only gates whether that chain runs.
+
+    Honesty note: familiarity here is the max-cosine-similarity heuristic, not a
+    trained dual-process model; see dual_process_retrieval.py module docstring.
+
+    Sources:
+      - Yonelinas (2002). J. Mem. Lang. 46(3):441-517.
+      - Diana, Yonelinas & Ranganath (2007). Trends Cogn. Sci. 11(9):379-386.
+    """
+    from mcp_server.core import dual_process_retrieval as dpr
+
+    # Ablation / degenerate guards: identity triage (full recollection runs).
+    if (
+        is_mechanism_disabled(Mechanism.DUAL_PROCESS)
+        or not candidates
+        or q_emb is None
+    ):
+        return dpr.TriageResult(
+            candidates=candidates,
+            signal=dpr.assess_familiarity([], method=dpr.METHOD_EMPTY),
+            recollection_needed=True,
+            shortcut=False,
+        )
+
+    from mcp_server.core.hopfield import cosine_similarity
+
+    ids = [c["memory_id"] for c in candidates]
+    emb_by_id: dict[Any, bytes] = {}
+    if hasattr(store, "get_embeddings_for_memories"):
+        emb_by_id = store.get_embeddings_for_memories(ids)
+    elif hasattr(store, "get_memory"):
+        for mid in ids:
+            mem = store.get_memory(mid)
+            if mem and mem.get("embedding"):
+                emb_by_id[mid] = mem["embedding"]
+
+    # No embeddings available (test stub without a store, un-embedded corpus):
+    # identity triage — we do NOT fabricate a familiarity signal, and the
+    # recollection chain runs in full.
+    if not emb_by_id:
+        return dpr.TriageResult(
+            candidates=candidates,
+            signal=dpr.assess_familiarity([], method=dpr.METHOD_EMPTY),
+            recollection_needed=True,
+            shortcut=False,
+        )
+
+    sims: list[float] = []
+    for c in candidates:
+        emb = emb_by_id.get(c["memory_id"])
+        if emb is None:
+            sims.append(0.0)  # missing embedding contributes no familiarity
+            continue
+        try:
+            sims.append(cosine_similarity(q_emb, emb))
+        except Exception:  # noqa: BLE001 — non-load-bearing per-candidate
+            sims.append(0.0)
+
+    return dpr.triage(
+        candidates,
+        sims,
+        allow_shortcut=allow_shortcut,
+        method=dpr.METHOD_VECTOR,
+    )
+
+
 # ── HOPFIELD stage ──────────────────────────────────────────────────────
 # Ramsauer et al. (2021), "Hopfield Networks Is All You Need." ICLR 2021.
 # Modern Hopfield retrieval = softmax(beta * X · query) attention.
@@ -591,6 +703,195 @@ def emotional_retrieval_rerank(
     return _rrf_blend(candidates, mech_ranks, blend_beta)
 
 
+# ── VALUE_PRIORITY stage (B2 RL value learning) ─────────────────────────
+# Schultz, Dayan & Montague (1997); Sutton & Barto (1998). Each memory carries
+# a learned scalar ``value`` in [0,1] that accrues via TD credit assignment from
+# usefulness/session outcomes (see core.value_learning). A memory that has
+# repeatedly contributed to good outcomes should surface slightly ahead of an
+# equally-relevant but unproven one, and a repeatedly-unhelpful one slightly
+# behind. Unlike the emotional/mood stages this is NOT an RRF rank blend but a
+# small multiplicative nudge on the content-relevance score
+# (value_learning.retrieval_priority: score' = score·(1 + w·(value − prior))),
+# so value refines rather than reorders relevance. Runs AFTER FlashRank so it
+# adjusts the final content-relevance score, and is deliberately weak (w=0.15)
+# so it never overrides a strong content match.
+
+
+def value_priority_rerank(
+    candidates: list[dict[str, Any]],
+    *,
+    weight: float = 0.15,
+) -> list[dict[str, Any]]:
+    """Nudge each candidate's score by its learned RL value (B2).
+
+    A memory's ``value`` (default 0.5 = neutral prior) scales its score by
+    ``1 + weight·(value − 0.5)`` and the list is re-sorted. A memory with no
+    learned value, or an un-migrated store where the column is absent, keeps the
+    neutral prior and is unaffected — the stage is a no-op on a store that has
+    never accrued value.
+
+    Disabled when ``CORTEX_ABLATE_VALUE_PRIORITY=1`` — returns input unchanged.
+    """
+    if is_mechanism_disabled(Mechanism.VALUE_PRIORITY):
+        return candidates
+    if not candidates or len(candidates) < 2:
+        return candidates
+
+    from mcp_server.core.value_learning import retrieval_priority
+
+    for c in candidates:
+        base = c.get("score", 0.0) or 0.0
+        value = c.get("value")
+        if value is None:
+            continue  # no value signal — leave score untouched
+        c["score"] = retrieval_priority(base, value, weight=weight)
+
+    candidates.sort(key=lambda c: c.get("score", 0.0), reverse=True)
+    return candidates
+
+
+# ── GOAL_MAINTENANCE stage (A3 goal / task-set maintenance) ─────────────
+# Miller & Cohen (2001), Annu. Rev. Neurosci. 24:167-202 — prefrontal cortex
+# holds an active task-set that biases processing toward goal-relevant
+# information. Here: while a goal is active (a GoalVector promoted from the
+# store's active prospective triggers, see pg_recall._get_active_goal), each
+# candidate's content-relevance score is scaled by a small multiplicative gain
+# ``1 + weight·goal_relevance`` (goal_maintenance.goal_recall_multiplier) so
+# goal-relevant memories surface slightly ahead of equally-relevant off-task
+# ones. Like VALUE_PRIORITY this is a multiplicative nudge, NOT an RRF rank
+# blend, and deliberately weak (weight 0.15) so it refines rather than reorders
+# relevance. No active goal / off-task candidate => gain 1.0 => list unchanged.
+#
+# DESIGN INFERENCE: the goal-match is a deterministic keyword/entity/directory
+# overlap re-weight promoted from the prospective trigger surface, not a learned
+# PFC task-set controller (see goal_maintenance module docstring).
+
+
+def goal_maintenance_rerank(
+    candidates: list[dict[str, Any]],
+    goal: Any,
+) -> list[dict[str, Any]]:
+    """Nudge each candidate's score by its relevance to the active goal (A3).
+
+    ``goal`` is a ``goal_maintenance.GoalVector`` (from pg_recall._get_active
+    _goal). When it is inactive (no task in play) this is a strict identity —
+    membership and order are unchanged, matching the behavior with no goal at
+    all. When active, each candidate's score is scaled by
+    ``goal_maintenance.goal_recall_multiplier`` (1.0 for off-task candidates,
+    up to 1 + weight for fully goal-relevant ones) and the list is re-sorted.
+
+    Disabled when ``CORTEX_ABLATE_GOAL_MAINTENANCE=1`` — returns input
+    unchanged. No-op on fewer than two candidates.
+    """
+    if is_mechanism_disabled(Mechanism.GOAL_MAINTENANCE):
+        return candidates
+    if not candidates or len(candidates) < 2:
+        return candidates
+    if goal is None or not getattr(goal, "is_active", False):
+        return candidates
+
+    from mcp_server.core.goal_maintenance import goal_recall_multiplier
+
+    for c in candidates:
+        base = c.get("score", 0.0) or 0.0
+        mult = goal_recall_multiplier(
+            goal,
+            c.get("content", "") or "",
+            entities=c.get("entities"),
+            directory=c.get("directory", "") or "",
+        )
+        if mult != 1.0:
+            c["score"] = base * mult
+
+    candidates.sort(key=lambda c: c.get("score", 0.0), reverse=True)
+    return candidates
+
+
+# ── ATTENTIONAL_CONTROL stage (A1 central-executive read-side) ──────────
+# Baddeley (2003) central executive; Posner & Petersen (1990) attention
+# spotlight; Cowan (2001) focus capacity. A1 already provides the pure
+# attention-allocation pass (attentional_control.allocate_attention): a
+# top-down lexical-relevance + bottom-up salience score per item, softmaxed
+# (temperature-scaled) into an attention distribution. Here we run that SAME
+# pass over the recall candidate set with the recall query as the top-down cue,
+# then apply a small multiplicative nudge score·(1 + weight·(attn − baseline))
+# to each candidate, where attn is its attention weight and baseline = 1/n (the
+# uniform weight). Like VALUE_PRIORITY / GOAL_MAINTENANCE this is a bounded
+# multiplicative nudge, NOT an RRF rank blend.
+#
+# CRITICAL: the candidate set is NOT truncated to the Cowan FOCUS_CAPACITY
+# ceiling. That ceiling bounds the working-set spotlight (sensory_buffer.focus),
+# NOT how many memories recall returns; here attention is used only as a SOFT
+# re-weight over the FULL candidate set (allocate_attention is called with
+# capacity = n so its focus set spans every candidate, and we read only the
+# per-item weights). When attention is uniform (no query overlap and equal
+# salience → equal logits → uniform softmax) every candidate's weight equals
+# baseline, so every factor is exactly 1.0 and neither scores nor order change —
+# the behavior-preserving default. Reuses allocate_attention; the softmax is NOT
+# reimplemented here.
+#
+# DESIGN INFERENCE: the top-down term is lexical query/candidate overlap plus
+# fixed-constant salience (attentional_control), not a learned attention
+# controller — see the attentional_control module honesty note.
+
+
+def attentional_focus_rerank(
+    candidates: list[dict[str, Any]],
+    query: str,
+    *,
+    weight: float = 0.15,
+) -> list[dict[str, Any]]:
+    """Nudge each candidate's score by its top-down+salience attention (A1).
+
+    Runs ``attentional_control.allocate_attention`` over the FULL candidate set
+    (capacity = ``len(candidates)`` so there is NO working-set truncation — the
+    Cowan ceiling bounds the in-focus spotlight, not recall size) with ``query``
+    as the top-down cue. Each candidate's score is scaled by
+    ``1 + weight·(attn − baseline)`` where ``attn`` is its attention weight and
+    ``baseline = 1/n`` the uniform weight, then the list is re-sorted.
+
+    Behavior-preserving by default: when attention is uniform (no query overlap
+    and equal salience) every weight equals ``baseline``, so every factor is
+    exactly 1.0 and neither scores nor order change. The nudge is deliberately
+    small (weight 0.15) so attention refines rather than reorders content
+    relevance, and it REUSES A1's pure ``allocate_attention`` — the softmax is
+    not reimplemented. The soft re-weight applies to every candidate; the recall
+    result is never capped at ``FOCUS_CAPACITY``.
+
+    Disabled when ``CORTEX_ABLATE_ATTENTIONAL_CONTROL=1`` — returns input
+    unchanged. No-op on fewer than two candidates.
+    """
+    if is_mechanism_disabled(Mechanism.ATTENTIONAL_CONTROL):
+        return candidates
+    if not candidates or len(candidates) < 2:
+        return candidates
+
+    from mcp_server.core.attentional_control import allocate_attention
+
+    n = len(candidates)
+    # Map recall-candidate fields onto the item shape allocate_attention reads
+    # (content + optional importance/valence). Candidates carry the stored
+    # affect under ``emotional_valence``; the pure pass expects ``valence``.
+    items = [
+        {
+            "content": c.get("content", "") or "",
+            "importance": c.get("importance", 0.0) or 0.0,
+            "valence": c.get("emotional_valence", 0.0) or 0.0,
+        }
+        for c in candidates
+    ]
+    # capacity = n → the focus set spans all candidates; we use only the
+    # per-item weights as a soft re-weight, never truncating recall.
+    alloc = allocate_attention(query, items, capacity=n)
+    baseline = 1.0 / n
+    for c, attn in zip(candidates, alloc.weights):
+        base = c.get("score", 0.0) or 0.0
+        c["score"] = base * (1.0 + weight * (attn - baseline))
+
+    candidates.sort(key=lambda c: c.get("score", 0.0), reverse=True)
+    return candidates
+
+
 # ── RECONSOLIDATION stage ──────────────────────────────────────────────
 # Nader, Schafe & LeDoux (2000), Nature 406(6797). On retrieval a memory
 # becomes labile and may be re-stored with modifications. Wired here as
@@ -757,3 +1058,76 @@ def mood_congruent_rerank(
         candidates[i]["memory_id"]: rank for rank, (i, _) in enumerate(by_match)
     }
     return _rrf_blend(candidates, mech_ranks, blend_beta)
+
+
+# ── CONFLICT_MONITOR stage (A2 conflict monitoring / cognitive control) ─────────
+# Botvinick, Braver, Barch, Carter & Cohen (2001), Psychol. Rev. 108(3):624-652;
+# Miller & Cohen (2001), Annu. Rev. Neurosci. 24(1):167-202. The ACC detects
+# response conflict — several strong, incompatible responses co-active at once —
+# and signals PFC to raise control. Here: a conflict scalar over the retrieved
+# set (softmax-entropy of the scores × lexical pairwise contradiction, see
+# core.conflict_monitor). When it crosses threshold the set is "in conflict";
+# the most-contradictory pair's lower-scoring member is down-weighted and, when
+# candidates carry typed-claim metadata, the pair is also routed to the existing
+# claim_resolver. Unlike the RRF rerank stages this does not reorder the whole
+# list — it demotes one contested-and-weaker memory. Runs after VALUE_PRIORITY
+# so it operates on the final content-relevance scores. Behaviour-preserving on
+# <2 candidates or low conflict (no-op).
+
+
+def conflict_monitor_rerank(
+    candidates: list[dict[str, Any]],
+    store: Any = None,
+) -> list[dict[str, Any]]:
+    """Detect conflict in the retrieved set and demote the losing memory (A2).
+
+    Computes a conflict scalar (``conflict_monitor.assess_conflict``) over the
+    candidates. When the set is "in conflict" (score >= threshold): the
+    lower-scoring member of the most-contradictory pair is down-weighted and the
+    list re-sorted (``conflict_monitor.apply_downweight``), and — when the
+    candidates carry the typed-claim metadata the resolver needs — the pair is
+    routed to ``claim_resolver.plan_conflicts`` (via
+    ``conflict_monitor.route_to_resolver``) so the disagreement is surfaced as
+    data. The resulting ConflictPlans are attached to the winning candidate's
+    ``conflict_plans`` key for downstream curation; no store write is performed
+    here (the resolver is pure planning — persistence is a curation-phase
+    concern, matching claim_resolver's design constraint).
+
+    Disabled when ``CORTEX_ABLATE_CONFLICT_MONITOR=1`` — returns input
+    unchanged. No-op on fewer than two candidates or when conflict is below
+    threshold. Never raises: any failure inside the pass leaves the candidate
+    list untouched (non-load-bearing — conflict monitoring refines ranking, it
+    is not required for a correct recall).
+
+    ``store`` is accepted for signature parity with the other post-WRRF stages
+    and future store-backed conflict signals; it is unused today (the scalar is
+    computed entirely from the candidate dicts).
+    """
+    if is_mechanism_disabled(Mechanism.CONFLICT_MONITOR):
+        return candidates
+    if not candidates or len(candidates) < 2:
+        return candidates
+
+    from mcp_server.core import conflict_monitor
+
+    try:
+        assessment = conflict_monitor.assess_conflict(candidates)
+        if not assessment.high:
+            return candidates
+
+        # Route the competing set to the existing claim resolver (pure planning;
+        # empty for plain memories without typed-claim metadata).
+        plans = conflict_monitor.route_to_resolver(candidates)
+
+        # Demote the losing memory and re-sort.
+        candidates = conflict_monitor.apply_downweight(candidates, assessment)
+
+        if plans and candidates:
+            # Attach plans + the assessment to the current top candidate so a
+            # downstream curation phase can act on them. Non-destructive.
+            candidates[0].setdefault("conflict_plans", []).extend(plans)
+            candidates[0]["conflict_assessment"] = assessment.as_dict()
+    except Exception:  # noqa: BLE001 — non-load-bearing; never fail a recall
+        return candidates
+
+    return candidates

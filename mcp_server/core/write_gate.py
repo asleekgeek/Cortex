@@ -11,11 +11,14 @@ from typing import Any
 
 from mcp_server.core import coupled_neuromodulation as coupled_nm
 from mcp_server.core import (
+    goal_maintenance,
+    habituation,
     knowledge_graph,
     oscillatory_clock,
     schema_engine,
     thermodynamics,
 )
+from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 from mcp_server.core.emotional_tagging import tag_memory_emotions
 from mcp_server.core.neurogenesis import compute_interference_score
 from mcp_server.core.predictive_coding_flat import (
@@ -302,3 +305,139 @@ def match_schema(
     except Exception:
         pass
     return 0.0, None
+
+
+def read_active_goal(store: Any) -> Any:
+    """Promote the store's active prospective triggers into a sustained goal (A3).
+
+    Defensive store reader mirroring pg_recall._get_active_goal / _get_user_mood:
+    looks for ``get_active_prospective_memories()`` on the store (the same method
+    query_methodology uses to fire triggers) and hands the trigger dicts to
+    ``goal_maintenance.build_goal_from_triggers``. This is the promotion step
+    A3 rests on — the momentary prospective triggers become the held task-set
+    that biases this write.
+
+    Returns ``goal_maintenance.EMPTY_GOAL`` (inactive → identity re-weight) when
+    the store is None, lacks the reader, has no active triggers, or the read
+    fails. Per the source-discipline rule we never fabricate a goal signal.
+    """
+    if store is None:
+        return goal_maintenance.EMPTY_GOAL
+    reader = getattr(store, "get_active_prospective_memories", None)
+    if not callable(reader):
+        return goal_maintenance.EMPTY_GOAL
+    try:
+        triggers = reader()
+    except Exception:
+        return goal_maintenance.EMPTY_GOAL
+    try:
+        return goal_maintenance.build_goal_from_triggers(triggers)
+    except Exception:
+        return goal_maintenance.EMPTY_GOAL
+
+
+def apply_goal_maintenance(
+    novelty_score: float,
+    content: str,
+    entity_names: list[str],
+    store: Any,
+    *,
+    directory: str = "",
+) -> tuple[float, dict | None]:
+    """A3 goal / task-set maintenance over the write gate's novelty score.
+
+    While a goal/task-set is active (promoted from the store's active
+    prospective triggers via ``read_active_goal``), a goal-relevant input has
+    its novelty scaled up by a small multiplicative gain
+    (``goal_maintenance.goal_write_gain`` = ``1 + weight·relevance``) so it
+    clears the write threshold slightly more easily — the Miller & Cohen (2001)
+    task-set biasing processing toward goal-relevant information. Returns
+    ``(modulated_novelty, outcome_dict)``; ``outcome_dict`` is None when the
+    mechanism is ablated, no goal is active, or the pass fails.
+
+    Behavior-preserving by default: with no active goal the gain is exactly 1.0,
+    so ``novelty_score`` is returned unchanged and existing callers are
+    unaffected. An off-task input under an active goal (relevance 0) is likewise
+    unchanged — only genuinely goal-relevant inputs are favored.
+
+    Non-fatal: any error returns the input novelty untouched. Disabled via
+    CORTEX_ABLATE_GOAL_MAINTENANCE=1.
+
+    DESIGN INFERENCE: the goal-match is a deterministic keyword/entity/directory
+    overlap re-weight promoted from the prospective trigger surface, not a
+    learned PFC task-set controller (see goal_maintenance module docstring).
+    """
+    if is_mechanism_disabled(Mechanism.GOAL_MAINTENANCE):
+        return novelty_score, None
+    try:
+        goal = read_active_goal(store)
+        if not goal.is_active:
+            return novelty_score, None
+        relevance = goal_maintenance.goal_relevance(
+            goal, content, entities=entity_names, directory=directory
+        )
+        gain = goal_maintenance.goal_write_gain(
+            goal, content, entities=entity_names, directory=directory
+        )
+        if gain == 1.0:
+            # Goal active but this input is off-task (relevance 0) — no effect,
+            # so this is a no-op indistinguishable from having no goal at all.
+            return novelty_score, None
+        modulated = max(0.0, min(1.0, novelty_score * gain))
+        return modulated, {
+            "goal": goal.as_dict(),
+            "relevance": round(relevance, 4),
+            "gain": round(gain, 4),
+            "modulated_novelty": round(modulated, 4),
+        }
+    except Exception:
+        return novelty_score, None
+
+
+def apply_habituation(
+    novelty_score: float,
+    content: str,
+    importance: float,
+    store: Any,
+) -> tuple[float, dict | None]:
+    """E1 habituation & sensitization over the write gate's novelty score.
+
+    Progressively suppresses repeated low-salience identical inputs (the
+    exponential response decrement of Rankin 2009) and transiently sensitizes
+    the gate for related inputs just after a salient event. Returns
+    ``(modulated_novelty, outcome_dict)``; ``outcome_dict`` is None when the
+    mechanism is ablated or the pass fails.
+
+    Behavior-preserving by default: a first-seen signature (repeat_count 0) and
+    no recent salient event yield a combined gain of 1.0, so ``novelty_score``
+    is returned unchanged and existing callers are unaffected unless the repeat
+    pattern actually triggers.
+
+    Non-fatal: any error in the store read or computation returns the input
+    novelty untouched. Disabled via CORTEX_ABLATE_HABITUATION=1.
+    """
+    if is_mechanism_disabled(Mechanism.HABITUATION):
+        return novelty_score, None
+    try:
+        signature = habituation.stimulus_signature(content)
+        repeat_count, hours_since_last = 0, None
+        salience, hours_since_salient = 0.0, None
+        reader = getattr(store, "signature_repeat_stats", None)
+        if callable(reader):
+            repeat_count, hours_since_last = reader(signature)
+        # The current write's own importance is the salience source: a salient
+        # write dishabituates itself and briefly sensitizes related inputs
+        # (Rankin criteria 8/9). hours_since_salient=0.0 = the event is now.
+        if habituation.is_salient(importance):
+            salience, hours_since_salient = importance, 0.0
+        outcome = habituation.habituate_novelty(
+            novelty_score,
+            content,
+            repeat_count=repeat_count,
+            hours_since_last=hours_since_last,
+            salience=salience,
+            hours_since_salient=hours_since_salient,
+        )
+        return outcome.modulated_novelty, outcome.as_dict()
+    except Exception:
+        return novelty_score, None

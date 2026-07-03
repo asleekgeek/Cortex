@@ -14,7 +14,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from mcp_server.core import reranker, reranker_calibration, thermodynamics
+from mcp_server.core import (
+    reranker,
+    reranker_calibration,
+    thermodynamics,
+    value_learning,
+)
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
 from mcp_server.handlers._tool_meta import IDEMPOTENT_WRITE
@@ -148,6 +153,26 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
 
     store.update_memory_metamemory(memory_id, access_count, useful_count, confidence)
 
+    # B2: TD value update. A usefulness verdict is a direct reward signal —
+    # useful -> positive outcome, not-useful -> negative — so the memory's
+    # learned value moves toward reward via V <- V + alpha*(reward - V)
+    # (Schultz 1997 RPE; Sutton & Barto 1998). Reuses the shared reward mapping,
+    # so value and the dopamine signal agree. Best-effort: never breaks rating.
+    new_value = None
+    try:
+        current_value = mem.get("value")
+        if current_value is None:
+            current_value = value_learning.VALUE_PRIOR
+        reward = value_learning.outcome_to_reward(
+            outcome_positive=useful,
+            outcome_negative=not useful,
+            memory_importance=float(mem.get("importance", 0.5) or 0.5),
+        )
+        new_value, _delta = value_learning.td_update(float(current_value), reward)
+        store.update_memory_value(memory_id, new_value)
+    except Exception:
+        new_value = None  # value column may predate the migration — non-fatal
+
     # AF-2: collect Platt training sample when caller provided the surfacing
     # query. Silent best-effort — metamemory update is the primary contract.
     platt_recorded = _record_platt_sample(query, mem.get("content", ""), useful)
@@ -161,6 +186,8 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
         "confidence": round(confidence, 4),
         "content_preview": mem["content"][:80],
     }
+    if new_value is not None:
+        response["value"] = round(new_value, 4)
     if platt_recorded:
         response["platt_sample_recorded"] = True
         response["platt_sample_count"] = reranker_calibration.sample_count()

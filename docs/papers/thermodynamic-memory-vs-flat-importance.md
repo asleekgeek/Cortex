@@ -92,7 +92,7 @@ Heat is not the only modulator. Cortex implements a coupled DA / NE / ACh / 5-HT
 
 ### 4.4 Emotional tagging
 
-Yerkes & Dodson (1908, *J. Comp. Neurology and Psychology*) characterised the inverted-U relationship between arousal and performance. Wang & Bhatt (2024, *Cell Reports*) describe amygdala-priority encoding for emotionally salient inputs. Cortex's `mcp_server/core/emotional_tagging.py` combines both: arousal modulates the priority of incoming memories, and the inverted-U bound prevents over-weighting.
+Hebb (1955, *Psychological Review*) characterised the inverted-U relationship between arousal and performance ("Hebb's curve"); this is often attributed to Yerkes & Dodson (1908, *J. Comp. Neurology and Psychology*), but that study measured stimulus strength against habit-formation, not arousal against performance. Qasim et al. (2023, *Nature Human Behaviour*) show that amygdala–hippocampal high-frequency activity increases during successful encoding of emotionally salient inputs. Cortex's `mcp_server/core/emotional_tagging.py` combines both: arousal modulates the priority of incoming memories, and the inverted-U bound prevents over-weighting.
 
 ### 4.5 Synaptic tagging
 
@@ -429,9 +429,10 @@ The ablation work needed to make this story tight — per-mechanism contribution
 - Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S. (2023). Generative Agents: Interactive Simulacra of Human Behavior. *UIST*.
 - Schultz, W. (1997). A neural substrate of prediction and reward. Predictive reward signal of dopamine neurons. *J. Neurophysiology* 80(1):1–27.
 - Wang, C., et al. (2020). Microglia mediate forgetting via complement-dependent synaptic elimination. *Science* 367(6478):688–694.
-- Wang, X., & Bhatt, R. (2024). Amygdala priority encoding of emotionally salient memories. *Cell Reports*.
+- Qasim, S. E., Mohan, U. R., Stein, J. M., & Jacobs, J. (2023). Neuronal activity in the human amygdala and hippocampus enhances emotional memory encoding. *Nature Human Behaviour*, 7(5), 754--764.
 - Wu, D., et al. (2025). LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory. *ICLR*.
 - Yassa, M. A., & Stark, C. E. L. (2011). Pattern separation in the hippocampus. *Trends in Neurosciences* 34:515–525.
+- Hebb, D. O. (1955). Drives and the C.N.S. (conceptual nervous system). *Psychological Review* 62(4):243–254. [source of the arousal–performance inverted-U, "Hebb's curve"]
 - Yerkes, R. M., & Dodson, J. D. (1908). The relation of strength of stimulus to rapidity of habit-formation. *J. Comp. Neurology and Psychology* 18:459–482.
 - Yonelinas, A. P., & Ritchey, M. (2015). The slow forgetting of emotional episodic memories. *Trends in Cognitive Sciences* 19:259–267.
 - Tavakoli, M., et al. (2026). BEAM: Benchmarking Episodic and Associative Memory in long-context LLMs. *ICLR*. arXiv:2510.27246.

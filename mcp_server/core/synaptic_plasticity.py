@@ -14,9 +14,13 @@ release probability", PNAS 94:719-723; Markram et al. 1998):
 
   Effective release = u_eff * x (utilization * available resources)
 
-  Timescale adaptation: biological tau_F ~ 530ms, tau_D ~ 130ms.
-  Adapted to hours: tau_F = 0.5h (30min facilitation), tau_D = 2.0h
-  (2h vesicle recovery). This is a documented departure — ratio preserved.
+  Timescale adaptation: biological tau_F ~ 530ms, tau_D ~ 130ms
+  (tau_F/tau_D ~ 4.08). Adapted to hours: tau_F = 0.5h (30min
+  facilitation), tau_D = 2.0h (2h vesicle recovery), i.e. tau_F/tau_D =
+  0.25 — this INVERTS the biological ordering (facilitation now shorter
+  than recovery). A deliberate modeling choice for the hours-timescale
+  regime (short-lived facilitation, stretched vesicle recovery), NOT a
+  ratio-preserving rescale.
 
 Phase-gated plasticity: LTP/LTD magnitude is modulated by theta phase
 (Hasselmo 2005). Encoding phase amplifies LTP; retrieval phase suppresses it.

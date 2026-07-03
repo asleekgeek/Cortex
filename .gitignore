@@ -63,3 +63,6 @@ app-tauri/src-tauri/target/
 
 # Vendored site-packages tree (pip --target install; not part of the repo)
 /deps/
+
+# Benchmark run logs (raw stdout/stderr) — transient artifacts, not release content
+benchmarks/results/**/*.log
