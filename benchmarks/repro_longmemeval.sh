@@ -1,33 +1,22 @@
 #!/usr/bin/env bash
-# One-command reproduction of the LongMemEval retrieval benchmark.
+# LongMemEval-only shortcut. This is a THIN WRAPPER around the single source of
+# truth, benchmarks/reproduce.sh — it does not carry its own copy of the
+# container / dataset / recall logic. Kept for the historical `make longmemeval`
+# entry point; prefer `make reproduce` for the full pipeline.
 #
-#   make longmemeval          # full 500-question run
-#   make longmemeval-smoke    # 10-question sanity run
+# Delegates to: reproduce.sh --only longmemeval --no-ablation
+# Extra args (e.g. --limit 10) pass through to the LongMemEval harness.
 #
-# What it does:
-#   1. Downloads the official LongMemEval-S dataset (sha256-pinned).
-#   2. Starts an ephemeral PostgreSQL + pgvector container, isolated
-#      from any existing Cortex install (separate port and database).
-#   3. Runs benchmarks/longmemeval/run_benchmark.py through the SAME
-#      PL/pgSQL recall path production uses (no benchmark-only retriever).
-#   4. Prints the Recall@K / MRR table and tears the container down.
-#
-# Measured wall-clock for the full 500 questions: 39.6 min on Apple
-# Silicon with CPU embeddings.
-# source: benchmarks/results/a3_longmemeval_post_refactor.md (2026-04-17)
-#
-# Metric scope: session-level retrieval Recall@10 / MRR. This is NOT the
-# end-to-end QA accuracy that LLM-answering leaderboards report. The
-# comparable published baseline is the best retrieval configuration in
-# the LongMemEval paper (Wu et al., ICLR 2025): Recall@10 78.4%.
-#
-# Environment overrides:
-#   CORTEX_BENCH_PORT   host port for the ephemeral PG (default 55432)
-#   KEEP_DB=1           keep the container running after the run
-#
-# Extra arguments are passed through to run_benchmark.py
-# (e.g. --limit 10, --n-runs 3, --results-out path.json).
+# Metric scope: session-level retrieval Recall@10 / MRR (NOT end-to-end QA
+# accuracy). Comparable published baseline: LongMemEval paper (Wu et al.,
+# ICLR 2025) Recall@10 78.4%.
 
+set -euo pipefail
+_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec bash "$_HERE/reproduce.sh" --only longmemeval --no-ablation "$@"
+
+# ── everything below is unreachable (exec above) and retained only so the
+# original standalone implementation stays in git history for reference. ──
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
