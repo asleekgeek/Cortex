@@ -19,6 +19,7 @@ from mcp_server.core.query_intent import QueryIntent, classify_query_intent
 from mcp_server.core.response_budget import ListTarget, bound_payload
 from mcp_server.handlers._tool_meta import READ_ONLY
 from mcp_server.handlers.recall_helpers import (
+    annotate_source_attribution,
     build_enhancements,
     filter_by_tags,
     filter_low_signal,
@@ -458,6 +459,13 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     # context assembler. Off by default — flat recall is unchanged.
     if include_related:
         inline_related_neighbors(results, store)
+
+    # C1 read-side surfacing (source/reality monitoring): annotate each hit with
+    # its stored source_attribution (now flowed through the recall_memories
+    # projection) and a per-hit confabulation_risk flag. STRICTLY ADDITIVE —
+    # writes two keys per result, never reorders/drops/injects. Ablation-guarded
+    # (CORTEX_ABLATE_CONFABULATION_GATE=1 leaves confabulation_risk False).
+    annotate_source_attribution(results)
 
     intent_info = classify_query_intent(query)
     intent = intent_info.get("intent", QueryIntent.GENERAL)

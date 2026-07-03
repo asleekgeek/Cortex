@@ -33,6 +33,33 @@ def _get_titans() -> TitansMemory:
     return _titans
 
 
+def _get_active_goal(store: Any) -> Any:
+    """Promote the store's active prospective triggers into a sustained goal (A3).
+
+    Defensive reader mirroring ``_get_user_mood``: looks for
+    ``get_active_prospective_memories()`` on the store (the same method
+    query_methodology uses to fire triggers) and promotes the returned trigger
+    dicts into a ``goal_maintenance.GoalVector`` — the held task-set that biases
+    this recall toward goal-relevant memories (Miller & Cohen 2001).
+
+    Returns ``goal_maintenance.EMPTY_GOAL`` (inactive → identity re-weight) when
+    the store is None, lacks the reader, has no active triggers, or the read
+    fails. Per the source-discipline rule we never fabricate a goal signal.
+    """
+    from mcp_server.core import goal_maintenance
+
+    if store is None:
+        return goal_maintenance.EMPTY_GOAL
+    reader = getattr(store, "get_active_prospective_memories", None)
+    if not callable(reader):
+        return goal_maintenance.EMPTY_GOAL
+    try:
+        triggers = reader()
+        return goal_maintenance.build_goal_from_triggers(triggers)
+    except Exception:  # noqa: BLE001 — non-load-bearing; absence is fine
+        return goal_maintenance.EMPTY_GOAL
+
+
 def _get_user_mood(store: Any) -> float | None:
     """Return the user's session-level mood in [-1, +1], or None if absent.
 
@@ -222,6 +249,7 @@ def recall(
     wrrf_k: int = 60,
     momentum_state: dict | None = None,
     include_globals: bool = True,
+    familiarity_shortcut: bool = False,
 ) -> list[dict[str, Any]]:
     """Full PG-path retrieval: intent → weights → recall_memories → rerank.
 
@@ -238,6 +266,16 @@ def recall(
         rerank_alpha: Blend weight for cross-encoder scores (0.70 from BEAM ablation).
         wrrf_k: WRRF fusion constant.
         momentum_state: Mutable dict with 'momentum' key for Titans surprise.
+        familiarity_shortcut: C2 dual-process opt-in. When True, an
+            overwhelmingly-familiar query (a single dominant candidate whose
+            query↔candidate cosine similarity clears the familiarity threshold)
+            may SKIP the expensive post-WRRF recollection chain and return the
+            WRRF-ranked candidates directly — a latency win for near-exact
+            repeat queries. Defaults to False: the early triage then only
+            ANNOTATES each candidate with its ``familiarity`` and the full
+            recollection chain always runs, so default recall output is
+            unchanged (parity by default). Governed by Mechanism.DUAL_PROCESS —
+            CORTEX_ABLATE_DUAL_PROCESS=1 disables the triage entirely.
 
     Returns:
         List of result dicts with memory_id, content, score, heat, etc.
@@ -274,6 +312,28 @@ def recall(
     if not candidates:
         return []
 
+    # 4·C2. FAMILIARITY_TRIAGE (dual-process retrieval) — Yonelinas 2002;
+    # Diana, Yonelinas & Ranganath 2007. A fast a-contextual familiarity read
+    # (MAX query↔candidate cosine similarity, NO context assembly) taken BEFORE
+    # the expensive recollection chain below. Behaviour-preserving by default:
+    # it annotates each candidate with its `familiarity` and leaves order and
+    # membership untouched; only when the caller passes familiarity_shortcut=True
+    # AND the query is overwhelmingly, unambiguously familiar does it short-
+    # circuit — returning the WRRF-ranked candidates directly (a latency win)
+    # instead of running Hopfield/HDC/spreading/dendritic/emotional/mood/
+    # reconsolidation/FlashRank/value/conflict. Ablation-guarded
+    # (CORTEX_ABLATE_DUAL_PROCESS=1 → identity). Non-fatal.
+    from mcp_server.core.recall_pipeline import familiarity_triage
+
+    triage = familiarity_triage(
+        candidates, q_emb, store, allow_shortcut=familiarity_shortcut
+    )
+    candidates = triage.candidates  # annotated only; order/membership preserved
+    if triage.shortcut:
+        # Overwhelming familiarity + caller opt-in: skip the expensive
+        # recollection reconstruction and return the WRRF ranking directly.
+        return candidates[:top_k]
+
     # 4a-4d. Post-WRRF paper-mechanism pipeline. Each stage is gated by
     # ``CORTEX_ABLATE_<MECH>=1`` (returns input unchanged when ablated).
     # Order: HOPFIELD (Ramsauer 2021 attention), HDC (Kanerva 2009 bipolar
@@ -283,13 +343,17 @@ def recall(
     # See mcp_server/core/recall_pipeline.py for the per-stage RRF blend
     # constants and citations.
     from mcp_server.core.recall_pipeline import (
+        attentional_focus_rerank,
+        conflict_monitor_rerank,
         dendritic_modulate,
         emotional_retrieval_rerank,
+        goal_maintenance_rerank,
         hdc_rerank,
         hopfield_complete,
         mood_congruent_rerank,
         reconsolidation_apply,
         spreading_activation_expand,
+        value_priority_rerank,
     )
 
     candidates = hopfield_complete(
@@ -332,6 +396,42 @@ def recall(
                 c = dict(cand_map[mid])
                 c["score"] = score
                 candidates.append(c)
+
+    # 5b. VALUE_PRIORITY (B2) — nudge the final content-relevance ranking by
+    # each candidate's learned RL value. Runs after FlashRank so it refines the
+    # relevance-ordered list; a small weight (0.15) means value never overrides
+    # a strong content match. No-op on stores that have not accrued value.
+    candidates = value_priority_rerank(candidates)
+
+    # 5c. CONFLICT_MONITOR (A2) — Botvinick 2001; Miller & Cohen 2001. Compute a
+    # conflict scalar (softmax-entropy of the scores × lexical contradiction)
+    # over the retrieved set; when the set disagrees, demote the losing memory
+    # of the most-contradictory pair and route the pair to the existing
+    # claim_resolver. Runs after VALUE_PRIORITY so it sees the final content-
+    # relevance scores. No-op on <2 candidates or low conflict; ablation-guarded.
+    candidates = conflict_monitor_rerank(candidates, store)
+
+    # 5d. GOAL_MAINTENANCE (A3) — Miller & Cohen 2001. While a goal/task-set is
+    # active (promoted from the store's active prospective triggers), scale each
+    # candidate's content-relevance score by a small multiplicative gain for its
+    # goal relevance so goal-relevant memories surface slightly ahead of equally-
+    # relevant off-task ones. A multiplicative nudge like VALUE_PRIORITY (NOT an
+    # RRF blend). No active goal / off-task => gain 1.0 => order unchanged.
+    # DESIGN INFERENCE — a keyword/entity goal-match, not a learned PFC controller.
+    candidates = goal_maintenance_rerank(candidates, _get_active_goal(store))
+
+    # 5e. ATTENTIONAL_CONTROL (A1 read-side) — Baddeley 2003 central executive;
+    # Posner & Petersen 1990; Cowan 2001. Run A1's pure allocate_attention pass
+    # over the FULL candidate set with the recall query as the top-down cue
+    # (plus bottom-up salience from importance/|valence|), then scale each
+    # candidate's score by a small multiplicative gain 1 + weight·(attn − 1/n).
+    # A soft re-weight, NOT an RRF blend and NOT a truncation to FOCUS_CAPACITY:
+    # the Cowan ceiling bounds the working-set spotlight, not recall size, so
+    # every candidate stays in the returned set. Uniform/no-signal attention =>
+    # every factor 1.0 => order unchanged. Runs after the other multiplicative
+    # nudges (VALUE_PRIORITY, GOAL_MAINTENANCE), consistent with their ordering.
+    # Reuses allocate_attention (no softmax reimplementation); ablation-guarded.
+    candidates = attentional_focus_rerank(candidates, query)
 
     # 6. Per-type pool guarantee for instruction/preference queries.
     # ENGRAM (arxiv 2511.12960): typed memory pools prevent instruction/

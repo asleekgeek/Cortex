@@ -54,8 +54,23 @@ schema = {
     "inputSchema": {
         "type": "object",
         "properties": {
-            "base": {"type": "string", "default": "HEAD~1"},
-            "head": {"type": "string", "default": "HEAD"},
+            "base": {
+                "type": "string",
+                "default": "HEAD~1",
+                "description": (
+                    "Base git revision of the diff (commit-ish: SHA, "
+                    "branch, tag, HEAD~N). Changes are computed as "
+                    "base..head."
+                ),
+            },
+            "head": {
+                "type": "string",
+                "default": "HEAD",
+                "description": (
+                    "Head git revision of the diff (commit-ish). "
+                    "Defaults to the current HEAD."
+                ),
+            },
             "expand_impact": {
                 "type": "boolean",
                 "default": False,

@@ -19,7 +19,11 @@ registration until they're touched.
 
 from __future__ import annotations
 
-from typing import Any
+import asyncio
+from typing import TYPE_CHECKING, Any, Mapping
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
 
 # Named annotation presets so every handler converges on the same
 # semantics. Presets name the CAPABILITY, not the handler.
@@ -90,3 +94,38 @@ def tool_kwargs(schema: dict[str, Any]) -> dict[str, Any]:
     if "tags" in schema:
         out["tags"] = schema["tags"]
     return out
+
+
+def apply_param_docs(mcp: FastMCP, schemas: Mapping[str, Mapping[str, Any]]) -> None:
+    """Merge hand-written ``inputSchema`` parameter descriptions into the
+    signature-derived schemas FastMCP registered.
+
+    FastMCP builds each tool's input schema from the Python function
+    signature, so parameter descriptions authored in handler schema dicts
+    never reach the client on their own. This post-registration pass
+    copies each documented property's ``description`` onto the derived
+    schema. Descriptions only — types, defaults, and required-ness stay
+    signature-derived. Registered tools absent from ``schemas``, and
+    parameters the handler schema does not document, are left untouched.
+
+    Must run with no event loop active (composition-root import time,
+    before ``mcp.run()``): ``FastMCP.list_tools`` is async-only, so the
+    merge drives it with ``asyncio.run``, which raises if a loop is
+    already running.
+    """
+    asyncio.run(_merge_param_docs(mcp, schemas))
+
+
+async def _merge_param_docs(
+    mcp: FastMCP, schemas: Mapping[str, Mapping[str, Any]]
+) -> None:
+    for tool in await mcp.list_tools():
+        handler_schema = schemas.get(tool.name)
+        if handler_schema is None:
+            continue
+        documented = handler_schema.get("inputSchema", {}).get("properties", {})
+        derived = tool.parameters.get("properties", {})
+        for param_name, param_schema in derived.items():
+            description = documented.get(param_name, {}).get("description")
+            if description and "description" not in param_schema:
+                param_schema["description"] = description

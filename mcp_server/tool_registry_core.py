@@ -23,6 +23,18 @@ from mcp_server.tool_error_handler import safe_handler
 from mcp_server.handlers._tool_meta import tool_kwargs
 
 
+# Tool name → handler schema; __main__ hands the merged map to
+# _tool_meta.apply_param_docs after registration.
+SCHEMAS: dict[str, dict] = {
+    "detect_domain": detect_domain_handler.schema,
+    "explore_features": explore_features.schema,
+    "list_domains": list_domains.schema,
+    "query_methodology": query_methodology.schema,
+    "rebuild_profiles": rebuild_profiles.schema,
+    "record_session_end": record_session_end.schema,
+}
+
+
 def register(mcp: FastMCP) -> None:
     """Register all Tier 1 core profiling tools on the FastMCP instance."""
     _register_query_methodology(mcp)

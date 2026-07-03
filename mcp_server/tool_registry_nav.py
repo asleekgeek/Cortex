@@ -14,9 +14,22 @@ from mcp_server.handlers import (
     get_causal_chain,
     navigate_memory,
     recall_hierarchical,
+    recall_skills,
 )
 from mcp_server.tool_error_handler import safe_handler
 from mcp_server.handlers._tool_meta import tool_kwargs
+
+
+# Tool name → handler schema; __main__ hands the merged map to
+# _tool_meta.apply_param_docs after registration.
+SCHEMAS: dict[str, dict] = {
+    "detect_gaps": detect_gaps.schema,
+    "drill_down": drill_down.schema,
+    "get_causal_chain": get_causal_chain.schema,
+    "navigate_memory": navigate_memory.schema,
+    "recall_hierarchical": recall_hierarchical.schema,
+    "recall_skills": recall_skills.schema,
+}
 
 
 def register(mcp: FastMCP) -> None:
@@ -26,6 +39,7 @@ def register(mcp: FastMCP) -> None:
     _register_navigate_memory(mcp)
     _register_get_causal_chain(mcp)
     _register_detect_gaps(mcp)
+    _register_recall_skills(mcp)
 
 
 def _register_recall_hierarchical(mcp: FastMCP) -> None:
@@ -149,4 +163,30 @@ def _register_detect_gaps(mcp: FastMCP) -> None:
                 "stale_threshold_days": stale_threshold_days,
             },
             tool_name="detect_gaps",
+        )
+
+
+def _register_recall_skills(mcp: FastMCP) -> None:
+    @mcp.tool(
+        name="recall_skills",
+        **tool_kwargs(recall_skills.schema),
+    )
+    async def tool_recall_skills(
+        domain: str | None = None,
+        cwd: str | None = None,
+        recent_tools: list[str] | None = None,
+        top_k: int = 5,
+        min_proficiency: float = 0.5,
+    ) -> dict:
+        """Retrieve procedural skills for the current situation."""
+        return await safe_handler(
+            recall_skills.handler,
+            {
+                "domain": domain,
+                "cwd": cwd,
+                "recent_tools": recent_tools,
+                "top_k": top_k,
+                "min_proficiency": min_proficiency,
+            },
+            tool_name="recall_skills",
         )

@@ -22,7 +22,7 @@ References
   (d) Capture occurs when PRPs diffuse to tagged synapses within the
       tag lifetime, converting early-LTP to late-LTP.
 
-- Luboeinski & Tetzlaff (2021), Frontiers Comp Neurosci:
+- Luboeinski & Tetzlaff (2021), Communications Biology 4:275:
   Simplified STC with bistable consolidation variable z:
       dz/dt = z * (1 - z) * (z - 0.5)
   Fixed points at z=0 (no consolidation) and z=1 (full consolidation).

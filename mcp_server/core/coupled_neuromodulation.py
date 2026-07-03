@@ -199,8 +199,9 @@ def compute_composite_modulation(state: NeuromodulatoryState) -> dict[str, float
     """Compute composite modulation via Dawes (1979) equal-weight combination.
 
     Dawes showed equal weights match or beat optimized regression weights when
-    k < 10 predictors and training data is limited. All four channels are
-    pre-normalized to [0, 2] with 1.0 = baseline, so equal averaging is valid.
+    k < 10 predictors and training data is limited. DA is in [0, 3], the other
+    three channels in [0, 2] (all with 1.0 = baseline). DA's wider range gives
+    it up to ~1.5x the swing of the other channels in the equal-weight average.
     """
     da, ne, ach, ser = (
         state.dopamine,

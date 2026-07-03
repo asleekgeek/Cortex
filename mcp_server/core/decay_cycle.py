@@ -238,6 +238,7 @@ def _compute_single_decay(
             importance=mem.get("importance", 0.5),
             valence=mem.get("emotional_valence", 0.0),
             confidence=mem.get("confidence", 1.0),
+            value=mem.get("value", 0.5),
             decay_factor=adj_decay,
             importance_decay_factor=adj_imp_decay,
             emotional_decay_resistance=emotional_decay_resistance,

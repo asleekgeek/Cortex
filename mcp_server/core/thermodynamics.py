@@ -250,6 +250,7 @@ def compute_decay(
     importance: float = 0.5,
     valence: float = 0.0,
     confidence: float = 1.0,
+    value: float = 0.5,
     *,
     decay_factor: float = _DECAY_FACTOR_DEFAULT,
     importance_decay_factor: float = 0.998,
@@ -264,10 +265,18 @@ def compute_decay(
       - |valence|: pushes λ toward 1.0 (emotional memories resist decay).
         Rationale: amygdala modulation of consolidation (McGaugh 2004).
       - confidence: minor λ increase. Engineering decision — no paper.
+      - value (B2 RL): a memory with above-neutral learned value resists decay,
+        via value_learning.retention_bonus. Rationale: reward-predictive items
+        should persist (Schultz 1997; Sutton & Barto 1998). Neutral value (0.5)
+        and below leave λ unchanged — value never *accelerates* forgetting here.
 
     Constants: decay_factor=0.95 and importance_decay_factor=0.998 are tuned
-    to produce reasonable half-lives (~14h normal, ~346h important) for a
-    memory system operating at hours/days timescale. Not from any paper.
+    to produce reasonable half-lives for a memory system operating at a
+    hours/days timescale. Not from any paper. At the default call
+    (confidence=1.0, which multiplies in confidence_mod=1.1) the actual
+    half-lives are ~15h normal and ~381h important; the confidence-independent
+    idealized λ^t form (confidence=0) gives ~14h and ~346h. The value modifier is
+    neutral (1.0) at the default value=0.5, so default half-lives are unchanged.
     """
     if hours_elapsed <= 0:
         return current_heat
@@ -291,6 +300,14 @@ def compute_decay(
     # Confidence modifier
     confidence_mod = 1.0 + confidence * 0.1
     effective = 1.0 - (1.0 - effective) / confidence_mod
+
+    # Value modifier (B2): high learned value resists decay. retention_bonus maps
+    # value in [0,1] to a factor in [1, 1.5] (neutral 0.5 -> 1.0), applied the
+    # same way as the confidence modifier so value>0.5 pushes λ toward 1.0.
+    from mcp_server.core.value_learning import retention_bonus
+
+    value_mod = retention_bonus(value)
+    effective = 1.0 - (1.0 - effective) / value_mod
 
     effective = max(0.0, min(effective, 1.0))
     return current_heat * (effective**hours_elapsed)

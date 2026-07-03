@@ -8,8 +8,13 @@ better (McGaugh 2004, "The amygdala modulates the consolidation of
 memories of emotionally arousing experiences", Annual Review of
 Neuroscience).
 
-Yerkes-Dodson inverted-U: implemented as a * arousal * exp(-b * arousal),
-following the standard parametric form. Peak at arousal ≈ 1/b.
+Arousal inverted-U: implemented as a * arousal * exp(-b * arousal),
+peak at arousal ≈ 1/b. The arousal-performance tradeoff is usually
+credited to Yerkes & Dodson (1908), but that study measured optimal
+stimulus intensity vs. task difficulty in mice and never plotted an
+inverted-U against arousal; the arousal inverted-U ("Hebb's curve") is
+Hebb (1955). This smooth c*a*exp(-b*a) parameterization is a modern
+functional form, not from either paper.
 
 Emotion detection uses VADER compound score (Hutto & Gilbert 2014) to
 derive five emotion categories from compound polarity + domain keyword
@@ -167,17 +172,50 @@ def compute_emotional_valence(emotions: dict[str, float]) -> float:
     return round(max(-1.0, min(1.0, (positive - negative) / max(total, 1.0))), 4)
 
 
+def arousal_inverted_u_bump(
+    arousal: float,
+    *,
+    peak: float = 0.7,
+    peak_height: float = 0.57,
+) -> float:
+    """The arousal inverted-U (Hebb's curve) as a bump ABOVE zero.
+
+    Returns ``c * a * exp(-b * a)`` with ``b = 1/peak`` and ``c`` chosen so the
+    bump attains ``peak_height`` at ``a = peak`` (``c = peak_height * b * e``).
+    The full importance multiplier is ``1.0 + arousal_inverted_u_bump(a)``.
+
+    With the defaults (peak=0.7, peak_height=0.57) this is byte-for-byte the
+    curve ``compute_importance_boost`` used inline before it was factored out:
+    b = 1/0.7 ≈ 1.4286, c ≈ 2.213, peak value 1.0 + 0.57 = 1.57 at a = 0.7.
+
+    The arousal inverted-U is Hebb's curve (Hebb 1955, "Drives and the C.N.S.
+    (conceptual nervous system)," Psychological Review 62:243-254,
+    doi:10.1037/h0041823); Yerkes & Dodson (1908) established the
+    stimulus-intensity/task-difficulty tradeoff but did not measure arousal.
+    This smooth ``c*a*exp(-b*a)`` form is a modern parameterization, not from
+    either paper. Factored here so stress_modulation.py (D1) can reuse the exact
+    same bump rather than re-deriving the constants.
+
+    Returns a non-negative bump (0 at arousal 0, → 0 as arousal → ∞).
+    """
+    b = 1.0 / peak
+    c = peak_height * b * math.e
+    return c * arousal * math.exp(-b * arousal)
+
+
 def compute_importance_boost(
     emotions: dict[str, float],
     arousal: float,
 ) -> float:
     """Compute importance multiplier from emotional tagging.
 
-    Yerkes-Dodson inverted-U: f(a) = c * a * exp(-b * a) + 1.0
+    Arousal inverted-U: f(a) = c * a * exp(-b * a) + 1.0
     where a = arousal, b controls peak location, c scales amplitude.
-    With b=1.43 (peak at a=1/b≈0.7), c=2.23 (peak value ≈ 1.57).
-    This is the standard parametric form of the Yerkes-Dodson law
-    (Yerkes & Dodson, 1908).
+    With b=1.43 (peak at a=1/b≈0.7), c≈2.213 (peak value ≈ 1.57).
+    The arousal inverted-U is Hebb's curve (Hebb 1955); Yerkes & Dodson
+    (1908) established the stimulus-intensity/difficulty tradeoff but did
+    not measure arousal. This smooth c*a*exp(-b*a) form is a modern
+    parameterization, not from either paper.
 
     Specific emotion bonuses are engineering heuristics (no paper):
     - Urgency: +0.3 (critical events must be remembered)
@@ -192,15 +230,11 @@ def compute_importance_boost(
         # No-op: base priority (no Yerkes-Dodson modulation).
         return 1.0
 
-    # Smooth Yerkes-Dodson: f(a) = c * a * exp(-b * a) + 1.0
-    # b = 1/0.7 ≈ 1.4286 => peak at arousal = 0.7
-    # c chosen so peak value ≈ 1.57: c = 1.57 / (0.7 * exp(-1)) ≈ 6.094 * 0.57 ... let me compute
-    # At peak: f(1/b) = c * (1/b) * exp(-1) + 1.0
-    # Want f(1/b) = 1.57, so c * (1/b) * exp(-1) = 0.57
-    # c = 0.57 * b / exp(-1) = 0.57 * 1.4286 / 0.3679 = 2.213
-    _YD_B = 1.0 / 0.7  # peak at arousal = 0.7
-    _YD_C = 0.57 * _YD_B * math.e  # amplitude so peak adds 0.57 to base 1.0
-    yd_curve = 1.0 + _YD_C * arousal * math.exp(-_YD_B * arousal)
+    # Smooth Yerkes-Dodson: f(a) = 1.0 + c * a * exp(-b * a)
+    # b = 1/0.7 ≈ 1.4286 => peak at arousal = 0.7; c ≈ 2.213 => peak value 1.57.
+    # The bump is factored into arousal_inverted_u_bump so stress_modulation.py
+    # (D1) reuses the identical Hebb curve; defaults reproduce this exactly.
+    yd_curve = 1.0 + arousal_inverted_u_bump(arousal)
 
     # Specific emotion bonuses
     bonus = 0.0

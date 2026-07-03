@@ -64,6 +64,15 @@ _EMPTY_CLS_STATS = {
     "skipped_duplicate": 0,
     "causal_edges_found": 0,
     "episodic_scanned": 0,
+    # D1 stress-modulation telemetry — neutral on the early-return paths (no
+    # batch was consolidated), so run_cls_cycle's two return shapes agree.
+    "session_stress": 0.0,
+    "consolidation_gain": 1.0,
+    "effective_min_occurrences": _MIN_PATTERN_SIZE,
+    # C1 read-side: promotions the confabulation gate flagged (INFERRED cluster,
+    # no perceptual grounding) — 0 on early-return paths and when the gate is
+    # ablated. Additive, not a mutational counter (never affects reason_for_zero).
+    "confabulation_risk_promotions": 0,
 }
 
 
@@ -115,7 +124,10 @@ def run_cls_cycle(
         _log_if_passed_through("cls", stats, duration_ms=0, scanned=0)
         return stats
 
-    plan = _compute_consolidation_plan(episodic, existing_semantics, embeddings)
+    session_stress = _compute_session_stress(episodic)
+    plan = _compute_consolidation_plan(
+        episodic, existing_semantics, embeddings, session_stress=session_stress
+    )
     created = _create_semantic_memories(store, embeddings, plan)
     causal_edges_found, qualifying_count = _discover_causal_edges(store, episodic)
 
@@ -126,6 +138,22 @@ def run_cls_cycle(
         "skipped_duplicate": plan["skipped_duplicate"],
         "causal_edges_found": causal_edges_found,
         "episodic_scanned": len(episodic),
+        # D1 stress-hormone modulation telemetry: the session-stress scalar
+        # derived from this batch and the inverted-U consolidation gain it
+        # produced (1.0 = unmodulated). Surfaced for cortex-viz; additive, not a
+        # mutational counter (so it never affects reason_for_zero).
+        "session_stress": round(session_stress, 4),
+        "consolidation_gain": plan.get("consolidation_gain", 1.0),
+        "effective_min_occurrences": plan.get(
+            "effective_min_occurrences", _MIN_PATTERN_SIZE
+        ),
+        # C1 read-side enforcement (source/reality monitoring): the number of
+        # this cycle's abstractions the confabulation gate flagged as a
+        # confabulation being crystallized as a semantic fact. Non-fatal — the
+        # flagged memories are still created (and tagged 'confabulation-risk' in
+        # _create_semantic_memories). 0 when Mechanism.CONFABULATION_GATE is
+        # ablated. Additive telemetry, not a mutational counter.
+        "confabulation_risk_promotions": plan.get("confabulation_risk_promotions", 0),
     }
 
     reason = _classify_cls_zero_reason(stats, episodic, embeddings, qualifying_count)
@@ -245,12 +273,57 @@ def _log_if_passed_through(
     )
 
 
+def _compute_session_stress(episodic: list[dict]) -> float:
+    """Derive the D1 session-stress scalar from the episodic batch being
+    consolidated (stress_modulation.compute_session_stress).
+
+    The stress proxy is computed from the memories actually in this pass:
+      - the concatenated content is scanned for urgency/deadline and failure
+        lexical markers (the emotional-tagging lexicons stress_modulation
+        reuses);
+      - the "error rate" channel is the share of episodic memories carrying a
+        NEGATIVE emotional_valence — the batch-level frustration/failure signal
+        the emotional path already tags at write time.
+
+    Returns 0.0 (a calm batch => gain 1.0 => consolidation unchanged) whenever
+    there are no memories or no stress signals — the behavior-preserving default.
+    Mechanism.STRESS_MODULATION's ablation guard flows through the gain, so an
+    ablated run consolidates at unmodulated strength regardless of this scalar.
+    """
+    from mcp_server.core.stress_modulation import (
+        compute_session_stress,
+        detect_stress_markers,
+    )
+
+    if not episodic:
+        return 0.0
+
+    text = " ".join(str(m.get("content", "") or "") for m in episodic)
+    markers = detect_stress_markers(text)
+
+    negative = sum(
+        1 for m in episodic if float(m.get("emotional_valence", 0.0) or 0.0) < 0.0
+    )
+    error_rate = negative / len(episodic)
+
+    return compute_session_stress(
+        error_rate=error_rate,
+        urgency_hits=markers["urgency"],
+        failure_hits=markers["failure"],
+    )
+
+
 def _compute_consolidation_plan(
     episodic: list[dict],
     existing_semantics: list[dict],
     embeddings: EmbeddingEngine,
+    session_stress: float = 0.0,
 ) -> dict:
-    """Plan which episodic memories to consolidate into semantics."""
+    """Plan which episodic memories to consolidate into semantics.
+
+    ``session_stress`` (D1) scales the consolidation scope along the inverted-U
+    in ``plan_cls_consolidation`` (default 0.0 => gain 1.0 => unchanged).
+    """
 
     def similarity_fn(emb_a, emb_b) -> float:
         if emb_a is None or emb_b is None:
@@ -265,6 +338,7 @@ def _compute_consolidation_plan(
         dedup_threshold=0.85,
         min_occurrences=_MIN_PATTERN_SIZE,
         min_sessions=2,
+        session_stress=session_stress,
     )
 
 
@@ -278,11 +352,19 @@ def _create_semantic_memories(
     for semantic in plan["new_semantics"]:
         try:
             emb = embeddings.encode(semantic["schema"])
+            # C1 read-side: a promotion the confabulation gate flagged (INFERRED
+            # cluster, no perceptual grounding) is STILL created — non-fatal — but
+            # tagged so the crystallized-confabulation risk is durable and
+            # queryable (cortex-viz sv-* stat, curation review). No tag when the
+            # gate passed the promotion or was ablated.
+            tags = list(semantic["tags"])
+            if semantic.get("confabulation_risk") and "confabulation-risk" not in tags:
+                tags.append("confabulation-risk")
             mem_id = store.insert_memory(
                 {
                     "content": semantic["schema"],
                     "embedding": emb,
-                    "tags": semantic["tags"],
+                    "tags": tags,
                     "domain": "",
                     "directory": "",
                     "source": "cls-consolidation",

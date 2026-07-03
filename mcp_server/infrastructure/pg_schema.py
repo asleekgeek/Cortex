@@ -40,6 +40,11 @@ CREATE TABLE IF NOT EXISTS memories (
     confidence      REAL DEFAULT 1.0,
     access_count    INTEGER DEFAULT 0,
     useful_count    INTEGER DEFAULT 0,
+    value           REAL DEFAULT 0.5,
+    source_attribution TEXT DEFAULT 'unknown',
+    stimulus_signature TEXT DEFAULT '',
+    extinction_strength REAL DEFAULT 0.0
+                    CHECK (extinction_strength >= 0.0 AND extinction_strength <= 1.0),
     plasticity      REAL DEFAULT 1.0,
     stability       REAL DEFAULT 0.0,
     reconsolidation_count INTEGER DEFAULT 0,
@@ -535,6 +540,31 @@ CREATE TABLE IF NOT EXISTS workflow_graph_layout (
 );
 """
 
+# ── Procedural memory (B1) ────────────────────────────────────────────────
+# Skills = recurring successful action sequences mined from session tool-use
+# (Graybiel 2008 chunking) with a reinforced success rate (Schultz 1997 RPE).
+# Retrieved by *situation* (context_signature), never by content similarity —
+# the defining split from the declarative episodic/semantic store. A dedicated
+# table (mirroring prospective_memories) rather than a memories.store_type row,
+# because a skill's fields (ordered action sequence, proficiency, success/
+# failure counts) are structured, not free text. Idempotent, additive: this
+# CREATE IF NOT EXISTS touches no existing table.
+PROCEDURAL_SKILLS_DDL = """
+CREATE TABLE IF NOT EXISTS procedural_skills (
+    id                  SERIAL PRIMARY KEY,
+    skill_id            TEXT NOT NULL UNIQUE,
+    action_sequence     TEXT NOT NULL,
+    context_signature   TEXT NOT NULL DEFAULT '',
+    occurrences         INTEGER NOT NULL DEFAULT 0,
+    success_count       INTEGER NOT NULL DEFAULT 0,
+    failure_count       INTEGER NOT NULL DEFAULT 0,
+    proficiency         REAL NOT NULL DEFAULT 0.0,
+    is_habitual         BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+"""
+
 # ── Indexes ───────────────────────────────────────────────────────────────
 
 INDEXES_DDL = """
@@ -567,6 +597,10 @@ CREATE INDEX IF NOT EXISTS idx_entities_heat
     ON entities (heat);
 CREATE INDEX IF NOT EXISTS idx_prospective_active
     ON prospective_memories (is_active);
+CREATE INDEX IF NOT EXISTS idx_procedural_context
+    ON procedural_skills (context_signature);
+CREATE INDEX IF NOT EXISTS idx_procedural_proficiency
+    ON procedural_skills (proficiency DESC);
 CREATE INDEX IF NOT EXISTS idx_schemas_domain
     ON schemas (domain);
 CREATE INDEX IF NOT EXISTS idx_rel_pair_type
@@ -904,8 +938,8 @@ BEGIN
     -- I1 + I8: clamp to REAL-safe range BEFORE cast. REAL (float4)
     -- cannot represent values below ~1.2e-38 even as sub-normals —
     -- the cast raises NumericValueOutOfRange. stage_floor may be 0
-    -- (labile), so use 1e-38 as the hard floor; downstream WRRF
-    -- fusion treats 1e-38 as functionally zero (stable rank).
+    -- (labile), so use 1e-38 as the hard floor; downstream score
+    -- fusion (TMM, Bruch 2023) treats 1e-38 as functionally zero.
     decayed := LEAST(1.0::DOUBLE PRECISION,
                      GREATEST(GREATEST(stage_floor, 1e-38::DOUBLE PRECISION),
                               decayed));
@@ -991,7 +1025,9 @@ CREATE OR REPLACE FUNCTION recall_memories(
     importance      REAL,
     surprise_score  REAL,
     emotional_valence REAL,
-    source          TEXT
+    source          TEXT,
+    value           REAL,
+    source_attribution TEXT
 ) AS $$
 DECLARE
     v_pool   INT := p_max_results * 10;
@@ -1022,7 +1058,7 @@ BEGIN
     WITH
     -- Prefilter: narrow memories by cheap heat_base threshold + stale/
     -- domain/directory gates. All downstream CTEs read `candidates` not
-    -- `memories` — that's where the WRRF fusion signal-processing happens.
+    -- `memories` — that's where the score-fusion (TMM) signal-processing happens.
     candidates AS (
         SELECT m.*
         FROM memories m
@@ -1072,7 +1108,7 @@ BEGIN
     -- their freshness is a mechanical artifact of one-write-per-tool-call
     -- (baseline_heat 1.0 + always-recent created_at), carrying no
     -- importance information. Including them let a fresh raw dump join
-    -- 4-5 WRRF pools while month-old curated lessons joined 1-2 — the
+    -- 4-5 fusion signal pools while month-old curated lessons joined 1-2 — the
     -- measured 60x inversion. Categorical de-bias, no tuned constant;
     -- auto-captures still compete on content (vector/fts/ngram).
     -- Benchmark-neutral: fixtures never write source='post_tool_capture'.
@@ -1185,7 +1221,9 @@ BEGIN
            c.importance,
            c.surprise_score,
            c.emotional_valence,
-           c.source
+           c.source,
+           COALESCE(c.value, 0.5)::REAL,
+           COALESCE(c.source_attribution, 'unknown')::TEXT
     FROM confidence_weighted cw
     JOIN candidates c ON c.id = cw.id
     -- Supersession head-of-chain demotion (borrow-from-supermemory item 1):
@@ -1533,6 +1571,67 @@ BEGIN
     END IF;
 END $$;
 
+-- Migration: add learned RL value column (B2 value learning). A per-memory
+-- scalar in [0,1] updated by TD credit assignment from session/rating outcomes
+-- (Schultz 1997 RPE; Sutton & Barto 1998). 0.5 = neutral prior. Feeds
+-- retention (high value resists decay) and retrieval priority.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'memories' AND column_name = 'value'
+    ) THEN
+        ALTER TABLE memories ADD COLUMN value REAL DEFAULT 0.5;
+    END IF;
+END $$;
+
+-- Migration: add source-monitoring attribution (C1 reality monitoring). The
+-- epistemic origin of a memory — perceived (externally grounded) / told (user-
+-- stated) / inferred (self-generated) / unknown — distinct from the `source`
+-- ingestion-pathway column. Johnson, Hashtroudi & Lindsay 1993. Guards against
+-- confabulation (inferred content asserted as observed).
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'memories' AND column_name = 'source_attribution'
+    ) THEN
+        ALTER TABLE memories ADD COLUMN source_attribution TEXT DEFAULT 'unknown';
+    END IF;
+END $$;
+
+-- Migration: add habituation stimulus signature (E1 habituation &
+-- sensitization). A normalised content-identity key; repeated presentations of
+-- the same signature drive the write gate's exponential response decrement, so
+-- near-duplicate low-salience churn is suppressed rather than re-admitted
+-- (Rankin 2009). Distinct from `source` / `source_attribution`.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'memories' AND column_name = 'stimulus_signature'
+    ) THEN
+        ALTER TABLE memories ADD COLUMN stimulus_signature TEXT DEFAULT '';
+    END IF;
+END $$;
+
+-- Migration: add reversible inhibitory extinction tag (E2 fear extinction /
+-- inhibitory learning). A scalar in [0,1]: 0 = no extinction (default, no
+-- behaviour change); higher = the learned association is suppressed WITHOUT
+-- deletion, so it spontaneously recovers (decay) or is reinstated (cleared).
+-- Distinct from is_stale (active_forgetting's soft-delete): extinction leaves
+-- the memory fully present and only lowers its effective retrieval weight
+-- (Bouton 2004; Milad & Quirk 2012).
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'memories' AND column_name = 'extinction_strength'
+    ) THEN
+        ALTER TABLE memories ADD COLUMN extinction_strength REAL DEFAULT 0.0;
+    END IF;
+END $$;
+
 -- Migration: add is_global column for cross-project memory sharing
 DO $$
 BEGIN
@@ -1812,6 +1911,7 @@ def get_all_ddl() -> list[str]:
         WIKI_TRIGGERS_DDL,
         WIKI_LINK_TRIGGER_DDL,
         SUPPORT_TABLES_DDL,
+        PROCEDURAL_SKILLS_DDL,
         # MIGRATIONS_DDL runs BEFORE INDEXES_DDL so the heat→heat_base
         # rename lands before indexes on heat_base are created.
         MIGRATIONS_DDL,

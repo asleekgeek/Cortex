@@ -471,7 +471,8 @@ class PgMemoryStore(
                 schema_match_score, schema_id,
                 hippocampal_dependency, is_benchmark, agent_context,
                 is_global, stage_entered_at,
-                arousal, dominant_emotion, supersedes_id
+                arousal, dominant_emotion, supersedes_id,
+                source_attribution, stimulus_signature, extinction_strength
             ) VALUES (
                 %(content)s, %(embedding)s, %(tags)s::jsonb, %(source)s, %(domain)s,
                 %(directory_context)s, %(created_at)s, %(last_accessed)s, %(heat_base_set_at)s,
@@ -483,7 +484,8 @@ class PgMemoryStore(
                 %(schema_match_score)s, %(schema_id)s,
                 %(hippocampal_dependency)s, %(is_benchmark)s, %(agent_context)s,
                 %(is_global)s, %(stage_entered_at)s,
-                %(arousal)s, %(dominant_emotion)s, %(supersedes_id)s
+                %(arousal)s, %(dominant_emotion)s, %(supersedes_id)s,
+                %(source_attribution)s, %(stimulus_signature)s, %(extinction_strength)s
             ) RETURNING id""",
             {
                 "content": data["content"],
@@ -517,6 +519,9 @@ class PgMemoryStore(
                 "arousal": data.get("arousal", 0.0),
                 "dominant_emotion": data.get("dominant_emotion", "neutral"),
                 "supersedes_id": data.get("supersedes_id"),
+                "source_attribution": data.get("source_attribution", "unknown"),
+                "stimulus_signature": data.get("stimulus_signature", ""),
+                "extinction_strength": data.get("extinction_strength", 0.0),
             },
         ).fetchone()
         self._conn.commit()
@@ -666,6 +671,41 @@ class PgMemoryStore(
             (access_count, useful_count, confidence, memory_id),
         )
         self._conn.commit()
+
+    def update_memory_value(self, memory_id: int, value: float) -> None:
+        """Persist a memory's learned RL value (B2). Defensive on stores whose
+        `value` column predates this migration — a failed UPDATE is swallowed so
+        rating/credit never breaks on an un-migrated store."""
+        try:
+            self._execute(
+                "UPDATE memories SET value = %s WHERE id = %s",
+                (value, memory_id),
+            )
+            self._conn.commit()
+        except Exception:
+            pass
+
+    def update_memory_extinction(
+        self, memory_id: int, extinction_strength: float
+    ) -> None:
+        """Persist a memory's reversible inhibitory extinction tag (E2).
+
+        Writes ONLY the ``extinction_strength`` scalar in [0,1]; the memory's
+        content and heat_base are left untouched — extinction suppresses the
+        effective retrieval weight without erasing the trace, so decaying
+        (spontaneous recovery) or clearing (reinstatement) the tag restores the
+        original association (Bouton 2004). Defensive on stores whose
+        ``extinction_strength`` column predates this migration — a failed UPDATE
+        is swallowed so deprecation never breaks on an un-migrated store."""
+        try:
+            e = max(0.0, min(1.0, float(extinction_strength)))
+            self._execute(
+                "UPDATE memories SET extinction_strength = %s WHERE id = %s",
+                (e, memory_id),
+            )
+            self._conn.commit()
+        except Exception:
+            pass
 
     # ── User mood (Bower 1981 mood-congruent recall) ──────────────────
     # The pg_recall._get_user_mood(store) bridge duck-types against

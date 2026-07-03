@@ -217,3 +217,62 @@ def is_transient_forgetting(
         acute_overlap >= ACUTE_OVERLAP_THRESHOLD
         and acute_age_hours <= ACUTE_RECENCY_WINDOW_HOURS
     )
+
+
+# ── E2 reversible extinction: an inhibitory alternative to deletion ─────────
+#
+# The two circuits above are subtractive: the permanent circuit marks a memory
+# is_stale (soft-delete — hides the whole row from recall) and the transient
+# circuit lowers heat. Extinction (Bouton 2004, Learn. Mem. 11:485-494,
+# doi:10.1101/lm.78804; Milad & Quirk 2012, Annu. Rev. Psychol. 63:129-151,
+# doi:10.1146/annurev.psych.121208.131631) is DIFFERENT in kind: it is new
+# inhibitory learning laid OVER a retained association, not erasure. The
+# original trace is left fully intact and a reversible inhibitory tag suppresses
+# its effective retrieval weight, so the association returns on its own over
+# time (spontaneous recovery) and snaps back in full on reinstatement.
+#
+# This function offers extinction as the REVERSIBLE alternative to the permanent
+# (is_stale) circuit: when a memory is under sustained chronic forgetting
+# pressure but is NOT a good candidate for hard soft-delete — because it may be
+# needed again — a caller can deprecate it (grow the inhibitory tag) instead of
+# deleting it. The decision here is deliberately conservative and orthogonal to
+# the two dopaminergic circuits: it never sets is_stale and never touches heat;
+# it only reports whether an extinction (reversible deprecate) is warranted. Tag
+# arithmetic and the ablation guard live in `mcp_server.core.extinction`.
+#
+# It mirrors `is_permanent_forgetting` EXACTLY — same accumulated leaky-integrator
+# input and the same accumulation threshold, same pinned/recently-active
+# exemptions — so a memory is a candidate for reversible extinction under the
+# same sustained-pressure condition that would otherwise permanently soft-delete
+# it. It is a SEPARATE decision, producing a reversible tag rather than an
+# is_stale erasure.
+
+
+def should_extinguish(
+    accum: float,
+    is_pinned: bool,
+    recently_active: bool,
+    *,
+    already_stale: bool = False,
+    theta: float = PERMANENT_ACCUM_THRESHOLD,
+) -> bool:
+    """Decide whether to reversibly EXTINGUISH (deprecate) rather than delete.
+
+    Returns True when the memory is under enough *sustained* chronic-interference
+    pressure to warrant suppression but should be kept recoverable rather than
+    soft-deleted — the reversible inhibitory route (Bouton 2004). Takes the same
+    post-update leaky-integrator ``accum`` and accumulation threshold as
+    `is_permanent_forgetting`, with the same exemptions (pinned / recently-active
+    memories are never extinguished), but is a SEPARATE decision: it produces a
+    reversible tag, not an is_stale erasure. Already-stale memories are skipped
+    (deletion already won). Honors ``CORTEX_ABLATE_EXTINCTION=1`` (returns False
+    when the mechanism is lesioned, so no extinction tag is ever grown → no
+    behaviour change).
+    """
+    from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
+
+    if is_mechanism_disabled(Mechanism.EXTINCTION):
+        return False
+    if is_pinned or recently_active or already_stale:
+        return False
+    return accum >= theta

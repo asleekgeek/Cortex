@@ -25,6 +25,21 @@ from mcp_server.handlers._tool_meta import tool_kwargs
 from mcp_server.tool_error_handler import safe_handler
 
 
+# Tool name → handler schema; __main__ hands the merged map to
+# _tool_meta.apply_param_docs after registration.
+SCHEMAS: dict[str, dict] = {
+    "wiki_adr": wiki_adr.schema,
+    "wiki_link": wiki_link.schema,
+    "wiki_list": wiki_list.schema,
+    "wiki_purge": wiki_purge.schema,
+    "wiki_read": wiki_read.schema,
+    "wiki_reindex": wiki_reindex.schema,
+    "wiki_rename": wiki_rename.schema,
+    "wiki_verify": wiki_verify.schema,
+    "wiki_write": wiki_write.schema,
+}
+
+
 def register(mcp: FastMCP) -> None:
     """Register wiki authoring tools."""
     _register_wiki_write(mcp)

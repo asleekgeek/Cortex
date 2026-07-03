@@ -18,9 +18,12 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from mcp_server.core import thermodynamics
+
+if TYPE_CHECKING:
+    from mcp_server.core.attentional_control import AttentionAllocation
 
 # ── Buffer item ───────────────────────────────────────────────────────────
 
@@ -138,6 +141,42 @@ class SensoryBuffer:
             threshold if threshold is not None else self._importance_threshold * 0.8
         )
         return [item for item in self._buffer if item.importance >= thresh]
+
+    def focus(
+        self,
+        query: str,
+        *,
+        capacity: int | None = None,
+        temperature: float | None = None,
+    ) -> "AttentionAllocation":
+        """Direct the attentional spotlight (A1) over the buffered items.
+
+        Runs a top-down attention-allocation pass (central executive — Baddeley
+        2003) over the current working set: each buffered item is scored for
+        relevance to ``query`` plus bottom-up salience (importance, |valence|),
+        softmax-weighted, and the top few within the Cowan 4±1 ceiling are
+        returned as the in-focus set. Non-destructive — like ``peek``, items
+        stay in the buffer.
+
+        Returns an ``AttentionAllocation`` whose ``focus`` items are dicts (the
+        BufferItem payload plus an ``attention_weight``). An empty buffer yields
+        an empty allocation.
+        """
+        from mcp_server.core.attentional_control import (
+            FOCUS_CAPACITY_DEFAULT,
+            ATTENTION_TEMPERATURE,
+            allocate_attention,
+        )
+
+        items = [item.to_dict() for item in self._buffer]
+        return allocate_attention(
+            query,
+            items,
+            capacity=capacity if capacity is not None else FOCUS_CAPACITY_DEFAULT,
+            temperature=(
+                temperature if temperature is not None else ATTENTION_TEMPERATURE
+            ),
+        )
 
     # ── Drain ──────────────────────────────────────────────────────────
 

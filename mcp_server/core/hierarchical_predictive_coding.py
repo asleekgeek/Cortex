@@ -158,6 +158,37 @@ def _aggregate_novelty(
     return total_fe, max(0.0, min(1.0, novelty))
 
 
+def _forward_model_error(
+    content: str,
+    recent_memories_features: list[dict[str, float]],
+) -> float:
+    """B3 cerebellar forward-model corrective-error term for the novelty score.
+
+    Treats the mean sensory-feature activation of the recent memories as a
+    scalar *trajectory*, builds the one-step forward model over it
+    (forward_model.run_forward_model), and returns |residual| of the new
+    content's own mean activation against that model's one-step prediction — a
+    non-negative "the dynamics did not predict this step" surplus. Zero when
+    there is no history or the step fell within the model's deadband.
+
+    Distinct from the Level-0 sensory novelty (which scores the new item against
+    the per-feature mean/variance of recent items): this scores the new item
+    against a *corrected running estimate of the trajectory*, the genuinely-new
+    B3 contribution (see forward_model.py honesty note). Kept small and additive.
+    """
+    from mcp_server.core.forward_model import (
+        prediction_error,
+        scalar_of,
+    )
+    from mcp_server.core.predictive_coding_signals import extract_sensory_features
+
+    if not recent_memories_features:
+        return 0.0
+    trajectory = [scalar_of(f) for f in recent_memories_features]
+    actual = scalar_of(extract_sensory_features(content))
+    return abs(prediction_error(trajectory, actual))
+
+
 def compute_hierarchical_novelty(
     content: str,
     new_entity_names: list[str],
@@ -172,8 +203,17 @@ def compute_hierarchical_novelty(
     ach_level: float = 0.5,
     ne_level: float = 1.0,
     precision_state: PrecisionState | None = None,
+    include_forward_model: bool = False,
 ) -> HierarchicalPrediction:
-    """Run the full hierarchical predictive coding pipeline."""
+    """Run the full hierarchical predictive coding pipeline.
+
+    ``include_forward_model`` (B3, default False → behaviour byte-identical to
+    the pre-B3 scorer) opts in to adding a small cerebellar forward-model
+    corrective-error term to total free energy before the novelty sigmoid. Even
+    when opted in, the term is suppressed to 0.0 under
+    ``CORTEX_ABLATE_FORWARD_MODEL=1`` (Mechanism.FORWARD_MODEL), so the ablation
+    condition reproduces the include_forward_model=False score exactly.
+    """
     levels = _compute_prediction_levels(
         content,
         new_entity_names,
@@ -188,6 +228,17 @@ def compute_hierarchical_novelty(
 
     level_precisions = _level_precisions(precision_state, ne_level, ach_level)
     total_fe, novelty = _aggregate_novelty(levels, level_precisions)
+
+    fm_error = 0.0
+    if include_forward_model:
+        from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
+
+        if not is_mechanism_disabled(Mechanism.FORWARD_MODEL):
+            fm_error = _forward_model_error(content, recent_memories_features)
+            if fm_error > 0.0:
+                total_fe = total_fe + fm_error
+                novelty = 1.0 / (1.0 + math.exp(-3.0 * (total_fe - 0.5)))
+                novelty = max(0.0, min(1.0, novelty))
 
     return HierarchicalPrediction(
         levels=levels,

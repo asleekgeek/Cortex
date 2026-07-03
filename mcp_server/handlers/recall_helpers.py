@@ -451,3 +451,39 @@ def inline_related_neighbors(
             "versions": _version_neighbors(int(mid), store),
             "entities": _entity_neighbors(int(mid), store, max_entities, max_neighbors),
         }
+
+
+def annotate_source_attribution(results: list[dict[str, Any]]) -> None:
+    """Surface C1 source/reality-monitoring provenance on each recall hit, in place.
+
+    Additive read-side surfacing of the ``source_attribution`` the recall
+    projection now returns (pg_schema.recall_memories → pg_store dict → here):
+
+      - ``source_attribution`` — the memory's stored epistemic origin
+        (perceived / told / inferred / unknown), defaulted to 'unknown' when the
+        column/value is absent (older store or un-classified row).
+      - ``confabulation_risk`` — the per-hit reality-monitoring flag
+        (``source_monitoring.recall_confabulation_risk``): True only when the
+        memory was stored as PERCEIVED but its content now classifies as INFERRED
+        with zero perceptual grounding (Johnson & Raye 1981). A memory stored as
+        inferred/told/unknown makes no external-grounding promise and is never
+        flagged.
+
+    STRICTLY ADDITIVE: it only writes those two keys onto each existing result
+    dict; it never reorders, drops, or injects results. Disabled when
+    ``Mechanism.CONFABULATION_GATE`` is ablated
+    (``CORTEX_ABLATE_CONFABULATION_GATE=1``) — in that case each hit still gets
+    its ``source_attribution`` (pure provenance passthrough) but ``confabulation
+    _risk`` is left False, so the gate contributes nothing to the response.
+    """
+    from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
+    from mcp_server.core.source_monitoring import recall_confabulation_risk
+
+    gate_on = not is_mechanism_disabled(Mechanism.CONFABULATION_GATE)
+    for mem in results:
+        attribution = mem.get("source_attribution") or "unknown"
+        mem["source_attribution"] = attribution
+        mem["confabulation_risk"] = bool(
+            gate_on
+            and recall_confabulation_risk(mem.get("content", "") or "", attribution)
+        )

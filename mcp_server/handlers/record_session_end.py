@@ -246,8 +246,15 @@ def _build_session_entry(
     tools_used: list[str] | None,
     category: str,
     keywords: list[str] | None,
+    score: float | None = None,
 ) -> dict[str, Any]:
-    """Build the session log entry dict."""
+    """Build the session log entry dict.
+
+    ``score`` is the session self-critique overall score in [0, 1] (or None if
+    critique failed). It is persisted so downstream consumers — procedural
+    skill mining (B1) reinforcement, in particular — have a per-session reward
+    signal rather than having to recompute the critique.
+    """
     return {
         "sessionId": session_id,
         "domain": domain_id,
@@ -259,6 +266,7 @@ def _build_session_entry(
         "toolsUsed": tools_used or [],
         "category": category,
         "entryKeywords": keywords or [],
+        "score": score,
     }
 
 
@@ -348,6 +356,13 @@ async def handler(args: dict) -> dict:
     domain_id = _resolve_domain(args.get("domain"), cwd, project, profiles)
     category = categorize(" ".join(keywords)) if keywords else "general"
 
+    # Self-critique once, up front: its overall score is both persisted into the
+    # session-log entry (the reward signal procedural-skill mining reinforces
+    # on) and returned to the caller. Computing it here avoids a second
+    # generate_critique() call later.
+    critique = _try_generate_critique(tools_used or [], duration, turn_count)
+    session_score = critique.get("overall_score") if critique else None
+
     session_entry = _build_session_entry(
         session_id,
         domain_id,
@@ -358,6 +373,7 @@ async def handler(args: dict) -> dict:
         tools_used,
         category,
         keywords,
+        score=session_score,
     )
     _append_session_log(load_session_log(), session_entry)
 
@@ -409,12 +425,34 @@ async def handler(args: dict) -> dict:
             "reason": f"{type(exc).__name__}: {exc}",
         }
 
+    # Mine procedural skills (B1) from the session history. Additive only —
+    # writes to the procedural_skills table, never to memories — so it cannot
+    # change episodic/semantic recall. Non-fatal on any failure.
+    procedural_status: dict[str, Any] = {
+        "status": "skipped",
+        "reason": "not_attempted",
+    }
+    try:
+        from mcp_server.handlers.procedural_skill_writer import maybe_mine_skills
+        from mcp_server.infrastructure.memory_store import get_shared_store
+
+        procedural_status = maybe_mine_skills(
+            sessions=load_session_log().get("sessions", []),
+            store=get_shared_store(),
+        )
+    except Exception as exc:
+        procedural_status = {
+            "status": "error",
+            "reason": f"{type(exc).__name__}: {exc}",
+        }
+
     return {
         "domain": domain_id,
         "profileUpdated": profile_updated,
         "memoryStored": await _try_store_memory(memory_args),
         "newPatterns": [],
         "confidence": dp.get("confidence", 0) if dp else 0,
-        "critique": _try_generate_critique(tools_used or [], duration, turn_count),
+        "critique": critique,
         "task_record": task_record_status,
+        "procedural_skills": procedural_status,
     }

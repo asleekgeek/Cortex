@@ -95,7 +95,7 @@ Handlers are the **composition roots**: they wire infrastructure (I/O) to core (
 - `predictive_coding_signals.py` — Signal computation for predictive coding
 - `coupled_neuromodulation.py` — DA/NE/ACh/5-HT coupled cascade with cross-channel effects (Doya 2002, Schultz 1997)
 - `neuromodulation_channels.py` — Individual neuromodulator channel definitions
-- `emotional_tagging.py` — Amygdala-inspired priority encoding with Yerkes-Dodson curve (Wang & Bhatt 2024)
+- `emotional_tagging.py` — Amygdala-inspired priority encoding (Qasim et al. 2023) with the Hebb 1955 inverted-U arousal curve
 - `synaptic_tagging.py` — Retroactive promotion of weak memories sharing entities (Frey & Morris 1997)
 - `curation.py` — Active curation logic (merge, link, create decisions)
 - `engram.py` — Memory trace structure (Josselyn & Tonegawa 2020)
@@ -132,7 +132,7 @@ Handlers are the **composition roots**: they wire infrastructure (I/O) to core (
 - `two_stage_transfer.py` — Transfer protocol execution
 - `emergence_tracker.py` — System-level metrics: forgetting curve, spacing effect, schema acceleration
 - `emergence_metrics.py` — Emergence metric definitions
-- `ablation.py` — Lesion study framework (29 ablatable units spanning the 24 neuroscience-grounded mechanisms)
+- `ablation.py` — Lesion study framework (41 ablatable units spanning the 36 neuroscience-grounded mechanisms)
 - `active_forgetting.py` — Two independent dopaminergic forgetting circuits: permanent Rac1 trace erosion (chronic interference × stage vulnerability) + transient DAMB retrieval block (Davis & Zhong 2017, Sabandal et al. 2021)
 - `ablation_report.py` — Ablation report generation
 
@@ -208,7 +208,7 @@ Handlers are the **composition roots**: they wire infrastructure (I/O) to core (
 - `artifact_store.py` — Content-addressed raw-output artifacts (`~/.claude/methodology/artifacts/<yyyy-mm>/<sha256[:16]>.md`) backing gist+pointer memories
 - `agent_config.py` — Agent configuration and topic scoping
 
-**handlers/** — Composition roots (43 standalone tools + 3 upstream-integration tools conditionally registered = 46 total + helpers, one per tool)
+**handlers/** — Composition roots (44 standalone tools + 3 upstream-integration tools conditionally registered = 47 total + helpers, one per tool)
 
 **validation/** — `schemas.py` — Per-tool argument validation
 
@@ -252,7 +252,7 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `unified_search` | Unified retrieval across memories, wiki, and code graph | <200ms |
 | `get_telemetry` | Retrieval and memory-system telemetry metrics | <50ms |
 
-### Tier 2 — Navigation & Exploration (5 tools)
+### Tier 2 — Navigation & Exploration (6 tools)
 
 | Tool | Purpose | Target Latency |
 |---|---|---|
@@ -261,6 +261,7 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `navigate_memory` | Successor Representation co-access BFS traversal | <200ms |
 | `get_causal_chain` | Trace entity relationships through knowledge graph | <200ms |
 | `detect_gaps` | Identify isolated entities, sparse domains, temporal drift | <500ms |
+| `recall_skills` | Recall learned procedural skills by situation | <200ms |
 
 ### Tier 3 — Automation & Intelligence (8 tools)
 
@@ -290,9 +291,9 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `wiki_purge` | Permanently delete a wiki page | <50ms |
 
 **Upstream-integration tools (3, conditionally registered)** — these register
-only when their upstream MCP server is configured, bringing the total to 46:
+only when their upstream MCP server is configured, bringing the total to 47:
 `ingest_codebase` + `change_impact` (automatised-pipeline) and `ingest_prd`
-(prd-spec-generator). With no upstream present, exactly the **43 standalone
+(prd-spec-generator). With no upstream present, exactly the **44 standalone
 tools** above register. Driving the ai-architect pipeline end-to-end
 (formerly `run_pipeline`) is **not** part of this server — it lives in the
 automatised-pipeline MCP.

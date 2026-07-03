@@ -44,8 +44,9 @@ four mechanisms: (i)~continuously decaying \emph{heat}
 \citep{Ebbinghaus1885}, (ii)~a hierarchical predictive-coding
 write gate \citep{Friston2010}, (iii)~consolidation cascades that
 compress episodic into semantic memory
-\citep{Kandel2001,McClelland1995}, and (iv)~WRRF fusion with heat
-as a tie-breaker.  On three independent long-term-memory
+\citep{Kandel2001,McClelland1995}, and (iv)~weighted score-fusion
+(WSF) retrieval with heat as a tie-breaker.  On three independent
+long-term-memory
 benchmarks, Cortex reaches LongMemEval R@10\,$=$\,98.4\% and
 LoCoMo R@10\,$=$\,94.2\% (retrieval recall, directly comparable to
 the published retrieval baselines), and a retrieval-proxy MRR of
@@ -128,7 +129,7 @@ benchmark's data.
         file.
   \item A \emph{three-form argument} (\S\ref{sec:why-decay}) that
         decay prevents collapse: information-theoretic, operational
-        (WRRF tie-breaking), and curation-by-attrition.
+        (WSF tie-breaking), and curation-by-attrition.
   \item Empirical results on three long-term-memory benchmarks
         (\S\ref{sec:empirical}): R@10\,$=$\,98.4\% on LongMemEval
         ($+20.0$\,pp over paper-best), R@10\,$=$\,94.2\% on LoCoMo,
@@ -187,7 +188,7 @@ use (\S\ref{sec:heat}) is the same family of forgetting curve, and
 the ACT-R lifetime computation that Cortex routes through
 \texttt{ingested\_at} (\S\ref{sec:cadence-fix}) is the discrete-event
 analogue.  We do not claim a new activation function; we claim its
-integration into a six-signal fusion retriever (\S\ref{sec:wrrf}) and
+integration into a five-signal fusion retriever (\S\ref{sec:wrrf}) and
 the characterisation of when it helps (\S\ref{sec:regime}).
 
 \paragraph{Long-term-memory benchmarks.}
@@ -301,21 +302,31 @@ h(t) = h_0 \cdot \lambda_{\mathrm{eff}}^{\,t}
 \label{eq:heat-decay}
 \end{equation}
 with the per-hour decay factor $\lambda_{\mathrm{eff}}$ modulated by
-importance and valence:
-\begin{equation}
-\lambda_{\mathrm{eff}} = 1 - \frac{1 - \lambda_{\mathrm{base}}}
-                                     {1 + |v| \cdot r \cdot (1 - e^{-t})}
+valence and confidence.  Writing $\lambda_v$ for the
+valence-modulated factor and applying the confidence modifier as a
+second nested resistance term:
+\begin{align}
+\lambda_{v} &= 1 - \frac{1 - \lambda_{\mathrm{base}}}
+                        {1 + |v| \cdot r \cdot (1 - e^{-t})},
+\label{eq:lambda-v}\\[2pt]
+\lambda_{\mathrm{eff}} &= 1 - \frac{1 - \lambda_{v}}
+                                   {1 + \kappa \cdot \mathrm{conf}}
 \label{eq:lambda-eff}
-\end{equation}
+\end{align}
 where $\lambda_{\mathrm{base}} = 0.95$ for normal memories,
 $0.998$ for high-importance memories ($I > 0.7$), $r = 0.5$ is the
 emotional resistance, and the time-saturation factor $1 - e^{-t}$
 implements the \citet{Kleinsmith1963} crossover effect: emotional
-advantage grows with delay \citep{Yonelinas2015}.  Half-lives:
-$\approx 14$\,h for normal items, $\approx 346$\,h for important
-items.  The constants are calibrated to a hours/days timescale and
-are not from a single paper; they are documented as engineering
-choices in the source.
+advantage grows with delay \citep{Yonelinas2015}.  The confidence
+modifier ($\kappa = 0.1$, $\mathrm{conf} \in [0,1]$) is an
+engineering term with no paper source; it further slows decay for
+high-confidence memories.  Half-lives at the default
+$\mathrm{conf} = 1$ (with $v = 0$): $\approx 15$\,h for normal
+items, $\approx 381$\,h for important items; the
+confidence-independent form ($\mathrm{conf} = 0$) gives
+$\approx 14$\,h and $\approx 346$\,h.  The constants are calibrated
+to a hours/days timescale and are not from a single paper; they are
+documented as engineering choices in the source.
 
 \subsection{Predictive-Coding Write Gate}
 \label{sec:gate}
@@ -344,9 +355,15 @@ reshapes the gain on uncertainty.
 \subsection{Emotional Tagging}
 \label{sec:emotional}
 
-\citet{Yerkes1908} characterised the inverted-U relationship
-between arousal and performance.  \citet{Wang2024} describe
-amygdala-priority encoding for emotionally salient inputs.
+The inverted-U relationship between arousal and performance
+(``Hebb's curve'') is due to \citet{Hebb1955}; it is often
+attributed to \citet{Yerkes1908}, but that study measured stimulus
+strength against habit-formation rather than arousal against
+performance.  \citet{Qasim2023} show that
+high-frequency activity in the amygdala and hippocampus increases
+during successful encoding of emotionally arousing stimuli, a
+neural correlate of the brain prioritising emotionally salient
+inputs for storage.
 Cortex's \texttt{mcp\_server/core/emotional\_tagging.py} combines
 both: arousal modulates the priority of incoming memories, and the
 inverted-U bound prevents over-weighting.
@@ -435,27 +452,57 @@ We do not claim this as a tight bound; we claim it as the
 $H(\mathrm{useful} \mid \mathrm{retrieved})$ above the flat-prior
 floor.
 
-\subsection{Operational---WRRF Fusion}
+\subsection{Operational---WSF Fusion}
 \label{sec:wrrf}
 
 The Cortex retrieval path is implemented server-side in PL/pgSQL
 (\texttt{recall\_memories()}, see
 \texttt{mcp\_server/infrastructure/pg\_schema.py}).  It computes a
-\emph{Weighted Reciprocal Rank Fusion} \citep{Cormack2009} over six
-independent signals:
+\emph{Weighted Score Fusion} (WSF) with theoretical-min-max (TMM)
+normalisation \citep{Bruch2023} over five independent signals:
 \begin{equation}
 \mathrm{score}(x \mid q) \;=\;
-\sum_{c \in \{\mathrm{vec}, \mathrm{fts}, \mathrm{tri}, \mathrm{heat}, \mathrm{rec}, \mathrm{ngram}\}}
-\frac{w_c}{k + \mathrm{rank}_c(x \mid q)}
+\sum_{c \in \{\mathrm{vec}, \mathrm{fts}, \mathrm{tri}, \mathrm{heat}, \mathrm{rec}\}}
+w_c \cdot
+\frac{s_c(x \mid q) - m_c}{\max_{x'} s_c(x' \mid q) - m_c}
 \label{eq:wrrf}
 \end{equation}
-with intent-conditioned weights $w_c$ chosen by the query router
-(\texttt{mcp\_server/core/query\_router.py}).  When two items have
-equivalent vector and FTS scores, the heat and recency channels
-resolve the tie---so the priority field $P(x)$ acts not just as a
-prior but as a deterministic disambiguator in the regime where
-similarity is uninformative.  This is the operational mechanism
-that prevents \S\ref{sec:flat-collapse}'s tie-noise.
+where $s_c$ is the raw per-signal score, $m_c$ its theoretical
+minimum ($m_{\mathrm{vec}} = -1$ for cosine similarity, $m_c = 0$ for
+the others), and the denominator is the observed per-query maximum
+(TMM normalisation, \citealt{Bruch2023}).  Weights $w_c$ are
+intent-conditioned (\texttt{mcp\_server/core/pg\_recall.py},
+\texttt{compute\_pg\_weights}); the recency channel carries weight
+$0$ except for temporal, knowledge-update, and event intents, so the
+default active set is four signals.  The trigram signal (\texttt{tri})
+is the Postgres \texttt{similarity()} score; there is no separate
+n-gram channel.  When two items have equivalent vector and FTS
+scores, the heat and recency channels resolve the tie---so the
+priority field $P(x)$ acts not just as a prior but as a deterministic
+disambiguator in the regime where similarity is uninformative.  This
+is the operational mechanism that prevents
+\S\ref{sec:flat-collapse}'s tie-noise.  (Reciprocal-rank fusion
+\citep{Cormack2009} was the design's starting point and gives the
+system its historical name; the deployed function is the score-fusion
+variant above, following the score-fusion family analysed by
+\citet{Bruch2023}, who report that a convex combination of scores
+outperforms RRF in both in-domain and out-of-domain settings and that
+RRF is sensitive to its parameters. A controlled within-Cortex
+ablation reproduces this direction on our own workload: swapping
+\emph{only} the fusion function over identical
+per-signal ranked lists on LoCoMo (all 10 conversations, 1{,}982
+questions; MiniLM vector plus lexical signals, reranker disabled to
+isolate the fusion step), score fusion improves mean reciprocal rank
+over reciprocal-rank fusion by ${+}0.11$ (RRF $0.65 \to$ score fusion
+$0.76$) while recall@10 is unchanged (${+}0.0005$); score fusion wins
+MRR in every question category. The gain is concentrated in ranking
+quality rather than recall, consistent with score fusion's use of
+calibrated signal magnitudes where reciprocal-rank fusion sees only
+ranks. This in-process ablation uses the same signals but not the
+production PostgreSQL path or cross-encoder rerank, so its absolute
+numbers are not directly comparable to the headline results of
+\S\ref{sec:empirical}; only the RRF-vs-score-fusion contrast is
+intended. See \texttt{benchmarks/locomo/rrf\_vs\_tmm\_ablation.py}.)
 
 \subsection{Curation by Attrition}
 \label{sec:curation}
@@ -481,7 +528,7 @@ suffice.
 The mechanisms above reduce how often retrieval enters a regime
 where similarity scores are uninformative; they cannot guarantee the
 answer is in the store.  For queries whose target is genuinely
-absent, the WRRF tie-breaker simply chooses the most-prior of a set
+absent, the WSF tie-breaker simply chooses the most-prior of a set
 of irrelevant candidates---the right response is abstention, not
 retrieval.
 
@@ -870,7 +917,7 @@ Three classes of mechanism are foreclosed by this design:
 
 \begin{enumerate}
 \item \emph{Read-path rerank stages} (HOPFIELD, HDC,
-  SPREADING\_ACTIVATION, DENDRITIC\_CLUSTERS).  The WRRF baseline
+  SPREADING\_ACTIVATION, DENDRITIC\_CLUSTERS).  The WSF baseline
   already returns nearly all gold items in the top-$k$
   (R@10 = 0.984), so reranking moves items \emph{within} the top-$k$
   but rarely changes \emph{which} items make the top-$k$.  Phase~A
@@ -1024,7 +1071,7 @@ post-\texttt{5f737fe} bytes is reported in
 \label{sec:calibration}
 
 The above ablations are reported at the calibrated equilibrium of
-the six post-WRRF rerank-blend constants.  These constants were
+the six post-WSF rerank-blend constants.  These constants were
 swept under a pre-registered protocol
 (\texttt{docs/provenance/blend-weight-calibration.md}):
 
@@ -1395,7 +1442,7 @@ addresses this by maintaining a non-flat priority distribution over
 memories---implemented through heat decay, a hierarchical
 predictive-coding write gate, neuromodulatory tagging, and a
 four-stage consolidation cascade---and by using that distribution
-as both a retrieval prior and a tie-breaker in WRRF fusion.  On
+as both a retrieval prior and a tie-breaker in WSF fusion.  On
 three long-term-memory benchmarks, the integrated stack outperforms
 the published bests: largest on the question categories that most
 require non-flat priors, smaller on surface-fact retrieval where
@@ -1548,7 +1595,7 @@ tail exponent $\gamma$.
 $s_i = \alpha \cdot \mathrm{sim}(q, x_i) + (1 - \alpha) \cdot w_i$
 is a convolution of a thin-tailed similarity component with a
 heavy-tailed importance component.  For $\alpha \in [0.3, 0.7]$
-(Cortex's WRRF operating regime), the resulting distribution is
+(Cortex's WSF operating regime), the resulting distribution is
 bimodal: a sharp head from items with large $w_i$ and a long tail
 of low-importance items.  Top-$k$ retrieval consistently returns
 from the head; tie-breaking is dominated by $w_i$, which has gaps
@@ -1578,8 +1625,12 @@ Cortex measured (clean DB, April 2026):
   \item Gap: \textbf{20.0\,pp}.
 \end{itemize}
 
-LongMemEval has $N \approx 10^4$ (S variant: 500 questions, $\sim$30
-turns/session, $\sim$10k candidate spans).  Plugging into
+LongMemEval-S has a \emph{per-query} candidate haystack of
+$N \approx 10^4$ (500 questions, $\sim$30 turns/session, $\sim$10k
+candidate spans per question); the \emph{aggregate} corpus across
+the whole test set is $\approx 10^5$ (used in
+\S\ref{app:erdos-lme}).  Using the per-query $N \approx 10^4$ and
+plugging into
 \S\ref{app:shannon-collapse} with $\eta = 0.05$, $f_S \approx 4$:
 \[
 N^\star \;=\; \frac{1}{0.05 \cdot 4} \;=\; 5{,}000.
@@ -1594,30 +1645,30 @@ retriever: ${\sim}75$--$80\%$---which is exactly the observed
 $78.4\%$ paper-best.  The 20.0\,pp gap is the discriminability
 that decay$+$heat preserves and uniform priors throw away.
 
-\subsection{WRRF Fusion as Multi-Source Decorrelation}
+\subsection{WSF Fusion as Multi-Source Decorrelation}
 \label{app:shannon-wrrf}
 
-Cortex's \texttt{recall\_memories()} PL/pgSQL function fuses six
-signals: vector cosine, FTS BM25, trigram similarity, heat,
-recency, n-gram overlap.  Treat each signal $s^{(j)}$ as a noisy
-observation of a hidden relevance target $r_i$:
+Cortex's \texttt{recall\_memories()} PL/pgSQL function fuses five
+signals: vector cosine, FTS (Postgres \texttt{ts\_rank\_cd}),
+trigram similarity, heat, and recency.  Treat each signal $s^{(j)}$
+as a noisy observation of a hidden relevance target $r_i$:
 \[
 s_i^{(j)} \;=\; r_i + \varepsilon_i^{(j)},
-\qquad j \in \{1, \dots, 6\}.
+\qquad j \in \{1, \dots, 5\}.
 \]
 If the noises $\varepsilon^{(j)}$ are pairwise low-correlation, the
-variance of the WRRF fused score is
+variance of the WSF fused score is
 \begin{equation}
 \mathrm{Var}\big(\hat r_i\big) \;\approx\;
 \frac{\bar\sigma^2}{m \cdot (1 + (m-1)\bar\rho)},
 \label{eq:wrrf-var}
 \end{equation}
-where $m=6$ and $\bar\rho \ll 1$.  With $\bar\rho \approx 0.2$
+where $m=5$ and $\bar\rho \ll 1$.  With $\bar\rho \approx 0.2$
 (rough cross-signal correlation in our ablations), variance shrinks
-by ${\sim}4\times$ relative to a single signal.  This effectively
+by ${\sim}3\times$ relative to a single signal.  This effectively
 raises $f_S$ in the \S\ref{app:shannon-collapse} formula, which
 raises $N^\star$ by the same factor---pushing the collapse
-threshold from ${\sim}5$k items to ${\sim}20$k.  This is the
+threshold from ${\sim}5$k items to ${\sim}15$k.  This is the
 noisy-channel coding theorem \citep{Shannon1948} applied to
 retrieval: $m$ independent observations of the same hidden $r_i$
 raise the effective channel capacity from query to retrieved-set
@@ -1659,7 +1710,7 @@ sentence-transformer; measured ablation, Cortex bench Apr 2026).
 Each item also carries a static priority $w_i \ge 0$.
 Flat-importance retrieval returns $\arg\text{top}_k\, s_i$ (or
 $\arg\text{top}_k\, w_i$ under a pure-priority baseline).
-Thermodynamic retrieval mixes both via WRRF fusion.
+Thermodynamic retrieval mixes both via WSF fusion.
 
 We compare two regimes for the priority distribution:
 \begin{itemize}
@@ -1727,7 +1778,7 @@ $N \to \infty$).  Then for moderate $k$,}
 1 - k^{1-\gamma} \cdot \frac{\zeta(\gamma)^{-1}}{\gamma - 1} \cdot (1 + o(1)).
 \label{eq:thm2-mass}
 \end{equation}
-\emph{Under WRRF fusion of similarity and priority, the head-$k$
+\emph{Under WSF fusion of similarity and priority, the head-$k$
 set is selected with probability at least $1 - O(N^{-c})$ for some
 $c = c(\gamma, \sigma_{\mathrm{noise}}) > 0$, so}
 \begin{equation}
@@ -1742,10 +1793,14 @@ $c = c(\gamma, \sigma_{\mathrm{noise}}) > 0$, so}
 The tail mass $\sum_{i > k} i^{-\gamma}$ is bounded by
 $\int_k^\infty x^{-\gamma}\,dx = k^{1-\gamma}/(\gamma-1)$.  Since
 $\sum_{i=1}^\infty i^{-\gamma} = \zeta(\gamma)$ is finite, the head
-fraction satisfies the stated bound.  WRRF fusion adds
-$1/(\mathrm{rank}_w + 60) + 1/(\mathrm{rank}_s + 60)$
-\citep{Cormack2009}.  For a head item $i \le k$,
-$\mathrm{rank}_w(i) \le k$ deterministically; the only way it
+fraction satisfies the stated bound.  The argument requires only that
+the fusion be \emph{monotone non-decreasing} in the priority channel
+--- a property shared by reciprocal-rank fusion \citep{Cormack2009}
+and by the deployed weighted score fusion \citep{Bruch2023}, since
+the priority contribution $w_{\mathrm{heat}} \cdot
+\tilde s_{\mathrm{heat}}(x)$ is non-decreasing in heat rank.  For a
+head item $i \le k$, its priority rank $\mathrm{rank}_w(i) \le k$
+deterministically; the only way it
 leaves the top-$k$ of the fused score is for similarity rank to be
 $\Omega(N)$, which by \citet{Bickel1976} occurs with probability
 $O(N^{-c})$.~$\square$
@@ -1784,8 +1839,10 @@ is necessary above $N_{\mathrm{cross}}$.
 \subsection{Connection to LongMemEval}
 \label{app:erdos-lme}
 
-LongMemEval-S \citep{Wu2025} has effective corpus size
-$N \approx 10^5$ across the test set.  Since
+LongMemEval-S \citep{Wu2025} has an aggregate effective corpus
+size $N \approx 10^5$ across the whole test set (as distinct from
+the $\approx 10^4$ per-query haystack in
+\S\ref{app:shannon-collapse}).  Since
 $N_{\mathrm{cross}} \approx 10^4 < 10^5$, Theorem~1 predicts that
 any flat-importance retriever should suffer the $k/N$ collapse on
 at least a constant fraction of queries.  The paper's reported
@@ -1816,17 +1873,25 @@ distribution depends continuously on $\lambda$ through the Master
 equation), bounded, and tends to $0$ at both ends of $[0, \infty)$.
 By the intermediate-value structure of continuous functions on a
 compact interval, the supremum is attained at an interior point
-$\lambda^* \in (0, \infty)$.  Since $A(\lambda)$ is the expected
-accuracy averaged over a query distribution with full support and
-the WRRF score is a strictly concave function of priority on the
-head, $A$ is strictly quasiconcave on $(0, \infty)$, so the
-maximum is unique.~$\square$
+$\lambda^* \in (0, \infty)$.  Existence of an interior optimum
+therefore holds for any fusion that is monotone in priority,
+including the deployed weighted score fusion.  \emph{Uniqueness}
+is a stronger claim: under the original reciprocal-rank fusion the
+per-item score is strictly concave in priority, which makes
+$A(\lambda)$ strictly quasiconcave and $\lambda^*$ unique.  The
+deployed fusion is affine (linear) in each normalised signal, so
+strict concavity does not hold in general; uniqueness of
+$\lambda^*$ then requires the additional assumption that
+$A(\lambda)$ is single-peaked, which we observe empirically in the
+$\lambda$-sweeps (\S\ref{sec:regime}) but do not prove in
+closed form.~$\square$
 
 \textbf{Corollary 3.1.} \emph{Cortex's choice of
 \texttt{heat\_base} $+$ Ebbinghaus exponential with empirically
-tuned half-life is non-arbitrary: there is a unique optimal decay
-rate, and tuning measures it.}  This justifies treating decay as
-a measured parameter rather than a free hyperparameter.
+tuned half-life is non-arbitrary: there is an interior optimal
+decay rate (empirically a single peak), and tuning measures it.}
+This justifies treating decay as a measured parameter rather than
+a free hyperparameter.
 
 \subsection{Summary of Bounds}
 \label{app:erdos-summary}
@@ -1925,8 +1990,8 @@ in $N$.
         set at each tier.
   \item Two systems on the same PostgreSQL instance:
         (a)~full Cortex pipeline; (b)~flat-RAG control $=$
-        vector $+$ BM25 only, constant heat $=$ $0.5$, no decay,
-        no WRRF heat term.
+        vector $+$ full-text (FTS) only, constant heat $=$ $0.5$,
+        no decay, no WSF heat term.
   \item Metric: R@10 gap $=$ R@10(Cortex) $-$ R@10(flat).
   \item Threshold: if the gap is constant within $\pm 2$\,pp
         across the $N$-scan, or shrinks at any tier, the scaling
@@ -1953,7 +2018,7 @@ architecture) is sufficient to prevent retrieval discriminability
 collapse.''
 
 \textbf{Riskiest prediction.}  Ablating only the decay (replace
-\texttt{decay\_cycle.py} with constant heat $=$ $0.5$, leaving WRRF,
+\texttt{decay\_cycle.py} with constant heat $=$ $0.5$, leaving WSF,
 predictive coding, neuromodulation, schemas, replay, etc.\ intact)
 drops R@10 by $\ge 80\%$ of the full Cortex-vs-flat-RAG gap.
 
@@ -1981,7 +2046,7 @@ no current benchmark instantiates.
 the benchmark---the system is not overfit.''
 
 \textbf{Riskiest prediction.}  Calibration parameters tuned on
-LongMemEval (WRRF weights, intent classifier thresholds, FlashRank
+LongMemEval (WSF weights, intent classifier thresholds, FlashRank
 reranker depth) transfer to LoCoMo without retuning, retaining
 $\ge 90\%$ of LongMemEval's R@10 (i.e., LoCoMo R@10 $\ge 0.88$).
 
@@ -1990,13 +2055,13 @@ benchmark is currently scored independently with whatever defaults
 exist at the time, but the calibration history is not version-pinned
 to a single benchmark.
 
-\subsection{C4 --- WRRF Fusion of 6 Signals Decorrelates Noise Sources (severity: medium)}
+\subsection{C4 --- WSF Fusion of 5 Signals Decorrelates Noise Sources (severity: medium)}
 \label{app:popper-c4}
 
-\textbf{The claim.} ``WRRF fusion of 6 signals decorrelates noise
+\textbf{The claim.} ``WSF fusion of 5 signals decorrelates noise
 sources.''
 
-\textbf{Riskiest prediction.}  (a)~The $6 \times 6$
+\textbf{Riskiest prediction.}  (a)~The $5 \times 5$
 signal-correlation matrix on retrieval scores has off-diagonal
 magnitudes $< 0.3$.  (b)~Ablating any single signal drops R@10 by
 $\le 2$\,pp on each benchmark.
@@ -2030,7 +2095,7 @@ C3 lossless across time         & critical & UNTESTED         & 12-month drip-fe
 C1 scaling gap grows            & critical & UNTESTED         & $N$-scan \{1k\,\dots\,10M\} \\
 C2 decay alone suffices         & high     & UNTESTED         & Single ablation row \\
 C5 cross-benchmark generalization & high   & PARTIALLY TESTED & Frozen-config cross-eval \\
-C4 WRRF decorrelates            & medium   & PARTIALLY TESTED & Correlation matrix $+$ ablations \\
+C4 WSF decorrelates            & medium   & PARTIALLY TESTED & Correlation matrix $+$ ablations \\
 C6 read/write 100:1             & low      & UNTESTED         & One week of production counters \\
 \bottomrule
 \end{tabular}
@@ -2131,7 +2196,7 @@ faint amber.  You walk to the brightest hand.  It takes two
 seconds.
 
 That is what heat does to retrieval.  It does not change \emph{who
-knows what}.  It changes \emph{who is easy to find}.  WRRF---the
+knows what}.  It changes \emph{who is easy to find}.  WSF---the
 fusion math the main paper describes---is the formal version of
 ``brightness.''
 

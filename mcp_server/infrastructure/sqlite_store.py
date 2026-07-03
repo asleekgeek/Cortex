@@ -219,10 +219,11 @@ class SqliteMemoryStore(
                 separation_index, interference_score,
                 schema_match_score, schema_id,
                 hippocampal_dependency, is_benchmark, agent_context,
-                is_global, supersedes_id
+                is_global, supersedes_id, source_attribution,
+                stimulus_signature, extinction_strength
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )""",
             (
                 content,
@@ -252,6 +253,9 @@ class SqliteMemoryStore(
                 data.get("agent_context", ""),
                 int(data.get("is_global", False)),
                 data.get("supersedes_id"),
+                data.get("source_attribution", "unknown"),
+                data.get("stimulus_signature", ""),
+                data.get("extinction_strength", 0.0),
             ),
         )
         memory_id = cur.lastrowid
@@ -369,6 +373,40 @@ class SqliteMemoryStore(
             (access_count, useful_count, confidence, memory_id),
         )
         self._conn.commit()
+
+    def update_memory_value(self, memory_id: int, value: float) -> None:
+        """Persist a memory's learned RL value (B2). Defensive on stores whose
+        `value` column predates this migration."""
+        try:
+            self._conn.execute(
+                "UPDATE memories SET value = ? WHERE id = ?",
+                (value, memory_id),
+            )
+            self._conn.commit()
+        except Exception:
+            pass
+
+    def update_memory_extinction(
+        self, memory_id: int, extinction_strength: float
+    ) -> None:
+        """Persist a memory's reversible inhibitory extinction tag (E2).
+
+        Writes ONLY the ``extinction_strength`` scalar in [0,1]; the memory's
+        content and heat_base are left untouched — extinction suppresses the
+        effective retrieval weight without erasing the trace, so decaying
+        (spontaneous recovery) or clearing (reinstatement) the tag restores the
+        original association (Bouton 2004). Defensive on stores whose
+        ``extinction_strength`` column predates this migration — a failed UPDATE
+        is swallowed so deprecation never breaks on an un-migrated store."""
+        try:
+            e = max(0.0, min(1.0, float(extinction_strength)))
+            self._conn.execute(
+                "UPDATE memories SET extinction_strength = ? WHERE id = ?",
+                (e, memory_id),
+            )
+            self._conn.commit()
+        except Exception:
+            pass
 
     def delete_memory(self, memory_id: int) -> bool:
         self._conn.execute("DELETE FROM memories_fts WHERE rowid = ?", (memory_id,))

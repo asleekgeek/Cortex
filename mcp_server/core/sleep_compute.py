@@ -18,6 +18,7 @@ from typing import Any, Iterable
 from mcp_server.core.enrichment import (
     build_enriched_content,
 )
+from mcp_server.core.targeted_reactivation import cue_match_score
 
 # ── Dream Replay ──────────────────────────────────────────────────────────────
 
@@ -178,6 +179,8 @@ def run_sleep_compute_streamed(
     period_label: str = "recent",
     max_replay: int = 50,
     max_reembed: int = 100,
+    cue: str | None = None,
+    cue_boost: float = 1.0,
 ) -> dict[str, Any]:
     """Single-pass, constant-memory sleep compute over chunked memories.
 
@@ -191,6 +194,18 @@ def run_sleep_compute_streamed(
     Peak RAM is one chunk plus those bounded accumulators — so it scales to
     millions of memories. ``run_sleep_compute`` delegates here with a single
     chunk for callers that already hold a list.
+
+    Targeted memory reactivation (F2). The bounded replay heap keys on a replay
+    *priority*, not raw heat. With no cue (``cue is None`` / empty) the priority
+    is exactly ``heat``, so the hottest set retained and its ordering are
+    identical to the pre-F2 pass (identity). With a cue, each memory's priority
+    is ``heat + cue_boost * cue_match_score(cue, mem)`` (see
+    ``targeted_reactivation``), so cue-matching memories are preferentially
+    retained in the bounded top-``max_replay`` set and enriched first — the
+    cue-directed replay of Rasch et al. (2007). The cue only ever *adds* a
+    non-negative boost. This function stays pure; the ablation guard
+    (Mechanism.TARGETED_REACTIVATION) is applied by the caller
+    (``sleep_phases``), which passes ``cue=None`` when the mechanism is ablated.
     """
     heat_heap: list[tuple[float, int, dict[str, Any]]] = []
     stale: list[dict[str, Any]] = []
@@ -198,15 +213,22 @@ def run_sleep_compute_streamed(
     top_imp: dict[str, Any] | None = None
     count = 0
     order = 0
+    has_cue = bool((cue or "").strip())
     for chunk in memory_chunks:
         for mem in chunk:
             count += 1
             order += 1
             heat = float(mem.get("heat", 0) or 0)
+            # Replay priority = heat + cue boost. No cue → priority == heat, so
+            # the retained hottest set and its order are byte-for-byte the
+            # pre-F2 selection (identity).
+            priority = heat
+            if has_cue:
+                priority = heat + cue_boost * cue_match_score(cue, mem)
             if len(heat_heap) < max_replay:
-                heapq.heappush(heat_heap, (heat, order, mem))
-            elif heat > heat_heap[0][0]:
-                heapq.heapreplace(heat_heap, (heat, order, mem))
+                heapq.heappush(heat_heap, (priority, order, mem))
+            elif priority > heat_heap[0][0]:
+                heapq.heapreplace(heat_heap, (priority, order, mem))
             if len(stale) < max_reembed and _is_stale_embedding(mem):
                 stale.append(mem)
             content = mem.get("content", "")
@@ -237,11 +259,15 @@ def run_sleep_compute(
     period_label: str = "recent",
     max_replay: int = 50,
     max_reembed: int = 100,
+    cue: str | None = None,
+    cue_boost: float = 1.0,
 ) -> dict[str, Any]:
     """Run the full sleep compute pass over an in-memory list.
 
     Thin wrapper over ``run_sleep_compute_streamed`` (one chunk) so existing
-    list-holding callers keep working; new callers should stream chunks.
+    list-holding callers keep working; new callers should stream chunks. The
+    optional ``cue`` (F2 targeted reactivation) is forwarded verbatim; no cue
+    means the pass is identical to pre-F2.
     """
     return run_sleep_compute_streamed(
         [memories],
@@ -250,4 +276,6 @@ def run_sleep_compute(
         period_label=period_label,
         max_replay=max_replay,
         max_reembed=max_reembed,
+        cue=cue,
+        cue_boost=cue_boost,
     )

@@ -31,6 +31,11 @@ CREATE TABLE IF NOT EXISTS memories (
     confidence              REAL DEFAULT 1.0,
     access_count            INTEGER DEFAULT 0,
     useful_count            INTEGER DEFAULT 0,
+    value                   REAL DEFAULT 0.5,
+    source_attribution      TEXT DEFAULT 'unknown',
+    stimulus_signature      TEXT DEFAULT '',
+    extinction_strength     REAL DEFAULT 0.0
+                            CHECK (extinction_strength >= 0.0 AND extinction_strength <= 1.0),
     plasticity              REAL DEFAULT 1.0,
     stability               REAL DEFAULT 0.0,
     reconsolidation_count   INTEGER DEFAULT 0,
@@ -336,4 +341,22 @@ MIGRATIONS: list[tuple[str, str, str]] = [
     # documentation but will not be enforced at this site.
     ("memories", "supersedes_id", "INTEGER"),
     ("memories", "superseded_by_id", "INTEGER"),
+    # Learned RL value (B2 value learning) — PG parity with the memories.value
+    # migration in pg_schema.py. Scalar in [0,1], TD-updated from outcomes.
+    ("memories", "value", "REAL DEFAULT 0.5"),
+    # Source-monitoring attribution (C1 reality monitoring) — PG parity.
+    # perceived / told / inferred / unknown.
+    ("memories", "source_attribution", "TEXT DEFAULT 'unknown'"),
+    # Habituation stimulus identity (E1 habituation & sensitization) — PG
+    # parity. Normalised content key; repeated presentations of the same
+    # signature drive the write gate's response decrement (Rankin 2009).
+    ("memories", "stimulus_signature", "TEXT DEFAULT ''"),
+    # Reversible inhibitory tag (E2 fear extinction / inhibitory learning) — PG
+    # parity. Scalar in [0,1]: 0 = no extinction (default, no behaviour change);
+    # higher = the learned association is suppressed WITHOUT deletion, so it can
+    # spontaneously recover (decay) or be reinstated (cleared). Distinct from
+    # is_stale (active_forgetting's soft-delete): extinction leaves the memory
+    # fully present and only lowers its effective retrieval weight
+    # (Bouton 2004; Milad & Quirk 2012).
+    ("memories", "extinction_strength", "REAL DEFAULT 0.0"),
 ]
