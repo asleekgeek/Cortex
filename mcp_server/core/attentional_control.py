@@ -52,7 +52,7 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # ── Constants ───────────────────────────────────────────────────────────────
 # The focus of attention holds ~4 chunks (Cowan 2001). This is the same ceiling

@@ -105,7 +105,9 @@ def test_threshold_boundary_is_inclusive():
 
 # ── triage (annotate + decide, opt-in shortcut) ───────────────────────────────
 def _cands(*sims):
-    return [{"memory_id": i, "content": f"m{i}", "score": s} for i, s in enumerate(sims)]
+    return [
+        {"memory_id": i, "content": f"m{i}", "score": s} for i, s in enumerate(sims)
+    ]
 
 
 def test_triage_annotates_without_reordering():

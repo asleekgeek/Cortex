@@ -163,6 +163,7 @@ class TestRerankReplaySet:
             _mem(1, 0.2, content="alpha"),
             _mem(2, 0.3, content="beta"),
         ]
+
         # semantic scorer that only likes mem 1
         def sem(cue, mem):
             return 1.0 if mem["id"] == 1 else 0.0

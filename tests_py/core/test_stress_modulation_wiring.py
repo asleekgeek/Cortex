@@ -55,8 +55,12 @@ class TestNeutralIdentity:
             mems, [], _exact_sim, cluster_threshold=0.9, min_occurrences=3
         )
         zero = plan_cls_consolidation(
-            mems, [], _exact_sim, cluster_threshold=0.9,
-            min_occurrences=3, session_stress=0.0,
+            mems,
+            [],
+            _exact_sim,
+            cluster_threshold=0.9,
+            min_occurrences=3,
+            session_stress=0.0,
         )
         assert base["patterns_found"] == zero["patterns_found"]
         assert len(base["new_semantics"]) == len(zero["new_semantics"])
@@ -64,8 +68,12 @@ class TestNeutralIdentity:
     def test_neutral_gain_is_one_and_bar_unchanged(self):
         mems = _cluster(4)
         plan = plan_cls_consolidation(
-            mems, [], _exact_sim, cluster_threshold=0.9,
-            min_occurrences=3, session_stress=0.0,
+            mems,
+            [],
+            _exact_sim,
+            cluster_threshold=0.9,
+            min_occurrences=3,
+            session_stress=0.0,
         )
         assert plan["consolidation_gain"] == pytest.approx(1.0)
         assert plan["effective_min_occurrences"] == 3
@@ -82,14 +90,23 @@ class TestModerateEnhances:
         # A 3-member cluster from 2 sessions with base bar 4 => no pattern...
         mems = _cluster(3)
         strict = plan_cls_consolidation(
-            mems, [], _exact_sim, cluster_threshold=0.9,
-            min_occurrences=4, min_sessions=2, session_stress=0.0,
+            mems,
+            [],
+            _exact_sim,
+            cluster_threshold=0.9,
+            min_occurrences=4,
+            min_sessions=2,
+            session_stress=0.0,
         )
         assert strict["patterns_found"] == 0
         # ...but moderate stress lowers the bar to 3, so it consolidates.
         stressed = plan_cls_consolidation(
-            mems, [], _exact_sim, cluster_threshold=0.9,
-            min_occurrences=4, min_sessions=2,
+            mems,
+            [],
+            _exact_sim,
+            cluster_threshold=0.9,
+            min_occurrences=4,
+            min_sessions=2,
             session_stress=sm.STRESS_ENHANCE_PEAK,
         )
         assert stressed["effective_min_occurrences"] < 4
@@ -106,14 +123,24 @@ class TestExtremeImpairs:
         # A 3-member cluster clears base bar 3...
         mems = _cluster(3)
         ok = plan_cls_consolidation(
-            mems, [], _exact_sim, cluster_threshold=0.9,
-            min_occurrences=3, min_sessions=2, session_stress=0.0,
+            mems,
+            [],
+            _exact_sim,
+            cluster_threshold=0.9,
+            min_occurrences=3,
+            min_sessions=2,
+            session_stress=0.0,
         )
         assert ok["patterns_found"] >= 1
         # ...but extreme stress raises the bar above 3, so it no longer does.
         impaired = plan_cls_consolidation(
-            mems, [], _exact_sim, cluster_threshold=0.9,
-            min_occurrences=3, min_sessions=2, session_stress=1.0,
+            mems,
+            [],
+            _exact_sim,
+            cluster_threshold=0.9,
+            min_occurrences=3,
+            min_sessions=2,
+            session_stress=1.0,
         )
         assert impaired["effective_min_occurrences"] > 3
         assert impaired["patterns_found"] == 0
@@ -132,8 +159,12 @@ class TestAblationGuard:
         # unconsolidated when the mechanism is ablated.
         mems = _cluster(3)
         plan = plan_cls_consolidation(
-            mems, [], _exact_sim, cluster_threshold=0.9,
-            min_occurrences=4, min_sessions=2,
+            mems,
+            [],
+            _exact_sim,
+            cluster_threshold=0.9,
+            min_occurrences=4,
+            min_sessions=2,
             session_stress=sm.STRESS_ENHANCE_PEAK,
         )
         assert plan["consolidation_gain"] == pytest.approx(1.0)
@@ -146,8 +177,13 @@ class TestAblationGuard:
         # consolidates when ablated (bar stays at 3).
         mems = _cluster(3)
         plan = plan_cls_consolidation(
-            mems, [], _exact_sim, cluster_threshold=0.9,
-            min_occurrences=3, min_sessions=2, session_stress=1.0,
+            mems,
+            [],
+            _exact_sim,
+            cluster_threshold=0.9,
+            min_occurrences=3,
+            min_sessions=2,
+            session_stress=1.0,
         )
         assert plan["effective_min_occurrences"] == 3
         assert plan["patterns_found"] >= 1
@@ -168,10 +204,14 @@ class TestHandlerStressDerivation:
         from mcp_server.handlers.consolidation.cls import _compute_session_stress
 
         batch = [
-            {"content": "URGENT production outage, everything failed",
-             "emotional_valence": -0.8},
-            {"content": "error after error, it crashed again, deadline blown",
-             "emotional_valence": -0.7},
+            {
+                "content": "URGENT production outage, everything failed",
+                "emotional_valence": -0.8,
+            },
+            {
+                "content": "error after error, it crashed again, deadline blown",
+                "emotional_valence": -0.7,
+            },
         ]
         stress = _compute_session_stress(batch)
         assert stress > 0.0

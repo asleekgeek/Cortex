@@ -40,13 +40,16 @@ from mcp_server.core.query_intent import classify_query_intent, QueryIntent
 # Import wrrf_fuse directly from the module file to avoid benchmarks.lib.__init__,
 # which pulls in bench_db -> pg_store -> psycopg (Postgres, not needed here).
 import importlib.util as _ilu
-_fusion_path = "/Users/cdeust/Documents/Developments/personal/Cortex/benchmarks/lib/fusion.py"
+
+_fusion_path = (
+    "/Users/cdeust/Documents/Developments/personal/Cortex/benchmarks/lib/fusion.py"
+)
 _spec = _ilu.spec_from_file_location("_cortex_fusion", _fusion_path)
 _fusion = _ilu.module_from_spec(_spec)
 _spec.loader.exec_module(_fusion)
 wrrf_fuse = _fusion.wrrf_fuse
 
-from benchmarks.locomo.data import (
+from benchmarks.locomo.data import (  # noqa: E402
     load_locomo,
     parse_evidence_refs,
     extract_sessions,
@@ -59,8 +62,7 @@ DATA_PATH = "/Users/cdeust/Documents/Developments/personal/Cortex/benchmarks/loc
 # all other signals are already in [0,1] -> m=0). Our vector signal is clamped
 # to [0,1] (see _score_vector using max(0.0, sim)), so m_vec=0 here too, which
 # matches the effective production behaviour for non-negative cosine.
-SIGNAL_MIN = {"vector": 0.0, "keyword": 0.0, "ngram": 0.0, "bm25": 0.0,
-              "recency": 0.0}
+SIGNAL_MIN = {"vector": 0.0, "keyword": 0.0, "ngram": 0.0, "bm25": 0.0, "recency": 0.0}
 
 
 def tmm_fuse(signal_results, signal_weights):
@@ -89,7 +91,7 @@ def build_embeddings(model, sessions):
 
 
 def score_vector(model, embeddings, query):
-    import numpy as np
+
     q = model.encode([query[:500]], normalize_embeddings=True)[0]
     sims = embeddings @ q
     scored = [(i, max(0.0, float(s))) for i, s in enumerate(sims)]
@@ -105,17 +107,27 @@ def compute_signals(model, embeddings, sessions, query):
 
     signals = {
         "vector": score_vector(model, embeddings, query),
-        "keyword": sorted([(i, compute_keyword_overlap(query, d)) for i, d in enumerate(docs)],
-                          key=lambda x: x[1], reverse=True),
-        "ngram": sorted([(i, compute_ngram_score(query, d)) for i, d in enumerate(docs)],
-                        key=lambda x: x[1], reverse=True),
-        "bm25": sorted(list(enumerate(compute_bm25_scores(query, docs))),
-                       key=lambda x: x[1], reverse=True),
+        "keyword": sorted(
+            [(i, compute_keyword_overlap(query, d)) for i, d in enumerate(docs)],
+            key=lambda x: x[1],
+            reverse=True,
+        ),
+        "ngram": sorted(
+            [(i, compute_ngram_score(query, d)) for i, d in enumerate(docs)],
+            key=lambda x: x[1],
+            reverse=True,
+        ),
+        "bm25": sorted(
+            list(enumerate(compute_bm25_scores(query, docs))),
+            key=lambda x: x[1],
+            reverse=True,
+        ),
     }
     if is_update:
         n = len(docs)
-        signals["recency"] = sorted([(i, i / max(n - 1, 1)) for i in range(n)],
-                                    key=lambda x: x[1], reverse=True)
+        signals["recency"] = sorted(
+            [(i, i / max(n - 1, 1)) for i in range(n)], key=lambda x: x[1], reverse=True
+        )
 
     core_weights = intent_info.get("weights", {})
     weights = {
@@ -135,7 +147,6 @@ def eval_fusion(fuse_fn, model, all_convos, top_k=10):
     for convo in all_convos:
         sessions = convo["_sessions"]
         embeddings = convo["_embeddings"]
-        sess_by_idx = {s["session_idx"]: pos for pos, s in enumerate(sessions)}
         for qa in convo["qa"]:
             if "question" not in qa:
                 continue
@@ -143,9 +154,17 @@ def eval_fusion(fuse_fn, model, all_convos, top_k=10):
             target_sessions = {r[0] for r in refs}
             if not target_sessions:
                 continue
-            cat = CATEGORY_NAMES.get(qa.get("category", 0), f"unknown_{qa.get('category',0)}")
-            signals, weights = compute_signals(model, embeddings, sessions, qa["question"])
-            fused = fuse_fn(signals, weights) if fuse_fn is not tmm_fuse else fuse_fn(signals, weights)
+            cat = CATEGORY_NAMES.get(
+                qa.get("category", 0), f"unknown_{qa.get('category', 0)}"
+            )
+            signals, weights = compute_signals(
+                model, embeddings, sessions, qa["question"]
+            )
+            fused = (
+                fuse_fn(signals, weights)
+                if fuse_fn is not tmm_fuse
+                else fuse_fn(signals, weights)
+            )
             hit_rank = None
             for rank, (pos, _) in enumerate(fused[:top_k]):
                 sidx = sessions[pos]["session_idx"]
@@ -175,8 +194,10 @@ def rrf_fuse(signals, weights):
 
 def main():
     import os
+
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
     from sentence_transformers import SentenceTransformer
+
     model_path = os.environ.get("MINILM_PATH", "/tmp/minilm")
     model = SentenceTransformer(model_path)
 
@@ -189,22 +210,31 @@ def main():
         if not sessions:
             continue
         embeddings = build_embeddings(model, sessions)
-        all_convos.append({"qa": convo["qa"], "_sessions": sessions, "_embeddings": embeddings})
+        all_convos.append(
+            {"qa": convo["qa"], "_sessions": sessions, "_embeddings": embeddings}
+        )
     print(f"Prepared {len(all_convos)} conversations with embeddings")
 
     results = {}
     for name, fn in [("RRF", rrf_fuse), ("TMM", tmm_fuse)]:
         mrr, r10, per_cat, n = eval_fusion(fn, model, all_convos)
-        results[name] = {"overall_mrr": mrr, "overall_r10": r10, "n_questions": n, "per_category": per_cat}
+        results[name] = {
+            "overall_mrr": mrr,
+            "overall_r10": r10,
+            "n_questions": n,
+            "per_category": per_cat,
+        }
         print(f"\n=== {name} fusion ===")
         print(f"  Overall: MRR={mrr:.4f}  R@10={r10:.4f}  (n={n})")
         for cat, m in sorted(per_cat.items()):
-            print(f"    {cat:<16} MRR={m['mrr']:.3f}  R@10={m['r10']:.3f}  (n={m['n']})")
+            print(
+                f"    {cat:<16} MRR={m['mrr']:.3f}  R@10={m['r10']:.3f}  (n={m['n']})"
+            )
 
     delta_mrr = results["TMM"]["overall_mrr"] - results["RRF"]["overall_mrr"]
     delta_r10 = results["TMM"]["overall_r10"] - results["RRF"]["overall_r10"]
     results["delta_TMM_minus_RRF"] = {"mrr": delta_mrr, "r10": delta_r10}
-    print(f"\n=== DELTA (TMM - RRF) ===")
+    print("\n=== DELTA (TMM - RRF) ===")
     print(f"  MRR: {delta_mrr:+.4f}   R@10: {delta_r10:+.4f}")
 
     out = "/Users/cdeust/Documents/Developments/personal/Cortex/benchmarks/results/rrf_vs_tmm_locomo.json"

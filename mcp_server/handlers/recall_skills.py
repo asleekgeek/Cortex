@@ -12,7 +12,6 @@ existing episodic/semantic recall behaviour.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from mcp_server.core.procedural_memory import (
     ProceduralSkill,

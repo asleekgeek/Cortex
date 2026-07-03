@@ -125,7 +125,11 @@ class TestWriteGateWiring:
 def _cands():
     return [
         {"memory_id": "m1", "content": "note about the weather", "score": 0.60},
-        {"memory_id": "m2", "content": "the recall pipeline latency fix", "score": 0.55},
+        {
+            "memory_id": "m2",
+            "content": "the recall pipeline latency fix",
+            "score": 0.55,
+        },
     ]
 
 

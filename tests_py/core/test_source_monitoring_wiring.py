@@ -35,7 +35,9 @@ def _insert(store, content, source="user"):
         "content": content,
         "tags": [],
         "source": source,
-        "source_attribution": sm.classify_source(content, source_field=source).attribution,
+        "source_attribution": sm.classify_source(
+            content, source_field=source
+        ).attribution,
     }
     return store.insert_memory(rec)
 
@@ -61,7 +63,9 @@ def test_told_memory_persists_attribution(store):
 def test_default_attribution_when_absent(store):
     # A record that predates the classifier (no source_attribution key) gets the
     # column default 'unknown', not a crash.
-    mid = store.insert_memory({"content": "plain content", "tags": [], "source": "user"})
+    mid = store.insert_memory(
+        {"content": "plain content", "tags": [], "source": "user"}
+    )
     row = store.get_memory(mid)
     assert row["source_attribution"] == "unknown"
 

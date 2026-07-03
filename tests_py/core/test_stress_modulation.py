@@ -80,7 +80,9 @@ class TestDetectStressMarkers:
         assert m["urgency"] >= 2
 
     def test_failure_markers(self):
-        m = sm.detect_stress_markers("error, exception, traceback, it crashed and failed")
+        m = sm.detect_stress_markers(
+            "error, exception, traceback, it crashed and failed"
+        )
         assert m["failure"] >= 2
 
     def test_reuses_emotional_tagging_lexicon(self):
@@ -122,7 +124,9 @@ class TestConsolidationGain:
         assert 0 < peak_idx < 10  # peak is interior, not at an endpoint
         # rising up to the peak, then non-increasing after it
         assert all(gains[i] <= gains[i + 1] + 1e-9 for i in range(peak_idx))
-        assert all(gains[i] >= gains[i + 1] - 1e-9 for i in range(peak_idx, len(gains) - 1))
+        assert all(
+            gains[i] >= gains[i + 1] - 1e-9 for i in range(peak_idx, len(gains) - 1)
+        )
 
     def test_peak_near_enhance_peak(self):
         # The enhancement peak sits at STRESS_ENHANCE_PEAK before overload bites.
@@ -144,7 +148,9 @@ class TestConsolidationGain:
         assert sm.consolidation_gain(1.0) >= sm.STRESS_GAIN_FLOOR
 
     def test_clamps_input(self):
-        assert sm.consolidation_gain(-1.0) == pytest.approx(1.0)  # clamps to 0 => identity
+        assert sm.consolidation_gain(-1.0) == pytest.approx(
+            1.0
+        )  # clamps to 0 => identity
         assert sm.consolidation_gain(5.0) == pytest.approx(sm.consolidation_gain(1.0))
 
 

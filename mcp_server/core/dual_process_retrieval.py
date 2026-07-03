@@ -83,10 +83,10 @@ FAMILIARITY_THRESHOLD: float = 0.92
 FAMILIARITY_MARGIN: float = 0.10
 
 # Method tags for the FamiliaritySignal.method field.
-METHOD_VECTOR = "vector"          # faithful: max cosine over real embeddings
+METHOD_VECTOR = "vector"  # faithful: max cosine over real embeddings
 METHOD_SCORE_PROXY = "score_proxy"  # fallback: fused WRRF score, never skips
-METHOD_EMPTY = "empty"            # no candidates / no similarities
-METHOD_DISABLED = "disabled"      # ablation guard fired upstream
+METHOD_EMPTY = "empty"  # no candidates / no similarities
+METHOD_DISABLED = "disabled"  # ablation guard fired upstream
 
 
 @dataclass

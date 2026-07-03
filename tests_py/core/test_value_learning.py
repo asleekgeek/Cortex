@@ -41,7 +41,12 @@ def test_reward_mapping_matches_da_rpe():
             # da = clamp(1 + (actual - 0)) = clamp(1 + actual); actual in [0.1,1]
             recovered_actual = da - 1.0
             assert math.isclose(reward, recovered_actual, abs_tol=1e-9), (
-                pos, neg, imp, reward, recovered_actual)
+                pos,
+                neg,
+                imp,
+                reward,
+                recovered_actual,
+            )
 
 
 def test_outcome_to_reward_values():
@@ -91,7 +96,7 @@ def test_credit_top_hit_gets_most():
     # Eligibility decays with rank.
     assert updates[0].eligibility == 1.0
     assert math.isclose(updates[1].eligibility, TRACE_LAMBDA)
-    assert math.isclose(updates[2].eligibility, TRACE_LAMBDA ** 2)
+    assert math.isclose(updates[2].eligibility, TRACE_LAMBDA**2)
     # Top hit's value moves the most on a positive outcome.
     gains = [u.new_value - u.old_value for u in updates]
     assert gains[0] > gains[1] > gains[2] > 0
@@ -136,9 +141,9 @@ def test_credit_importance_scales_positive_reward():
 
 # ── Value -> priority mappings ──────────────────────────────────────────────
 def test_retention_bonus_monotone():
-    assert retention_bonus(0.5) == 1.0            # neutral: no effect
+    assert retention_bonus(0.5) == 1.0  # neutral: no effect
     assert retention_bonus(1.0) > retention_bonus(0.75) > 1.0
-    assert retention_bonus(0.0) == 1.0            # low value never accelerates decay
+    assert retention_bonus(0.0) == 1.0  # low value never accelerates decay
 
 
 def test_retrieval_priority_boost_and_penalty():
@@ -152,8 +157,14 @@ def test_retrieval_priority_boost_and_penalty():
 
 
 def test_value_update_as_dict_roundtrip():
-    u = ValueUpdate(memory_id=7, old_value=0.5, new_value=0.55, delta=0.5,
-                   eligibility=1.0, effective_alpha=0.1)
+    u = ValueUpdate(
+        memory_id=7,
+        old_value=0.5,
+        new_value=0.55,
+        delta=0.5,
+        eligibility=1.0,
+        effective_alpha=0.1,
+    )
     d = u.as_dict()
     assert d["memory_id"] == 7
     assert d["new_value"] == 0.55

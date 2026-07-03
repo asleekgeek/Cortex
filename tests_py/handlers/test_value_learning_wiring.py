@@ -21,8 +21,12 @@ class _FakeStore:
     def get_memory(self, memory_id):
         return dict(self._mem) if self._mem.get("id") == memory_id else None
 
-    def update_memory_metamemory(self, memory_id, access_count, useful_count, confidence):
-        self.metamemory_writes.append((memory_id, access_count, useful_count, confidence))
+    def update_memory_metamemory(
+        self, memory_id, access_count, useful_count, confidence
+    ):
+        self.metamemory_writes.append(
+            (memory_id, access_count, useful_count, confidence)
+        )
 
     def update_memory_value(self, memory_id, value):
         self.value_writes.append((memory_id, value))
@@ -35,8 +39,17 @@ def _run(store, args, monkeypatch):
 
 
 def test_rate_useful_raises_value(monkeypatch):
-    store = _FakeStore({"id": 5, "content": "x", "value": 0.5, "importance": 0.8,
-                        "access_count": 2, "useful_count": 1, "confidence": 0.5})
+    store = _FakeStore(
+        {
+            "id": 5,
+            "content": "x",
+            "value": 0.5,
+            "importance": 0.8,
+            "access_count": 2,
+            "useful_count": 1,
+            "confidence": 0.5,
+        }
+    )
     out = _run(store, {"memory_id": 5, "useful": True}, monkeypatch)
     assert out["rated"] is True
     # A value write happened and the new value rose above the 0.5 prior.
@@ -48,18 +61,35 @@ def test_rate_useful_raises_value(monkeypatch):
 
 
 def test_rate_not_useful_lowers_value(monkeypatch):
-    store = _FakeStore({"id": 6, "content": "y", "value": 0.7, "importance": 0.5,
-                        "access_count": 4, "useful_count": 3, "confidence": 0.6})
-    out = _run(store, {"memory_id": 6, "useful": False}, monkeypatch)
+    store = _FakeStore(
+        {
+            "id": 6,
+            "content": "y",
+            "value": 0.7,
+            "importance": 0.5,
+            "access_count": 4,
+            "useful_count": 3,
+            "confidence": 0.6,
+        }
+    )
+    _run(store, {"memory_id": 6, "useful": False}, monkeypatch)
     mid, new_v = store.value_writes[0]
     assert new_v < 0.7
 
 
 def test_value_absent_uses_prior(monkeypatch):
     # A memory whose row predates the value column (no 'value' key).
-    store = _FakeStore({"id": 7, "content": "z", "importance": 0.5,
-                        "access_count": 1, "useful_count": 0, "confidence": 1.0})
-    out = _run(store, {"memory_id": 7, "useful": True}, monkeypatch)
+    store = _FakeStore(
+        {
+            "id": 7,
+            "content": "z",
+            "importance": 0.5,
+            "access_count": 1,
+            "useful_count": 0,
+            "confidence": 1.0,
+        }
+    )
+    _run(store, {"memory_id": 7, "useful": True}, monkeypatch)
     mid, new_v = store.value_writes[0]
     # Started from VALUE_PRIOR (0.5) and rose on the positive verdict.
     expected, _ = value_learning.td_update(
@@ -74,8 +104,17 @@ def test_value_write_failure_is_non_fatal(monkeypatch):
         def update_memory_value(self, memory_id, value):
             raise RuntimeError("value column missing")
 
-    store = _BoomStore({"id": 8, "content": "q", "value": 0.5, "importance": 0.5,
-                        "access_count": 1, "useful_count": 1, "confidence": 0.5})
+    store = _BoomStore(
+        {
+            "id": 8,
+            "content": "q",
+            "value": 0.5,
+            "importance": 0.5,
+            "access_count": 1,
+            "useful_count": 1,
+            "confidence": 0.5,
+        }
+    )
     out = _run(store, {"memory_id": 8, "useful": True}, monkeypatch)
     # Rating still succeeds; value simply omitted from the response.
     assert out["rated"] is True

@@ -80,7 +80,7 @@ from __future__ import annotations
 import math
 import os as _os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 # ── Tunable constants (env-overridable, like the recall_pipeline stages) ──────
@@ -261,7 +261,9 @@ def _has_negation(text: str) -> bool:
 
 
 # ── Scalars ───────────────────────────────────────────────────────────────────
-def _softmax(scores: list[float], temperature: float = _SOFTMAX_TEMPERATURE) -> list[float]:
+def _softmax(
+    scores: list[float], temperature: float = _SOFTMAX_TEMPERATURE
+) -> list[float]:
     """Numerically-stable softmax over ``scores`` (shift-by-max), returning a
     probability distribution. Handles negative scores (FlashRank cross-encoder
     outputs can be negative). An empty input returns an empty list.

@@ -42,8 +42,12 @@ def _hot_memories():
 def _schema_cluster(cid, entity, n=6):
     # n>=5 (min_memories) memories sharing an entity/tag → schema forms.
     mems = [
-        _mem(100 + cid * 10 + i, f"memory about {entity} number {i}",
-             entities=[entity], tags=[entity])
+        _mem(
+            100 + cid * 10 + i,
+            f"memory about {entity} number {i}",
+            entities=[entity],
+            tags=[entity],
+        )
         for i in range(n)
     ]
     return _cluster(cid, mems, domain="test")

@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import os
 
-import pytest
 
 from mcp_server.core.recall_pipeline import conflict_monitor_rerank
 

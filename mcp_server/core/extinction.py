@@ -161,7 +161,9 @@ def spontaneous_recovery(
     return 0.0 if decayed < RECOVERY_FLOOR else decayed
 
 
-def reinstate(current_extinction: float, *, residual: float = REINSTATE_RESIDUAL) -> float:
+def reinstate(
+    current_extinction: float, *, residual: float = REINSTATE_RESIDUAL
+) -> float:
     """Collapse the inhibitory tag in one step — original association restored.
 
     Reinstatement (Bouton 2004): re-exposure to the reinforcer abolishes the

@@ -79,7 +79,7 @@ class TestStreamedCueBias:
 
     def test_cue_promotes_cued_into_bounded_set(self):
         mems = [
-            _mem(1, 0.2, _POSTGRES),   # cued but cooler
+            _mem(1, 0.2, _POSTGRES),  # cued but cooler
             _mem(2, 0.9, _UNRELATED),  # hotter, uncued
         ]
         # max_replay=1 + cue: cued memory 1 (0.2 + 1.0 = 1.2) beats memory 2.

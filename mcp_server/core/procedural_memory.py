@@ -46,7 +46,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 # ── Tuning constants ────────────────────────────────────────────────────────
@@ -92,7 +92,9 @@ class ActionStep:
     target_kind: str | None = None
 
     def key(self) -> str:
-        return self.tool if self.target_kind is None else f"{self.tool}:{self.target_kind}"
+        return (
+            self.tool if self.target_kind is None else f"{self.tool}:{self.target_kind}"
+        )
 
 
 @dataclass
@@ -111,11 +113,11 @@ class ProceduralSkill:
 
     sequence: tuple[ActionStep, ...]
     context_signature: str = ""
-    occurrences: int = 0            # times this sequence has been observed
-    success_count: int = 0          # observations whose session outcome was good
+    occurrences: int = 0  # times this sequence has been observed
+    success_count: int = 0  # observations whose session outcome was good
     failure_count: int = 0
-    proficiency: float = 0.0        # reinforced running success rate in [0, 1]
-    last_seen: str = ""             # ISO timestamp of most recent observation
+    proficiency: float = 0.0  # reinforced running success rate in [0, 1]
+    last_seen: str = ""  # ISO timestamp of most recent observation
     skill_id: str = ""
 
     def __post_init__(self) -> None:
@@ -156,7 +158,10 @@ def skill_id_for(sequence: tuple[ActionStep, ...]) -> str:
 # general ("edit a test") without exploding on specific paths.
 _TARGET_KIND_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"test|spec|_test\.|\.test\.", re.IGNORECASE), "test"),
-    (re.compile(r"\.(ya?ml|toml|ini|cfg|conf|json)$|config|settings", re.IGNORECASE), "config"),
+    (
+        re.compile(r"\.(ya?ml|toml|ini|cfg|conf|json)$|config|settings", re.IGNORECASE),
+        "config",
+    ),
     (re.compile(r"readme|\.md$|docs?/", re.IGNORECASE), "doc"),
     (re.compile(r"\.sql$|schema|migration", re.IGNORECASE), "schema"),
     (re.compile(r"\.(py|js|ts|go|rs|java|rb|c|cpp|h)$", re.IGNORECASE), "code"),
@@ -256,8 +261,14 @@ def mine_skills(
             seen_ids.add(sid)
             slot = acc.setdefault(
                 sid,
-                {"sequence": sub, "sessions": 0, "succ": 0, "fail": 0,
-                 "contexts": {}, "last_seen": ""},
+                {
+                    "sequence": sub,
+                    "sessions": 0,
+                    "succ": 0,
+                    "fail": 0,
+                    "contexts": {},
+                    "last_seen": "",
+                },
             )
             slot["sessions"] += 1
             if reward is not None:
@@ -279,7 +290,8 @@ def mine_skills(
         proficiency = (succ + _PRIOR_SUCCESS) / (succ + fail + _PRIOR_TOTAL)
         dominant_ctx = (
             max(slot["contexts"].items(), key=lambda kv: kv[1])[0]
-            if slot["contexts"] else ""
+            if slot["contexts"]
+            else ""
         )
         skills.append(
             ProceduralSkill(
@@ -409,7 +421,11 @@ def match_skills(
     for skill in skills:
         if skill.proficiency < min_proficiency:
             continue
-        skill_tokens = set(skill.context_signature.split("|")) if skill.context_signature else set()
+        skill_tokens = (
+            set(skill.context_signature.split("|"))
+            if skill.context_signature
+            else set()
+        )
         # Context overlap (Jaccard); 0.5 baseline when the skill is context-free
         # so a globally useful routine can still surface.
         if skill_tokens and target_tokens:
@@ -434,8 +450,10 @@ def match_skills(
 
 
 def _explain_match(skill: ProceduralSkill, ctx_score: float, prime: float) -> str:
-    bits = [f"{skill.length}-step routine",
-            f"{skill.proficiency:.0%} success over {skill.occurrences} uses"]
+    bits = [
+        f"{skill.length}-step routine",
+        f"{skill.proficiency:.0%} success over {skill.occurrences} uses",
+    ]
     if skill.is_habitual:
         bits.append("habitual")
     if ctx_score >= 0.5:

@@ -91,8 +91,11 @@ def maybe_mine_skills(
     try:
         mining_input = _session_log_to_mining_input(sessions)
         if len(mining_input) < 3:
-            return {"status": "skipped", "reason": "insufficient_history",
-                    "skills_written": 0}
+            return {
+                "status": "skipped",
+                "reason": "insufficient_history",
+                "skills_written": 0,
+            }
 
         skills = mine_skills(mining_input)
         written = 0
@@ -111,9 +114,11 @@ def maybe_mine_skills(
                 }
             )
             written += 1
-        return {"status": "ok", "skills_written": written,
-                "candidates": len(skills)}
+        return {"status": "ok", "skills_written": written, "candidates": len(skills)}
     except Exception as exc:  # non-fatal: session-end must continue
         logger.warning("procedural skill mining failed: %s", exc)
-        return {"status": "error", "reason": f"{type(exc).__name__}: {exc}",
-                "skills_written": 0}
+        return {
+            "status": "error",
+            "reason": f"{type(exc).__name__}: {exc}",
+            "skills_written": 0,
+        }

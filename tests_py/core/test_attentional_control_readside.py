@@ -42,10 +42,20 @@ def test_salient_candidate_gets_bottom_up_capture():
     # No query overlap for either, but m2 is far more salient (importance +
     # |valence|) → bottom-up salience lifts its attention weight and score.
     cands = [
-        {"memory_id": 1, "content": "alpha beta", "score": 1.0,
-         "importance": 0.0, "emotional_valence": 0.0},
-        {"memory_id": 2, "content": "gamma delta", "score": 1.0,
-         "importance": 1.0, "emotional_valence": 0.9},
+        {
+            "memory_id": 1,
+            "content": "alpha beta",
+            "score": 1.0,
+            "importance": 0.0,
+            "emotional_valence": 0.0,
+        },
+        {
+            "memory_id": 2,
+            "content": "gamma delta",
+            "score": 1.0,
+            "importance": 1.0,
+            "emotional_valence": 0.9,
+        },
     ]
     out = rp.attentional_focus_rerank(cands, "totally unrelated cue")
     assert out[0]["memory_id"] == 2
@@ -70,10 +80,20 @@ def test_no_signal_is_identity_scores_and_order():
 def test_uniform_salience_and_no_query_is_identity():
     # Equal salience across items with no query match → uniform distribution.
     before = [
-        {"memory_id": 1, "content": "one", "score": 0.9,
-         "importance": 0.5, "emotional_valence": 0.1},
-        {"memory_id": 2, "content": "two", "score": 0.7,
-         "importance": 0.5, "emotional_valence": 0.1},
+        {
+            "memory_id": 1,
+            "content": "one",
+            "score": 0.9,
+            "importance": 0.5,
+            "emotional_valence": 0.1,
+        },
+        {
+            "memory_id": 2,
+            "content": "two",
+            "score": 0.7,
+            "importance": 0.5,
+            "emotional_valence": 0.1,
+        },
     ]
     out = rp.attentional_focus_rerank(copy.deepcopy(before), "")  # empty query
     assert [c["memory_id"] for c in out] == [1, 2]

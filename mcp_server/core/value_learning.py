@@ -66,6 +66,7 @@ VALUE_MAX: float = 1.0
 # 0.5 = "unknown, assume average" — the same neutral the DA-RPE uses.
 VALUE_PRIOR: float = 0.5
 
+
 # Reward mapping — IDENTICAL to neuromodulation_channels.compute_dopamine_rpe so
 # the value layer and the dopamine signal never disagree on what "reward" means.
 # Kept as a local constant set rather than an import to keep this module free of
@@ -181,7 +182,7 @@ def assign_credit(
         current = _current_value(mem)
         importance = _clamp01(mem.get("importance", 0.5), default=0.5)
         reward = outcome_to_reward(outcome_positive, outcome_negative, importance)
-        eligibility = trace_lambda ** rank
+        eligibility = trace_lambda**rank
         new_value, delta = td_update(
             current, reward, alpha=alpha, eligibility=eligibility
         )
@@ -212,7 +213,9 @@ def retention_bonus(value: float, *, max_bonus: float = 0.5) -> float:
     return 1.0 + max_bonus * max(0.0, (v - VALUE_PRIOR) / (VALUE_MAX - VALUE_PRIOR))
 
 
-def retrieval_priority(base_score: float, value: float, *, weight: float = 0.15) -> float:
+def retrieval_priority(
+    base_score: float, value: float, *, weight: float = 0.15
+) -> float:
     """Blend a learned value into a retrieval relevance score.
 
     ``score' = base_score · (1 + weight·(value − prior))`` — a memory worth more

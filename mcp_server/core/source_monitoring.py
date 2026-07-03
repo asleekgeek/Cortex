@@ -56,10 +56,10 @@ import re
 from dataclasses import dataclass, field
 
 # ── Source attributions ─────────────────────────────────────────────────────
-PERCEIVED = "perceived"   # externally grounded (file/url/commit/citation/tool)
-TOLD = "told"             # user-stated / instruction
-INFERRED = "inferred"     # self-generated reasoning, no external grounding
-UNKNOWN = "unknown"       # no discriminating signal either way
+PERCEIVED = "perceived"  # externally grounded (file/url/commit/citation/tool)
+TOLD = "told"  # user-stated / instruction
+INFERRED = "inferred"  # self-generated reasoning, no external grounding
+UNKNOWN = "unknown"  # no discriminating signal either way
 
 # Map an attribution to the store's evidence-tag vocabulary (observed/stated/
 # inferred), so C1 output is commensurate with the tags the rest of the system
@@ -77,7 +77,9 @@ EVIDENCE_TAG = {
 # source leaves; mirrors claim_extractor._extract_evidence kinds).
 _URL_RE = re.compile(r"https?://\S+")
 _DOI_RE = re.compile(r"\b10\.\d{4,9}/\S+\b", re.IGNORECASE)
-_FILE_RE = re.compile(r"\b[\w./-]+\.(?:py|js|ts|md|json|yaml|yml|toml|tex|sql|txt|rs|go|java|c|cpp|h)\b")
+_FILE_RE = re.compile(
+    r"\b[\w./-]+\.(?:py|js|ts|md|json|yaml|yml|toml|tex|sql|txt|rs|go|java|c|cpp|h)\b"
+)
 _SHA_RE = re.compile(r"\b[0-9a-f]{7,40}\b")
 _TOOL_RE = re.compile(
     r"\b(?:tool[_\s]?output|stdout|stderr|returned|the output (?:was|shows)|"
@@ -163,7 +165,9 @@ def extract_grounding(content: str) -> list[str]:
 
 
 # ── The source-monitoring decision (Johnson 1993 heuristic branch) ──────────
-def classify_source(content: str, *, source_field: str | None = None) -> SourceJudgement:
+def classify_source(
+    content: str, *, source_field: str | None = None
+) -> SourceJudgement:
     """Attribute a memory's epistemic origin from its text (+ optional ingestion
     ``source`` field). Feature-weighted heuristic judgement (Johnson 1993).
 
@@ -272,9 +276,7 @@ def promotion_confabulation_risk(cluster_memories: list[dict]) -> bool:
     """
     if not cluster_memories:
         return False
-    combined = " ".join(
-        str(m.get("content", "") or "") for m in cluster_memories
-    )
+    combined = " ".join(str(m.get("content", "") or "") for m in cluster_memories)
     return violates_source_claim(combined, "observed")
 
 

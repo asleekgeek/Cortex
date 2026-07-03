@@ -35,10 +35,12 @@ def test_normalize_collapses_consecutive_duplicates():
 
 
 def test_normalize_rich_form_infers_target_kind():
-    steps = normalize_actions([
-        {"tool": "edit_file", "target": "tests_py/core/test_x.py"},
-        {"tool": "bash", "target": "pytest"},
-    ])
+    steps = normalize_actions(
+        [
+            {"tool": "edit_file", "target": "tests_py/core/test_x.py"},
+            {"tool": "bash", "target": "pytest"},
+        ]
+    )
     assert steps[0].target_kind == "test"
     assert steps[0].key() == "edit_file:test"
 
@@ -59,9 +61,16 @@ def test_skill_id_stable_and_order_sensitive():
 
 
 # ── Mining (Graybiel chunking) ──────────────────────────────────────────────
-def _session(tools, outcome="success", domain="cortex", cwd="/repo/cortex", ts="2026-07-01"):
-    return {"tools_used": tools, "outcome": outcome, "domain": domain,
-            "cwd": cwd, "timestamp": ts}
+def _session(
+    tools, outcome="success", domain="cortex", cwd="/repo/cortex", ts="2026-07-01"
+):
+    return {
+        "tools_used": tools,
+        "outcome": outcome,
+        "domain": domain,
+        "cwd": cwd,
+        "timestamp": ts,
+    }
 
 
 def test_mine_requires_min_support():
@@ -93,7 +102,9 @@ def test_mine_counts_sequence_once_per_session():
         _session(["a", "b", "c", "a", "b", "c"]) for _ in range(MIN_SKILL_SUPPORT)
     ]
     skills = mine_skills(sessions)
-    ab = next((s for s in skills if tuple(s.as_dict()["sequence"])[:2] == ("a", "b")), None)
+    ab = next(
+        (s for s in skills if tuple(s.as_dict()["sequence"])[:2] == ("a", "b")), None
+    )
     assert ab is not None
     # occurrences == number of sessions, not number of in-session repeats
     assert ab.occurrences == MIN_SKILL_SUPPORT
@@ -120,19 +131,27 @@ def test_reinforce_moves_toward_reward():
 
 
 def test_reinforce_failure_decreases_proficiency():
-    s = ProceduralSkill(sequence=(ActionStep("a"), ActionStep("b")),
-                        proficiency=0.9, occurrences=4, success_count=4)
+    s = ProceduralSkill(
+        sequence=(ActionStep("a"), ActionStep("b")),
+        proficiency=0.9,
+        occurrences=4,
+        success_count=4,
+    )
     s1 = reinforce(s, "failure")
     assert s1.proficiency < 0.9
     assert s1.failure_count == 1
 
 
 def test_reinforce_neutral_outcome_is_noop_on_rate():
-    s = ProceduralSkill(sequence=(ActionStep("a"), ActionStep("b")),
-                        proficiency=0.7, occurrences=3, success_count=2)
+    s = ProceduralSkill(
+        sequence=(ActionStep("a"), ActionStep("b")),
+        proficiency=0.7,
+        occurrences=3,
+        success_count=2,
+    )
     s1 = reinforce(s, None)
-    assert s1.proficiency == 0.7          # rate unchanged
-    assert s1.occurrences == 4            # but the observation is counted
+    assert s1.proficiency == 0.7  # rate unchanged
+    assert s1.occurrences == 4  # but the observation is counted
     assert s1.success_count == 2
 
 
@@ -142,8 +161,10 @@ def test_habitual_graduation():
         s = reinforce(s, "success")
     assert s.is_habitual
     # one fewer success is not yet habitual
-    s2 = ProceduralSkill(sequence=(ActionStep("a"), ActionStep("b")),
-                        success_count=HABITUAL_THRESHOLD - 1)
+    s2 = ProceduralSkill(
+        sequence=(ActionStep("a"), ActionStep("b")),
+        success_count=HABITUAL_THRESHOLD - 1,
+    )
     assert not s2.is_habitual
 
 
@@ -156,14 +177,23 @@ def test_context_signature_domain_and_leaf():
 def test_match_filters_low_proficiency():
     reliable = ProceduralSkill(
         sequence=(ActionStep("read_file"), ActionStep("edit_file")),
-        context_signature="cortex", occurrences=6, success_count=6,
-        proficiency=0.9)
+        context_signature="cortex",
+        occurrences=6,
+        success_count=6,
+        proficiency=0.9,
+    )
     flaky = ProceduralSkill(
         sequence=(ActionStep("x"), ActionStep("y")),
-        context_signature="cortex", occurrences=6, success_count=1,
-        proficiency=0.2)
-    out = match_skills({"domain": "cortex", "cwd": "/repo/cortex"},
-                       [reliable, flaky], min_proficiency=0.5)
+        context_signature="cortex",
+        occurrences=6,
+        success_count=1,
+        proficiency=0.2,
+    )
+    out = match_skills(
+        {"domain": "cortex", "cwd": "/repo/cortex"},
+        [reliable, flaky],
+        min_proficiency=0.5,
+    )
     ids = {m["skill"]["skill_id"] for m in out}
     assert reliable.skill_id in ids
     assert flaky.skill_id not in ids
@@ -172,26 +202,35 @@ def test_match_filters_low_proficiency():
 def test_match_prefers_context_overlap():
     here = ProceduralSkill(
         sequence=(ActionStep("a"), ActionStep("b")),
-        context_signature="cortex|cortex", occurrences=5, success_count=5,
-        proficiency=0.9)
+        context_signature="cortex|cortex",
+        occurrences=5,
+        success_count=5,
+        proficiency=0.9,
+    )
     elsewhere = ProceduralSkill(
         sequence=(ActionStep("c"), ActionStep("d")),
-        context_signature="otherproj|otherproj", occurrences=5, success_count=5,
-        proficiency=0.9)
-    out = match_skills({"domain": "cortex", "cwd": "/repo/cortex"},
-                       [elsewhere, here])
+        context_signature="otherproj|otherproj",
+        occurrences=5,
+        success_count=5,
+        proficiency=0.9,
+    )
+    out = match_skills({"domain": "cortex", "cwd": "/repo/cortex"}, [elsewhere, here])
     assert out[0]["skill"]["skill_id"] == here.skill_id
 
 
 def test_match_priming_bonus():
     skill = ProceduralSkill(
         sequence=(ActionStep("read_file"), ActionStep("edit_file")),
-        context_signature="cortex", occurrences=5, success_count=5,
-        proficiency=0.9)
+        context_signature="cortex",
+        occurrences=5,
+        success_count=5,
+        proficiency=0.9,
+    )
     primed = match_skills(
         {"domain": "cortex", "cwd": "/repo/cortex", "tools_used": ["read_file"]},
-        [skill])
+        [skill],
+    )
     unprimed = match_skills(
-        {"domain": "cortex", "cwd": "/repo/cortex", "tools_used": ["grep"]},
-        [skill])
+        {"domain": "cortex", "cwd": "/repo/cortex", "tools_used": ["grep"]}, [skill]
+    )
     assert primed[0]["score"] > unprimed[0]["score"]

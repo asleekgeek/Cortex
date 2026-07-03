@@ -108,7 +108,10 @@ def test_deprecate_grows_tag_no_delete(store):
     # Memory still present; only effective strength suppressed.
     assert row["content"] == "reversibly suppressed"
     assert not row["is_stale"]
-    assert ext.effective_strength(row["heat_base"], row["extinction_strength"]) < row["heat_base"]
+    assert (
+        ext.effective_strength(row["heat_base"], row["extinction_strength"])
+        < row["heat_base"]
+    )
 
 
 def test_spontaneous_recovery_returns_association(store):
@@ -131,9 +134,9 @@ def test_reinstate_full_restore(store):
     store.update_memory_extinction(mid, out.extinction_strength)
     row = store.get_memory(mid)
     # Original effective strength restored exactly.
-    assert ext.effective_strength(row["heat_base"], row["extinction_strength"]) == pytest.approx(
-        row["heat_base"]
-    )
+    assert ext.effective_strength(
+        row["heat_base"], row["extinction_strength"]
+    ) == pytest.approx(row["heat_base"])
 
 
 # ── active_forgetting: reversible alternative to is_stale delete ──────────────
@@ -187,5 +190,13 @@ def test_ablation_disables_should_extinguish(monkeypatch):
 def test_ablation_disables_recover_reinstate(store, monkeypatch):
     monkeypatch.setenv("CORTEX_ABLATE_EXTINCTION", "1")
     mem = {"extinction_strength": 0.8, "heat": 0.5}
-    assert compute_extinction_action(mem, operation="recover", hours_elapsed=100).extinction_strength is None
-    assert compute_extinction_action(mem, operation="reinstate").extinction_strength is None
+    assert (
+        compute_extinction_action(
+            mem, operation="recover", hours_elapsed=100
+        ).extinction_strength
+        is None
+    )
+    assert (
+        compute_extinction_action(mem, operation="reinstate").extinction_strength
+        is None
+    )

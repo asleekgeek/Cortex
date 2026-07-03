@@ -23,7 +23,10 @@ class TestBuildFromTriggers:
 
     def test_keyword_trigger_becomes_goal_keywords(self):
         triggers = [
-            {"trigger_type": "keyword_match", "trigger_condition": "refactor recall pipeline"}
+            {
+                "trigger_type": "keyword_match",
+                "trigger_condition": "refactor recall pipeline",
+            }
         ]
         goal = gm.build_goal_from_triggers(triggers)
         assert goal.is_active
@@ -43,7 +46,9 @@ class TestBuildFromTriggers:
         assert "fix" in goal.keywords
 
     def test_entity_trigger_becomes_goal_entity_lowercased(self):
-        triggers = [{"trigger_type": "entity_match", "trigger_condition": "PgMemoryStore"}]
+        triggers = [
+            {"trigger_type": "entity_match", "trigger_condition": "PgMemoryStore"}
+        ]
         goal = gm.build_goal_from_triggers(triggers)
         assert "pgmemorystore" in goal.entities
 
@@ -107,7 +112,9 @@ class TestBuildFromTask:
 
     def test_empty_task_yields_empty_goal(self):
         assert gm.build_goal_from_task("") is gm.EMPTY_GOAL
-        assert gm.build_goal_from_task("   ", entities=[], directory="") is gm.EMPTY_GOAL
+        assert (
+            gm.build_goal_from_task("   ", entities=[], directory="") is gm.EMPTY_GOAL
+        )
 
 
 # ── Goal relevance scoring ────────────────────────────────────────────────────
@@ -136,16 +143,15 @@ class TestGoalRelevance:
 
     def test_entity_overlap_scores(self):
         goal = gm.build_goal_from_task("work", entities=["PgMemoryStore"])
-        assert gm.goal_relevance(
-            goal, "some text", entities=["PgMemoryStore", "Other"]
-        ) == 1.0
+        assert (
+            gm.goal_relevance(goal, "some text", entities=["PgMemoryStore", "Other"])
+            == 1.0
+        )
         assert gm.goal_relevance(goal, "some text", entities=["Nope"]) == 0.0
 
     def test_directory_match_scores(self):
         goal = gm.build_goal_from_task("work", directory="/repo/core")
-        assert gm.goal_relevance(
-            goal, "x", directory="/repo/core/pg_recall.py"
-        ) == 1.0
+        assert gm.goal_relevance(goal, "x", directory="/repo/core/pg_recall.py") == 1.0
         assert gm.goal_relevance(goal, "x", directory="/elsewhere") == 0.0
 
     def test_relevance_is_max_across_families(self):

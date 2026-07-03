@@ -16,12 +16,15 @@ def _fill(buf, contents):
 
 def test_focus_returns_query_relevant_items_first():
     buf = SensoryBuffer(capacity=50)
-    _fill(buf, [
-        "grocery list for the weekend",
-        "the memory decay half-life needs tuning",
-        "random unrelated chatter",
-        "decay curve thermodynamics review",
-    ])
+    _fill(
+        buf,
+        [
+            "grocery list for the weekend",
+            "the memory decay half-life needs tuning",
+            "random unrelated chatter",
+            "decay curve thermodynamics review",
+        ],
+    )
     alloc = buf.focus("memory decay half-life", capacity=2)
     assert len(alloc.focus) == 2
     assert "decay" in alloc.focus[0]["content"]

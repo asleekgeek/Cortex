@@ -153,9 +153,7 @@ def run_cls_cycle(
         # flagged memories are still created (and tagged 'confabulation-risk' in
         # _create_semantic_memories). 0 when Mechanism.CONFABULATION_GATE is
         # ablated. Additive telemetry, not a mutational counter.
-        "confabulation_risk_promotions": plan.get(
-            "confabulation_risk_promotions", 0
-        ),
+        "confabulation_risk_promotions": plan.get("confabulation_risk_promotions", 0),
     }
 
     reason = _classify_cls_zero_reason(stats, episodic, embeddings, qualifying_count)

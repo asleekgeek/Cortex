@@ -95,7 +95,7 @@ from mcp_server.core.emotional_tagging import (
 # 1.0. Error rate is weighted highest — a session that keeps erroring is the
 # clearest stress signal; urgency/deadline language and failure-marker density
 # are secondary lexical proxies.
-STRESS_W_ERROR = 0.5    # weight on the caller-supplied error rate
+STRESS_W_ERROR = 0.5  # weight on the caller-supplied error rate
 STRESS_W_URGENCY = 0.25  # weight on urgency/deadline lexical density
 STRESS_W_FAILURE = 0.25  # weight on failure-marker lexical density
 

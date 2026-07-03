@@ -78,7 +78,10 @@ class TestAblationGuard:
         try:
             assert is_mechanism_disabled(Mechanism.FORWARD_MODEL)
             ablated = compute_hierarchical_novelty(
-                _SURPRISE, ["x"], set(), _features(_HISTORY),
+                _SURPRISE,
+                ["x"],
+                set(),
+                _features(_HISTORY),
                 include_forward_model=True,
             )
         finally:

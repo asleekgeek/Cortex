@@ -386,7 +386,9 @@ class SqliteMemoryStore(
         except Exception:
             pass
 
-    def update_memory_extinction(self, memory_id: int, extinction_strength: float) -> None:
+    def update_memory_extinction(
+        self, memory_id: int, extinction_strength: float
+    ) -> None:
         """Persist a memory's reversible inhibitory extinction tag (E2).
 
         Writes ONLY the ``extinction_strength`` scalar in [0,1]; the memory's

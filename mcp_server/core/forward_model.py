@@ -65,7 +65,7 @@ Pure business logic -- no I/O.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # ── Constants ───────────────────────────────────────────────────────────────
 # Fixed correction gain (alpha) of the estimate-update EMA: the fraction of the
@@ -161,7 +161,9 @@ def run_forward_model(
     if not trajectory:
         return ForwardModelState(estimate=0.0)
 
-    state = ForwardModelState(estimate=float(trajectory[0]), corrected=float(trajectory[0]))
+    state = ForwardModelState(
+        estimate=float(trajectory[0]), corrected=float(trajectory[0])
+    )
     for actual in trajectory[1:]:
         pred = predict(state)
         error, corrected = correction(pred, float(actual), gain=gain, deadband=deadband)

@@ -37,7 +37,7 @@ def test_value_nudge_does_not_override_strong_match():
 
 def test_missing_value_is_noop_for_that_candidate():
     cands = [
-        {"memory_id": 1, "score": 1.0},            # no value key
+        {"memory_id": 1, "score": 1.0},  # no value key
         {"memory_id": 2, "score": 1.0, "value": 0.9},
     ]
     out = rp.value_priority_rerank(cands)

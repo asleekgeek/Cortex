@@ -224,11 +224,7 @@ def familiarity_triage(
     from mcp_server.core import dual_process_retrieval as dpr
 
     # Ablation / degenerate guards: identity triage (full recollection runs).
-    if (
-        is_mechanism_disabled(Mechanism.DUAL_PROCESS)
-        or not candidates
-        or q_emb is None
-    ):
+    if is_mechanism_disabled(Mechanism.DUAL_PROCESS) or not candidates or q_emb is None:
         return dpr.TriageResult(
             candidates=candidates,
             signal=dpr.assess_familiarity([], method=dpr.METHOD_EMPTY),

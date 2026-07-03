@@ -189,5 +189,7 @@ def test_outcome_as_dict_roundtrip():
 
 
 def test_zero_novelty_stays_zero():
-    out = habituate_novelty(0.0, "x", repeat_count=0, salience=1.0, hours_since_salient=0.0)
+    out = habituate_novelty(
+        0.0, "x", repeat_count=0, salience=1.0, hours_since_salient=0.0
+    )
     assert out.modulated_novelty == 0.0

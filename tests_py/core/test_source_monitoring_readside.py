@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import os
 
-import pytest
 
 from mcp_server.core import consolidation_engine as ce
 from mcp_server.core import source_monitoring as sm
@@ -57,20 +56,23 @@ class TestPromotionGate:
 
 class TestRecallRiskHelper:
     def test_perceived_claim_inferred_content_is_risk(self):
-        assert sm.recall_confabulation_risk(
-            "I think it probably seems wrong", "perceived"
-        ) is True
+        assert (
+            sm.recall_confabulation_risk("I think it probably seems wrong", "perceived")
+            is True
+        )
 
     def test_inferred_claim_never_flagged(self):
         # A memory stored as inferred makes no external-grounding promise.
-        assert sm.recall_confabulation_risk(
-            "I think it probably seems wrong", "inferred"
-        ) is False
+        assert (
+            sm.recall_confabulation_risk("I think it probably seems wrong", "inferred")
+            is False
+        )
 
     def test_perceived_claim_with_grounding_not_flagged(self):
-        assert sm.recall_confabulation_risk(
-            "defined in foo.py line 10", "perceived"
-        ) is False
+        assert (
+            sm.recall_confabulation_risk("defined in foo.py line 10", "perceived")
+            is False
+        )
 
     def test_unknown_claim_never_flagged(self):
         assert sm.recall_confabulation_risk("anything at all", "unknown") is False
@@ -107,7 +109,9 @@ class TestRecallSurfacing:
         annotate_source_attribution(results)
         # attribution passthrough
         assert [r["source_attribution"] for r in results] == [
-            "perceived", "perceived", "inferred"
+            "perceived",
+            "perceived",
+            "inferred",
         ]
         # only the perceived-but-inferred hit is flagged
         assert [r["confabulation_risk"] for r in results] == [True, False, False]
@@ -136,7 +140,9 @@ class TestRecallSurfacing:
             annotate_source_attribution(results)
             # attribution still surfaced (pure provenance passthrough)
             assert [r["source_attribution"] for r in results] == [
-                "perceived", "perceived", "inferred"
+                "perceived",
+                "perceived",
+                "inferred",
             ]
             # but the gate contributes nothing
             assert all(r["confabulation_risk"] is False for r in results)
@@ -156,13 +162,17 @@ def _cluster(contents):
 
 class TestConsolidationGate:
     def test_inferred_promotion_flagged_not_dropped(self):
-        pattern = _cluster([
-            "I think the module is probably broken",
-            "It seems the flow maybe loops forever",
-            "This suggests the guard is likely missing",
-        ])
+        pattern = _cluster(
+            [
+                "I think the module is probably broken",
+                "It seems the flow maybe loops forever",
+                "This suggests the guard is likely missing",
+            ]
+        )
         result = ce._try_abstract_pattern(
-            pattern, existing_semantics=[], similarity_fn=lambda a, b: 0.0,
+            pattern,
+            existing_semantics=[],
+            similarity_fn=lambda a, b: 0.0,
             dedup_threshold=0.85,
         )
         # STILL abstracted (non-fatal) AND flagged.
@@ -170,12 +180,16 @@ class TestConsolidationGate:
         assert result["confabulation_risk"] is True
 
     def test_grounded_promotion_not_flagged(self):
-        pattern = _cluster([
-            "The handler is defined in handler.py line 22",
-            "The config is read from config.yaml",
-        ])
+        pattern = _cluster(
+            [
+                "The handler is defined in handler.py line 22",
+                "The config is read from config.yaml",
+            ]
+        )
         result = ce._try_abstract_pattern(
-            pattern, existing_semantics=[], similarity_fn=lambda a, b: 0.0,
+            pattern,
+            existing_semantics=[],
+            similarity_fn=lambda a, b: 0.0,
             dedup_threshold=0.85,
         )
         assert result is not None
@@ -183,18 +197,24 @@ class TestConsolidationGate:
 
     def test_process_patterns_counts_risky_promotions(self):
         patterns = [
-            _cluster([
-                "I think A is probably B",
-                "It seems A maybe equals B",
-                "This suggests A is likely B",
-            ]),
-            _cluster([
-                "X is in x.py line 1",
-                "Y is in y.py line 2",
-            ]),
+            _cluster(
+                [
+                    "I think A is probably B",
+                    "It seems A maybe equals B",
+                    "This suggests A is likely B",
+                ]
+            ),
+            _cluster(
+                [
+                    "X is in x.py line 1",
+                    "Y is in y.py line 2",
+                ]
+            ),
         ]
         plan = ce._process_patterns(
-            patterns, existing_semantics=[], similarity_fn=lambda a, b: 0.0,
+            patterns,
+            existing_semantics=[],
+            similarity_fn=lambda a, b: 0.0,
             dedup_threshold=0.85,
         )
         # both abstractions emitted (nothing dropped by the gate)
@@ -205,13 +225,17 @@ class TestConsolidationGate:
     def test_ablation_disables_promotion_flag(self):
         os.environ["CORTEX_ABLATE_CONFABULATION_GATE"] = "1"
         try:
-            pattern = _cluster([
-                "I think the module is probably broken",
-                "It seems the flow maybe loops forever",
-                "This suggests the guard is likely missing",
-            ])
+            pattern = _cluster(
+                [
+                    "I think the module is probably broken",
+                    "It seems the flow maybe loops forever",
+                    "This suggests the guard is likely missing",
+                ]
+            )
             result = ce._try_abstract_pattern(
-                pattern, existing_semantics=[], similarity_fn=lambda a, b: 0.0,
+                pattern,
+                existing_semantics=[],
+                similarity_fn=lambda a, b: 0.0,
                 dedup_threshold=0.85,
             )
             # same abstraction is still produced, but never flagged when ablated
@@ -223,13 +247,19 @@ class TestConsolidationGate:
     def test_ablation_zeroes_process_patterns_count(self):
         os.environ["CORTEX_ABLATE_CONFABULATION_GATE"] = "1"
         try:
-            patterns = [_cluster([
-                "I think A is probably B",
-                "It seems A maybe equals B",
-                "This suggests A is likely B",
-            ])]
+            patterns = [
+                _cluster(
+                    [
+                        "I think A is probably B",
+                        "It seems A maybe equals B",
+                        "This suggests A is likely B",
+                    ]
+                )
+            ]
             plan = ce._process_patterns(
-                patterns, existing_semantics=[], similarity_fn=lambda a, b: 0.0,
+                patterns,
+                existing_semantics=[],
+                similarity_fn=lambda a, b: 0.0,
                 dedup_threshold=0.85,
             )
             assert len(plan["new_semantics"]) == 1  # membership unchanged

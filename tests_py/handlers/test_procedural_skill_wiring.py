@@ -30,14 +30,20 @@ class _FakeStore:
 
     def get_procedural_skills(self, min_proficiency: float = 0.0, limit: int = 500):
         return [
-            r for r in self.skills.values()
+            r
+            for r in self.skills.values()
             if r.get("proficiency", 0.0) >= min_proficiency
         ][:limit]
 
 
 def _log_entry(tools, score=1.0, cwd="/repo/cortex", domain="cortex", ts="2026-07-01"):
-    return {"toolsUsed": tools, "score": score, "cwd": cwd,
-            "domainId": domain, "timestamp": ts}
+    return {
+        "toolsUsed": tools,
+        "score": score,
+        "cwd": cwd,
+        "domainId": domain,
+        "timestamp": ts,
+    }
 
 
 # ── Capture writer ──────────────────────────────────────────────────────────
@@ -77,8 +83,16 @@ def test_session_entry_persists_score():
     from mcp_server.handlers.record_session_end import _build_session_entry
 
     entry = _build_session_entry(
-        "sid", "cortex", "/repo/cortex", None, 1000, 5,
-        ["read_file", "edit_file"], "general", ["kw"], score=0.73,
+        "sid",
+        "cortex",
+        "/repo/cortex",
+        None,
+        1000,
+        5,
+        ["read_file", "edit_file"],
+        "general",
+        ["kw"],
+        score=0.73,
     )
     assert entry["score"] == 0.73
     assert entry["toolsUsed"] == ["read_file", "edit_file"]
@@ -96,8 +110,13 @@ def test_writer_mines_and_upserts_recurring_skill():
     assert "read_file>grep>edit_file>bash" in seqs
     # Every stored row carries the aggregate fields.
     any_row = next(iter(store.skills.values()))
-    assert {"skill_id", "action_sequence", "proficiency", "occurrences",
-            "is_habitual"} <= set(any_row)
+    assert {
+        "skill_id",
+        "action_sequence",
+        "proficiency",
+        "occurrences",
+        "is_habitual",
+    } <= set(any_row)
 
 
 def test_writer_skipped_on_thin_history():
@@ -121,22 +140,34 @@ def test_writer_is_non_fatal_on_store_error():
 
 # ── Recall handler ──────────────────────────────────────────────────────────
 def test_recall_rebuilds_and_matches(monkeypatch):
-    rows = [{
-        "skill_id": "abc123",
-        "action_sequence": "read_file>grep>edit_file",
-        "context_signature": "cortex|cortex",
-        "occurrences": 6, "success_count": 6, "failure_count": 0,
-        "proficiency": 0.9, "is_habitual": True, "last_seen": "2026-07-01",
-    }]
+    rows = [
+        {
+            "skill_id": "abc123",
+            "action_sequence": "read_file>grep>edit_file",
+            "context_signature": "cortex|cortex",
+            "occurrences": 6,
+            "success_count": 6,
+            "failure_count": 0,
+            "proficiency": 0.9,
+            "is_habitual": True,
+            "last_seen": "2026-07-01",
+        }
+    ]
     store = _FakeStore(rows)
     monkeypatch.setattr(
         "mcp_server.infrastructure.memory_store.get_shared_store",
         lambda: store,
     )
-    out = asyncio.run(recall_skills.handler(
-        {"domain": "cortex", "cwd": "/repo/cortex",
-         "recent_tools": ["read_file"], "top_k": 5}
-    ))
+    out = asyncio.run(
+        recall_skills.handler(
+            {
+                "domain": "cortex",
+                "cwd": "/repo/cortex",
+                "recent_tools": ["read_file"],
+                "top_k": 5,
+            }
+        )
+    )
     assert out["count"] == 1
     top = out["skills"][0]
     assert top["skill"]["sequence"] == ["read_file", "grep", "edit_file"]
@@ -144,20 +175,29 @@ def test_recall_rebuilds_and_matches(monkeypatch):
 
 
 def test_recall_filters_low_proficiency(monkeypatch):
-    rows = [{
-        "skill_id": "weak1", "action_sequence": "a>b",
-        "context_signature": "cortex", "occurrences": 5, "success_count": 1,
-        "failure_count": 4, "proficiency": 0.2, "is_habitual": False,
-        "last_seen": "2026-07-01",
-    }]
+    rows = [
+        {
+            "skill_id": "weak1",
+            "action_sequence": "a>b",
+            "context_signature": "cortex",
+            "occurrences": 5,
+            "success_count": 1,
+            "failure_count": 4,
+            "proficiency": 0.2,
+            "is_habitual": False,
+            "last_seen": "2026-07-01",
+        }
+    ]
     store = _FakeStore(rows)
     monkeypatch.setattr(
         "mcp_server.infrastructure.memory_store.get_shared_store",
         lambda: store,
     )
-    out = asyncio.run(recall_skills.handler(
-        {"domain": "cortex", "cwd": "/repo/cortex", "min_proficiency": 0.5}
-    ))
+    out = asyncio.run(
+        recall_skills.handler(
+            {"domain": "cortex", "cwd": "/repo/cortex", "min_proficiency": 0.5}
+        )
+    )
     assert out["count"] == 0
 
 
