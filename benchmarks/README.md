@@ -6,27 +6,63 @@ through `mcp_server.core.memory_ingest`, retrieval goes through the same
 PL/pgSQL `recall_memories()` + FlashRank reranking that serves live MCP
 calls. There is no benchmark-only retriever.
 
-## One-command reproduction (LongMemEval)
+## One command reproduces everything
+
+There is **one** entry point — `make reproduce` (→ `benchmarks/reproduce.sh`).
+Every other target is a thin scope-narrowed shortcut into that same script, so
+any invocation runs the identical clean-DB / production-recall pipeline and
+yields the same numbers. Take it, hit play, reproduce.
 
 Requirements: Docker, [uv](https://docs.astral.sh/uv/), ~1.5 GB free disk
-(dataset + embedding models), no API keys.
+(datasets + embedding models), no API keys.
 
 ```bash
-make longmemeval-smoke   # 10 questions, a few minutes — verifies the harness
-make longmemeval         # full 500 questions, ~40 min on a laptop
+make reproduce-smoke     # ALL benchmarks + ablation sweep, tiny limits — a few minutes
+make reproduce           # ALL benchmarks + ablation sweep, full — several hours
 ```
 
-The harness downloads the official LongMemEval-S dataset from the
-authors' Hugging Face repository (sha256-pinned), provisions an
-ephemeral PostgreSQL + pgvector container on port 55432 (it never
-touches an existing Cortex install), runs the benchmark, prints the
-Recall@K / MRR table, and removes the container. `KEEP_DB=1 make
-longmemeval` keeps the database for inspection. Every run also emits a
-reproducibility manifest (commit, config, dataset hash) via
-`benchmarks/_repro.py`.
+`make reproduce` provisions a single ephemeral PostgreSQL + pgvector container
+on port 55432 (it never touches an existing Cortex install), then against that
+one clean database:
 
-Measured wall-clock for the full run: **39.6 min** on Apple Silicon with
-CPU embeddings (`benchmarks/results/a3_longmemeval_post_refactor.md`).
+1. runs each retrieval benchmark through the production `recall_memories()`
+   path — **LongMemEval-S, LoCoMo, BEAM-100K**;
+2. runs the **ablation sweep** (baseline + the 13-mechanism v4.0 group) through
+   the *same* harnesses via `benchmarks/lib/ablation_runner.py`;
+3. writes every result as JSON under `benchmarks/results/repro/<timestamp>/`
+   with a `MANIFEST.json` (git sha, dataset sha, image, package versions),
+   prints one consolidated table, and tears the container down.
+
+Each harness self-cleans (`BenchmarkDB` purges `is_benchmark` rows on open and
+deletes its own on close), so the phases are independent and the whole run is
+deterministic.
+
+**Scoping flags** (compose; anything else passes through to the harnesses):
+
+| Flag | Effect |
+|---|---|
+| `--only longmemeval,locomo,beam` | run only these benchmarks |
+| `--no-ablation` / `--ablation-only` | skip the sweep / skip the plain benchmarks |
+| `--ablate-on locomo\|beam\|longmemeval` | which benchmark the sweep drives (default `locomo`) |
+| `--quick` | small per-benchmark limits (fast end-to-end check) |
+| `--limit N` | explicit per-benchmark cap |
+| `--keep-db` | leave the container up for inspection |
+
+```bash
+make reproduce ARGS=...           # or call the script directly:
+bash benchmarks/reproduce.sh --only locomo,beam --ablate-on beam
+bash benchmarks/reproduce.sh --only longmemeval --no-ablation   # == make longmemeval
+```
+
+Scoped shortcuts still exist and all delegate to `reproduce.sh`:
+
+```bash
+make longmemeval          # LongMemEval-S only, no ablation (~40 min)
+make longmemeval-smoke    # 10-question sanity run
+```
+
+Measured wall-clock for the full LongMemEval run alone: **39.6 min** on Apple
+Silicon with CPU embeddings (`benchmarks/results/a3_longmemeval_post_refactor.md`).
 
 ## What the numbers mean (metric scope)
 
