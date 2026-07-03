@@ -46,8 +46,8 @@ class TestMain:
             # Should call mcp.run with stdio transport
             mock_run.assert_called_once_with(transport="stdio")
 
-    def test_standalone_baseline_is_43_tools(self):
-        """With no upstream available, exactly the 43 standalone tools register.
+    def test_standalone_baseline_is_44_tools(self):
+        """With no upstream available, exactly the 44 standalone tools register.
 
         The 3 upstream-integration tools (ingest_codebase, change_impact,
         ingest_prd) MUST NOT be advertised — every advertised tool then works
@@ -80,20 +80,20 @@ class TestMain:
         assert "query_workflow_graph" not in names
         # The upstream-integration tools are gated OFF.
         assert names.isdisjoint(_UPSTREAM_TOOLS)
-        assert len(names) == 43
+        assert len(names) == 44
 
-    def test_with_upstreams_registers_46_tools(self):
+    def test_with_upstreams_registers_47_tools(self):
         """When both upstreams are available, the 3 integration tools register."""
         names = _tool_names(codebase=True, prd=True)
         assert _UPSTREAM_TOOLS <= names
-        assert len(names) == 46
+        assert len(names) == 47
 
     def test_codebase_only_adds_two_tools(self):
         """codebase upstream gates ingest_codebase + change_impact together."""
         names = _tool_names(codebase=True, prd=False)
         assert {"ingest_codebase", "change_impact"} <= names
         assert "ingest_prd" not in names
-        assert len(names) == 45
+        assert len(names) == 46
 
     def test_mcp_server_name_and_version(self):
         assert mcp.name == "methodology-agent"
