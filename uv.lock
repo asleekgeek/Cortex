@@ -1234,7 +1234,7 @@ wheels = [
 
 [[package]]
 name = "hypermnesia-mcp"
-version = "3.24.1"
+version = "4.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
@@ -1252,6 +1252,7 @@ benchmarks = [
     { name = "flashrank" },
     { name = "pgvector" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "psycopg-pool" },
     { name = "pymupdf" },
     { name = "sentence-transformers" },
 ]
@@ -1315,6 +1316,7 @@ requires-dist = [
     { name = "pillow", marker = "extra == 'viz-tile'", specifier = ">=10.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'benchmarks'", specifier = ">=3.1" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgresql'", specifier = ">=3.1" },
+    { name = "psycopg-pool", marker = "extra == 'benchmarks'", specifier = ">=3.2" },
     { name = "psycopg-pool", marker = "extra == 'postgresql'", specifier = ">=3.2" },
     { name = "pyarrow", marker = "extra == 'viz-tile'", specifier = ">=15.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
@@ -1324,9 +1326,9 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "pytest-timeout", marker = "extra == 'dev'", specifier = ">=2.3.0" },
-    { name = "sentence-transformers", specifier = ">=2.2.0" },
-    { name = "sentence-transformers", marker = "extra == 'benchmarks'", specifier = ">=2.2.0" },
-    { name = "sentence-transformers", marker = "extra == 'dev'", specifier = ">=2.2.0" },
+    { name = "sentence-transformers", specifier = ">=3.0.0" },
+    { name = "sentence-transformers", marker = "extra == 'benchmarks'", specifier = ">=3.0.0" },
+    { name = "sentence-transformers", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "sqlite-vec", marker = "extra == 'sqlite'", specifier = ">=0.1.1" },
     { name = "tree-sitter", marker = "extra == 'codebase'", specifier = ">=0.24.0,<0.26" },
     { name = "tree-sitter-language-pack", marker = "extra == 'codebase'", specifier = ">=0.24.0,<1.7" },

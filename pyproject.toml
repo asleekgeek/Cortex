@@ -33,7 +33,7 @@ dependencies = [
     # distribution ships full-quality recall by default. The plugin already
     # installs them (scripts/setup.sh, scripts/launcher.py); this closes the
     # gap for the MCPB build (`uv run`). uv.lock pins ST 5.4.1 / flashrank 0.2.10.
-    "sentence-transformers>=2.2.0",
+    "sentence-transformers>=3.0.0",
     "flashrank>=0.2.0",
 ]
 
@@ -93,9 +93,10 @@ viz-tile = [
 ]
 benchmarks = [
     "datasets>=2.14.0",          # HuggingFace dataset loader (BEAM, LoCoMo, LongMemEval)
-    "sentence-transformers>=2.2.0",  # all-MiniLM-L6-v2 embeddings
+    "sentence-transformers>=3.0.0",  # all-MiniLM-L6-v2 embeddings
     "flashrank>=0.2.0",          # cross-encoder reranking (ms-marco-MiniLM-L-12-v2)
     "psycopg[binary]>=3.1",      # PostgreSQL driver
+    "psycopg-pool>=3.2",         # pg_store.py imports ConnectionPool at module level
     "pgvector>=0.3",             # vector similarity in PostgreSQL
     "pymupdf>=1.24.0",           # PDF parsing for some benchmark sources
 ]
@@ -109,7 +110,7 @@ dev = [
     # timeout meant no way to identify the offender. 300s is generous
     # vs current measurements; @pytest.mark.timeout(N) opts out per test.
     "pytest-timeout>=2.3.0",
-    "sentence-transformers>=2.2.0",
+    "sentence-transformers>=3.0.0",
     "networkx>=3.0",
 ]
 

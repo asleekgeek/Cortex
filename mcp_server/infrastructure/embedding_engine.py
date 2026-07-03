@@ -176,11 +176,9 @@ class EmbeddingEngine:
         if self._model is not None or self._unavailable:
             return
         try:
-            import os
-
-            # Collect cache-miss exception types: OSError covers old HF versions;
-            # LocalEntryNotFoundError covers newer huggingface_hub (>=0.22) where
-            # HF_HUB_OFFLINE=1 raises a non-OSError on cache miss.
+            # Collect cache-miss exception types: OSError covers transformers'
+            # config loader; LocalEntryNotFoundError covers huggingface_hub
+            # (>=0.22) which raises a non-OSError on local-only cache miss.
             _cache_miss: tuple[type[Exception], ...] = (OSError,)
             try:
                 from huggingface_hub.errors import LocalEntryNotFoundError
@@ -189,31 +187,27 @@ class EmbeddingEngine:
             except ImportError:
                 pass
 
-            # Set offline mode BEFORE importing sentence_transformers to prevent
-            # unauthenticated HF Hub requests. The import itself initializes
-            # huggingface_hub which checks this env var at module load time.
-            had_offline = os.environ.get("HF_HUB_OFFLINE")
-            os.environ["HF_HUB_OFFLINE"] = "1"
             device = self._resolve_device()
+            from sentence_transformers import SentenceTransformer
+
+            # local_files_only=True keeps the load hermetic (no HF Hub
+            # requests) whenever the model is already cached. It must be
+            # an explicit argument, not the HF_HUB_OFFLINE env var: hub
+            # freezes that env var into module constants at first import,
+            # so the previous unset-env-and-retry fallback still ran
+            # offline, leaving the download path unreachable on a fresh
+            # install (reproduced 2026-07-03, clean-env harness run).
+            # source: kwarg added in sentence-transformers v3.0.0
+            # (absent in v2.3.0 SentenceTransformer.py; pyproject floor
+            # raised to match).
             try:
-                from sentence_transformers import SentenceTransformer
-
-                self._model = SentenceTransformer(self._model_name, device=device)
+                self._model = SentenceTransformer(
+                    self._model_name, device=device, local_files_only=True
+                )
             except _cache_miss:
-                # Model not in local cache — need to download it once
-                if had_offline is None:
-                    del os.environ["HF_HUB_OFFLINE"]
-                else:
-                    os.environ["HF_HUB_OFFLINE"] = had_offline
+                # Model not in local cache — download it once.
                 logger.info("Downloading embedding model: %s", self._model_name)
-                from sentence_transformers import SentenceTransformer
-
                 self._model = SentenceTransformer(self._model_name, device=device)
-            finally:
-                if had_offline is None:
-                    os.environ.pop("HF_HUB_OFFLINE", None)
-                else:
-                    os.environ["HF_HUB_OFFLINE"] = had_offline
 
             # sentence-transformers 5.x renamed get_sentence_embedding_dimension
             # → get_embedding_dimension. Prefer the new name; fall back for <5.
