@@ -19,7 +19,9 @@ from mcp_server.core import source_monitoring as sm
 def store():
     from mcp_server.infrastructure.sqlite_store import SqliteMemoryStore
 
-    path = tempfile.mktemp(suffix=".db")
+    fd, path = tempfile.mkstemp(suffix=".db")
+
+    os.close(fd)
     s = SqliteMemoryStore(path)
     yield s
     try:
