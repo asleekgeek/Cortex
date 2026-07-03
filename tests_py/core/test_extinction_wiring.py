@@ -138,28 +138,32 @@ def test_reinstate_full_restore(store):
 
 # ── active_forgetting: reversible alternative to is_stale delete ──────────────
 def test_should_extinguish_under_pressure():
-    # High chronic interference on a labile memory -> extinction warranted.
+    # Sustained accumulated pressure above the accumulation threshold ->
+    # extinction warranted (mirrors is_permanent_forgetting's accum test).
+    accum = active_forgetting.PERMANENT_ACCUM_THRESHOLD + 0.5
     assert active_forgetting.should_extinguish(
-        "labile", chronic_interference=1.0, is_pinned=False, recently_active=False
+        accum, is_pinned=False, recently_active=False
     )
 
 
 def test_should_extinguish_exemptions():
+    accum = active_forgetting.PERMANENT_ACCUM_THRESHOLD + 0.5
     assert not active_forgetting.should_extinguish(
-        "labile", 1.0, is_pinned=True, recently_active=False
+        accum, is_pinned=True, recently_active=False
     )
     assert not active_forgetting.should_extinguish(
-        "labile", 1.0, is_pinned=False, recently_active=True
+        accum, is_pinned=False, recently_active=True
     )
     assert not active_forgetting.should_extinguish(
-        "labile", 1.0, is_pinned=False, recently_active=False, already_stale=True
+        accum, is_pinned=False, recently_active=False, already_stale=True
     )
 
 
 def test_extinction_distinct_from_deletion():
     # A memory can be a deprecate candidate without being marked is_stale:
     # should_extinguish returns a decision; it never sets is_stale itself.
-    decision = active_forgetting.should_extinguish("labile", 1.0, False, False)
+    accum = active_forgetting.PERMANENT_ACCUM_THRESHOLD + 0.5
+    decision = active_forgetting.should_extinguish(accum, False, False)
     assert isinstance(decision, bool)
     # is_permanent_forgetting is the SEPARATE erasure route.
     assert hasattr(active_forgetting, "is_permanent_forgetting")
@@ -176,7 +180,8 @@ def test_ablation_disables_deprecate(store, monkeypatch):
 
 def test_ablation_disables_should_extinguish(monkeypatch):
     monkeypatch.setenv("CORTEX_ABLATE_EXTINCTION", "1")
-    assert not active_forgetting.should_extinguish("labile", 1.0, False, False)
+    accum = active_forgetting.PERMANENT_ACCUM_THRESHOLD + 0.5
+    assert not active_forgetting.should_extinguish(accum, False, False)
 
 
 def test_ablation_disables_recover_reinstate(store, monkeypatch):
