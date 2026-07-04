@@ -224,8 +224,8 @@ LongMemEval (Wu et al., ICLR 2025): 500 human-curated questions embedded in ~40 
 
 | | Cortex | What it means |
 |---|---|---|
-| Recall@10 | **98.4%** | The right memory shows up in the top 10 for nearly every question |
-| MRR | **0.9124** | The correct *memory* is usually ranked first or second — retrieval rank only, no LLM reader |
+| Recall@10 | **98.2%** | The right memory shows up in the top 10 for nearly every question |
+| MRR | **0.915** | The correct *memory* is usually ranked first or second — retrieval rank only, no LLM reader |
 
 <sub>n=500, E1 v3 verification campaign — per-row JSONs with code SHAs in `benchmarks/results/ablation/longmemeval-s_v3/`. Re-verified on a clean DB 2026-06-10.</sub>
 
@@ -246,8 +246,8 @@ LoCoMo (Maharana et al., ACL 2024): 1,986 questions across 10 conversations — 
 
 | | Cortex | What it means |
 |---|---|---|
-| Recall@10 | **94.2%** | Right memory in top 10 over 9 times out of 10 |
-| MRR | **0.8278** | The correct *memory* is typically ranked first — retrieval rank only, no LLM reader |
+| Recall@10 | **91.5%** | Right memory in top 10 over 9 times out of 10 |
+| MRR | **0.805** | The correct *memory* is typically ranked first — retrieval rank only, no LLM reader |
 
 <sub>n=1986, BASELINE_NO_CONSOLIDATION, post-plasticity-fix — `docs/benchmarks/e1-v3-locomo-results-post-fix.md`.</sub>
 

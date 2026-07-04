@@ -362,10 +362,10 @@ python3 benchmarks/episodic/run_benchmark.py --events 20           # Episodic Me
 **Current benchmark scores (E1 v3; canonical source: the arxiv papers under `docs/arxiv-thermodynamic/` and `docs/arxiv-context-assembly/`):**
 | Benchmark | Cortex | Best in paper |
 |---|---|---|
-| LongMemEval R@10 | **98.4%** | 78.4% |
-| LongMemEval MRR | **0.9124** | -- |
-| LoCoMo R@10 | **94.2%** | -- |
-| LoCoMo MRR | **0.8278** | 0.794 |
+| LongMemEval R@10 | **98.2%** | 78.4% |
+| LongMemEval MRR | **0.915** | -- |
+| LoCoMo R@10 | **91.5%** | -- |
+| LoCoMo MRR | **0.805** | 0.794 |
 | BEAM-100K MRR (retrieval-proxy) | **0.591** | -- |
 
 Consolidation note: these retrieval scores are measured `--with-consolidation`.

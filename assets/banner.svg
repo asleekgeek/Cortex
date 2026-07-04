@@ -24,7 +24,7 @@
   <text class="mono" x="32" y="208" fill="#e0e0e0" font-size="12">44 MCP tools  ·  36 bio mechanisms  ·  9 hooks  ·  3000+ tests  ·  97 citations</text>
 
   <!-- Benchmarks -->
-  <text class="mono" x="32" y="244" fill="#bec3be" font-size="11">98.4% R@10 LongMemEval  ·  94.2% R@10 LoCoMo  ·  +33.4% BEAM-10M</text>
+  <text class="mono" x="32" y="244" fill="#bec3be" font-size="11">98.2% R@10 LongMemEval  ·  91.5% R@10 LoCoMo  ·  +33.4% BEAM-10M</text>
 
   <!-- Mechanism chain -->
   <text class="mono" x="32" y="272" fill="#96a09b" font-size="11">encode ── consolidate ── decay ── retrieve ── reconstruct</text>
