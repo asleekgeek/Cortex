@@ -72,6 +72,19 @@ DATASET_URL="https://huggingface.co/datasets/xiaowu0162/LongMemEval/resolve/main
 # byte-identical to the file behind every published Cortex result.
 DATASET_SHA256="08d8dad4be43ee2049a22ff5674eb86725d0ce5ff434cde2627e5e8e7e117894"
 
+# ── Published floors the FULL runs are gated against. --limit/--quick runs
+# skip the gate (partial runs are not comparable to n=500 / n=1986 figures).
+# Values: README benchmark tables (E1 v3 campaign). Tolerance 0.005 (0.5 pp)
+# per the regression gate in benchmarks/results/a3_longmemeval_post_refactor.md
+# (design §8). BEAM-100K is intentionally NOT gated: its published proxy
+# numbers predate the 200→395-question split re-basing, and the README scopes
+# BEAM to within-system comparison only.
+FLOOR_LME_R10=0.982
+FLOOR_LME_MRR=0.914
+FLOOR_LOCOMO_R10=0.915
+FLOOR_LOCOMO_MRR=0.805
+FLOOR_TOLERANCE=0.005
+
 # ── Ephemeral PostgreSQL + pgvector (any PG>=15 with vector works; the schema
 # code creates the extension itself on first connect).
 PG_IMAGE="pgvector/pgvector:pg16"
@@ -81,6 +94,7 @@ BENCH_DB_URL="postgresql://postgres:cortex_bench@localhost:${PG_PORT}/cortex_ben
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RESULTS_DIR="$REPO_ROOT/benchmarks/results/repro/$STAMP"
+LOCK_DIR="$REPO_ROOT/benchmarks/.reproduce.lock"
 
 # ── Parsed options (defaults) ────────────────────────────────────────────────
 ONLY=""                 # empty => all benchmarks
@@ -164,11 +178,33 @@ start_db() {
     done
 }
 
+# Two concurrent runs share the container + database and silently corrupt
+# each other: BenchmarkDB purges is_benchmark rows on every open, so each
+# run's phases delete the other's in-flight data (observed 2026-07-03, two
+# smoke runs 8s apart produced divergent locomo results). mkdir is the
+# portable atomic lock — flock(1) does not ship on macOS.
+acquire_lock() {
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+        echo $$ > "$LOCK_DIR/pid"
+        return
+    fi
+    local holder; holder="$(cat "$LOCK_DIR/pid" 2>/dev/null || echo '?')"
+    if [ "$holder" != "?" ] && kill -0 "$holder" 2>/dev/null; then
+        echo "error: another reproduce.sh run (pid $holder) is already active." >&2
+        echo "Concurrent runs share one database and corrupt each other's results." >&2
+        echo "Wait for it to finish (or stop it), then retry." >&2
+        exit 1
+    fi
+    echo "==> Removing stale lock (pid $holder is not running)."
+    rm -rf "$LOCK_DIR" && mkdir "$LOCK_DIR" && echo $$ > "$LOCK_DIR/pid"
+}
+
 teardown() {
     if [ "$started_container" = "1" ] && [ "$KEEP_DB" != "1" ]; then
         echo "==> Removing ephemeral container ${CONTAINER} (--keep-db to keep)."
         docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
     fi
+    rm -rf "$LOCK_DIR"
 }
 
 # One benchmark through the production recall path, result JSON to RESULTS_DIR.
@@ -180,8 +216,12 @@ run_bench() {
     echo "════════════════════════════════════════════════════════════════════"
     echo "  BENCHMARK: $name"
     echo "════════════════════════════════════════════════════════════════════"
+    # ${arr[@]+...} keeps set -u safe when the array is empty on bash 3.2
+    # (stock macOS /bin/bash); plain "${arr[@]}" aborts there. Fixed upstream
+    # in bash 4.4, but strangers' Macs ship 3.2.
     DATABASE_URL="$BENCH_DB_URL" uv run --extra benchmarks python \
-        "$script" --results-out "$out" "$@" "${PASSTHROUGH[@]}"
+        "$script" --results-out "$out" "$@" \
+        ${PASSTHROUGH[@]+"${PASSTHROUGH[@]}"}
 }
 
 # Map a short benchmark name (locomo|beam|longmemeval) to the ablation runner's
@@ -211,7 +251,8 @@ run_ablation_sweep() {
     # trial per --mechanism, saving to benchmarks/results/ablation/<bench>/.
     DATABASE_URL="$BENCH_DB_URL" uv run --extra benchmarks python \
         "$REPO_ROOT/benchmarks/lib/ablation_runner.py" \
-        --benchmark "$bench_id" "${mech_args[@]}" "${quick_arg[@]}"
+        --benchmark "$bench_id" "${mech_args[@]}" \
+        ${quick_arg[@]+"${quick_arg[@]}"}
 }
 
 write_manifest() {
@@ -258,8 +299,17 @@ print("-" * 68)
 for f in sorted(repro_dir.glob("*.json")):
     if f.name == "MANIFEST.json": continue
     d = load(f)
-    mrr = d.get("overall_mrr"); r10 = d.get("overall_recall10")
-    n = d.get("n_questions") or d.get("n_conversations") or d.get("n") or ""
+    mrr = d.get("overall_mrr")
+    # BEAM's runner writes overall_r10 / total_questions; the others write
+    # overall_recall10 / n_questions. Explicit None checks — 0.0 is a value.
+    r10 = d.get("overall_recall10")
+    if r10 is None:
+        r10 = d.get("overall_r10")
+    n = ""
+    for key in ("n_questions", "n_conversations", "total_questions", "n"):
+        if d.get(key) is not None:
+            n = d[key]
+            break
     smrr = f"{mrr:.4f}" if isinstance(mrr, (int, float)) else "—"
     sr10 = f"{r10:.4f}" if isinstance(r10, (int, float)) else "—"
     print(f"{f.stem:<20}{smrr:>12}{sr10:>14}{str(n):>8}")
@@ -281,6 +331,47 @@ print("=" * 68)
 PY
 }
 
+# Gate full-run results against the published floors: any score more than
+# FLOOR_TOLERANCE below its floor fails the whole run with exit 1. A deviation
+# from the published numbers means the code is wrong — this makes that loud
+# instead of silent.
+check_floors() {
+    uv run --extra benchmarks python - "$RESULTS_DIR" \
+        "$FLOOR_LME_R10" "$FLOOR_LME_MRR" "$FLOOR_LOCOMO_R10" "$FLOOR_LOCOMO_MRR" \
+        "$FLOOR_TOLERANCE" <<'PY'
+import json, sys
+from pathlib import Path
+rd = Path(sys.argv[1])
+lme_r10, lme_mrr, loc_r10, loc_mrr, tol = map(float, sys.argv[2:7])
+floors = {
+    "longmemeval-s": {"overall_recall10": lme_r10, "overall_mrr": lme_mrr},
+    "locomo": {"overall_recall10": loc_r10, "overall_mrr": loc_mrr},
+}
+failed = False
+for stem, expected in floors.items():
+    p = rd / f"{stem}.json"
+    if not p.exists():
+        continue  # benchmark was scoped out via --only
+    d = json.loads(p.read_text())
+    for key, floor in expected.items():
+        got = d.get(key)
+        if not isinstance(got, (int, float)):
+            print(f"FLOOR CHECK {stem}.{key}: metric missing — FAIL")
+            failed = True
+            continue
+        delta = got - floor
+        status = "PASS" if delta >= -tol else "FAIL"
+        if status == "FAIL":
+            failed = True
+        print(f"FLOOR CHECK {stem}.{key}: {got:.4f} vs floor {floor:.4f} ({delta:+.4f}) {status}")
+if failed:
+    print("\nFLOOR CHECK FAILED: full-run scores deviate from the published numbers.")
+    print("A deviation means the code is wrong — do not ship. Bisect against the")
+    print("last passing commit recorded in benchmarks/results/repro/.")
+    sys.exit(1)
+PY
+}
+
 main() {
     parse_args "$@"
     need_cmd docker; need_cmd curl; need_cmd uv
@@ -294,8 +385,9 @@ main() {
     if [ "$RUN_BENCHMARKS" = "1" ] && want_bench longmemeval; then fetch_longmemeval; fi
     if [ "$RUN_ABLATION" = "1" ] && [ "$ABLATE_ON" = "longmemeval-s" ]; then fetch_longmemeval; fi
 
-    start_db
+    acquire_lock
     trap teardown EXIT
+    start_db
     cd "$REPO_ROOT"
 
     # Per-benchmark limit args.
@@ -305,9 +397,11 @@ main() {
 
     if [ "$RUN_BENCHMARKS" = "1" ]; then
         want_bench longmemeval && run_bench "longmemeval-s" \
-            "benchmarks/longmemeval/run_benchmark.py" "${lm_args[@]}"
+            "benchmarks/longmemeval/run_benchmark.py" \
+            ${lm_args[@]+"${lm_args[@]}"}
         want_bench locomo && run_bench "locomo" \
-            "benchmarks/locomo/run_benchmark.py" "${lo_args[@]}"
+            "benchmarks/locomo/run_benchmark.py" \
+            ${lo_args[@]+"${lo_args[@]}"}
         want_bench beam && run_bench "beam-100K" \
             "benchmarks/beam/run_benchmark.py" "${be_args[@]}"
     fi
@@ -318,6 +412,10 @@ main() {
 
     write_manifest
     print_summary
+    # Full runs only: partial runs are not comparable to the published n.
+    if [ "$RUN_BENCHMARKS" = "1" ] && [ -z "$LIMIT" ] && [ "$QUICK" = "0" ]; then
+        check_floors
+    fi
     echo
     echo "==> All artifacts under: $RESULTS_DIR"
     if [ "$RUN_ABLATION" = "1" ]; then
