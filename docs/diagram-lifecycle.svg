@@ -1,48 +1,92 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 120" font-family="Inter, -apple-system, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 120" font-family="'Inter Tight', -apple-system, system-ui, sans-serif">
+<!-- =====================================================================
+  RE-INKED to the AI Architect Design System (paper doctrine). Geometry,
+  layout and text content are unchanged; only colour + font-family voices
+  were remapped. Scripted oklch->sRGB (CSS Color 4 math) from DS tokens
+  (colors.css + surfaces.css paper block). Tokens named WITHOUT their
+  leading double-hyphen (XML-comment safe); prefix each with it in CSS.
+  ONE mapping, applied identically across all nine diagrams.
+
+  CHROME (warm-neutral greyscale):
+    #0f172a canvas          -> paper-0        #f1eee7
+    #1e293b box fill        -> sheet          #f8f7f2
+    #292524 #0a1d10 #172554 #1a2e05 #2a1a00 #1d1408 #1e3a5f
+            inner/callout/layer/pill fills -> paper-1  #e6e1d7
+    #44403c inner stroke    -> paper-line     rgba(59,49,41,0.26)
+    #475569 #334155 box stroke -> paper-line-2 rgba(59,49,41,0.42)
+    #64748b arrows/tertiary -> pfg-2          #61554e
+    #a3a3a3 faint hint      -> pfg-2          #61554e
+    #94a3b8 secondary label -> pfg-1          #4b4038
+    #e2e8f0 #cbd5e1 #d4d4d8 primary text -> pfg-0  #261d17
+    #fff reversed on data node -> paper-0     #f1eee7
+
+  DATA (deep re-inked palette, L<=52pct, legible on cream; each source
+  meaning kept distinct, never merged):
+    red    #ef4444 #fca5a5           new/emotion/reject -> danger-deep  #a52a24
+    orange #f97316 #fdba74           surprise momentum  -> emo-frustr   #a05000
+    amber  #f59e0b #fbbf24 #fcd34d #92400e
+                                     active/handlers/encoding/reviewer/directory -> warn-deep #845b00
+    gold   #daa520                   wiki/consolidated  -> stage-cons   #7d6700
+    green  #22c55e #86efac #10b981 #6ee7b7 #166534 #4ade80
+                                     core/retrieval/novel/coordination  -> ok-deep #0a693c
+    cyan   #06b6d4 #67e8f9           infrastructure/storage -> stage-early #006a66
+    blue   #3b82f6 #60a5fa #93c5fd #1e40af
+                                     query/results/compressed/specialization/sleep -> info-deep #006185
+    purple #8b5cf6 #a855f7 #c4b5fd   neuromodulation/plasticity/intent -> emo-conflct #784d96
+    pink   #ec4899 #f9a8d4 #d946ef #e879f9
+                                     hooks/emotional-tagging/intent -> stage-recon #753e81
+
+  Note: amber(80) and gold(95) stay distinct; green ink is single in the DS
+  paper palette so green+emerald share ok-deep (same 'valid/positive' meaning);
+  category-tinted panel fills neutralised to paper-1 with the category kept in
+  their stroke+text data ink. Fonts: labels -> Inter Tight, identifiers ->
+  JetBrains Mono. Gradients/glow: none used; the unused blur filter was removed.
+===================================================================== -->
+
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L8,3 L0,6" fill="#64748b"/>
+      <path d="M0,0 L8,3 L0,6" fill="#61554e"/>
     </marker>
     <marker id="arr-up" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L8,3 L0,6" fill="#f59e0b"/>
+      <path d="M0,0 L8,3 L0,6" fill="#845b00"/>
     </marker>
   </defs>
 
-  <rect width="750" height="120" rx="12" fill="#0f172a"/>
+  <rect width="750" height="120" rx="12" fill="#f1eee7"/>
 
   <!-- New -->
-  <rect x="20" y="35" width="120" height="42" rx="21" fill="#1e293b" stroke="#ef4444" stroke-width="1.5"/>
-  <text x="80" y="55" text-anchor="middle" fill="#fca5a5" font-size="12" font-weight="600">New</text>
-  <text x="80" y="70" text-anchor="middle" fill="#a3a3a3" font-size="9">heat = 1.0</text>
+  <rect x="20" y="35" width="120" height="42" rx="21" fill="#f8f7f2" stroke="#a52a24" stroke-width="1.5"/>
+  <text x="80" y="55" text-anchor="middle" fill="#a52a24" font-size="12" font-weight="600">New</text>
+  <text x="80" y="70" text-anchor="middle" fill="#61554e" font-size="9">heat = 1.0</text>
 
-  <line x1="140" y1="56" x2="170" y2="56" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="140" y1="56" x2="170" y2="56" stroke="#61554e" stroke-width="1.5" marker-end="url(#arr)"/>
 
   <!-- Active -->
-  <rect x="175" y="35" width="110" height="42" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
-  <text x="230" y="61" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="600">Active</text>
+  <rect x="175" y="35" width="110" height="42" rx="6" fill="#f8f7f2" stroke="#845b00" stroke-width="1.5"/>
+  <text x="230" y="61" text-anchor="middle" fill="#845b00" font-size="12" font-weight="600">Active</text>
 
-  <line x1="285" y1="56" x2="320" y2="56" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="285" y1="56" x2="320" y2="56" stroke="#61554e" stroke-width="1.5" marker-end="url(#arr)"/>
 
   <!-- Cooling -->
-  <rect x="325" y="35" width="110" height="42" rx="6" fill="#1e293b" stroke="#64748b" stroke-width="1.5"/>
-  <text x="380" y="61" text-anchor="middle" fill="#94a3b8" font-size="12" font-weight="600">Cooling</text>
+  <rect x="325" y="35" width="110" height="42" rx="6" fill="#f8f7f2" stroke="#61554e" stroke-width="1.5"/>
+  <text x="380" y="61" text-anchor="middle" fill="#4b4038" font-size="12" font-weight="600">Cooling</text>
 
-  <line x1="435" y1="56" x2="470" y2="56" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="435" y1="56" x2="470" y2="56" stroke="#61554e" stroke-width="1.5" marker-end="url(#arr)"/>
 
   <!-- Compressed -->
-  <rect x="475" y="35" width="120" height="42" rx="6" fill="#1e293b" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="535" y="61" text-anchor="middle" fill="#93c5fd" font-size="12" font-weight="600">Compressed</text>
+  <rect x="475" y="35" width="120" height="42" rx="6" fill="#f8f7f2" stroke="#006185" stroke-width="1.5"/>
+  <text x="535" y="61" text-anchor="middle" fill="#006185" font-size="12" font-weight="600">Compressed</text>
 
-  <line x1="595" y1="56" x2="625" y2="56" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="595" y1="56" x2="625" y2="56" stroke="#61554e" stroke-width="1.5" marker-end="url(#arr)"/>
 
   <!-- Consolidated -->
-  <rect x="630" y="35" width="110" height="42" rx="21" fill="#1e293b" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="685" y="61" text-anchor="middle" fill="#86efac" font-size="12" font-weight="600">Consolidated</text>
+  <rect x="630" y="35" width="110" height="42" rx="21" fill="#f8f7f2" stroke="#0a693c" stroke-width="1.5"/>
+  <text x="685" y="61" text-anchor="middle" fill="#0a693c" font-size="12" font-weight="600">Consolidated</text>
 
   <!-- Recalled loops -->
-  <path d="M230,35 Q230,10 305,10 Q380,10 380,35" fill="none" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-up)"/>
-  <text x="305" y="8" text-anchor="middle" fill="#f59e0b" font-size="9">recalled</text>
+  <path d="M230,35 Q230,10 305,10 Q380,10 380,35" fill="none" stroke="#845b00" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-up)"/>
+  <text x="305" y="8" text-anchor="middle" fill="#845b00" font-size="9">recalled</text>
 
-  <path d="M380,77 Q380,105 305,105 Q230,105 230,77" fill="none" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-up)"/>
-  <text x="305" y="115" text-anchor="middle" fill="#f59e0b" font-size="9">recalled</text>
+  <path d="M380,77 Q380,105 305,105 Q230,105 230,77" fill="none" stroke="#845b00" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-up)"/>
+  <text x="305" y="115" text-anchor="middle" fill="#845b00" font-size="9">recalled</text>
 </svg>
