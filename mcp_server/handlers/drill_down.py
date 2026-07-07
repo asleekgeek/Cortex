@@ -89,14 +89,20 @@ def _fetch_candidate_memories(
     domain: str,
     min_heat: float,
 ) -> list[dict]:
-    """Fetch memories eligible for hierarchy building."""
+    """Fetch memories eligible for hierarchy building.
+
+    heads_only on both modes: cluster content is served to the user —
+    supersession chain heads only.
+    """
     if domain:
-        return store.get_memories_for_domain(domain, min_heat=min_heat, limit=500)
+        return store.get_memories_for_domain(
+            domain, min_heat=min_heat, limit=500, heads_only=True
+        )
 
     # No-domain path: same 500-row bound as the domain path above. The
     # previous full-table materialization + Python heat filter was the
     # last uncapped scan in this handler (bounded-I/O audit 2026-06-09).
-    return store.get_hot_memories(min_heat=min_heat, limit=500)
+    return store.get_hot_memories(min_heat=min_heat, limit=500, heads_only=True)
 
 
 def _enrich_leaf_memories(

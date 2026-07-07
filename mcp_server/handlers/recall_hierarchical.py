@@ -147,7 +147,11 @@ def _fetch_candidate_memories(
             if mem and mem.get("heat", 0.0) >= min_heat:
                 hydrated.append(mem)
         return hydrated
-    return store.get_memories_for_domain(domain, min_heat=min_heat, limit=500)
+    # heads_only: hierarchy content is served to the user — supersession
+    # chain heads only, or the clustering groups contradictory versions.
+    return store.get_memories_for_domain(
+        domain, min_heat=min_heat, limit=500, heads_only=True
+    )
 
 
 def _enrich_results(

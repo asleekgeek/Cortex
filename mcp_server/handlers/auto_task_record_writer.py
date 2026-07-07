@@ -136,7 +136,9 @@ def _session_memories(store, session_id: str, domain: str) -> list[dict]:
     Returns at most 50 entries to keep the draft tractable.
     """
     try:
-        recent = store.get_recently_accessed_memories(limit=200)
+        # heads_only: task-record drafts fold memory content in —
+        # supersession chain heads only.
+        recent = store.get_recently_accessed_memories(limit=200, heads_only=True)
     except Exception:
         recent = []
     out: list[dict] = []

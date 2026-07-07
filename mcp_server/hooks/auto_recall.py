@@ -165,7 +165,11 @@ def _recall_memories(conn, query: str) -> list[dict]:
                    effective_heat(m, NOW()) AS heat,
                    m.domain, m.agent_context, m.is_protected,
                    ts_rank_cd(m.content_tsv, q) AS rank
-            FROM memories m,
+            -- JOIN current_memories: auto-recall injects content into the
+            -- session context — supersession chain heads only. The join
+            -- (not FROM the view) keeps m table-typed for effective_heat().
+            FROM memories m
+                 JOIN current_memories cm ON cm.id = m.id,
                  plainto_tsquery('english', %s) q
             WHERE m.content_tsv @@ q
               AND effective_heat(m, NOW()) >= %s

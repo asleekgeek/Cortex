@@ -18,10 +18,20 @@ class PgQueryMixin:
         return dict(row)
 
     def get_memories_for_domain(
-        self, domain: str, min_heat: float = 0.05, limit: int = 50
+        self,
+        domain: str,
+        min_heat: float = 0.05,
+        limit: int = 50,
+        heads_only: bool = False,
     ) -> list[dict[str, Any]]:
+        """Shared primitive with mixed callers. heads_only routes the read
+        through the current_memories view (supersession chain heads only):
+        content-serving callers (recall_hierarchical, drill_down) pass True;
+        maintenance callers (validate_memory) keep False to see full chains.
+        """
+        src = "current_memories" if heads_only else "memories"
         rows = self._execute(
-            "SELECT * FROM memories WHERE (domain = %s OR is_global = TRUE) "
+            f"SELECT * FROM {src} WHERE (domain = %s OR is_global = TRUE) "
             "AND heat_base >= %s ORDER BY heat_base DESC LIMIT %s",
             (domain, min_heat, limit),
         ).fetchall()
@@ -42,19 +52,26 @@ class PgQueryMixin:
         min_heat: float = 0.7,
         limit: int = 20,
         include_benchmarks: bool = False,
+        heads_only: bool = False,
     ) -> list[dict[str, Any]]:
+        """Shared primitive with mixed callers. heads_only routes the read
+        through the current_memories view (supersession chain heads only):
+        content-serving callers (drill_down, write-gate struct_nov) pass
+        True; maintenance/stats callers keep False.
+        """
+        src = "current_memories" if heads_only else "memories"
         bench_filter = (
             "" if include_benchmarks else "AND NOT coalesce(is_benchmark, FALSE) "
         )
         if limit > 0:
             rows = self._execute(
-                f"SELECT * FROM memories WHERE heat_base >= %s {bench_filter}"
+                f"SELECT * FROM {src} WHERE heat_base >= %s {bench_filter}"
                 "ORDER BY heat_base DESC LIMIT %s",
                 (min_heat, limit),
             ).fetchall()
         else:
             rows = self._execute(
-                f"SELECT * FROM memories WHERE heat_base >= %s {bench_filter}"
+                f"SELECT * FROM {src} WHERE heat_base >= %s {bench_filter}"
                 "ORDER BY heat_base DESC",
                 (min_heat,),
             ).fetchall()
@@ -266,10 +283,14 @@ class PgQueryMixin:
             if query_embedding
             else None
         )
+        # current_memories (both branches): typed pool hits are inserted at
+        # rank 0 by the caller — a superseded instruction/preference served
+        # here would outrank its own correction, so exclusion at the source
+        # is the only safe placement.
         if emb is not None:
             rows = self._execute(
                 "SELECT *, (1.0 - (embedding <=> %s))::REAL AS score "
-                "FROM memories "
+                "FROM current_memories "
                 "WHERE tags @> %s::jsonb AND heat_base >= %s AND NOT is_stale "
                 "AND embedding IS NOT NULL "
                 "AND ((%s::TEXT IS NULL) OR domain = %s OR is_global = TRUE) "
@@ -279,7 +300,7 @@ class PgQueryMixin:
         else:
             rows = self._execute(
                 "SELECT *, heat_base::REAL AS score "
-                "FROM memories "
+                "FROM current_memories "
                 "WHERE tags @> %s::jsonb AND heat_base >= %s AND NOT is_stale "
                 "AND ((%s::TEXT IS NULL) OR domain = %s OR is_global = TRUE) "
                 "ORDER BY heat_base DESC LIMIT %s",

@@ -177,17 +177,23 @@ class PgEntityMixin:
         return {row["source_entity_id"] for row in rows}
 
     def get_memories_mentioning_entity(
-        self, entity_name: str, limit: int = 20
+        self, entity_name: str, limit: int = 20, heads_only: bool = False
     ) -> list[dict[str, Any]]:
+        """Shared primitive with mixed callers. heads_only routes the read
+        through the current_memories view (supersession chain heads only) on
+        BOTH branches (FTS + ILIKE fallback): content-serving callers
+        (get_causal_chain previews, assemble_context Phase 2) pass True.
+        """
+        src = "current_memories" if heads_only else "memories"
         rows = self._execute(
-            "SELECT * FROM memories "
+            f"SELECT * FROM {src} "
             "WHERE content_tsv @@ phraseto_tsquery('english', %s) "
             "ORDER BY heat_base DESC LIMIT %s",
             (entity_name, limit),
         ).fetchall()
         if not rows:
             rows = self._execute(
-                "SELECT * FROM memories WHERE content ILIKE %s "
+                f"SELECT * FROM {src} WHERE content ILIKE %s "
                 "AND NOT is_stale ORDER BY heat_base DESC LIMIT %s",
                 (
                     "%{}%".format(

@@ -64,6 +64,18 @@ CREATE TABLE IF NOT EXISTS memories (
 );
 """
 
+# Supersession read-path layer — SQLite mirror of pg_schema.py's
+# current_memories view. Same single-source invariant: a row is current
+# iff superseded_by_id IS NULL. Executed AFTER migrations in
+# sqlite_store._init_schema (superseded_by_id arrives via MIGRATIONS on
+# older databases). SQLite re-parses view SQL on schema change, so
+# SELECT * tracks later column additions. Audit + spec:
+# docs/program/pr2-read-path-supersession-audit.json.
+CURRENT_MEMORIES_VIEW_DDL = """
+CREATE VIEW IF NOT EXISTS current_memories AS
+    SELECT * FROM memories WHERE superseded_by_id IS NULL
+"""
+
 HOMEOSTATIC_STATE_DDL = """
 CREATE TABLE IF NOT EXISTS homeostatic_state (
     domain      TEXT PRIMARY KEY,

@@ -284,7 +284,10 @@ def _fetch_agent_context(conn, agent_name: str, keywords: list[str]) -> list[dic
                 SELECT m.id, m.content,
                        effective_heat(m, NOW()) AS heat,
                        m.agent_context
+                -- JOIN current_memories: briefing content — chain heads
+                -- only; join keeps m table-typed for effective_heat().
                 FROM memories m
+                     JOIN current_memories cm ON cm.id = m.id
                 WHERE m.agent_context = %s
                   AND effective_heat(m, NOW()) >= %s
                   AND NOT m.is_benchmark
@@ -318,7 +321,9 @@ def _fetch_agent_context(conn, agent_name: str, keywords: list[str]) -> list[dic
                 SELECT m.id, m.content,
                        effective_heat(m, NOW()) AS heat,
                        m.agent_context
+                -- JOIN current_memories: same pattern as pass 1.
                 FROM memories m
+                     JOIN current_memories cm ON cm.id = m.id
                 WHERE m.is_protected = TRUE
                   AND m.is_global = TRUE
                   AND m.agent_context != %s

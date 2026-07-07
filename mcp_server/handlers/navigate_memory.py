@@ -128,8 +128,14 @@ def _build_sr_graph(
     store: MemoryStore,
     window_hours: float,
 ) -> dict:
-    """Build temporal co-access graph ensuring start memory is included."""
-    all_mems = store.get_recently_accessed_memories(limit=200, min_access_count=1)
+    """Build temporal co-access graph ensuring start memory is included.
+
+    heads_only: the SR graph serves content previews — supersession chain
+    heads only.
+    """
+    all_mems = store.get_recently_accessed_memories(
+        limit=200, min_access_count=1, heads_only=True
+    )
     if not any(m["id"] == start_id for m in all_mems):
         all_mems = [start_mem] + all_mems
     return build_temporal_co_access(all_mems, window_hours=window_hours)

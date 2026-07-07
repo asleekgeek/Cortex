@@ -650,10 +650,43 @@ class PgMemoryStore(
                         ).rowcount
                         if rowcount != 1:
                             raise _SupersedeCasConflict()
+                        self._transfer_anchor_on(conn, head_id, new_id)
                 except _SupersedeCasConflict:
                     continue
                 return new_id, head_id
         return None, last_head
+
+    @staticmethod
+    def _transfer_anchor_on(
+        conn: psycopg.Connection, head_id: int, new_id: int
+    ) -> None:
+        """Anchor follows the chain head at supersession (decision 2026-07-07).
+
+        A protected/anchored memory that gets superseded must keep injecting
+        its CURRENT version at session start — _fetch_anchors serves chain
+        heads only — so the protection flags and the anchor heat pin move to
+        the new head inside the supersede transaction. GREATEST/OR semantics:
+        the new row's own heat and no_decay are never lowered. The heat_base
+        write is on the I2 canonical-writer allow-list
+        (tests_py/invariants/test_I2_canonical_writer.py) — it cannot route
+        through bump_heat_raw, which commits on its own connection while this
+        transfer must stay inside the supersede transaction.
+        """
+        old = conn.execute(
+            "SELECT no_decay, heat_base FROM memories "
+            "WHERE id = %s AND is_protected = TRUE",
+            (head_id,),
+        ).fetchone()
+        if old is None:
+            return
+        # heat_base first in the SET list so the I2 static scanner
+        # (single-line "UPDATE memories SET heat_base") sees this writer.
+        conn.execute(
+            "UPDATE memories SET heat_base = GREATEST(heat_base, %s), "
+            "is_protected = TRUE, no_decay = no_decay OR %s, "
+            "heat_base_set_at = NOW() WHERE id = %s",
+            (old["heat_base"], old["no_decay"], new_id),
+        )
 
     def get_memory(self, memory_id: int) -> dict[str, Any] | None:
         row = self._execute(
@@ -982,24 +1015,42 @@ class PgMemoryStore(
         return [dict(r) for r in rows]
 
     def search_fts(self, query: str, limit: int = 20) -> list[tuple[int, float]]:
-        """Full-text search via tsvector. Returns (memory_id, score) pairs."""
+        """Full-text search via tsvector. Returns (memory_id, score) pairs.
+
+        Reads current_memories + NOT is_stale: this is a discovery channel
+        whose hits are injected by callers (prospective triggers) with a
+        fabricated score ABOVE the ranked results — exclusion must happen
+        here, no downstream ranking can demote a superseded or stale hit.
+        """
         rows = self._execute(
             "SELECT id, ts_rank_cd(content_tsv, plainto_tsquery('english', %s)) AS score "
-            "FROM memories "
-            "WHERE content_tsv @@ plainto_tsquery('english', %s) "
+            "FROM current_memories "
+            "WHERE content_tsv @@ plainto_tsquery('english', %s) AND NOT is_stale "
             "ORDER BY score DESC LIMIT %s",
             (query, query, limit),
         ).fetchall()
         return [(r["id"], r["score"]) for r in rows]
 
     def search_vectors(
-        self, query_embedding: bytes, top_k: int = 10, min_heat: float = 0.0
+        self,
+        query_embedding: bytes,
+        top_k: int = 10,
+        min_heat: float = 0.0,
+        heads_only: bool = False,
     ) -> list[tuple[int, float]]:
-        """Vector KNN search via pgvector. Returns (memory_id, distance) pairs."""
+        """Vector KNN search via pgvector. Returns (memory_id, distance) pairs.
+
+        heads_only routes through the current_memories view (supersession
+        chain heads only): the write-gate novelty helpers pass True so a
+        reformulation of an already-corrected fact is not scored "not novel"
+        against the dead version. Default stays False — interference/
+        forgetting callers must keep seeing physical rows.
+        """
+        src = "current_memories" if heads_only else "memories"
         emb = self._bytes_to_vector(query_embedding)
         rows = self._execute(
             "SELECT id, embedding <=> %s AS distance "
-            "FROM memories "
+            f"FROM {src} "
             "WHERE heat_base >= %s AND NOT is_stale AND embedding IS NOT NULL "
             "ORDER BY embedding <=> %s "
             "LIMIT %s",

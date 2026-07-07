@@ -251,7 +251,11 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     # Draw a memory pool. Recently-accessed memories are higher-signal
     # candidates because they reflect what the user actively works on.
     if recent_only:
-        memories = store.get_recently_accessed_memories(limit=memory_pool_size)
+        # heads_only: wiki pages are authored from memory content —
+        # supersession chain heads only.
+        memories = store.get_recently_accessed_memories(
+            limit=memory_pool_size, heads_only=True
+        )
         if len(memories) < min_memories * 2:
             # Fall back to the recent-by-creation pool when access is
             # thin (e.g. fresh DB).

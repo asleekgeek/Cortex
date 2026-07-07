@@ -150,11 +150,15 @@ class SqliteEntityMixin:
         return [self._normalize_memory_row(r) for r in rows]
 
     def get_memories_mentioning_entity(
-        self, entity_name: str, limit: int = 20
+        self, entity_name: str, limit: int = 20, heads_only: bool = False
     ) -> list[dict[str, Any]]:
+        """Mirror of PgEntityMixin.get_memories_mentioning_entity — heads_only
+        routes BOTH branches (FTS5 + LIKE fallback) through current_memories.
+        """
+        src = "current_memories" if heads_only else "memories"
         # Try FTS5 first
         rows = self._conn.execute(
-            "SELECT m.* FROM memories m "
+            f"SELECT m.* FROM {src} m "
             "JOIN memories_fts f ON f.rowid = m.id "
             "WHERE memories_fts MATCH ? "
             "ORDER BY m.heat_base DESC LIMIT ?",
@@ -163,7 +167,7 @@ class SqliteEntityMixin:
         if not rows:
             # Fallback to LIKE
             rows = self._conn.execute(
-                "SELECT * FROM memories WHERE content LIKE ? "
+                f"SELECT * FROM {src} WHERE content LIKE ? "
                 "AND NOT is_stale ORDER BY heat_base DESC LIMIT ?",
                 (f"%{entity_name}%", limit),
             ).fetchall()
