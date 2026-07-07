@@ -105,10 +105,16 @@ class PgStatsMixin:
         return [self._normalize_memory_row(r) for r in rows]
 
     def get_recently_accessed_memories(
-        self, limit: int = 20, min_access_count: int = 1
+        self, limit: int = 20, min_access_count: int = 1, heads_only: bool = False
     ) -> list[dict[str, Any]]:
+        """Shared primitive with mixed callers. heads_only routes the read
+        through the current_memories view (supersession chain heads only):
+        content-serving callers (navigate_memory SR graph, curate_wiki,
+        auto_task_record_writer) pass True.
+        """
+        src = "current_memories" if heads_only else "memories"
         rows = self._execute(
-            "SELECT * FROM memories WHERE access_count >= %s "
+            f"SELECT * FROM {src} WHERE access_count >= %s "
             "AND NOT is_stale ORDER BY last_accessed DESC LIMIT %s",
             (min_access_count, limit),
         ).fetchall()
@@ -234,6 +240,12 @@ class PgStatsMixin:
     def get_episodic_memories(
         self, domain: str = "", directory: str = "", limit: int = 500
     ) -> list[dict[str, Any]]:
+        """CLS input. Reads current_memories: the CLS clusters EVERY returned
+        row (NOT is_stale does not cover supersession), so a superseded
+        episodic version would be crystallized into a durable semantic fact.
+        Chain heads carry the correction — consolidating heads only is the
+        contract.
+        """
         conditions = ["store_type = 'episodic'", "NOT is_stale"]
         params: list = []
         if domain:
@@ -245,7 +257,8 @@ class PgStatsMixin:
         params.append(limit)
         where = " AND ".join(conditions)
         rows = self._execute(
-            f"SELECT * FROM memories WHERE {where} ORDER BY created_at DESC LIMIT %s",
+            f"SELECT * FROM current_memories WHERE {where} "
+            "ORDER BY created_at DESC LIMIT %s",
             params,
         ).fetchall()
         return [self._normalize_memory_row(r) for r in rows]
@@ -253,16 +266,20 @@ class PgStatsMixin:
     def get_semantic_memories(
         self, domain: str = "", limit: int = 500
     ) -> list[dict[str, Any]]:
+        """CLS dedup input. Reads current_memories: a superseded semantic row
+        matching >0.85 cosine would otherwise suppress the creation of the
+        corrected abstraction.
+        """
         if domain:
             rows = self._execute(
-                "SELECT * FROM memories WHERE store_type = 'semantic' "
+                "SELECT * FROM current_memories WHERE store_type = 'semantic' "
                 "AND domain = %s AND NOT is_stale "
                 "ORDER BY created_at DESC LIMIT %s",
                 (domain, limit),
             ).fetchall()
         else:
             rows = self._execute(
-                "SELECT * FROM memories WHERE store_type = 'semantic' "
+                "SELECT * FROM current_memories WHERE store_type = 'semantic' "
                 "AND NOT is_stale ORDER BY created_at DESC LIMIT %s",
                 (limit,),
             ).fetchall()

@@ -117,10 +117,14 @@ class SqliteStatsMixin:
         return [self._normalize_memory_row(r) for r in rows]
 
     def get_recently_accessed_memories(
-        self, limit: int = 20, min_access_count: int = 1
+        self, limit: int = 20, min_access_count: int = 1, heads_only: bool = False
     ) -> list[dict[str, Any]]:
+        """Mirror of PgStatsMixin.get_recently_accessed_memories — heads_only
+        routes through the current_memories view (chain heads only).
+        """
+        src = "current_memories" if heads_only else "memories"
         rows = self._conn.execute(
-            "SELECT * FROM memories WHERE access_count >= ? "
+            f"SELECT * FROM {src} WHERE access_count >= ? "
             "AND NOT is_stale ORDER BY last_accessed DESC LIMIT ?",
             (min_access_count, limit),
         ).fetchall()
@@ -243,6 +247,10 @@ class SqliteStatsMixin:
     def get_episodic_memories(
         self, domain: str = "", directory: str = "", limit: int = 500
     ) -> list[dict[str, Any]]:
+        """CLS input — mirror of PgStatsMixin.get_episodic_memories. Reads
+        current_memories so a superseded episodic version is never
+        crystallized into a durable semantic fact.
+        """
         conditions = ["store_type = 'episodic'", "NOT is_stale"]
         params: list = []
         if domain:
@@ -254,7 +262,8 @@ class SqliteStatsMixin:
         params.append(limit)
         where = " AND ".join(conditions)
         rows = self._conn.execute(
-            f"SELECT * FROM memories WHERE {where} ORDER BY created_at DESC LIMIT ?",
+            f"SELECT * FROM current_memories WHERE {where} "
+            "ORDER BY created_at DESC LIMIT ?",
             params,
         ).fetchall()
         return [self._normalize_memory_row(r) for r in rows]
@@ -262,16 +271,20 @@ class SqliteStatsMixin:
     def get_semantic_memories(
         self, domain: str = "", limit: int = 500
     ) -> list[dict[str, Any]]:
+        """CLS dedup input — mirror of PgStatsMixin.get_semantic_memories.
+        Reads current_memories so a superseded semantic row cannot suppress
+        the corrected abstraction.
+        """
         if domain:
             rows = self._conn.execute(
-                "SELECT * FROM memories WHERE store_type = 'semantic' "
+                "SELECT * FROM current_memories WHERE store_type = 'semantic' "
                 "AND domain = ? AND NOT is_stale "
                 "ORDER BY created_at DESC LIMIT ?",
                 (domain, limit),
             ).fetchall()
         else:
             rows = self._conn.execute(
-                "SELECT * FROM memories WHERE store_type = 'semantic' "
+                "SELECT * FROM current_memories WHERE store_type = 'semantic' "
                 "AND NOT is_stale ORDER BY created_at DESC LIMIT ?",
                 (limit,),
             ).fetchall()

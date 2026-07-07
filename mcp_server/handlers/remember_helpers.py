@@ -39,7 +39,12 @@ def compute_similarities(
     sims: list[float] = []
     vec_hits: list[tuple] = []
     if embedding:
-        vec_hits = store.search_vectors(embedding, top_k=5, min_heat=0.0)
+        # heads_only: novelty must be scored against CURRENT knowledge —
+        # against a dead superseded version, a legitimate re-write of the
+        # corrected fact would be gated out as "not novel".
+        vec_hits = store.search_vectors(
+            embedding, top_k=5, min_heat=0.0, heads_only=True
+        )
         for mid, _d in vec_hits:
             mem = store.get_memory(mid)
             if mem and mem.get("embedding"):
@@ -151,7 +156,9 @@ def evaluate_gate(
     emb_nov = compute_embedding_novelty(sims)
     extracted, ent_names, known, ent_nov = compute_entity_info(content, store)
     temp_nov = write_gate.compute_temporal_novelty(sims, vec_hits, store.get_memory)
-    recent = store.get_hot_memories(min_heat=0.0, limit=10)
+    # heads_only: structural novelty against current knowledge (same
+    # rationale as compute_similarities above).
+    recent = store.get_hot_memories(min_heat=0.0, limit=10, heads_only=True)
     struct_nov = compute_structural_novelty(
         content, [m["content"] for m in recent if m.get("content")]
     )
@@ -363,6 +370,14 @@ def try_curation(
         for cand_id, _d in store.search_vectors(embedding, top_k=3, min_heat=0.0):
             cand = store.get_memory(cand_id)
             if not cand or not cand.get("embedding"):
+                continue
+            # Head-check: never merge/link into (or supersede) a superseded
+            # version — the write would be buried in a row the read path
+            # excludes. No signal is lost: the chain head is near-identical
+            # in embedding and remains in the candidate set. Mirrors the
+            # write-path guards (validate_supersede_target rejects superseded
+            # targets; supersede_atomic rebases via _current_chain_head).
+            if cand.get("superseded_by_id") is not None:
                 continue
             sim = emb_engine.similarity(embedding, cand["embedding"])
             overlap = curation.compute_textual_overlap(content, cand["content"]) > 0.5

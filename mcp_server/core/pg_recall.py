@@ -678,7 +678,12 @@ def assemble_context(
             name = id_to_name.get(str(eid))
             if not name:
                 continue
-            mems = store.get_memories_mentioning_entity(name, limit=10) or []
+            # heads_only: Phase 2 serves memory content into the assembled
+            # context — supersession chain heads only.
+            mems = (
+                store.get_memories_mentioning_entity(name, limit=10, heads_only=True)
+                or []
+            )
             for m in mems:
                 mid = m.get("id") or m.get("memory_id")
                 if mid is None or mid in seen_ids:

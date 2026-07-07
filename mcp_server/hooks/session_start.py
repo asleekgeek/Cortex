@@ -135,7 +135,14 @@ def _fetch_anchors(conn) -> list[dict]:
             # to match production recall semantics (lazy A3 decay).
             # Source: pg_schema.py EFFECTIVE_HEAT_FN.
             "SELECT m.id, m.content, m.tags, m.domain, m.is_global "
-            "FROM memories m "
+            # JOIN current_memories (not FROM the view): effective_heat()
+            # takes the `memories` composite type and a view row is not
+            # coercible to it; the join keeps m table-typed while the
+            # supersession invariant stays defined once, in the view.
+            # Anchors follow the chain head at supersession (write-path
+            # transfer in supersede_atomic), so the corrected anchor is
+            # what gets injected here.
+            "FROM memories m JOIN current_memories cm ON cm.id = m.id "
             "WHERE m.is_protected = TRUE "
             # Exclude auto-captured noise (defense-in-depth — they should never
             # be protected, but guard against misconfiguration).
@@ -188,7 +195,11 @@ def _fetch_team_decisions(conn, exclude_ids: set) -> list[dict]:
             # matches production lazy A3 decay semantics.
             # Source: pg_schema.py EFFECTIVE_HEAT_FN.
             "SELECT m.id, m.content, m.domain, m.agent_context, "
-            "effective_heat(m, NOW()) AS heat FROM memories m "
+            # JOIN current_memories: same pattern as _fetch_anchors —
+            # supersession exclusion via the view, m stays table-typed
+            # for effective_heat().
+            "effective_heat(m, NOW()) AS heat "
+            "FROM memories m JOIN current_memories cm ON cm.id = m.id "
             "WHERE m.is_protected = TRUE AND m.is_global = TRUE "
             "AND m.agent_context != '' "
             # Superseded decisions are corrected facts — never re-inject
@@ -225,7 +236,9 @@ def _fetch_hot_memories(conn, exclude_ids: set) -> list[dict]:
     try:
         rows = conn.execute(
             "SELECT id, content, domain, heat_base AS heat, tags, is_global "
-            "FROM memories "
+            # current_memories: hot-pool content injected into the session
+            # banner — supersession chain heads only.
+            "FROM current_memories "
             "WHERE heat_base >= %s "
             # Exclude tier-1 noise: auto-captured tool outputs and block replicas.
             # JSONB containment: tags @> '[\"x\"]' is true when the array contains x.

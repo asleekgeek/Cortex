@@ -136,7 +136,7 @@ class SqliteSearchMixin:
         conds, params = self._build_filter(min_heat, domain, directory)
         params.append(pool)
         rows = self._conn.execute(
-            f"SELECT id FROM memories WHERE {' AND '.join(conds)} "
+            f"SELECT id FROM current_memories WHERE {' AND '.join(conds)} "
             f"ORDER BY heat_base DESC LIMIT ?",
             params,
         ).fetchall()
@@ -158,7 +158,7 @@ class SqliteSearchMixin:
         conds, params = self._build_filter(min_heat, domain, directory)
         params.append(pool)
         rows = self._conn.execute(
-            f"SELECT id FROM memories WHERE {' AND '.join(conds)} "
+            f"SELECT id FROM current_memories WHERE {' AND '.join(conds)} "
             f"ORDER BY created_at DESC LIMIT ?",
             params,
         ).fetchall()
@@ -211,8 +211,15 @@ class SqliteSearchMixin:
     ) -> list[dict[str, Any]]:
         top_ids = sorted(scores, key=scores.get, reverse=True)[: max_results * 3]  # type: ignore[arg-type]
         placeholders = ",".join("?" * len(top_ids))
+        # current_memories: the vector/FTS signals read virtual tables
+        # (memories_vec/memories_fts) that cannot carry the supersession
+        # predicate, so superseded ids can enter `scores`. This ranked-fetch
+        # gate is the SQLite analog of the PG candidates-CTE exclusion:
+        # superseded rows vanish from row_map and are skipped. They may still
+        # consume vector/FTS pool slots — acceptable at fallback scale, same
+        # argument as the O(N) embedding join in get_hot_embeddings.
         rows = self._conn.execute(
-            f"SELECT * FROM memories WHERE id IN ({placeholders})",
+            f"SELECT * FROM current_memories WHERE id IN ({placeholders})",
             top_ids,
         ).fetchall()
         row_map = {r["id"]: r for r in rows}
@@ -246,11 +253,20 @@ class SqliteSearchMixin:
         return results
 
     def search_fts(self, query: str, limit: int = 20) -> list[tuple[int, float]]:
-        """Full-text search via FTS5. Returns (memory_id, score) pairs."""
+        """Full-text search via FTS5. Returns (memory_id, score) pairs.
+
+        Joined on current_memories + NOT is_stale (mirror of the PG
+        search_fts): this is a discovery channel whose hits are injected
+        client-side with a fabricated score, so exclusion must happen here —
+        no downstream ranking can demote a superseded or stale hit.
+        """
         try:
             rows = self._conn.execute(
-                "SELECT rowid, rank FROM memories_fts "
-                "WHERE memories_fts MATCH ? ORDER BY rank LIMIT ?",
+                "SELECT memories_fts.rowid AS rowid, memories_fts.rank AS rank "
+                "FROM memories_fts "
+                "JOIN current_memories m ON m.id = memories_fts.rowid "
+                "WHERE memories_fts MATCH ? AND NOT m.is_stale "
+                "ORDER BY memories_fts.rank LIMIT ?",
                 (query, limit),
             ).fetchall()
             return [(r["rowid"], -r["rank"]) for r in rows]
@@ -258,9 +274,19 @@ class SqliteSearchMixin:
             return []
 
     def search_vectors(
-        self, query_embedding: bytes, top_k: int = 10, min_heat: float = 0.0
+        self,
+        query_embedding: bytes,
+        top_k: int = 10,
+        min_heat: float = 0.0,
+        heads_only: bool = False,
     ) -> list[tuple[int, float]]:
-        """Vector KNN search via sqlite-vec. Returns (memory_id, distance)."""
+        """Vector KNN search via sqlite-vec. Returns (memory_id, distance).
+
+        heads_only mirrors PgMemoryStore.search_vectors: the vec virtual
+        table cannot carry the supersession predicate, so hits are
+        post-filtered against current_memories (superseded ids may consume
+        top_k slots — acceptable at fallback scale).
+        """
         if not self._has_vec:
             return []
         vec = self._bytes_to_vector(query_embedding)
@@ -272,7 +298,19 @@ class SqliteSearchMixin:
                 "WHERE embedding MATCH ? ORDER BY distance LIMIT ?",
                 (vec.tobytes(), top_k),
             ).fetchall()
-            return [(r["rowid"], r["distance"]) for r in rows]
+            results = [(r["rowid"], r["distance"]) for r in rows]
+            if heads_only and results:
+                ids = [rid for rid, _ in results]
+                placeholders = ",".join("?" * len(ids))
+                current = {
+                    r["id"]
+                    for r in self._conn.execute(
+                        f"SELECT id FROM current_memories WHERE id IN ({placeholders})",
+                        ids,
+                    ).fetchall()
+                }
+                results = [(rid, d) for rid, d in results if rid in current]
+            return results
         except Exception:
             return []
 
@@ -358,7 +396,7 @@ class SqliteSearchMixin:
                 continue
             name = entity["name"]
             mem_rows = self._conn.execute(
-                "SELECT id FROM memories WHERE content LIKE ? "
+                "SELECT id FROM current_memories WHERE content LIKE ? "
                 "AND heat_base >= ? AND NOT is_stale LIMIT 20",
                 (f"%{name}%", min_heat),
             ).fetchall()

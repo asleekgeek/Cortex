@@ -17,10 +17,18 @@ class SqliteQueryMixin:
         return dict(row)
 
     def get_memories_for_domain(
-        self, domain: str, min_heat: float = 0.05, limit: int = 50
+        self,
+        domain: str,
+        min_heat: float = 0.05,
+        limit: int = 50,
+        heads_only: bool = False,
     ) -> list[dict[str, Any]]:
+        """Mirror of PgQueryMixin.get_memories_for_domain — heads_only routes
+        through the current_memories view (supersession chain heads only).
+        """
+        src = "current_memories" if heads_only else "memories"
         rows = self._conn.execute(
-            "SELECT * FROM memories WHERE (domain = ? OR is_global = 1) "
+            f"SELECT * FROM {src} WHERE (domain = ? OR is_global = 1) "
             "AND heat_base >= ? ORDER BY heat_base DESC LIMIT ?",
             (domain, min_heat, limit),
         ).fetchall()
@@ -41,15 +49,20 @@ class SqliteQueryMixin:
         min_heat: float = 0.7,
         limit: int = 20,
         include_benchmarks: bool = False,
+        heads_only: bool = False,
     ) -> list[dict[str, Any]]:
+        """Mirror of PgQueryMixin.get_hot_memories — heads_only routes
+        through the current_memories view (supersession chain heads only).
+        """
+        src = "current_memories" if heads_only else "memories"
         if include_benchmarks:
             rows = self._conn.execute(
-                "SELECT * FROM memories WHERE heat_base >= ? ORDER BY heat_base DESC LIMIT ?",
+                f"SELECT * FROM {src} WHERE heat_base >= ? ORDER BY heat_base DESC LIMIT ?",
                 (min_heat, limit),
             ).fetchall()
         else:
             rows = self._conn.execute(
-                "SELECT * FROM memories WHERE heat_base >= ? "
+                f"SELECT * FROM {src} WHERE heat_base >= ? "
                 "AND NOT COALESCE(is_benchmark, 0) "
                 "ORDER BY heat_base DESC LIMIT ?",
                 (min_heat, limit),

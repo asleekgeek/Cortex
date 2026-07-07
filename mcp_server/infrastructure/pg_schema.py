@@ -75,6 +75,25 @@ CREATE TABLE IF NOT EXISTS memories (
 );
 """
 
+# Supersession read-path layer (PR "read-path supersession"). The invariant
+# "chain head = current version" is defined exactly ONCE, here: a row is
+# current iff nothing has superseded it (superseded_by_id IS NULL,
+# stamped atomically by supersede_atomic). Every content-serving read
+# selects FROM current_memories; physical maintenance (decay/forgetting
+# cursors), chain machinery (_current_chain_head, include_related) and
+# explicit by-id reads stay on memories by contract. Coverage audit:
+# grep current_memories. Audit + spec:
+# docs/program/pr2-read-path-supersession-audit.json.
+# CREATE OR REPLACE is idempotent; executed AFTER MIGRATIONS_DDL in
+# get_all_ddl() so databases predating the supersession columns gain
+# them first. The planner inlines this single-predicate view, and the
+# predicate is benchmark-neutral by construction (fixtures never set
+# superseded_by_id, so view ≡ table on all benchmark data).
+CURRENT_MEMORIES_VIEW_DDL = """
+CREATE OR REPLACE VIEW current_memories AS
+    SELECT * FROM memories WHERE superseded_by_id IS NULL;
+"""
+
 ENTITIES_DDL = """
 CREATE TABLE IF NOT EXISTS entities (
     id              SERIAL PRIMARY KEY,
@@ -1099,9 +1118,14 @@ BEGIN
     -- Prefilter: narrow memories by cheap heat_base threshold + stale/
     -- domain/directory gates. All downstream CTEs read `candidates` not
     -- `memories` — that's where the score-fusion (TMM) signal-processing happens.
+    -- Reads current_memories (chain heads only): superseded versions are
+    -- excluded at the source, so every downstream pool, the TMM fusion and
+    -- all client-side re-sorts (RRF, FlashRank, rules, strategic ordering)
+    -- are supersession-safe by construction. The tier-sort in the final
+    -- ORDER BY is kept verbatim as a constant-true belt-and-braces.
     candidates AS (
         SELECT m.*
-        FROM memories m
+        FROM current_memories m
         WHERE m.heat_base >= v_min_heat_base
           AND NOT m.is_stale
           AND (p_domain IS NULL
@@ -1377,12 +1401,16 @@ BEGIN
         WHERE e.heat >= p_min_heat AND NOT e.archived
         GROUP BY s.eid
     ),
-    -- Step 3: Map entity activations to memories via FTS + ILIKE
+    -- Step 3: Map entity activations to memories via FTS + ILIKE.
+    -- current_memories: spread activation re-injects candidates from the
+    -- entity graph AFTER the WRRF ranking — a superseded version reached
+    -- through its entities would bypass every ranking barrier, so chain
+    -- heads only.
     entity_memories AS (
         SELECT DISTINCT m.id AS mid, ea.act
         FROM entity_acts ea
         JOIN entities e ON e.id = ea.eid
-        JOIN memories m
+        JOIN current_memories m
             ON m.content_tsv @@ phraseto_tsquery('english', e.name)
         WHERE m.heat_base >= p_min_heat AND NOT m.is_stale
     )
@@ -1973,6 +2001,10 @@ def get_all_ddl() -> list[str]:
         # MIGRATIONS_DDL runs BEFORE INDEXES_DDL so the heat→heat_base
         # rename lands before indexes on heat_base are created.
         MIGRATIONS_DDL,
+        # CURRENT_MEMORIES_VIEW_DDL runs AFTER MIGRATIONS_DDL so databases
+        # predating the supersession columns gain superseded_by_id before
+        # the view referencing it is (re)created.
+        CURRENT_MEMORIES_VIEW_DDL,
         INDEXES_DDL,
         # effective_stage() must be created before effective_heat(), which
         # calls it to derive the floor lazily on the read path. alpha_integral()

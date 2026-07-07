@@ -20,6 +20,7 @@ import numpy as np
 
 from mcp_server.infrastructure.sqlite_compat import PsycopgCompatConnection
 from mcp_server.infrastructure.sqlite_schema import (
+    CURRENT_MEMORIES_VIEW_DDL,
     MEMORIES_VEC_DDL,
     MIGRATIONS,
     get_all_ddl,
@@ -93,6 +94,9 @@ class SqliteMemoryStore(
             except Exception:
                 pass
         self._run_migrations()
+        # After migrations: older databases only gain superseded_by_id via
+        # MIGRATIONS, and the current_memories view references that column.
+        self._conn.execute(CURRENT_MEMORIES_VIEW_DDL)
         self._conn.commit()
         self._try_load_vec()
 
@@ -353,9 +357,40 @@ class SqliteMemoryStore(
             if rowcount != 1:
                 self._conn.rollback()
                 continue
+            try:
+                self._transfer_anchor(head_id, new_id)
+            except Exception:
+                self._conn.rollback()
+                raise
             self._conn.commit()
             return new_id, head_id
         return None, last_head
+
+    def _transfer_anchor(self, head_id: int, new_id: int) -> None:
+        """Anchor follows the chain head at supersession (decision 2026-07-07).
+
+        SQLite parity for PgMemoryStore._transfer_anchor_on — runs inside the
+        supersede transaction, before commit. MAX() mirrors GREATEST/OR: the
+        new row's own heat and no_decay are never lowered. The heat_base write
+        is on the I2 canonical-writer allow-list
+        (tests_py/invariants/test_I2_canonical_writer.py) — it cannot route
+        through bump_heat_raw, which commits mid-transaction.
+        """
+        old = self._conn.execute(
+            "SELECT no_decay, heat_base FROM memories "
+            "WHERE id = ? AND is_protected = 1",
+            (head_id,),
+        ).fetchone()
+        if old is None:
+            return
+        # heat_base first in the SET list so the I2 static scanner
+        # (single-line "UPDATE memories SET heat_base") sees this writer.
+        self._conn.execute(
+            "UPDATE memories SET heat_base = MAX(heat_base, ?), "
+            "is_protected = 1, no_decay = MAX(no_decay, ?), "
+            "heat_base_set_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (old["heat_base"], 1 if old["no_decay"] else 0, new_id),
+        )
 
     def get_memory(self, memory_id: int) -> dict[str, Any] | None:
         row = self._conn.execute(

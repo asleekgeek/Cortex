@@ -216,6 +216,17 @@ def run_sleep_compute_streamed(
     has_cue = bool((cue or "").strip())
     for chunk in memory_chunks:
         for mem in chunk:
+            # Consumer-side supersession skip. The chunks come from the decay
+            # cursor (iter_memories_for_decay), which MUST keep seeing
+            # superseded physical rows so decay/forgetting/homeostatic keep
+            # cooling them — so the cursor cannot filter. Sleep, however,
+            # SERVES content: replay re-enriches the row and the narration
+            # folds its content into a new semantic memory. A superseded
+            # version must reach neither. Single-occurrence filter at the
+            # consumer boundary, per the read-path supersession audit
+            # (docs/program/pr2-read-path-supersession-audit.json).
+            if mem.get("superseded_by_id") is not None:
+                continue
             count += 1
             order += 1
             heat = float(mem.get("heat", 0) or 0)

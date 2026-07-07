@@ -230,8 +230,14 @@ def _get_related_memory_previews(
     store: MemoryStore,
     entity_name: str,
 ) -> list[dict]:
-    """Fetch and format memory previews mentioning an entity."""
-    related = store.get_memories_mentioning_entity(entity_name, limit=5)
+    """Fetch and format memory previews mentioning an entity.
+
+    heads_only: previews are served content — with heat-DESC ordering a
+    superseded version could rank ahead of its correction.
+    """
+    related = store.get_memories_mentioning_entity(
+        entity_name, limit=5, heads_only=True
+    )
     return [
         {
             "memory_id": m["id"],
