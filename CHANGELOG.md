@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-07-07
+
+### Added
+- Read-path supersession: superseded memory versions are excluded from recall via a `current_memories` view, so a knowledge update ranks and returns above what it replaced.
+- Injection receipts / blame path (tranches 1–3): a `why` resolution traces each injected memory back through `⟦rcpt:N⟧` receipts to its hook channel and decision.
+
+### Fixed
+- PostgreSQL read path adapted to the pgvector 0.5.0 `Vector` loader.
+
+### Changed
+- Banner and diagrams restyled to the AI Architect design system; ruff pinned to 0.15.20.
+
 ## [3.25.0] - 2026-07-01
 
 Headless wiki-authoring hardened end-to-end (subscription billing, full zetetic
