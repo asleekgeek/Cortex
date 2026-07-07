@@ -24,6 +24,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+from mcp_server.handlers.injection_receipts import (
+    emit_hook_receipt,
+    receipt_marker,
+    session_id_from_transcript,
+)
+
 # ── Config ────────────────────────────────────────────────────────────────
 
 _DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://127.0.0.1:5432/cortex")
@@ -35,6 +41,23 @@ _PLUGIN_ROOT = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
 
 def _log(msg: str) -> None:
     print(f"[session-start-hook] {msg}", file=sys.stderr)
+
+
+def _read_event() -> dict:
+    """Read the SessionStart hook event from stdin, tolerantly.
+
+    Claude Code pipes the event JSON ({"session_id", "transcript_path",
+    "cwd", ...}) to every hook. A manual/tty run, an empty pipe, or
+    malformed JSON all degrade to {} — the banner never depends on the
+    event; only the receipt's session identity does (correction 7).
+    """
+    if sys.stdin.isatty():
+        return {}
+    try:
+        raw = sys.stdin.read().strip()
+        return json.loads(raw) if raw else {}
+    except Exception:
+        return {}
 
 
 def _has_sentence_transformers() -> bool:
@@ -118,6 +141,9 @@ def _fetch_anchors(conn) -> list[dict]:
             # be protected, but guard against misconfiguration).
             # contract: zetetic-team-subagents memory/contract.md §8b
             "AND NOT (m.tags @> '[\"auto-captured\"]'::jsonb) "
+            # Never inject a corrected (superseded) fact into the banner —
+            # decision 4255039 correction 8.
+            "AND m.superseded_by_id IS NULL "
             "ORDER BY effective_heat(m, NOW()) DESC LIMIT %s",
             (int(_ANCHOR_LIMIT),),
         ).fetchall()
@@ -165,6 +191,9 @@ def _fetch_team_decisions(conn, exclude_ids: set) -> list[dict]:
             "effective_heat(m, NOW()) AS heat FROM memories m "
             "WHERE m.is_protected = TRUE AND m.is_global = TRUE "
             "AND m.agent_context != '' "
+            # Superseded decisions are corrected facts — never re-inject
+            # (decision 4255039 correction 8).
+            "AND m.superseded_by_id IS NULL "
             "ORDER BY effective_heat(m, NOW()) DESC LIMIT 5",
         ).fetchall()
     except Exception:
@@ -203,6 +232,9 @@ def _fetch_hot_memories(conn, exclude_ids: set) -> list[dict]:
             # contract: zetetic-team-subagents memory/contract.md §8b
             "AND NOT (tags @> '[\"auto-captured\"]'::jsonb "
             "         OR tags @> '[\"memory-replica\"]'::jsonb) "
+            # Never re-inject a corrected (superseded) fact —
+            # decision 4255039 correction 8.
+            "AND superseded_by_id IS NULL "
             "ORDER BY heat_base DESC LIMIT %s",
             (float(_MIN_HEAT), int(_HOT_LIMIT + len(exclude_ids))),
         ).fetchall()
@@ -444,14 +476,43 @@ def _format_checkpoint_section(checkpoint: dict) -> list[str]:
     return lines
 
 
+def _emit_banner_receipt(
+    conn, event: dict, anchors: list[dict], team_decisions: list[dict], hot: list[dict]
+) -> int | None:
+    """Emit the session_start injection receipt for the banner (T2).
+
+    Payload order mirrors the banner exactly: anchors, then team
+    decisions, then hot memories — rank = position in the injected
+    context. Banner lines are printed truncated (_short) but the memory
+    IS in context, so truncation never drops an item (same parity stance
+    as recall's bound_payload, decision 4255039 correction 11).
+    """
+    payload = [
+        {"memory_id": m["id"]} for m in (*anchors, *team_decisions, *hot)
+    ]
+    return emit_hook_receipt(
+        conn,
+        payload,
+        channel="session_start",
+        session_id=session_id_from_transcript(event.get("transcript_path")),
+    )
+
+
 def _build_context(
     anchors: list[dict],
     hot: list[dict],
     checkpoint: dict | None,
     team_decisions: list[dict] | None = None,
     pending_curations: int = 0,
+    receipt_id: int | None = None,
 ) -> str:
-    """Build the Markdown context block injected into the session."""
+    """Build the Markdown context block injected into the session.
+
+    ``receipt_id`` stamps the banner header with the ⟦rcpt:id⟧ marker
+    (decision 4255039 correction 2) so the model can hand the id back
+    to ``cortex:why(receipt_ids=[...])`` — the receipt travels in-context
+    because server-side session-temporal resolution does not exist.
+    """
     if (
         not anchors
         and not hot
@@ -461,7 +522,10 @@ def _build_context(
     ):
         return ""
 
-    lines = ["## Cortex Memory Context\n"]
+    header = "## Cortex Memory Context"
+    if receipt_id is not None:
+        header += f" {receipt_marker(receipt_id)}"
+    lines = [header + "\n"]
 
     if checkpoint and checkpoint.get("current_task"):
         lines.extend(_format_checkpoint_section(checkpoint))
@@ -813,6 +877,10 @@ def _lookup_cached_graph_path(project_root: str) -> str | None:
 def main() -> None:
     """Entry point — print context block to stdout."""
 
+    # Hook event first: stdin carries transcript_path, the stable session
+    # identity for the injection receipt (decision 4255039 correction 7).
+    event = _read_event()
+
     # Auto-discovery runs before the PG path so users see it work even
     # on a fresh machine without a DB set up yet.
     _auto_wire_pipeline()
@@ -880,6 +948,10 @@ def main() -> None:
     team_decisions = _fetch_team_decisions(conn, anchor_ids)
     checkpoint = _fetch_checkpoint(conn)
     pending_curations = _count_pending_curations(conn)
+    # Receipt BEFORE rendering: the banner header carries the ⟦rcpt:id⟧
+    # marker, so the id must exist when the context is built. A failed
+    # write degrades to a marker-less banner (read path intact).
+    receipt_id = _emit_banner_receipt(conn, event, anchors, team_decisions, hot)
     conn.close()
 
     context = _build_context(
@@ -888,6 +960,7 @@ def main() -> None:
         checkpoint,
         team_decisions,
         pending_curations=pending_curations,
+        receipt_id=receipt_id,
     )
 
     if context:

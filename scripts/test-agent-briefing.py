@@ -104,6 +104,9 @@ class TestAgentBriefing(unittest.TestCase):
         """
         stub_rows = [
             {
+                # T2 row contract: _fetch_agent_context projects r["id"]
+                # on every row (injection receipts, decision 4255039).
+                "id": 4242,
                 "content": "feynman past lesson: always verify sources",
                 "heat": 0.8,
                 "agent_context": "feynman",

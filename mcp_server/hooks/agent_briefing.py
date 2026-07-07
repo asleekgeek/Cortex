@@ -83,6 +83,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from mcp_server.handlers.injection_receipts import (
+    emit_hook_receipt,
+    receipt_marker,
+    session_id_from_transcript,
+)
+
 _LOG_PREFIX = "[cortex-agent-briefing]"
 _DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://localhost:5432/cortex")
 _MAX_MEMORIES = 3
@@ -240,7 +246,20 @@ def _extract_task_keywords(prompt: str) -> list[str]:
     return unique[:8]
 
 
-def _fetch_agent_context(agent_name: str, keywords: list[str]) -> list[dict]:
+def _connect():
+    """Open the briefing's PG connection; None when PG is unreachable."""
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+    except ImportError:
+        return None
+    try:
+        return psycopg.connect(_DATABASE_URL, row_factory=dict_row, autocommit=True)
+    except Exception:
+        return None
+
+
+def _fetch_agent_context(conn, agent_name: str, keywords: list[str]) -> list[dict]:
     """Fetch relevant memories for agent briefing.
 
     Two-pass query:
@@ -248,18 +267,9 @@ def _fetch_agent_context(agent_name: str, keywords: list[str]) -> list[dict]:
     2. Team decisions (is_protected + is_global) — cross-agent knowledge (TMS directory)
 
     Uses FTS plainto_tsquery for speed (no embedding model needed).
+    Each result keeps the memory ``id`` — the injection receipt (T2)
+    records exactly which memories entered the agent's context.
     """
-    try:
-        import psycopg
-        from psycopg.rows import dict_row
-    except ImportError:
-        return []
-
-    try:
-        conn = psycopg.connect(_DATABASE_URL, row_factory=dict_row, autocommit=True)
-    except Exception:
-        return []
-
     results = []
 
     # Pass 1: Agent-scoped memories matching keywords
@@ -278,6 +288,9 @@ def _fetch_agent_context(agent_name: str, keywords: list[str]) -> list[dict]:
                 WHERE m.agent_context = %s
                   AND effective_heat(m, NOW()) >= %s
                   AND NOT m.is_benchmark
+                  -- Never brief an agent with a corrected (superseded)
+                  -- fact — decision 4255039 correction 8.
+                  AND m.superseded_by_id IS NULL
                   AND m.content_tsv @@ plainto_tsquery('english', %s)
                 ORDER BY effective_heat(m, NOW()) DESC
                 LIMIT %s
@@ -287,6 +300,7 @@ def _fetch_agent_context(agent_name: str, keywords: list[str]) -> list[dict]:
             for r in rows:
                 results.append(
                     {
+                        "id": r["id"],
                         "content": r.get("content", "")[:300],
                         "heat": r.get("heat", 0),
                         "source": "agent-prior",
@@ -309,6 +323,9 @@ def _fetch_agent_context(agent_name: str, keywords: list[str]) -> list[dict]:
                   AND m.is_global = TRUE
                   AND m.agent_context != %s
                   AND NOT m.is_benchmark
+                  -- Superseded decisions are corrected facts — never
+                  -- re-inject (decision 4255039 correction 8).
+                  AND m.superseded_by_id IS NULL
                 ORDER BY effective_heat(m, NOW()) DESC
                 LIMIT %s
                 """,
@@ -317,6 +334,7 @@ def _fetch_agent_context(agent_name: str, keywords: list[str]) -> list[dict]:
             for r in rows:
                 results.append(
                     {
+                        "id": r["id"],
                         "content": r.get("content", "")[:300],
                         "heat": r.get("heat", 0),
                         "source": f"team:{r.get('agent_context', '')}",
@@ -325,7 +343,6 @@ def _fetch_agent_context(agent_name: str, keywords: list[str]) -> list[dict]:
         except Exception as exc:
             _log(f"team decisions query failed: {exc}")
 
-    conn.close()
     return results
 
 
@@ -347,13 +364,36 @@ def process_event(event: dict[str, Any]) -> None:
         _log("skip: no keywords extracted")
         sys.exit(0)
 
-    memories = _fetch_agent_context(agent_name, keywords)
-    if not memories:
-        _log(f"skip: no relevant memories for {agent_name}")
+    conn = _connect()
+    if conn is None:
+        _log("skip: PostgreSQL unavailable")
         sys.exit(0)
 
+    try:
+        memories = _fetch_agent_context(conn, agent_name, keywords)
+        if not memories:
+            _log(f"skip: no relevant memories for {agent_name}")
+            sys.exit(0)
+
+        # Receipt for exactly the memories entering the agent's context
+        # (blame path T2, decision 4255039 correction 3 — SubagentStart
+        # is the fourth injecting channel). Emitted before rendering so
+        # the header can carry the ⟦rcpt:id⟧ marker (correction 2); a
+        # failed write degrades to a marker-less briefing.
+        receipt_id = emit_hook_receipt(
+            conn,
+            [{"memory_id": m["id"]} for m in memories],
+            channel="agent_briefing",
+            session_id=session_id_from_transcript(event.get("transcript_path")),
+        )
+    finally:
+        conn.close()
+
     # Build injection
-    lines = [f"## Cortex Briefing ({agent_name})\n"]
+    header = f"## Cortex Briefing ({agent_name})"
+    if receipt_id is not None:
+        header += f" {receipt_marker(receipt_id)}"
+    lines = [header + "\n"]
     for m in memories:
         source = m.get("source", "")
         prefix = f"[{source}] " if source else ""

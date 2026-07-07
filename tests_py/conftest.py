@@ -124,6 +124,11 @@ _TABLES_TO_CLEAN = [
     "engram_slots",
     "oscillatory_state",
     "schemas",
+    # Receipts before memories: items cascade from receipts, and the hook
+    # subprocess tests (test_auto_recall, test_hook_receipts) emit receipts
+    # that would otherwise accumulate across runs.
+    "injection_receipt_items",
+    "injection_receipts",
     "memories",
 ]
 

@@ -79,3 +79,50 @@ def test_empty_items_rejected() -> None:
     s = _store()
     with pytest.raises(ValueError):
         s.insert_injection_receipt("recall", [])
+
+
+# ── T2: channel enum hardening (decision 4255039 correction 3) ───────────
+
+
+def _ddl_check_members(ddl: str) -> set[str]:
+    """Extract the channel CHECK members from a DDL string."""
+    import re
+
+    m = re.search(r"channel IN \(([^)]*)\)", ddl)
+    assert m, "channel CHECK constraint not found in DDL"
+    return {v.strip().strip("'") for v in m.group(1).split(",")}
+
+
+def test_channel_enum_parity_sqlite_ddl() -> None:
+    from mcp_server.handlers.injection_receipts import INJECTION_CHANNELS
+    from mcp_server.infrastructure.sqlite_schema import INJECTION_RECEIPTS_DDL
+
+    assert _ddl_check_members(INJECTION_RECEIPTS_DDL) == set(INJECTION_CHANNELS)
+
+
+def test_channel_enum_parity_pg_ddl_and_migration() -> None:
+    from mcp_server.handlers.injection_receipts import INJECTION_CHANNELS
+    from mcp_server.infrastructure import pg_schema
+
+    ddl = pg_schema.SUPPORT_TABLES_DDL
+    assert _ddl_check_members(ddl) == set(INJECTION_CHANNELS)
+    # The migration that hardens T1-created tables must carry the same enum.
+    assert _ddl_check_members(pg_schema.MIGRATIONS_DDL) == set(INJECTION_CHANNELS)
+
+
+def test_fresh_sqlite_table_rejects_unknown_channel() -> None:
+    # Fresh tables carry the CHECK; pre-T2 tables keep free TEXT and rely
+    # on the emitter-level validation (documented DDL deviation).
+    import sqlite3
+
+    s = _store()
+    with pytest.raises(sqlite3.IntegrityError):
+        s.insert_injection_receipt("banner", _payload())
+
+
+def test_all_enum_channels_accepted_by_fresh_sqlite_table() -> None:
+    from mcp_server.handlers.injection_receipts import INJECTION_CHANNELS
+
+    s = _store()
+    for channel in sorted(INJECTION_CHANNELS):
+        assert s.insert_injection_receipt(channel, _payload()) > 0
