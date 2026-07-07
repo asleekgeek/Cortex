@@ -529,18 +529,26 @@ class PgMemoryStore(
             raise RuntimeError("INSERT ... RETURNING id produced no row")
         return row["id"]
 
-    def set_superseded_by(self, old_id: int, new_id: int) -> None:
+    def set_superseded_by(self, old_id: int, new_id: int) -> bool:
         """Mark ``old_id`` as superseded by ``new_id`` (back-pointer edge).
 
         The forward edge (new.supersedes_id = old) is set at insert time;
         this closes the chain by stamping the old row's superseded_by_id.
-        Idempotent — re-running with the same args is a no-op overwrite.
+
+        Compare-and-set: the UPDATE lands only while the target is still
+        the head of its chain (superseded_by_id IS NULL), so two concurrent
+        correctors can never overwrite each other's edge. Returns True when
+        the edge was posted, False on conflict. Re-running with the same
+        args is therefore a detected conflict, not the former idempotent
+        no-op overwrite — callers own the conflict handling.
         """
-        self._execute(
-            "UPDATE memories SET superseded_by_id = %s WHERE id = %s",
+        cur = self._execute(
+            "UPDATE memories SET superseded_by_id = %s "
+            "WHERE id = %s AND superseded_by_id IS NULL",
             (new_id, old_id),
         )
         self._conn.commit()
+        return cur.rowcount == 1
 
     def get_memory(self, memory_id: int) -> dict[str, Any] | None:
         row = self._execute(

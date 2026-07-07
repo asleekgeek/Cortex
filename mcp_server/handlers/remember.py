@@ -19,6 +19,7 @@ from mcp_server.handlers.remember_helpers import (
     try_block_replica_upsert,
     try_curation,
     update_user_mood_ema,
+    validate_supersede_target,
 )
 from mcp_server.handlers.remember_response import build_merge_response
 from mcp_server.infrastructure import wiki_store
@@ -48,8 +49,14 @@ schema = {
             },
             "action": {
                 "type": "string",
-                "enum": ["stored", "merged", "rejected"],
-                "description": "stored=new row; merged=folded into the most-similar existing memory; rejected=redundant per the predictive-coding gate.",
+                "enum": [
+                    "stored",
+                    "merged",
+                    "rejected",
+                    "superseded",
+                    "superseded_conflict",
+                ],
+                "description": "stored=new row; merged=folded into the most-similar existing memory; rejected=redundant per the predictive-coding gate; superseded=new row replaces an older version (append-only edge posted); superseded_conflict=another writer superseded the target first — nothing was kept, rebase and retry.",
             },
             "reason": {
                 "type": "string",
@@ -58,6 +65,18 @@ schema = {
             "merged_with": {
                 "type": "integer",
                 "description": "ID of the existing memory (PG bigint) when action=merged.",
+            },
+            "superseded_id": {
+                "type": "integer",
+                "description": "ID of the replaced memory when action=superseded.",
+            },
+            "supersede_target_id": {
+                "type": "integer",
+                "description": "Requested supersession target when the supersede path rejected or conflicted.",
+            },
+            "current_superseded_by_id": {
+                "type": ["integer", "null"],
+                "description": "The version that currently supersedes the target (present on supersede rejection/conflict so the caller can rebase).",
             },
             "heat": {
                 "type": "number",
@@ -137,9 +156,27 @@ schema = {
                 "type": "boolean",
                 "description": (
                     "Bypass the predictive-coding write gate and always insert. "
-                    "Use sparingly — anchored facts and curated lessons only."
+                    "Use sparingly — anchored facts and curated lessons only. "
+                    "Combined with supersedes_id this is the sovereign human "
+                    "correction: the gate is bypassed but the supersession "
+                    "edge is still posted."
                 ),
                 "default": False,
+            },
+            "supersedes_id": {
+                "type": "integer",
+                "minimum": 1,
+                "description": (
+                    "ID of the memory this content replaces (append-only "
+                    "correction). A new row is inserted, the target's "
+                    "superseded_by_id is compare-and-set to it, and recall "
+                    "demotes the old version. Rejected when the target is "
+                    "missing or already superseded — an existing version "
+                    "chain is never forked silently. Bypasses automatic "
+                    "curation (the intent is explicit); the write gate "
+                    "still applies unless force=true."
+                ),
+                "examples": [4255039],
             },
             "agent_topic": {
                 "type": "string",
@@ -295,6 +332,16 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
         initial_heat,
     ) = _parse_args(args)
     store, emb_engine = _get_store(), get_embedding_engine()
+
+    # Explicit supersession target (PRD dual-access increment 1, item ①):
+    # fail fast before any embedding/gate work when the target is missing
+    # or already superseded — an existing chain is never forked silently.
+    supersedes_id, supersede_rejection = validate_supersede_target(
+        args.get("supersedes_id"), store
+    )
+    if supersede_rejection is not None:
+        return supersede_rejection
+
     domain = _resolve_domain(directory, args.get("domain", ""))
     embedding = emb_engine.encode(content)
     valence = thermodynamics.compute_valence(content)
@@ -341,30 +388,40 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     else:
         global_reason = "explicit"
 
-    # Block-replica upsert: if the incoming memory is a system-memory block
-    # snapshot (tagged 'memory-replica' + 'vpath:…'), refresh the existing row
-    # in-place rather than inserting a new one (one row per block file).
-    # Normal writes are completely unaffected — this branch exits early on
-    # any write that isn't a replica. contract: zetetic-team-subagents memory/contract.md §8b
-    upserted, upsert_id = try_block_replica_upsert(
-        content, embedding, tags, source, store
-    )
-    if upserted and upsert_id is not None:
-        return {
-            "stored": True,
-            "memory_id": upsert_id,
-            "action": "stored",
-            "reason": "block-replica-refreshed",
-        }
+    mid: int | None
+    if supersedes_id is not None:
+        # Explicit supersession: the caller's intent overrides automatic
+        # curation (no merge/link second-guessing) and the block-replica
+        # upsert. force=True composes with it — the gate was bypassed
+        # above, yet the edge is still posted below (sovereign human
+        # correction; previously force and supersede were exclusive
+        # because force early-returned "create" inside try_curation).
+        action, mid = "supersede", supersedes_id
+    else:
+        # Block-replica upsert: if the incoming memory is a system-memory block
+        # snapshot (tagged 'memory-replica' + 'vpath:…'), refresh the existing row
+        # in-place rather than inserting a new one (one row per block file).
+        # Normal writes are completely unaffected — this branch exits early on
+        # any write that isn't a replica. contract: zetetic-team-subagents memory/contract.md §8b
+        upserted, upsert_id = try_block_replica_upsert(
+            content, embedding, tags, source, store
+        )
+        if upserted and upsert_id is not None:
+            return {
+                "stored": True,
+                "memory_id": upsert_id,
+                "action": "stored",
+                "reason": "block-replica-refreshed",
+            }
 
-    action, mid = try_curation(
-        content, embedding, force, store, emb_engine, tags, mod["heat"]
-    )
-    if action == "merge":
-        # Mood signal still updates on merge — the user authored the content,
-        # whether we keep it as a new row or fold it into an existing one.
-        update_user_mood_ema(content, source, store)
-        return build_merge_response(mid, domain, mod, gate)
+        action, mid = try_curation(
+            content, embedding, force, store, emb_engine, tags, mod["heat"]
+        )
+        if action == "merge":
+            # Mood signal still updates on merge — the user authored the content,
+            # whether we keep it as a new row or fold it into an existing one.
+            update_user_mood_ema(content, source, store)
+            return build_merge_response(mid, domain, mod, gate)
 
     result = insert_and_post_process(
         content,

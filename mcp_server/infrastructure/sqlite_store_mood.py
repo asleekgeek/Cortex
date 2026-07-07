@@ -128,26 +128,33 @@ class SqliteMoodMixin:
 
     # ── Memory supersession ───────────────────────────────────────────
 
-    def set_superseded_by(self, old_id: int, new_id: int) -> None:
+    def set_superseded_by(self, old_id: int, new_id: int) -> bool:
         """Mark ``old_id`` as superseded by ``new_id`` (back-pointer edge).
 
         Precondition: old_id and new_id are valid memory IDs.
         Postcondition: memories.superseded_by_id = new_id for the row with
-          id = old_id; the forward edge (new.supersedes_id = old) is written
-          by insert_memory when data["supersedes_id"] is supplied.
+          id = old_id, only if it was NULL before (compare-and-set); the
+          forward edge (new.supersedes_id = old) is written by insert_memory
+          when data["supersedes_id"] is supplied.
 
-        Idempotent — re-running with the same args is a no-op overwrite.
+        Returns True when the edge was posted, False on conflict — the
+        target already carries a superseded_by_id (including re-runs with
+        the same args) or the column is absent (pre-migration DB). Either
+        way the edge was NOT posted; reporting False instead of pretending
+        success is the point of the CAS contract.
         Mirrors PgMemoryStore.set_superseded_by.
         """
         try:
-            self._conn.execute(
-                "UPDATE memories SET superseded_by_id = ? WHERE id = ?",
+            cur = self._conn.execute(
+                "UPDATE memories SET superseded_by_id = ? "
+                "WHERE id = ? AND superseded_by_id IS NULL",
                 (new_id, old_id),
             )
             self._conn.commit()
+            return cur.rowcount == 1
         except Exception:
-            # superseded_by_id column absent (pre-migration DB) — safe no-op.
-            pass
+            # superseded_by_id column absent (pre-migration DB).
+            return False
 
     # ── Bulk embedding fetch ──────────────────────────────────────────
 

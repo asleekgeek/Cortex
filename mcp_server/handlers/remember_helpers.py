@@ -576,9 +576,11 @@ def insert_and_post_process(
     if action == "supersede" and merged_id is not None:
         # Close the supersession chain: forward edge (new.supersedes_id)
         # is in the record above; this stamps the old row's back-pointer
-        # so recall_memories() demotes it as a stale version.
-        if hasattr(store, "set_superseded_by"):
-            store.set_superseded_by(merged_id, mem_id)
+        # so recall_memories() demotes it as a stale version. The edge is
+        # compare-and-set — False means another writer superseded the
+        # target between validation and here.
+        if not store.set_superseded_by(merged_id, mem_id):
+            return _build_supersede_conflict(mem_id, merged_id, store)
     tids, tagged, slot = _run_post_store(
         mem_id,
         content,
@@ -612,7 +614,76 @@ def insert_and_post_process(
     response["source_attribution"] = attribution
     if attribution == "inferred":
         response["confabulation_risk"] = True
+    if action == "supersede" and merged_id is not None:
+        response["superseded_id"] = merged_id
     return response
+
+
+def _build_supersede_conflict(
+    mem_id: int, merged_id: int, store: MemoryStore
+) -> dict[str, Any]:
+    """Undo the freshly inserted row after a lost supersession race.
+
+    Rollback-over-orphan: keeping the unlinked row would silently fork the
+    version chain (two competing heads at recall time), while the caller
+    still holds the content and can rebase on the winning version and
+    retry — so the insert is deleted and the conflict reported. Never
+    silent: the response names the target, the head that won, and — if
+    the delete itself failed — the orphaned row id.
+    """
+    current = store.get_memory(merged_id) or {}
+    response: dict[str, Any] = {
+        "stored": False,
+        "action": "superseded_conflict",
+        "reason": "supersede_target_no_longer_head",
+        "supersede_target_id": merged_id,
+        "current_superseded_by_id": current.get("superseded_by_id"),
+    }
+    if not store.delete_memory(mem_id):
+        response["orphan_memory_id"] = mem_id
+    return response
+
+
+def validate_supersede_target(
+    supersedes_raw: Any, store: MemoryStore
+) -> tuple[int | None, dict[str, Any] | None]:
+    """Resolve and validate an explicit supersession target.
+
+    Returns (supersedes_id, None) when the target is a valid chain head,
+    (None, rejection_response) when the argument is malformed, the target
+    is missing, or the target is already superseded — an existing chain is
+    never forked silently. The head-ness read here is advisory; the
+    compare-and-set in the store is the authority under concurrency.
+    """
+    if supersedes_raw is None:
+        return None, None
+    try:
+        supersedes_id = int(supersedes_raw)
+    except (TypeError, ValueError):
+        supersedes_id = 0
+    if supersedes_id <= 0:
+        return None, {
+            "stored": False,
+            "action": "rejected",
+            "reason": "invalid_supersedes_id",
+        }
+    target = store.get_memory(supersedes_id)
+    if target is None:
+        return None, {
+            "stored": False,
+            "action": "rejected",
+            "reason": "supersede_target_not_found",
+            "supersede_target_id": supersedes_id,
+        }
+    if target.get("superseded_by_id") is not None:
+        return None, {
+            "stored": False,
+            "action": "rejected",
+            "reason": "supersede_target_already_superseded",
+            "supersede_target_id": supersedes_id,
+            "current_superseded_by_id": target.get("superseded_by_id"),
+        }
+    return supersedes_id, None
 
 
 # ── User-mood EMA hook (Bower 1981 mood-congruent recall, signal side) ──

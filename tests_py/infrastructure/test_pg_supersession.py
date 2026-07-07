@@ -152,9 +152,44 @@ def test_set_superseded_by_closes_chain(store):
     new_id = store.insert_memory(
         {**common, "content": "deploy target one alpha", "supersedes_id": old_id}
     )
-    store.set_superseded_by(old_id, new_id)
+    assert store.set_superseded_by(old_id, new_id) is True
 
     assert store.get_memory(old_id)["superseded_by_id"] == new_id
     results = _recall(store, "deploy target one alpha")
     ids = [r["memory_id"] for r in results]
     assert ids.index(new_id) < ids.index(old_id)
+
+
+def test_set_superseded_by_cas_two_writers(store):
+    """Item ② acceptance (PRD dual-access increment 1): two concurrent
+    correctors — the loser gets the conflict flag and the winner's edge is
+    never overwritten."""
+    common = {"embedding": _emb(), "source": "user", "domain": _DOMAIN, "heat": 0.5}
+    old_id = store.insert_memory({**common, "content": "shared correction target"})
+    a_id = store.insert_memory(
+        {**common, "content": "correction from writer A", "supersedes_id": old_id}
+    )
+    b_id = store.insert_memory(
+        {**common, "content": "correction from writer B", "supersedes_id": old_id}
+    )
+
+    assert store.set_superseded_by(old_id, a_id) is True
+    assert store.set_superseded_by(old_id, b_id) is False, (
+        "second writer must observe the conflict, not overwrite the edge"
+    )
+    assert store.get_memory(old_id)["superseded_by_id"] == a_id
+
+
+def test_set_superseded_by_rerun_is_conflict(store):
+    """The former docstring promised an idempotent no-op overwrite; the CAS
+    predicate replaces that with a detected conflict on any second write,
+    including a re-run with identical args."""
+    common = {"embedding": _emb(), "source": "user", "domain": _DOMAIN, "heat": 0.5}
+    old_id = store.insert_memory({**common, "content": "rerun target fact"})
+    new_id = store.insert_memory(
+        {**common, "content": "rerun corrected fact", "supersedes_id": old_id}
+    )
+
+    assert store.set_superseded_by(old_id, new_id) is True
+    assert store.set_superseded_by(old_id, new_id) is False
+    assert store.get_memory(old_id)["superseded_by_id"] == new_id
