@@ -571,16 +571,19 @@ def insert_and_post_process(
     )
     record["agent_context"] = agent_context
     record["is_global"] = is_global
-    mem_id = store.insert_memory(record)
-    _link_if_needed(action, merged_id, mem_id, store)
+    superseded_head: int | None = None
     if action == "supersede" and merged_id is not None:
-        # Close the supersession chain: forward edge (new.supersedes_id)
-        # is in the record above; this stamps the old row's back-pointer
-        # so recall_memories() demotes it as a stale version. The edge is
-        # compare-and-set — False means another writer superseded the
-        # target between validation and here.
-        if not store.set_superseded_by(merged_id, mem_id):
-            return _build_supersede_conflict(mem_id, merged_id, store)
+        # Atomic insert + supersession edge (biomimetic reconsolidation): the
+        # new row and the head's back-pointer commit as ONE transaction, so a
+        # lost compare-and-set rolls the insert back — never an orphaned,
+        # disconnected row. On a race the write rebases onto the current head;
+        # only pathological contention returns a conflict (nothing committed).
+        mem_id, superseded_head = store.supersede_atomic(record, merged_id)
+        if mem_id is None:
+            return _build_supersede_conflict(merged_id, superseded_head)
+    else:
+        mem_id = store.insert_memory(record)
+    _link_if_needed(action, merged_id, mem_id, store)
     tids, tagged, slot = _run_post_store(
         mem_id,
         content,
@@ -615,33 +618,34 @@ def insert_and_post_process(
     if attribution == "inferred":
         response["confabulation_risk"] = True
     if action == "supersede" and merged_id is not None:
-        response["superseded_id"] = merged_id
+        # The row actually superseded is the chain head the edge landed on —
+        # equal to merged_id unless a concurrent race rebased the write.
+        response["superseded_id"] = superseded_head
     return response
 
 
 def _build_supersede_conflict(
-    mem_id: int, merged_id: int, store: MemoryStore
+    target_id: int, current_head_id: int | None
 ) -> dict[str, Any]:
-    """Undo the freshly inserted row after a lost supersession race.
+    """Report a supersession that could not converge on a stable chain head.
 
-    Rollback-over-orphan: keeping the unlinked row would silently fork the
-    version chain (two competing heads at recall time), while the caller
-    still holds the content and can rebase on the winning version and
-    retry — so the insert is deleted and the conflict reported. Never
-    silent: the response names the target, the head that won, and — if
-    the delete itself failed — the orphaned row id.
+    Reached only when ``store.supersede_atomic`` exhausts its bounded
+    reconsolidation rebase: every attempt lost the compare-and-set to a
+    concurrent writer moving the head. Because each attempt runs the insert and
+    the edge inside ONE transaction, a lost attempt rolls the insert back —
+    nothing is ever committed, so no row is orphaned and none is left
+    disconnected. The caller still holds the content and the id of the current
+    head, so it can rebase and retry (optimistic concurrency, 409-style). There
+    is deliberately no delete and no orphan_memory_id: the atomic rollback makes
+    both impossible, a stronger guarantee than the former rollback-over-orphan.
     """
-    current = store.get_memory(merged_id) or {}
-    response: dict[str, Any] = {
+    return {
         "stored": False,
         "action": "superseded_conflict",
-        "reason": "supersede_target_no_longer_head",
-        "supersede_target_id": merged_id,
-        "current_superseded_by_id": current.get("superseded_by_id"),
+        "reason": "supersede_chain_head_moving",
+        "supersede_target_id": target_id,
+        "current_head_id": current_head_id,
     }
-    if not store.delete_memory(mem_id):
-        response["orphan_memory_id"] = mem_id
-    return response
 
 
 def validate_supersede_target(

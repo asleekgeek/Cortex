@@ -144,52 +144,103 @@ def test_insert_persists_supersedes_id(store):
     assert row["supersedes_id"] == old_id
 
 
-def test_set_superseded_by_closes_chain(store):
-    """Phase 2: set_superseded_by stamps the old row's back-pointer and the
-    head-of-chain demotion then ranks the current version first."""
+def _open_heads(store: PgMemoryStore) -> list[int]:
+    """Ids of the domain's open chain heads (superseded_by_id IS NULL)."""
+    rows = store._execute(
+        "SELECT id FROM memories WHERE domain = %s AND superseded_by_id IS NULL",
+        (_DOMAIN,),
+    ).fetchall()
+    return [r["id"] for r in rows]
+
+
+def test_supersede_atomic_forms_chain(store):
+    """supersede_atomic inserts the new row AND stamps the head's back-pointer
+    as one unit; the head-of-chain demotion then ranks the current version
+    first, and exactly one open head remains."""
     common = {"embedding": _emb(), "source": "user", "domain": _DOMAIN, "heat": 0.5}
     old_id = store.insert_memory({**common, "content": "deploy target one alpha"})
-    new_id = store.insert_memory(
-        {**common, "content": "deploy target one alpha", "supersedes_id": old_id}
-    )
-    assert store.set_superseded_by(old_id, new_id) is True
 
+    new_id, head = store.supersede_atomic(
+        {**common, "content": "deploy target one alpha"}, old_id
+    )
+    assert head == old_id, "target was still the head → no rebase"
     assert store.get_memory(old_id)["superseded_by_id"] == new_id
+    assert store.get_memory(new_id)["supersedes_id"] == old_id
+    assert _open_heads(store) == [new_id], "exactly one open head after supersession"
+
     results = _recall(store, "deploy target one alpha")
     ids = [r["memory_id"] for r in results]
     assert ids.index(new_id) < ids.index(old_id)
 
 
-def test_set_superseded_by_cas_two_writers(store):
-    """Item ② acceptance (PRD dual-access increment 1): two concurrent
-    correctors — the loser gets the conflict flag and the winner's edge is
-    never overwritten."""
+def test_supersede_atomic_rebases_onto_moved_head(store):
+    """Reconsolidation: correcting a fact whose chain already moved rebases the
+    new row onto the CURRENT head (never forks, never disconnects). Walking
+    from the original target follows superseded_by_id to the live head."""
     common = {"embedding": _emb(), "source": "user", "domain": _DOMAIN, "heat": 0.5}
-    old_id = store.insert_memory({**common, "content": "shared correction target"})
-    a_id = store.insert_memory(
-        {**common, "content": "correction from writer A", "supersedes_id": old_id}
-    )
-    b_id = store.insert_memory(
-        {**common, "content": "correction from writer B", "supersedes_id": old_id}
-    )
+    old_id = store.insert_memory({**common, "content": "runner is host A"})
+    mid_id, _ = store.supersede_atomic({**common, "content": "runner is host B"}, old_id)
 
-    assert store.set_superseded_by(old_id, a_id) is True
-    assert store.set_superseded_by(old_id, b_id) is False, (
-        "second writer must observe the conflict, not overwrite the edge"
+    # Supersede pointing at the ORIGINAL target, now mid-chain, not the head.
+    new_id, head = store.supersede_atomic(
+        {**common, "content": "runner is host C"}, old_id
     )
-    assert store.get_memory(old_id)["superseded_by_id"] == a_id
+    assert head == mid_id, "rebase must land on the current head, not the stale target"
+    assert store.get_memory(mid_id)["superseded_by_id"] == new_id
+    assert store.get_memory(new_id)["supersedes_id"] == mid_id
+    # old → mid → new, a single linear chain with one open head.
+    assert store.get_memory(old_id)["superseded_by_id"] == mid_id
+    assert _open_heads(store) == [new_id]
 
 
-def test_set_superseded_by_rerun_is_conflict(store):
-    """The former docstring promised an idempotent no-op overwrite; the CAS
-    predicate replaces that with a detected conflict on any second write,
-    including a re-run with identical args."""
+def test_supersede_atomic_conflict_rolls_back_no_orphan(store, monkeypatch):
+    """Under relentless contention the bounded rebase exhausts, but because each
+    attempt runs insert+edge in ONE transaction, a lost compare-and-set rolls
+    the insert back: the correction is NEVER committed (no orphan) and the chain
+    keeps exactly one open head. This is the core biomimetic invariant — a
+    memory is never left physically disconnected."""
     common = {"embedding": _emb(), "source": "user", "domain": _DOMAIN, "heat": 0.5}
-    old_id = store.insert_memory({**common, "content": "rerun target fact"})
-    new_id = store.insert_memory(
-        {**common, "content": "rerun corrected fact", "supersedes_id": old_id}
+    target = store.insert_memory({**common, "content": "conflict target fact"})
+
+    real_head = store._current_chain_head
+    rivals: list[int] = []
+
+    def racing_head(conn, tid):
+        # A concurrent writer supersedes the head we just found — committed on
+        # a separate pooled connection — so our upcoming CAS on it will miss.
+        head = real_head(conn, tid)
+        if head is not None:
+            rival = store.insert_memory(
+                {**common, "content": f"rival {len(rivals)}", "supersedes_id": head}
+            )
+            store._execute(
+                "UPDATE memories SET superseded_by_id = %s "
+                "WHERE id = %s AND superseded_by_id IS NULL",
+                (rival, head),
+            )
+            store._conn.commit()
+            rivals.append(rival)
+        return head
+
+    monkeypatch.setattr(store, "_current_chain_head", racing_head)
+    new_id, head = store.supersede_atomic(
+        {**common, "content": "correction that keeps losing"}, target
     )
 
-    assert store.set_superseded_by(old_id, new_id) is True
-    assert store.set_superseded_by(old_id, new_id) is False
-    assert store.get_memory(old_id)["superseded_by_id"] == new_id
+    assert new_id is None, "bounded rebase must exhaust under relentless contention"
+    assert head is not None
+    lost = store._execute(
+        "SELECT id FROM memories WHERE domain = %s AND content = %s",
+        (_DOMAIN, "correction that keeps losing"),
+    ).fetchall()
+    assert lost == [], "a lost supersession must leave NO committed row (no orphan)"
+    assert len(_open_heads(store)) == 1, "the chain keeps exactly one open head"
+
+
+def test_supersede_atomic_target_vanished(store):
+    """A target that no longer exists yields (None, None) — nothing is
+    committed, the caller learns the write did not land."""
+    assert store.supersede_atomic({"content": "orphan correction"}, 2_000_000_000) == (
+        None,
+        None,
+    )

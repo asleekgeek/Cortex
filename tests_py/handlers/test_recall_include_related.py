@@ -66,14 +66,10 @@ def _seed(store: PgMemoryStore) -> dict:
     old_id = store.insert_memory(
         {**common, "content": "deploy target is staging alpha relation walk"}
     )
-    new_id = store.insert_memory(
-        {
-            **common,
-            "content": "deploy target is staging alpha relation walk",
-            "supersedes_id": old_id,
-        }
+    # Atomic insert + supersession edge (both directions) in one call.
+    new_id, _ = store.supersede_atomic(
+        {**common, "content": "deploy target is staging alpha relation walk"}, old_id
     )
-    store.set_superseded_by(old_id, new_id)
 
     e_deploy = store.insert_entity(
         {"name": "deploy-alpha", "type": "concept", "domain": _DOMAIN}

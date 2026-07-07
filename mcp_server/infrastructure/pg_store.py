@@ -104,6 +104,29 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# ── supersede_atomic operational bounds (engineering, not algorithmic) ──────
+# Bounded optimistic-concurrency retry for the reconsolidation rebase. On the
+# common single-writer path the first attempt commits; the bound only bites
+# under concurrent supersession of the SAME chain, where each retry re-walks to
+# the head another writer just moved. Exhausting it returns a 409-style conflict
+# to the caller (nothing committed) rather than looping forever.
+_SUPERSEDE_REBASE_ATTEMPTS = 5
+# Defensive recursion guard for the chain-head walk. Chains are acyclic by
+# construction — supersede_atomic only ever extends the OPEN head — so this cap
+# is a cycle backstop, not a semantic limit on how many times a fact may be
+# corrected.
+_CHAIN_HEAD_MAX_DEPTH = 100_000
+
+
+class _SupersedeCasConflict(Exception):
+    """The chain head moved under our compare-and-set.
+
+    Raised inside the supersede_atomic transaction to force a full rollback of
+    the attempt (the freshly inserted row is undone — never committed, never
+    orphaned) before rebasing onto the new head and retrying.
+    """
+
+
 class PgMemoryStore(
     PgEntityMixin,
     PgEntityMergeMixin,
@@ -440,27 +463,11 @@ class PgMemoryStore(
 
     # ── Memory CRUD ───────────────────────────────────────────────────
 
-    def insert_memory(self, data: dict[str, Any]) -> int:
-        """Insert a memory and return its ID."""
-        now = _now_iso()
-        embedding = self._bytes_to_vector(data.get("embedding"))
-        # Normalize free-form dates to ISO 8601 for proper recency ranking
-        raw_created = data.get("created_at")
-        if raw_created and isinstance(raw_created, str) and "T" not in raw_created:
-            from mcp_server.core.temporal import normalize_date_to_iso
-
-            raw_created = normalize_date_to_iso(raw_created) or raw_created
-        # A3 decay clock: anchor heat_base_set_at to the event date, not NOW().
-        # effective_heat() decays from COALESCE(heat_base_set_at, last_accessed,
-        # created_at); for a never-touched insert the faithful "last canonical
-        # touch" IS the event (created_at), so a historical-dated memory
-        # (import / benchmark loader) engages the SQL forgetting law instead of
-        # reading hours_elapsed≈0. No-op for fresh writes where created_at≈now.
-        # Source: docs/program/phase-3-a3-migration-design.md §3.1 (clock = last
-        # touch); benchmark root-cause memory 4202968.
-        heat_base_anchor = data.get("heat_base_set_at") or raw_created or now
-        row = self._execute(
-            """INSERT INTO memories (
+    # Single source of truth for the memory INSERT. insert_memory() runs it on
+    # a pooled autocommit connection (one row per statement); supersede_atomic()
+    # runs it inside an explicit transaction so the row and its supersession
+    # edge commit — or roll back — as one unit, never leaving a disconnected row.
+    _INSERT_MEMORY_SQL = """INSERT INTO memories (
                 content, embedding, tags, source, domain,
                 directory_context, created_at, last_accessed, heat_base_set_at,
                 heat_base, surprise_score, importance,
@@ -486,69 +493,162 @@ class PgMemoryStore(
                 %(is_global)s, %(stage_entered_at)s,
                 %(arousal)s, %(dominant_emotion)s, %(supersedes_id)s,
                 %(source_attribution)s, %(stimulus_signature)s, %(extinction_strength)s
-            ) RETURNING id""",
-            {
-                "content": data["content"],
-                "embedding": embedding,
-                "tags": json.dumps(data.get("tags", [])),
-                "source": data.get("source", ""),
-                "domain": data.get("domain", ""),
-                "directory_context": data.get("directory_context", ""),
-                "created_at": raw_created or now,
-                "last_accessed": now,
-                "heat_base_set_at": heat_base_anchor,
-                "heat": data.get("heat", 1.0),
-                "surprise_score": data.get("surprise_score", 0.0),
-                "importance": data.get("importance", 0.5),
-                "emotional_valence": data.get("emotional_valence", 0.0),
-                "confidence": data.get("confidence", 1.0),
-                "store_type": data.get("store_type", "episodic"),
-                "is_protected": data.get("is_protected", False),
-                "consolidation_stage": data.get("consolidation_stage", "labile"),
-                "theta_phase": data.get("theta_phase_at_encoding", 0.0),
-                "encoding_strength": data.get("encoding_strength", 1.0),
-                "separation_index": data.get("separation_index", 0.0),
-                "interference_score": data.get("interference_score", 0.0),
-                "schema_match_score": data.get("schema_match_score", 0.0),
-                "schema_id": data.get("schema_id"),
-                "hippocampal_dependency": data.get("hippocampal_dependency", 1.0),
-                "is_benchmark": data.get("is_benchmark", False),
-                "agent_context": data.get("agent_context", ""),
-                "is_global": data.get("is_global", False),
-                "stage_entered_at": data.get("stage_entered_at") or raw_created or now,
-                "arousal": data.get("arousal", 0.0),
-                "dominant_emotion": data.get("dominant_emotion", "neutral"),
-                "supersedes_id": data.get("supersedes_id"),
-                "source_attribution": data.get("source_attribution", "unknown"),
-                "stimulus_signature": data.get("stimulus_signature", ""),
-                "extinction_strength": data.get("extinction_strength", 0.0),
-            },
+            ) RETURNING id"""
+
+    def _build_insert_params(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Map a memory record to the _INSERT_MEMORY_SQL bind parameters.
+
+        A3 decay clock: anchor heat_base_set_at to the event date, not NOW().
+        effective_heat() decays from COALESCE(heat_base_set_at, last_accessed,
+        created_at); for a never-touched insert the faithful "last canonical
+        touch" IS the event (created_at), so a historical-dated memory
+        (import / benchmark loader) engages the SQL forgetting law instead of
+        reading hours_elapsed≈0. No-op for fresh writes where created_at≈now.
+        Source: docs/program/phase-3-a3-migration-design.md §3.1 (clock = last
+        touch); benchmark root-cause memory 4202968.
+        """
+        now = _now_iso()
+        embedding = self._bytes_to_vector(data.get("embedding"))
+        # Normalize free-form dates to ISO 8601 for proper recency ranking
+        raw_created = data.get("created_at")
+        if raw_created and isinstance(raw_created, str) and "T" not in raw_created:
+            from mcp_server.core.temporal import normalize_date_to_iso
+
+            raw_created = normalize_date_to_iso(raw_created) or raw_created
+        heat_base_anchor = data.get("heat_base_set_at") or raw_created or now
+        return {
+            "content": data["content"],
+            "embedding": embedding,
+            "tags": json.dumps(data.get("tags", [])),
+            "source": data.get("source", ""),
+            "domain": data.get("domain", ""),
+            "directory_context": data.get("directory_context", ""),
+            "created_at": raw_created or now,
+            "last_accessed": now,
+            "heat_base_set_at": heat_base_anchor,
+            "heat": data.get("heat", 1.0),
+            "surprise_score": data.get("surprise_score", 0.0),
+            "importance": data.get("importance", 0.5),
+            "emotional_valence": data.get("emotional_valence", 0.0),
+            "confidence": data.get("confidence", 1.0),
+            "store_type": data.get("store_type", "episodic"),
+            "is_protected": data.get("is_protected", False),
+            "consolidation_stage": data.get("consolidation_stage", "labile"),
+            "theta_phase": data.get("theta_phase_at_encoding", 0.0),
+            "encoding_strength": data.get("encoding_strength", 1.0),
+            "separation_index": data.get("separation_index", 0.0),
+            "interference_score": data.get("interference_score", 0.0),
+            "schema_match_score": data.get("schema_match_score", 0.0),
+            "schema_id": data.get("schema_id"),
+            "hippocampal_dependency": data.get("hippocampal_dependency", 1.0),
+            "is_benchmark": data.get("is_benchmark", False),
+            "agent_context": data.get("agent_context", ""),
+            "is_global": data.get("is_global", False),
+            "stage_entered_at": data.get("stage_entered_at") or raw_created or now,
+            "arousal": data.get("arousal", 0.0),
+            "dominant_emotion": data.get("dominant_emotion", "neutral"),
+            "supersedes_id": data.get("supersedes_id"),
+            "source_attribution": data.get("source_attribution", "unknown"),
+            "stimulus_signature": data.get("stimulus_signature", ""),
+            "extinction_strength": data.get("extinction_strength", 0.0),
+        }
+
+    def _insert_memory_on(
+        self, conn: psycopg.Connection, data: dict[str, Any]
+    ) -> int:
+        """Run the memory INSERT on ``conn`` WITHOUT committing.
+
+        The caller owns the transaction boundary: insert_memory() commits on a
+        pooled autocommit connection; supersede_atomic() commits or rolls back
+        the row together with its supersession edge.
+        """
+        row = conn.execute(
+            self._INSERT_MEMORY_SQL, self._build_insert_params(data)
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("INSERT ... RETURNING id produced no row")
+        return int(row["id"])
+
+    def insert_memory(self, data: dict[str, Any]) -> int:
+        """Insert a memory and return its ID."""
+        row = self._execute(
+            self._INSERT_MEMORY_SQL, self._build_insert_params(data)
         ).fetchone()
         self._conn.commit()
         if row is None:
             raise RuntimeError("INSERT ... RETURNING id produced no row")
-        return row["id"]
+        return int(row["id"])
 
-    def set_superseded_by(self, old_id: int, new_id: int) -> bool:
-        """Mark ``old_id`` as superseded by ``new_id`` (back-pointer edge).
+    def _current_chain_head(
+        self, conn: psycopg.Connection, target_id: int
+    ) -> int | None:
+        """Walk ``target_id``'s supersession chain to its open head.
 
-        The forward edge (new.supersedes_id = old) is set at insert time;
-        this closes the chain by stamping the old row's superseded_by_id.
-
-        Compare-and-set: the UPDATE lands only while the target is still
-        the head of its chain (superseded_by_id IS NULL), so two concurrent
-        correctors can never overwrite each other's edge. Returns True when
-        the edge was posted, False on conflict. Re-running with the same
-        args is therefore a detected conflict, not the former idempotent
-        no-op overwrite — callers own the conflict handling.
+        Follows forward ``superseded_by_id`` edges to the row whose
+        superseded_by_id IS NULL — the current head. Returns that id, or None
+        if ``target_id`` no longer exists. Runs on the caller's connection so
+        the walk and the CAS that follows share one transaction snapshot.
         """
-        cur = self._execute(
-            "UPDATE memories SET superseded_by_id = %s "
-            "WHERE id = %s AND superseded_by_id IS NULL",
-            (new_id, old_id),
-        )
-        self._conn.commit()
-        return cur.rowcount == 1
+        row = conn.execute(
+            """WITH RECURSIVE chain(id, superseded_by_id, hops) AS (
+                   SELECT id, superseded_by_id, 0
+                   FROM memories WHERE id = %s
+                   UNION ALL
+                   SELECT m.id, m.superseded_by_id, c.hops + 1
+                   FROM memories m JOIN chain c ON m.id = c.superseded_by_id
+                   WHERE c.hops < %s
+               )
+               SELECT id FROM chain
+               WHERE superseded_by_id IS NULL
+               ORDER BY hops DESC LIMIT 1""",
+            (target_id, _CHAIN_HEAD_MAX_DEPTH),
+        ).fetchone()
+        return int(row["id"]) if row else None
+
+    def supersede_atomic(
+        self, data: dict[str, Any], target_id: int
+    ) -> tuple[int | None, int | None]:
+        """Insert ``data`` as the supersessor of ``target_id``'s head, atomically.
+
+        Biomimetic reconsolidation (Nader, Schafe & LeDoux 2000): a corrected
+        memory is reconstructed on the CURRENT trace, never left physically
+        disconnected. One transaction inserts the new row (supersedes_id = the
+        walked head) and stamps that head's ``superseded_by_id`` — a
+        compare-and-set that lands only while the head is still open. If a
+        concurrent writer moved the head between the walk and the CAS, the whole
+        transaction rolls back (the insert is undone — no orphan is ever
+        committed) and we REBASE: re-walk ``target_id`` to the new head and
+        retry, bounded by _SUPERSEDE_REBASE_ATTEMPTS. On the common path (no
+        race) the head IS ``target_id`` and the first attempt commits.
+
+        Returns ``(new_id, head_id)`` on success — ``head_id`` is the row the
+        new memory now supersedes (== ``target_id`` unless a race rebased us).
+        Returns ``(None, last_head_id)`` when the bounded rebase exhausts
+        (pathological contention — nothing committed; the caller rebases and
+        retries), or ``(None, None)`` when the target vanished mid-write.
+        """
+        last_head: int | None = None
+        for _ in range(_SUPERSEDE_REBASE_ATTEMPTS):
+            with self.acquire_interactive() as conn:
+                try:
+                    with conn.transaction():
+                        head_id = self._current_chain_head(conn, target_id)
+                        if head_id is None:
+                            return None, None
+                        last_head = head_id
+                        data["supersedes_id"] = head_id
+                        new_id = self._insert_memory_on(conn, data)
+                        rowcount = conn.execute(
+                            "UPDATE memories SET superseded_by_id = %s "
+                            "WHERE id = %s AND superseded_by_id IS NULL",
+                            (new_id, head_id),
+                        ).rowcount
+                        if rowcount != 1:
+                            raise _SupersedeCasConflict()
+                except _SupersedeCasConflict:
+                    continue
+                return new_id, head_id
+        return None, last_head
 
     def get_memory(self, memory_id: int) -> dict[str, Any] | None:
         row = self._execute(

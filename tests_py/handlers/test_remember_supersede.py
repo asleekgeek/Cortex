@@ -2,14 +2,16 @@
 
 Item ① — ``remember(supersedes_id)``: append-only human correction through
 the handler; ``force`` composes with it (sovereign correction bypasses the
-write gate but still posts the edge). Item ② — the CAS conflict path in
-``insert_and_post_process``: a lost race rolls the fresh insert back and
-reports the conflict, never forks a chain, never loses a row silently.
+write gate but still posts the edge). Item ② — the atomic supersession path in
+``insert_and_post_process``: ``store.supersede_atomic`` inserts the new row and
+the edge as one transaction, so an exhausted reconsolidation rebase rolls the
+insert back and reports a conflict — never forks a chain, never leaves an
+orphaned, disconnected row.
 
 Handler tests run against the shared store wired by conftest (live PG when
-available). The conflict-path tests use duck-typed fakes because the race
-window — target superseded between validation and edge-posting — cannot be
-opened deterministically through the public handler.
+available). The conflict-path test uses a duck-typed fake because the race
+window — the chain head moving under the compare-and-set — cannot be opened
+deterministically through the public handler.
 """
 
 import asyncio
@@ -132,27 +134,19 @@ class TestRememberSupersedes:
 
 
 class _ConflictStore:
-    """Duck-typed store opening the lost-race window: the CAS refuses the
-    edge as if another writer superseded the target after validation."""
+    """Duck-typed store whose atomic supersession never converges: the bounded
+    reconsolidation rebase exhausts and returns (None, current_head), the
+    signal that nothing was committed (the transaction rolled back each try)."""
 
-    def __init__(self, delete_succeeds: bool = True) -> None:
-        self.delete_succeeds = delete_succeeds
-        self.deleted: list[int] = []
-        self.inserted: list[dict] = []
+    def __init__(self, current_head: int = 555) -> None:
+        self.current_head = current_head
+        self.calls: list[tuple[dict, int]] = []
 
-    def insert_memory(self, record: dict) -> int:
-        self.inserted.append(record)
-        return 777
-
-    def set_superseded_by(self, old_id: int, new_id: int) -> bool:
-        return False
-
-    def get_memory(self, mem_id: int) -> dict:
-        return {"id": mem_id, "superseded_by_id": 555}
-
-    def delete_memory(self, mem_id: int) -> bool:
-        self.deleted.append(mem_id)
-        return self.delete_succeeds
+    def supersede_atomic(
+        self, data: dict, target_id: int
+    ) -> tuple[int | None, int | None]:
+        self.calls.append((dict(data), target_id))
+        return None, self.current_head
 
 
 class _NoopEngine:
@@ -197,27 +191,20 @@ def _run_conflict(store: _ConflictStore) -> dict:
 
 
 class TestSupersedeConflict:
-    """Item ② — conflict propagation: rollback-over-orphan, never silent."""
+    """Item ② — conflict propagation: atomic rollback, never an orphan."""
 
-    def test_cas_conflict_rolls_back_insert(self):
-        store = _ConflictStore()
+    def test_exhausted_rebase_reports_conflict_no_orphan(self):
+        store = _ConflictStore(current_head=555)
         result = _run_conflict(store)
         assert result["stored"] is False
         assert result["action"] == "superseded_conflict"
-        assert result["reason"] == "supersede_target_no_longer_head"
+        assert result["reason"] == "supersede_chain_head_moving"
         assert result["supersede_target_id"] == 42
-        assert result["current_superseded_by_id"] == 555
-        assert store.deleted == [777], "the fresh insert must be rolled back"
+        assert result["current_head_id"] == 555
+        # The atomic insert+edge rolls back on a lost race, so there is never a
+        # committed row to delete or leave orphaned — the concept is gone.
         assert "orphan_memory_id" not in result
-
-    def test_cas_conflict_delete_failure_reports_orphan(self):
-        store = _ConflictStore(delete_succeeds=False)
-        result = _run_conflict(store)
-        assert result["stored"] is False
-        assert result["action"] == "superseded_conflict"
-        assert result["orphan_memory_id"] == 777, (
-            "a failed rollback must name the orphan, never stay silent"
-        )
+        assert store.calls and store.calls[0][1] == 42
 
 
 class _HeadStore:
