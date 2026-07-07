@@ -179,7 +179,9 @@ def test_supersede_atomic_rebases_onto_moved_head(store):
     from the original target follows superseded_by_id to the live head."""
     common = {"embedding": _emb(), "source": "user", "domain": _DOMAIN, "heat": 0.5}
     old_id = store.insert_memory({**common, "content": "runner is host A"})
-    mid_id, _ = store.supersede_atomic({**common, "content": "runner is host B"}, old_id)
+    mid_id, _ = store.supersede_atomic(
+        {**common, "content": "runner is host B"}, old_id
+    )
 
     # Supersede pointing at the ORIGINAL target, now mid-chain, not the head.
     new_id, head = store.supersede_atomic(

@@ -72,9 +72,7 @@ class TestRememberSupersedes:
         assert base["stored"] is True
         old_id = base["memory_id"]
 
-        fix = _remember(
-            {"content": content, "supersedes_id": old_id, "force": True}
-        )
+        fix = _remember({"content": content, "supersedes_id": old_id, "force": True})
         assert fix["stored"] is True, fix
         assert fix["action"] == "superseded"
         assert _store().get_memory(old_id)["superseded_by_id"] == fix["memory_id"]

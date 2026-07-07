@@ -26,6 +26,7 @@ from typing import Any, Iterator
 
 import numpy as np
 import psycopg
+from pgvector import Vector
 from pgvector.psycopg import register_vector
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
@@ -459,6 +460,10 @@ class PgMemoryStore(
         """Convert pgvector result back to float32 bytes."""
         if vec is None:
             return None
+        if isinstance(vec, Vector):
+            # pgvector>=0.5.0 psycopg loaders return Vector, not ndarray
+            # source: pgvector-python CHANGELOG 0.5.0 (2026-07-06)
+            return vec.to_numpy().tobytes()
         return np.asarray(vec, dtype=np.float32).tobytes()
 
     # ── Memory CRUD ───────────────────────────────────────────────────
@@ -553,9 +558,7 @@ class PgMemoryStore(
             "extinction_strength": data.get("extinction_strength", 0.0),
         }
 
-    def _insert_memory_on(
-        self, conn: psycopg.Connection, data: dict[str, Any]
-    ) -> int:
+    def _insert_memory_on(self, conn: psycopg.Connection, data: dict[str, Any]) -> int:
         """Run the memory INSERT on ``conn`` WITHOUT committing.
 
         The caller owns the transaction boundary: insert_memory() commits on a

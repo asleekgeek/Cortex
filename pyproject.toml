@@ -61,7 +61,10 @@ hypermnesia-mcp = "mcp_server.__main__:main"
 postgresql = [
     "psycopg[binary]>=3.1",
     "psycopg-pool>=3.2",
-    "pgvector>=0.3",
+    # >=0.4: top-level pgvector.Vector import; <0.6: 0.5.0 changed psycopg
+    # loaders to return Vector (handled in pg_store._vector_to_bytes) — guard
+    # against the next breaking minor. source: pgvector-python CHANGELOG.
+    "pgvector>=0.4,<0.6",
 ]
 sqlite = [
     "sqlite-vec>=0.1.1",
@@ -97,7 +100,7 @@ benchmarks = [
     "flashrank>=0.2.0",          # cross-encoder reranking (ms-marco-MiniLM-L-12-v2)
     "psycopg[binary]>=3.1",      # PostgreSQL driver
     "psycopg-pool>=3.2",         # pg_store.py imports ConnectionPool at module level
-    "pgvector>=0.3",             # vector similarity in PostgreSQL
+    "pgvector>=0.4,<0.6",        # vector similarity in PostgreSQL (bounds: see [postgresql])
     "pymupdf>=1.24.0",           # PDF parsing for some benchmark sources
 ]
 dev = [
