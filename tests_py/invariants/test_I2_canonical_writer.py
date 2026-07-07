@@ -32,19 +32,24 @@ _MCP_ROOT = _REPO_ROOT / "mcp_server"
 # either route through ``bump_heat_raw`` / ``update_memories_heat_batch``
 # OR be added here with a source-commented ADR justification.
 _ALLOWED_WRITERS: set[tuple[str, int]] = {
+    # Anchor transfer at supersession (read-path PR, decision 2026-07-07):
+    # _transfer_anchor_on runs INSIDE the supersede transaction (bump_heat_raw
+    # commits on its own connection, so routing through it would break
+    # supersession atomicity). GREATEST(heat_base, old) never lowers heat.
+    # Source: docs/program/pr2-read-path-supersession-audit.json.
+    ("infrastructure/pg_store.py", 685),
     # Canonical single-row writer (all callers route through this).
-    # bump_heat_raw — UPDATE at line 694 (581→692 by the PR #82 supersession
-    # write-path refactor + ruff format, then 692→694 by the blame-path T1
-    # receipts mixin wiring, decision 4255039); still the one canonical site.
-    ("infrastructure/pg_store.py", 694),
+    # bump_heat_raw — the one canonical single-row site (re-pinned after
+    # rebasing the read-path PR onto blame-path injection-receipts).
+    ("infrastructure/pg_store.py", 727),
     # A3 batched writer (homeostatic cohort branch + any other batch consumer).
-    # update_memories_heat_batch — SET line at 754 (641→752→754 likewise).
-    ("infrastructure/pg_store.py", 754),
-    # SQLite parity (301→382→384, 345→426→428 by the same two landings;
-    # both sites remain the canonical bump_heat_raw /
-    # update_memories_heat_batch writers).
-    ("infrastructure/sqlite_store.py", 384),
-    ("infrastructure/sqlite_store.py", 428),
+    # update_memories_heat_batch.
+    ("infrastructure/pg_store.py", 787),
+    # SQLite parity of the anchor transfer (same transactional rationale).
+    ("infrastructure/sqlite_store.py", 389),
+    # SQLite parity: canonical bump_heat_raw / update_memories_heat_batch.
+    ("infrastructure/sqlite_store.py", 419),
+    ("infrastructure/sqlite_store.py", 463),
     # Homeostatic fold (amortized ~once/month per domain). Shifted 292→317
     # when the bounded-I/O slim-projection helpers were added above it.
     ("handlers/consolidation/homeostatic.py", 317),

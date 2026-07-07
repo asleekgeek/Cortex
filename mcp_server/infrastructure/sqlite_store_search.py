@@ -305,8 +305,7 @@ class SqliteSearchMixin:
                 current = {
                     r["id"]
                     for r in self._conn.execute(
-                        f"SELECT id FROM current_memories "
-                        f"WHERE id IN ({placeholders})",
+                        f"SELECT id FROM current_memories WHERE id IN ({placeholders})",
                         ids,
                     ).fetchall()
                 }

@@ -2,13 +2,20 @@
 
 Borrow-from-supermemory item 1: Cortex gains a nullable
 ``supersedes_id`` / ``superseded_by_id`` version-chain pointer on the
-``memories`` table, plus a head-of-chain demotion in ``recall_memories``
-so a superseded fact ranks below the current version that replaced it.
+``memories`` table.
 
-Phase 1 (this file) proves the read-path behavior in isolation: the edge
-is set directly via SQL (the write-path detector is Phase 2), then recall
-is asserted to surface the current version above the superseded one. Runs
-against cortex_test (conftest redirects DATABASE_URL). Calls
+Read-path contract (read-path supersession PR, decision 2026-07-07,
+docs/program/pr2-read-path-supersession-audit.json): superseded versions
+are EXCLUDED at the source — the recall_memories candidates CTE reads the
+``current_memories`` view, so a superseded fact is never served by recall.
+(The Phase-1 demotion-only tier-sort proved insufficient: the demotion did
+not survive client-side re-ranks, and injection channels bypassed it
+entirely. The ORDER BY tier-sort is kept verbatim as a constant-true
+belt-and-braces.) History stays answerable through the explicit-id
+contract: ``get_memory(id)`` and the version-chain machinery still see
+superseded rows.
+
+Runs against cortex_test (conftest redirects DATABASE_URL). Calls
 ``store.recall_memories`` — the raw PL/pgSQL function, no client-side
 reranking — so the assertions pin the stored-procedure behavior alone.
 """
@@ -71,9 +78,9 @@ def _link(store: PgMemoryStore, *, old_id: int, new_id: int) -> None:
     store._conn.commit()
 
 
-def test_current_version_outranks_superseded(store):
-    """The head of a version chain must outrank the version it replaced,
-    even when both match the query identically on content."""
+def test_recall_excludes_superseded_version(store):
+    """Exclusion at the source: a superseded version never enters the
+    candidate pool, even when it matches the query identically."""
     common = {
         "embedding": _emb(),
         "source": "user",
@@ -90,15 +97,17 @@ def test_current_version_outranks_superseded(store):
 
     results = _recall(store, "deploy target staging server")
     ids = [r["memory_id"] for r in results]
-    assert old_id in ids and new_id in ids
-    assert ids.index(new_id) < ids.index(old_id), (
-        f"current version {new_id} must outrank superseded {old_id}, got {ids}"
+    assert new_id in ids, f"chain head {new_id} must be served, got {ids}"
+    assert old_id not in ids, (
+        f"superseded version {old_id} must be excluded from recall, got {ids}"
     )
 
 
-def test_superseded_still_retrievable(store):
-    """Demotion is not exclusion: with no current competitor in the pool,
-    a superseded memory still surfaces (history stays answerable)."""
+def test_superseded_retrievable_by_id_not_by_recall(store):
+    """History stays answerable through the explicit-id contract, never
+    through recall: when only the OLD formulation matches the query, recall
+    returns a safe miss (not the retracted content), while get_memory(id)
+    still serves the superseded row with its chain edge."""
     common = {"embedding": _emb(), "source": "user", "domain": _DOMAIN, "heat": 0.5}
     old_id = store.insert_memory(
         {**common, "content": "unique zorblax retrieval marker"}
@@ -110,8 +119,13 @@ def test_superseded_still_retrievable(store):
     _link(store, old_id=old_id, new_id=new_id)
 
     results = _recall(store, "unique zorblax retrieval marker")
-    assert old_id in [r["memory_id"] for r in results], (
-        "superseded memory must remain retrievable via content"
+    assert old_id not in [r["memory_id"] for r in results], (
+        "superseded content must never be served by recall (safe miss over "
+        "serving retracted content)"
+    )
+    row = store.get_memory(old_id)
+    assert row is not None and row["superseded_by_id"] == new_id, (
+        "explicit-id read must still serve the superseded row with its edge"
     )
 
 
@@ -155,8 +169,8 @@ def _open_heads(store: PgMemoryStore) -> list[int]:
 
 def test_supersede_atomic_forms_chain(store):
     """supersede_atomic inserts the new row AND stamps the head's back-pointer
-    as one unit; the head-of-chain demotion then ranks the current version
-    first, and exactly one open head remains."""
+    as one unit; recall then serves ONLY the current version (exclusion at
+    the source), and exactly one open head remains."""
     common = {"embedding": _emb(), "source": "user", "domain": _DOMAIN, "heat": 0.5}
     old_id = store.insert_memory({**common, "content": "deploy target one alpha"})
 
@@ -170,7 +184,7 @@ def test_supersede_atomic_forms_chain(store):
 
     results = _recall(store, "deploy target one alpha")
     ids = [r["memory_id"] for r in results]
-    assert ids.index(new_id) < ids.index(old_id)
+    assert new_id in ids and old_id not in ids
 
 
 def test_supersede_atomic_rebases_onto_moved_head(store):
