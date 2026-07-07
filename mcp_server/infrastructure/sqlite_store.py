@@ -31,6 +31,7 @@ from mcp_server.infrastructure.sqlite_store_entity_merge import (
 )
 from mcp_server.infrastructure.sqlite_store_mood import SqliteMoodMixin
 from mcp_server.infrastructure.sqlite_store_queries import SqliteQueryMixin
+from mcp_server.infrastructure.sqlite_store_receipts import SqliteReceiptsMixin
 from mcp_server.infrastructure.sqlite_store_relationships import (
     SqliteRelationshipMixin,
 )
@@ -57,6 +58,7 @@ class SqliteMemoryStore(
     SqliteEntityMergeMixin,
     SqliteRelationshipMixin,
     SqliteQueryMixin,
+    SqliteReceiptsMixin,
     SqliteRuleMixin,
     SqliteStatsMixin,
     SqliteAuxiliaryMixin,

@@ -208,7 +208,7 @@ Handlers are the **composition roots**: they wire infrastructure (I/O) to core (
 - `artifact_store.py` — Content-addressed raw-output artifacts (`~/.claude/methodology/artifacts/<yyyy-mm>/<sha256[:16]>.md`) backing gist+pointer memories
 - `agent_config.py` — Agent configuration and topic scoping
 
-**handlers/** — Composition roots (44 standalone tools + 3 upstream-integration tools conditionally registered = 47 total + helpers, one per tool)
+**handlers/** — Composition roots (45 standalone tools + 3 upstream-integration tools conditionally registered = 48 total + helpers, one per tool)
 
 **validation/** — `schemas.py` — Per-tool argument validation
 
@@ -252,7 +252,7 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `unified_search` | Unified retrieval across memories, wiki, and code graph | <200ms |
 | `get_telemetry` | Retrieval and memory-system telemetry metrics | <50ms |
 
-### Tier 2 — Navigation & Exploration (6 tools)
+### Tier 2 — Navigation & Exploration (7 tools)
 
 | Tool | Purpose | Target Latency |
 |---|---|---|
@@ -262,6 +262,7 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `get_causal_chain` | Trace entity relationships through knowledge graph | <200ms |
 | `detect_gaps` | Identify isolated entities, sparse domains, temporal drift | <500ms |
 | `recall_skills` | Recall learned procedural skills by situation | <200ms |
+| `why` | Resolve ⟦rcpt:id⟧ injection receipts into presence-in-context evidence (blame path, decision 4255039) | <100ms |
 
 ### Tier 3 — Automation & Intelligence (8 tools)
 
@@ -291,9 +292,9 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `wiki_purge` | Permanently delete a wiki page | <50ms |
 
 **Upstream-integration tools (3, conditionally registered)** — these register
-only when their upstream MCP server is configured, bringing the total to 47:
+only when their upstream MCP server is configured, bringing the total to 48:
 `ingest_codebase` + `change_impact` (automatised-pipeline) and `ingest_prd`
-(prd-spec-generator). With no upstream present, exactly the **44 standalone
+(prd-spec-generator). With no upstream present, exactly the **45 standalone
 tools** above register. Driving the ai-architect pipeline end-to-end
 (formerly `run_pipeline`) is **not** part of this server — it lives in the
 automatised-pipeline MCP.
@@ -301,6 +302,7 @@ automatised-pipeline MCP.
 ## Slash Commands
 
 - `/methodology` — View cognitive methodology profile
+- `/why` — Deterministic blame-path entry point: resolve the ⟦rcpt:id⟧ markers in context via the `why` tool (decision 4255039 correction 6)
 
 ## Data Flow
 

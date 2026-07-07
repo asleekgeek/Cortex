@@ -18,6 +18,7 @@ from mcp_server.core.pg_recall import recall as pg_recall
 from mcp_server.core.query_intent import QueryIntent, classify_query_intent
 from mcp_server.core.response_budget import ListTarget, bound_payload
 from mcp_server.handlers._tool_meta import READ_ONLY
+from mcp_server.handlers.injection_receipts import emit_injection_receipt
 from mcp_server.handlers.recall_helpers import (
     annotate_source_attribution,
     build_enhancements,
@@ -99,6 +100,15 @@ schema = {
                 "description": "Classified query intent that drove the signal-weight profile.",
             },
             "count": {"type": "integer", "description": "Number of memories returned."},
+            "receipt_id": {
+                "type": "integer",
+                "description": (
+                    "Append-only injection receipt recording exactly the "
+                    "memories in this response (blame path, decision "
+                    "4255039). Absent when no memory was injected or the "
+                    "receipt write failed."
+                ),
+            },
         },
     },
     "description": (
@@ -489,6 +499,14 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
         resp, [ListTarget("memories", weight_key="score")], settings.MAX_RESPONSE_CHARS
     )
     resp["count"] = len(resp["memories"])
+    # Blame path T1 (decision 4255039): the receipt is emitted AFTER
+    # bound_payload so it mirrors exactly what enters the context
+    # (transcript↔DB parity invariant) — entries dropped by the response
+    # budget were never injected. session_id stays NULL until the hook
+    # channels land (T2); this handler has no session identity in scope.
+    receipt_id = emit_injection_receipt(store, resp["memories"])
+    if receipt_id is not None:
+        resp["receipt_id"] = receipt_id
     return resp
 
 

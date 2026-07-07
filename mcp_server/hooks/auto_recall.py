@@ -68,6 +68,12 @@ import re
 import sys
 from typing import Any
 
+from mcp_server.handlers.injection_receipts import (
+    emit_hook_receipt,
+    receipt_marker,
+    session_id_from_transcript,
+)
+
 _LOG_PREFIX = "[cortex-auto-recall]"
 _DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://localhost:5432/cortex")
 _MAX_MEMORIES = 3
@@ -118,27 +124,29 @@ def _should_skip(query: str) -> bool:
     return False
 
 
-def _recall_memories(query: str) -> list[dict]:
+def _connect():
+    """Open the hook's PG connection; None when PG is unreachable."""
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+    except ImportError:
+        return None
+    try:
+        return psycopg.connect(_DATABASE_URL, row_factory=dict_row, autocommit=True)
+    except Exception:
+        return None
+
+
+def _recall_memories(conn, query: str) -> list[dict]:
     """Fast FTS-based recall against PG. No embedding model needed.
 
     Uses plainto_tsquery for natural language matching against the
     content_tsv tsvector column. Combined with heat filter to surface
     important memories.
 
-    Falls back to ILIKE if FTS returns nothing (handles short queries
-    that don't tokenize well).
+    Each result keeps the memory ``id`` — the injection receipt (T2)
+    records exactly which memories entered the context.
     """
-    try:
-        import psycopg
-        from psycopg.rows import dict_row
-    except ImportError:
-        return []
-
-    try:
-        conn = psycopg.connect(_DATABASE_URL, row_factory=dict_row, autocommit=True)
-    except Exception:
-        return []
-
     results = []
 
     # Pass 1: FTS match with heat filter.
@@ -162,6 +170,9 @@ def _recall_memories(query: str) -> list[dict]:
             WHERE m.content_tsv @@ q
               AND effective_heat(m, NOW()) >= %s
               AND NOT m.is_benchmark
+              -- Never re-inject a corrected (superseded) fact —
+              -- decision 4255039 correction 8.
+              AND m.superseded_by_id IS NULL
             ORDER BY m.is_protected DESC, rank DESC, effective_heat(m, NOW()) DESC
             LIMIT %s
             """,
@@ -171,6 +182,7 @@ def _recall_memories(query: str) -> list[dict]:
         for r in rows:
             results.append(
                 {
+                    "id": r["id"],
                     "content": r.get("content", ""),
                     "heat": r.get("heat", 0),
                     "domain": r.get("domain", ""),
@@ -181,18 +193,22 @@ def _recall_memories(query: str) -> list[dict]:
     except Exception as exc:
         _log(f"FTS query failed: {exc}")
 
-    conn.close()
     return results[:_MAX_MEMORIES]
 
 
-def _format_injection(memories: list[dict]) -> str:
+def _format_injection(memories: list[dict]) -> tuple[str, list[dict]]:
     """Format memories as a compact context block for injection.
 
-    Keeps total injection under _MAX_INJECTION_CHARS to avoid
-    flooding the context window.
+    Keeps total injection under _MAX_INJECTION_CHARS to avoid flooding
+    the context window. Returns the block AND the memories that actually
+    fit — the injection receipt must mirror what is printed, never what
+    was fetched (parity invariant, decision 4255039 correction 11):
+    entries dropped by the budget were never in context; entries printed
+    truncated keep their id and ARE in context.
     """
     lines = ["**Cortex context:**"]
     total_chars = len(lines[0])
+    included: list[dict] = []
 
     for m in memories:
         content = m["content"].replace("\n", " ").strip()
@@ -211,11 +227,12 @@ def _format_injection(memories: list[dict]) -> str:
 
         lines.append(line)
         total_chars += len(line)
+        included.append(m)
 
     if len(lines) == 1:
-        return ""  # No memories fit
+        return "", []  # No memories fit
 
-    return "\n".join(lines)
+    return "\n".join(lines), included
 
 
 def process_event(event: dict[str, Any]) -> None:
@@ -228,19 +245,41 @@ def process_event(event: dict[str, Any]) -> None:
     if _should_skip(query):
         sys.exit(0)
 
-    memories = _recall_memories(query)
-
-    if not memories:
+    conn = _connect()
+    if conn is None:
         sys.exit(0)
 
-    injection = _format_injection(memories)
+    try:
+        memories = _recall_memories(conn, query)
+        if not memories:
+            sys.exit(0)
 
-    if not injection:
-        sys.exit(0)
+        injection, included = _format_injection(memories)
+        if not injection:
+            sys.exit(0)
+
+        # Receipt for exactly the memories that fit the injection budget
+        # (blame path T2, decision 4255039). Emitted before printing so
+        # the header line can carry the ⟦rcpt:id⟧ marker (correction 2);
+        # a failed write degrades to a marker-less injection.
+        receipt_id = emit_hook_receipt(
+            conn,
+            [{"memory_id": m["id"]} for m in included],
+            channel="auto_recall",
+            session_id=session_id_from_transcript(event.get("transcript_path")),
+        )
+    finally:
+        conn.close()
+
+    if receipt_id is not None:
+        first, _, rest = injection.partition("\n")
+        injection = f"{first} {receipt_marker(receipt_id)}"
+        if rest:
+            injection += "\n" + rest
 
     # Exit 0 + stdout → injected into Claude's context
     print(injection)
-    _log(f"injected {len(memories)} memories for query: {query[:50]}...")
+    _log(f"injected {len(included)} memories for query: {query[:50]}...")
     sys.exit(0)
 
 

@@ -462,6 +462,46 @@ CREATE INDEX IF NOT EXISTS idx_stage_transitions_memory
 CREATE INDEX IF NOT EXISTS idx_stage_transitions_time
     ON stage_transitions (transitioned_at);
 
+-- Injection receipts (blame path T1/T2 — decision Cortex 4255039). Every
+-- channel that injects memory content into a context emits, at injection
+-- time, an append-only receipt capturing {memory_id, rank, score} for
+-- exactly the bound payload (emitted AFTER bound_payload: transcript↔DB
+-- parity invariant). Presence-in-context evidence only, never causality
+-- (Pearl ladder). session_id is NULLable: the mcp recall handler has no
+-- session identity in scope; hook channels derive it from the transcript
+-- file basename (correction 7). channel is enum-hardened (T2): the four
+-- values mirror handlers/injection_receipts.py INJECTION_CHANNELS —
+-- parity asserted by test_injection_receipts_store.py.
+CREATE TABLE IF NOT EXISTS injection_receipts (
+    id                  SERIAL PRIMARY KEY,
+    session_id          TEXT,
+    channel             TEXT NOT NULL
+        CONSTRAINT injection_receipts_channel_enum CHECK (
+            channel IN ('recall', 'session_start', 'auto_recall', 'agent_briefing')
+        ),
+    emitted_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_injection_receipts_session
+    ON injection_receipts (session_id);
+CREATE INDEX IF NOT EXISTS idx_injection_receipts_time
+    ON injection_receipts (emitted_at);
+
+-- memory_id carries NO FK on purpose: receipts are an append-only audit
+-- trail — a later hard-forget of the memory must not rewrite the evidence
+-- of what was in context (unlike stage_transitions, whose rows lose all
+-- value once the memory is gone).
+CREATE TABLE IF NOT EXISTS injection_receipt_items (
+    id                  SERIAL PRIMARY KEY,
+    receipt_id          INTEGER NOT NULL REFERENCES injection_receipts(id) ON DELETE CASCADE,
+    memory_id           INTEGER NOT NULL,
+    rank                INTEGER NOT NULL,
+    score               REAL
+);
+CREATE INDEX IF NOT EXISTS idx_injection_receipt_items_receipt
+    ON injection_receipt_items (receipt_id);
+CREATE INDEX IF NOT EXISTS idx_injection_receipt_items_memory
+    ON injection_receipt_items (memory_id);
+
 CREATE TABLE IF NOT EXISTS engram_slots (
     slot_index          INTEGER PRIMARY KEY,
     excitability        REAL DEFAULT 0.5,
@@ -1829,6 +1869,24 @@ DO $$ BEGIN
                               'type','constant','variable')
            OR name LIKE '%/%'
            OR (length(name) - length(replace(name, '.', ''))) >= 2;
+    END IF;
+END $$;
+
+-- Migration: harden the injection-receipts channel enum (blame path T2,
+-- decision 4255039 correction 3). Tables created by the T1 DDL carry a
+-- free-TEXT channel; the CHECK added here mirrors the CREATE TABLE
+-- constraint above and handlers/injection_receipts.py INJECTION_CHANNELS.
+-- T1 only ever wrote 'recall', a member of the enum, so validating
+-- existing rows is safe.
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'injection_receipts_channel_enum'
+    ) THEN
+        ALTER TABLE injection_receipts
+            ADD CONSTRAINT injection_receipts_channel_enum CHECK (
+                channel IN ('recall', 'session_start', 'auto_recall', 'agent_briefing')
+            );
     END IF;
 END $$;
 """
