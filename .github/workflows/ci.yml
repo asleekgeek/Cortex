@@ -264,7 +264,10 @@ jobs:
           python-version: "3.12"
 
       - name: Install ruff
-        run: pip install ruff
+        # Pinned: ruff's formatter output changes across minor versions
+        # (0.15.6 vs 0.15.20 divergence broke Lint on PR #83). The repo is
+        # formatted with 0.15.20; bump this pin and reformat together.
+        run: pip install ruff==0.15.20
 
       - name: Check formatting
         run: ruff format --check .
