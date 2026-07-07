@@ -1,54 +1,98 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 300" font-family="Inter, -apple-system, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 300" font-family="'Inter Tight', -apple-system, system-ui, sans-serif">
+<!-- =====================================================================
+  RE-INKED to the AI Architect Design System (paper doctrine). Geometry,
+  layout and text content are unchanged; only colour + font-family voices
+  were remapped. Scripted oklch->sRGB (CSS Color 4 math) from DS tokens
+  (colors.css + surfaces.css paper block). Tokens named WITHOUT their
+  leading double-hyphen (XML-comment safe); prefix each with it in CSS.
+  ONE mapping, applied identically across all nine diagrams.
+
+  CHROME (warm-neutral greyscale):
+    #0f172a canvas          -> paper-0        #f1eee7
+    #1e293b box fill        -> sheet          #f8f7f2
+    #292524 #0a1d10 #172554 #1a2e05 #2a1a00 #1d1408 #1e3a5f
+            inner/callout/layer/pill fills -> paper-1  #e6e1d7
+    #44403c inner stroke    -> paper-line     rgba(59,49,41,0.26)
+    #475569 #334155 box stroke -> paper-line-2 rgba(59,49,41,0.42)
+    #64748b arrows/tertiary -> pfg-2          #61554e
+    #a3a3a3 faint hint      -> pfg-2          #61554e
+    #94a3b8 secondary label -> pfg-1          #4b4038
+    #e2e8f0 #cbd5e1 #d4d4d8 primary text -> pfg-0  #261d17
+    #fff reversed on data node -> paper-0     #f1eee7
+
+  DATA (deep re-inked palette, L<=52pct, legible on cream; each source
+  meaning kept distinct, never merged):
+    red    #ef4444 #fca5a5           new/emotion/reject -> danger-deep  #a52a24
+    orange #f97316 #fdba74           surprise momentum  -> emo-frustr   #a05000
+    amber  #f59e0b #fbbf24 #fcd34d #92400e
+                                     active/handlers/encoding/reviewer/directory -> warn-deep #845b00
+    gold   #daa520                   wiki/consolidated  -> stage-cons   #7d6700
+    green  #22c55e #86efac #10b981 #6ee7b7 #166534 #4ade80
+                                     core/retrieval/novel/coordination  -> ok-deep #0a693c
+    cyan   #06b6d4 #67e8f9           infrastructure/storage -> stage-early #006a66
+    blue   #3b82f6 #60a5fa #93c5fd #1e40af
+                                     query/results/compressed/specialization/sleep -> info-deep #006185
+    purple #8b5cf6 #a855f7 #c4b5fd   neuromodulation/plasticity/intent -> emo-conflct #784d96
+    pink   #ec4899 #f9a8d4 #d946ef #e879f9
+                                     hooks/emotional-tagging/intent -> stage-recon #753e81
+
+  Note: amber(80) and gold(95) stay distinct; green ink is single in the DS
+  paper palette so green+emerald share ok-deep (same 'valid/positive' meaning);
+  category-tinted panel fills neutralised to paper-1 with the category kept in
+  their stroke+text data ink. Fonts: labels -> Inter Tight, identifiers ->
+  JetBrains Mono. Gradients/glow: none used; the unused blur filter was removed.
+===================================================================== -->
+
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L8,3 L0,6" fill="#64748b"/>
+      <path d="M0,0 L8,3 L0,6" fill="#61554e"/>
     </marker>
   </defs>
 
-  <rect width="600" height="300" rx="12" fill="#0f172a"/>
+  <rect width="600" height="300" rx="12" fill="#f1eee7"/>
 
   <!-- Session History -->
-  <rect x="200" y="14" width="200" height="40" rx="20" fill="#1e293b" stroke="#64748b" stroke-width="1.2"/>
-  <text x="300" y="33" text-anchor="middle" fill="#94a3b8" font-size="12" font-weight="500">Session History</text>
-  <text x="300" y="47" text-anchor="middle" fill="#64748b" font-size="9" font-family="monospace">~/.claude/projects/</text>
+  <rect x="200" y="14" width="200" height="40" rx="20" fill="#f8f7f2" stroke="#61554e" stroke-width="1.2"/>
+  <text x="300" y="33" text-anchor="middle" fill="#4b4038" font-size="12" font-weight="500">Session History</text>
+  <text x="300" y="47" text-anchor="middle" fill="#61554e" font-size="9" font-family="'JetBrains Mono', ui-monospace, monospace">~/.claude/projects/</text>
 
-  <line x1="300" y1="54" x2="300" y2="76" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="300" y1="54" x2="300" y2="76" stroke="#61554e" stroke-width="1.5" marker-end="url(#arr)"/>
 
   <!-- Pattern Extraction -->
-  <rect x="210" y="80" width="180" height="34" rx="4" fill="#292524" stroke="#44403c" stroke-width="0.5"/>
-  <text x="300" y="101" text-anchor="middle" fill="#d4d4d8" font-size="12">Pattern Extraction</text>
+  <rect x="210" y="80" width="180" height="34" rx="4" fill="#e6e1d7" stroke="rgba(59,49,41,0.26)" stroke-width="0.5"/>
+  <text x="300" y="101" text-anchor="middle" fill="#261d17" font-size="12">Pattern Extraction</text>
 
   <!-- Four branches -->
-  <line x1="210" y1="114" x2="90" y2="155" stroke="#64748b" stroke-width="1.2" marker-end="url(#arr)"/>
-  <line x1="260" y1="114" x2="230" y2="155" stroke="#64748b" stroke-width="1.2" marker-end="url(#arr)"/>
-  <line x1="340" y1="114" x2="370" y2="155" stroke="#64748b" stroke-width="1.2" marker-end="url(#arr)"/>
-  <line x1="390" y1="114" x2="510" y2="155" stroke="#64748b" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="210" y1="114" x2="90" y2="155" stroke="#61554e" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="260" y1="114" x2="230" y2="155" stroke="#61554e" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="340" y1="114" x2="370" y2="155" stroke="#61554e" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="390" y1="114" x2="510" y2="155" stroke="#61554e" stroke-width="1.2" marker-end="url(#arr)"/>
 
   <!-- Cognitive Style -->
-  <rect x="18" y="158" width="150" height="38" rx="4" fill="#1e293b" stroke="#a855f7" stroke-width="1.2"/>
-  <text x="93" y="175" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="500">Cognitive Style</text>
-  <text x="93" y="189" text-anchor="middle" fill="#64748b" font-size="9">Felder-Silverman 4D</text>
+  <rect x="18" y="158" width="150" height="38" rx="4" fill="#f8f7f2" stroke="#784d96" stroke-width="1.2"/>
+  <text x="93" y="175" text-anchor="middle" fill="#784d96" font-size="11" font-weight="500">Cognitive Style</text>
+  <text x="93" y="189" text-anchor="middle" fill="#61554e" font-size="9">Felder-Silverman 4D</text>
 
   <!-- Entry Patterns -->
-  <rect x="180" y="158" width="110" height="38" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1"/>
-  <text x="235" y="181" text-anchor="middle" fill="#d4d4d8" font-size="11">Entry Patterns</text>
+  <rect x="180" y="158" width="110" height="38" rx="4" fill="#f8f7f2" stroke="rgba(59,49,41,0.42)" stroke-width="1"/>
+  <text x="235" y="181" text-anchor="middle" fill="#261d17" font-size="11">Entry Patterns</text>
 
   <!-- Blind Spots -->
-  <rect x="310" y="158" width="110" height="38" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1"/>
-  <text x="365" y="181" text-anchor="middle" fill="#d4d4d8" font-size="11">Blind Spots</text>
+  <rect x="310" y="158" width="110" height="38" rx="4" fill="#f8f7f2" stroke="rgba(59,49,41,0.42)" stroke-width="1"/>
+  <text x="365" y="181" text-anchor="middle" fill="#261d17" font-size="11">Blind Spots</text>
 
   <!-- Cross-Domain Bridges -->
-  <rect x="438" y="158" width="148" height="38" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1"/>
-  <text x="512" y="181" text-anchor="middle" fill="#d4d4d8" font-size="11">Cross-Domain Bridges</text>
+  <rect x="438" y="158" width="148" height="38" rx="4" fill="#f8f7f2" stroke="rgba(59,49,41,0.42)" stroke-width="1"/>
+  <text x="512" y="181" text-anchor="middle" fill="#261d17" font-size="11">Cross-Domain Bridges</text>
 
   <!-- All converge -->
-  <line x1="93" y1="196" x2="300" y2="240" stroke="#64748b" stroke-width="1" marker-end="url(#arr)"/>
-  <line x1="235" y1="196" x2="300" y2="240" stroke="#64748b" stroke-width="1" marker-end="url(#arr)"/>
-  <line x1="365" y1="196" x2="300" y2="240" stroke="#64748b" stroke-width="1" marker-end="url(#arr)"/>
-  <line x1="512" y1="196" x2="300" y2="240" stroke="#64748b" stroke-width="1" marker-end="url(#arr)"/>
+  <line x1="93" y1="196" x2="300" y2="240" stroke="#61554e" stroke-width="1" marker-end="url(#arr)"/>
+  <line x1="235" y1="196" x2="300" y2="240" stroke="#61554e" stroke-width="1" marker-end="url(#arr)"/>
+  <line x1="365" y1="196" x2="300" y2="240" stroke="#61554e" stroke-width="1" marker-end="url(#arr)"/>
+  <line x1="512" y1="196" x2="300" y2="240" stroke="#61554e" stroke-width="1" marker-end="url(#arr)"/>
 
   <!-- Cognitive Profile -->
-  <rect x="180" y="245" width="240" height="40" rx="20" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
-  <text x="300" y="264" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="600">Cognitive Profile</text>
-  <text x="300" y="278" text-anchor="middle" fill="#a3a3a3" font-size="9">injected at session start</text>
+  <rect x="180" y="245" width="240" height="40" rx="20" fill="#f8f7f2" stroke="#845b00" stroke-width="1.5"/>
+  <text x="300" y="264" text-anchor="middle" fill="#845b00" font-size="12" font-weight="600">Cognitive Profile</text>
+  <text x="300" y="278" text-anchor="middle" fill="#61554e" font-size="9">injected at session start</text>
 </svg>

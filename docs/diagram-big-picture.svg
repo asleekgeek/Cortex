@@ -1,58 +1,98 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" font-family="Inter, -apple-system, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" font-family="'Inter Tight', -apple-system, system-ui, sans-serif">
+<!-- =====================================================================
+  RE-INKED to the AI Architect Design System (paper doctrine). Geometry,
+  layout and text content are unchanged; only colour + font-family voices
+  were remapped. Scripted oklch->sRGB (CSS Color 4 math) from DS tokens
+  (colors.css + surfaces.css paper block). Tokens named WITHOUT their
+  leading double-hyphen (XML-comment safe); prefix each with it in CSS.
+  ONE mapping, applied identically across all nine diagrams.
+
+  CHROME (warm-neutral greyscale):
+    #0f172a canvas          -> paper-0        #f1eee7
+    #1e293b box fill        -> sheet          #f8f7f2
+    #292524 #0a1d10 #172554 #1a2e05 #2a1a00 #1d1408 #1e3a5f
+            inner/callout/layer/pill fills -> paper-1  #e6e1d7
+    #44403c inner stroke    -> paper-line     rgba(59,49,41,0.26)
+    #475569 #334155 box stroke -> paper-line-2 rgba(59,49,41,0.42)
+    #64748b arrows/tertiary -> pfg-2          #61554e
+    #a3a3a3 faint hint      -> pfg-2          #61554e
+    #94a3b8 secondary label -> pfg-1          #4b4038
+    #e2e8f0 #cbd5e1 #d4d4d8 primary text -> pfg-0  #261d17
+    #fff reversed on data node -> paper-0     #f1eee7
+
+  DATA (deep re-inked palette, L<=52pct, legible on cream; each source
+  meaning kept distinct, never merged):
+    red    #ef4444 #fca5a5           new/emotion/reject -> danger-deep  #a52a24
+    orange #f97316 #fdba74           surprise momentum  -> emo-frustr   #a05000
+    amber  #f59e0b #fbbf24 #fcd34d #92400e
+                                     active/handlers/encoding/reviewer/directory -> warn-deep #845b00
+    gold   #daa520                   wiki/consolidated  -> stage-cons   #7d6700
+    green  #22c55e #86efac #10b981 #6ee7b7 #166534 #4ade80
+                                     core/retrieval/novel/coordination  -> ok-deep #0a693c
+    cyan   #06b6d4 #67e8f9           infrastructure/storage -> stage-early #006a66
+    blue   #3b82f6 #60a5fa #93c5fd #1e40af
+                                     query/results/compressed/specialization/sleep -> info-deep #006185
+    purple #8b5cf6 #a855f7 #c4b5fd   neuromodulation/plasticity/intent -> emo-conflct #784d96
+    pink   #ec4899 #f9a8d4 #d946ef #e879f9
+                                     hooks/emotional-tagging/intent -> stage-recon #753e81
+
+  Note: amber(80) and gold(95) stay distinct; green ink is single in the DS
+  paper palette so green+emerald share ok-deep (same 'valid/positive' meaning);
+  category-tinted panel fills neutralised to paper-1 with the category kept in
+  their stroke+text data ink. Fonts: labels -> Inter Tight, identifiers ->
+  JetBrains Mono. Gradients/glow: none used; the unused blur filter was removed.
+===================================================================== -->
+
   <defs>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="2" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
     <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L8,3 L0,6" fill="#64748b"/>
+      <path d="M0,0 L8,3 L0,6" fill="#61554e"/>
     </marker>
   </defs>
 
-  <rect width="900" height="400" rx="12" fill="#0f172a"/>
+  <rect width="900" height="400" rx="12" fill="#f1eee7"/>
 
   <!-- Claude Code node -->
-  <rect x="30" y="155" width="140" height="50" rx="25" fill="#3b82f6" stroke="#60a5fa" stroke-width="1.5"/>
-  <text x="100" y="185" text-anchor="middle" fill="#fff" font-size="13" font-weight="600">Claude Code</text>
+  <rect x="30" y="155" width="140" height="50" rx="25" fill="#006185" stroke="#006185" stroke-width="1.5"/>
+  <text x="100" y="185" text-anchor="middle" fill="#f1eee7" font-size="13" font-weight="600">Claude Code</text>
 
   <!-- Cortex Plugin box -->
-  <rect x="220" y="20" width="220" height="200" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5" opacity="0.9"/>
-  <text x="330" y="44" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700" letter-spacing="0.5">CORTEX PLUGIN</text>
-  <rect x="240" y="56" width="180" height="28" rx="4" fill="#292524" stroke="#44403c" stroke-width="0.5"/>
-  <text x="330" y="75" text-anchor="middle" fill="#fbbf24" font-size="11">MCP Server - 34 tools</text>
-  <rect x="240" y="92" width="180" height="28" rx="4" fill="#292524" stroke="#44403c" stroke-width="0.5"/>
-  <text x="330" y="111" text-anchor="middle" fill="#d4d4d8" font-size="10">SessionStart - inject context</text>
-  <rect x="240" y="128" width="180" height="28" rx="4" fill="#292524" stroke="#44403c" stroke-width="0.5"/>
-  <text x="330" y="147" text-anchor="middle" fill="#d4d4d8" font-size="10">PostToolUse - auto-capture</text>
-  <rect x="240" y="164" width="180" height="28" rx="4" fill="#292524" stroke="#44403c" stroke-width="0.5"/>
-  <text x="330" y="183" text-anchor="middle" fill="#d4d4d8" font-size="10">SessionEnd - update profile</text>
+  <rect x="220" y="20" width="220" height="200" rx="8" fill="#f8f7f2" stroke="#845b00" stroke-width="1.5" opacity="0.9"/>
+  <text x="330" y="44" text-anchor="middle" fill="#845b00" font-size="11" font-weight="700" letter-spacing="0.5">CORTEX PLUGIN</text>
+  <rect x="240" y="56" width="180" height="28" rx="4" fill="#e6e1d7" stroke="rgba(59,49,41,0.26)" stroke-width="0.5"/>
+  <text x="330" y="75" text-anchor="middle" fill="#845b00" font-size="11">MCP Server - 34 tools</text>
+  <rect x="240" y="92" width="180" height="28" rx="4" fill="#e6e1d7" stroke="rgba(59,49,41,0.26)" stroke-width="0.5"/>
+  <text x="330" y="111" text-anchor="middle" fill="#261d17" font-size="10">SessionStart - inject context</text>
+  <rect x="240" y="128" width="180" height="28" rx="4" fill="#e6e1d7" stroke="rgba(59,49,41,0.26)" stroke-width="0.5"/>
+  <text x="330" y="147" text-anchor="middle" fill="#261d17" font-size="10">PostToolUse - auto-capture</text>
+  <rect x="240" y="164" width="180" height="28" rx="4" fill="#e6e1d7" stroke="rgba(59,49,41,0.26)" stroke-width="0.5"/>
+  <text x="330" y="183" text-anchor="middle" fill="#261d17" font-size="10">SessionEnd - update profile</text>
 
   <!-- 10 Skills box -->
-  <rect x="220" y="240" width="220" height="140" rx="8" fill="#1e293b" stroke="#22c55e" stroke-width="1.5" opacity="0.9"/>
-  <text x="330" y="264" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="700" letter-spacing="0.5">10 SKILLS</text>
-  <text x="330" y="290" text-anchor="middle" fill="#86efac" font-size="11" font-family="monospace">/cortex-remember</text>
-  <text x="330" y="310" text-anchor="middle" fill="#86efac" font-size="11" font-family="monospace">/cortex-recall</text>
-  <text x="330" y="330" text-anchor="middle" fill="#86efac" font-size="11" font-family="monospace">/cortex-profile</text>
-  <text x="330" y="350" text-anchor="middle" fill="#86efac" font-size="11" font-family="monospace">/cortex-visualize</text>
-  <text x="330" y="370" text-anchor="middle" fill="#64748b" font-size="10">+ 6 more</text>
+  <rect x="220" y="240" width="220" height="140" rx="8" fill="#f8f7f2" stroke="#0a693c" stroke-width="1.5" opacity="0.9"/>
+  <text x="330" y="264" text-anchor="middle" fill="#0a693c" font-size="11" font-weight="700" letter-spacing="0.5">10 SKILLS</text>
+  <text x="330" y="290" text-anchor="middle" fill="#0a693c" font-size="11" font-family="'JetBrains Mono', ui-monospace, monospace">/cortex-remember</text>
+  <text x="330" y="310" text-anchor="middle" fill="#0a693c" font-size="11" font-family="'JetBrains Mono', ui-monospace, monospace">/cortex-recall</text>
+  <text x="330" y="330" text-anchor="middle" fill="#0a693c" font-size="11" font-family="'JetBrains Mono', ui-monospace, monospace">/cortex-profile</text>
+  <text x="330" y="350" text-anchor="middle" fill="#0a693c" font-size="11" font-family="'JetBrains Mono', ui-monospace, monospace">/cortex-visualize</text>
+  <text x="330" y="370" text-anchor="middle" fill="#61554e" font-size="10">+ 6 more</text>
 
   <!-- PostgreSQL box -->
-  <rect x="520" y="60" width="240" height="160" rx="8" fill="#1e293b" stroke="#06b6d4" stroke-width="1.5" opacity="0.9"/>
-  <text x="640" y="84" text-anchor="middle" fill="#06b6d4" font-size="11" font-weight="700" letter-spacing="0.5">POSTGRESQL + PGVECTOR</text>
-  <rect x="540" y="96" width="200" height="28" rx="4" fill="#292524" stroke="#44403c" stroke-width="0.5"/>
-  <text x="640" y="115" text-anchor="middle" fill="#67e8f9" font-size="11">Memories + Embeddings</text>
-  <rect x="540" y="132" width="200" height="28" rx="4" fill="#292524" stroke="#44403c" stroke-width="0.5"/>
-  <text x="640" y="151" text-anchor="middle" fill="#67e8f9" font-size="11">Entity Knowledge Graph</text>
-  <rect x="540" y="168" width="200" height="28" rx="4" fill="#292524" stroke="#44403c" stroke-width="0.5"/>
-  <text x="640" y="187" text-anchor="middle" fill="#67e8f9" font-size="11">WRRF Stored Procedures</text>
+  <rect x="520" y="60" width="240" height="160" rx="8" fill="#f8f7f2" stroke="#006a66" stroke-width="1.5" opacity="0.9"/>
+  <text x="640" y="84" text-anchor="middle" fill="#006a66" font-size="11" font-weight="700" letter-spacing="0.5">POSTGRESQL + PGVECTOR</text>
+  <rect x="540" y="96" width="200" height="28" rx="4" fill="#e6e1d7" stroke="rgba(59,49,41,0.26)" stroke-width="0.5"/>
+  <text x="640" y="115" text-anchor="middle" fill="#006a66" font-size="11">Memories + Embeddings</text>
+  <rect x="540" y="132" width="200" height="28" rx="4" fill="#e6e1d7" stroke="rgba(59,49,41,0.26)" stroke-width="0.5"/>
+  <text x="640" y="151" text-anchor="middle" fill="#006a66" font-size="11">Entity Knowledge Graph</text>
+  <rect x="540" y="168" width="200" height="28" rx="4" fill="#e6e1d7" stroke="rgba(59,49,41,0.26)" stroke-width="0.5"/>
+  <text x="640" y="187" text-anchor="middle" fill="#006a66" font-size="11">WRRF Stored Procedures</text>
 
   <!-- Arrows -->
-  <line x1="170" y1="170" x2="215" y2="120" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="170" y1="190" x2="215" y2="300" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="440" y1="140" x2="515" y2="140" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="440" y1="310" x2="465" y2="310" stroke="#64748b" stroke-width="1" stroke-dasharray="4,3"/>
-  <path d="M465,310 Q490,310 490,220 L490,120 L515,120" fill="none" stroke="#64748b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <line x1="170" y1="170" x2="215" y2="120" stroke="#61554e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="170" y1="190" x2="215" y2="300" stroke="#61554e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="440" y1="140" x2="515" y2="140" stroke="#61554e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="440" y1="310" x2="465" y2="310" stroke="#61554e" stroke-width="1" stroke-dasharray="4,3"/>
+  <path d="M465,310 Q490,310 490,220 L490,120 L515,120" fill="none" stroke="#61554e" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
 
   <!-- Arrow labels -->
-  <text x="475" y="105" text-anchor="middle" fill="#94a3b8" font-size="9">via plugin</text>
+  <text x="475" y="105" text-anchor="middle" fill="#4b4038" font-size="9">via plugin</text>
 </svg>
