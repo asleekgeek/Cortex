@@ -36,6 +36,7 @@ from mcp_server.infrastructure.pg_store_auxiliary import PgAuxiliaryMixin
 from mcp_server.infrastructure.pg_store_entities import PgEntityMixin
 from mcp_server.infrastructure.pg_store_entity_merge import PgEntityMergeMixin
 from mcp_server.infrastructure.pg_store_queries import PgQueryMixin
+from mcp_server.infrastructure.pg_store_receipts import PgReceiptsMixin
 from mcp_server.infrastructure.pg_store_relationships import PgRelationshipMixin
 from mcp_server.infrastructure.pg_store_rules import PgRuleMixin
 from mcp_server.infrastructure.pg_store_stats import PgStatsMixin
@@ -133,6 +134,7 @@ class PgMemoryStore(
     PgEntityMergeMixin,
     PgRelationshipMixin,
     PgQueryMixin,
+    PgReceiptsMixin,
     PgRuleMixin,
     PgStatsMixin,
     PgAuxiliaryMixin,

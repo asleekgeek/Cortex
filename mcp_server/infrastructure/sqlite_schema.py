@@ -132,6 +132,30 @@ CREATE TABLE IF NOT EXISTS stage_transitions (
 );
 """
 
+# Injection receipts (blame path T1 — decision Cortex 4255039): append-only
+# proof of presence-in-context per injecting channel. PG parity with
+# pg_schema.py; session_id NULLable (the recall handler has no session
+# identity until the hook channels land in T2). memory_id has no FK: a
+# hard-forget must not rewrite the audit trail.
+INJECTION_RECEIPTS_DDL = """
+CREATE TABLE IF NOT EXISTS injection_receipts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id  TEXT,
+    channel     TEXT NOT NULL,
+    emitted_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+"""
+
+INJECTION_RECEIPT_ITEMS_DDL = """
+CREATE TABLE IF NOT EXISTS injection_receipt_items (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    receipt_id  INTEGER NOT NULL REFERENCES injection_receipts(id) ON DELETE CASCADE,
+    memory_id   INTEGER NOT NULL,
+    rank        INTEGER NOT NULL,
+    score       REAL
+);
+"""
+
 MEMORY_ENTITIES_DDL = """
 CREATE TABLE IF NOT EXISTS memory_entities (
     memory_id   INTEGER NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
@@ -309,6 +333,8 @@ def get_all_ddl() -> list[str]:
         RELATIONSHIPS_DDL,
         MEMORY_ENTITIES_DDL,
         STAGE_TRANSITIONS_DDL,
+        INJECTION_RECEIPTS_DDL,
+        INJECTION_RECEIPT_ITEMS_DDL,
         PROSPECTIVE_MEMORIES_DDL,
         CHECKPOINTS_DDL,
         MEMORY_ARCHIVES_DDL,
