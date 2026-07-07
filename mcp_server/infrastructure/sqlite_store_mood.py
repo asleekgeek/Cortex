@@ -1,13 +1,15 @@
 """User mood and memory supersession mixin for SqliteMemoryStore.
 
-Implements the five methods that exist in PgMemoryStore but had no SQLite
+Implements methods that exist in PgMemoryStore but had no SQLite
 equivalent, causing silent no-ops under the advertised fallback backend:
 
     get_user_mood(user_id) -> float | None
     get_user_mood_state(user_id) -> dict | None
     set_user_mood(valence, arousal, user_id) -> None
-    set_superseded_by(old_id, new_id) -> None
     get_embeddings_for_memories(memory_ids) -> dict[int, bytes]
+
+The supersession write path lives in SqliteMemoryStore.supersede_atomic (the
+atomic insert+edge primitive), mirroring PgMemoryStore.
 
 All signatures mirror PgMemoryStore exactly (duck-type compatibility).
 """
@@ -124,29 +126,6 @@ class SqliteMoodMixin:
             self._conn.commit()
         except Exception:
             # user_mood table absent (pre-migration DB) — safe no-op.
-            pass
-
-    # ── Memory supersession ───────────────────────────────────────────
-
-    def set_superseded_by(self, old_id: int, new_id: int) -> None:
-        """Mark ``old_id`` as superseded by ``new_id`` (back-pointer edge).
-
-        Precondition: old_id and new_id are valid memory IDs.
-        Postcondition: memories.superseded_by_id = new_id for the row with
-          id = old_id; the forward edge (new.supersedes_id = old) is written
-          by insert_memory when data["supersedes_id"] is supplied.
-
-        Idempotent — re-running with the same args is a no-op overwrite.
-        Mirrors PgMemoryStore.set_superseded_by.
-        """
-        try:
-            self._conn.execute(
-                "UPDATE memories SET superseded_by_id = ? WHERE id = ?",
-                (new_id, old_id),
-            )
-            self._conn.commit()
-        except Exception:
-            # superseded_by_id column absent (pre-migration DB) — safe no-op.
             pass
 
     # ── Bulk embedding fetch ──────────────────────────────────────────

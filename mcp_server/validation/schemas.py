@@ -100,6 +100,9 @@ SCHEMAS: dict[str, dict] = {
             "importance": {"type": "number"},
             "created_at": {"type": "string", "maxLength": 64},
             "initial_heat": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            # Bounds + target existence are enforced by the handler
+            # (validate_supersede_target) — this layer only type-checks.
+            "supersedes_id": {"type": "number"},
         },
         "required": ["content"],
     },

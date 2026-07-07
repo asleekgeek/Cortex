@@ -45,6 +45,13 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Parity with PgMemoryStore's supersede_atomic operational bounds (engineering,
+# not algorithmic). Bounded optimistic-concurrency rebase retry; defensive
+# recursion cap on the acyclic chain walk.
+_SUPERSEDE_REBASE_ATTEMPTS = 5
+_CHAIN_HEAD_MAX_DEPTH = 100_000
+
+
 class SqliteMemoryStore(
     SqliteEntityMixin,
     SqliteEntityMergeMixin,
@@ -191,8 +198,13 @@ class SqliteMemoryStore(
 
     # ── Memory CRUD ───────────────────────────────────────────────────
 
-    def insert_memory(self, data: dict[str, Any]) -> int:
-        """Insert a memory into memories + FTS5 + vec tables."""
+    def _insert_memory_rows(self, data: dict[str, Any]) -> int:
+        """Insert a memory into memories + FTS5 + vec tables — no commit.
+
+        The caller owns the transaction boundary: insert_memory() commits;
+        supersede_atomic() commits or rolls back the row together with its
+        supersession edge so a lost race never leaves a disconnected row.
+        """
         now = _now_iso()
         raw_created = data.get("created_at")
         if raw_created and isinstance(raw_created, str) and "T" not in raw_created:
@@ -271,8 +283,77 @@ class SqliteMemoryStore(
                     "INSERT INTO memories_vec(rowid, embedding) VALUES (?, ?)",
                     (memory_id, vec.tobytes()),
                 )
-        self._conn.commit()
         return memory_id  # type: ignore[return-value]
+
+    def insert_memory(self, data: dict[str, Any]) -> int:
+        """Insert a memory into memories + FTS5 + vec tables."""
+        memory_id = self._insert_memory_rows(data)
+        self._conn.commit()
+        return memory_id
+
+    def _current_chain_head(self, target_id: int) -> int | None:
+        """Walk ``target_id``'s supersession chain to its open head.
+
+        Follows forward ``superseded_by_id`` edges to the row whose
+        superseded_by_id IS NULL. Returns that id, or None if the target no
+        longer exists. Mirrors PgMemoryStore._current_chain_head.
+        """
+        row = self._conn.execute(
+            """WITH RECURSIVE chain(id, superseded_by_id, hops) AS (
+                   SELECT id, superseded_by_id, 0
+                   FROM memories WHERE id = ?
+                   UNION ALL
+                   SELECT m.id, m.superseded_by_id, c.hops + 1
+                   FROM memories m JOIN chain c ON m.id = c.superseded_by_id
+                   WHERE c.hops < ?
+               )
+               SELECT id FROM chain
+               WHERE superseded_by_id IS NULL
+               ORDER BY hops DESC LIMIT 1""",
+            (target_id, _CHAIN_HEAD_MAX_DEPTH),
+        ).fetchone()
+        return int(row["id"]) if row else None
+
+    def supersede_atomic(
+        self, data: dict[str, Any], target_id: int
+    ) -> tuple[int | None, int | None]:
+        """Insert ``data`` as the supersessor of ``target_id``'s head, atomically.
+
+        SQLite parity for PgMemoryStore.supersede_atomic. One transaction on the
+        single connection inserts the new row (supersedes_id = the walked head)
+        and stamps that head's ``superseded_by_id`` — a compare-and-set that
+        lands only while the head is still open. On a lost CAS the transaction
+        rolls back (the insert, its FTS and vec rows all undone — no orphan is
+        ever committed) and we rebase onto the moved head, bounded by
+        _SUPERSEDE_REBASE_ATTEMPTS.
+
+        Returns ``(new_id, head_id)`` on success (``head_id`` == ``target_id``
+        unless a race rebased us), ``(None, last_head_id)`` when the bounded
+        rebase exhausts, or ``(None, None)`` when the target vanished.
+        """
+        last_head: int | None = None
+        for _ in range(_SUPERSEDE_REBASE_ATTEMPTS):
+            head_id = self._current_chain_head(target_id)
+            if head_id is None:
+                return None, None
+            last_head = head_id
+            data["supersedes_id"] = head_id
+            try:
+                new_id = self._insert_memory_rows(data)
+                rowcount = self._conn.execute(
+                    "UPDATE memories SET superseded_by_id = ? "
+                    "WHERE id = ? AND superseded_by_id IS NULL",
+                    (new_id, head_id),
+                ).rowcount
+            except Exception:
+                self._conn.rollback()
+                raise
+            if rowcount != 1:
+                self._conn.rollback()
+                continue
+            self._conn.commit()
+            return new_id, head_id
+        return None, last_head
 
     def get_memory(self, memory_id: int) -> dict[str, Any] | None:
         row = self._conn.execute(

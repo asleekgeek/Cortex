@@ -571,14 +571,19 @@ def insert_and_post_process(
     )
     record["agent_context"] = agent_context
     record["is_global"] = is_global
-    mem_id = store.insert_memory(record)
-    _link_if_needed(action, merged_id, mem_id, store)
+    superseded_head: int | None = None
     if action == "supersede" and merged_id is not None:
-        # Close the supersession chain: forward edge (new.supersedes_id)
-        # is in the record above; this stamps the old row's back-pointer
-        # so recall_memories() demotes it as a stale version.
-        if hasattr(store, "set_superseded_by"):
-            store.set_superseded_by(merged_id, mem_id)
+        # Atomic insert + supersession edge (biomimetic reconsolidation): the
+        # new row and the head's back-pointer commit as ONE transaction, so a
+        # lost compare-and-set rolls the insert back — never an orphaned,
+        # disconnected row. On a race the write rebases onto the current head;
+        # only pathological contention returns a conflict (nothing committed).
+        mem_id, superseded_head = store.supersede_atomic(record, merged_id)
+        if mem_id is None:
+            return _build_supersede_conflict(merged_id, superseded_head)
+    else:
+        mem_id = store.insert_memory(record)
+    _link_if_needed(action, merged_id, mem_id, store)
     tids, tagged, slot = _run_post_store(
         mem_id,
         content,
@@ -612,7 +617,77 @@ def insert_and_post_process(
     response["source_attribution"] = attribution
     if attribution == "inferred":
         response["confabulation_risk"] = True
+    if action == "supersede" and merged_id is not None:
+        # The row actually superseded is the chain head the edge landed on —
+        # equal to merged_id unless a concurrent race rebased the write.
+        response["superseded_id"] = superseded_head
     return response
+
+
+def _build_supersede_conflict(
+    target_id: int, current_head_id: int | None
+) -> dict[str, Any]:
+    """Report a supersession that could not converge on a stable chain head.
+
+    Reached only when ``store.supersede_atomic`` exhausts its bounded
+    reconsolidation rebase: every attempt lost the compare-and-set to a
+    concurrent writer moving the head. Because each attempt runs the insert and
+    the edge inside ONE transaction, a lost attempt rolls the insert back —
+    nothing is ever committed, so no row is orphaned and none is left
+    disconnected. The caller still holds the content and the id of the current
+    head, so it can rebase and retry (optimistic concurrency, 409-style). There
+    is deliberately no delete and no orphan_memory_id: the atomic rollback makes
+    both impossible, a stronger guarantee than the former rollback-over-orphan.
+    """
+    return {
+        "stored": False,
+        "action": "superseded_conflict",
+        "reason": "supersede_chain_head_moving",
+        "supersede_target_id": target_id,
+        "current_head_id": current_head_id,
+    }
+
+
+def validate_supersede_target(
+    supersedes_raw: Any, store: MemoryStore
+) -> tuple[int | None, dict[str, Any] | None]:
+    """Resolve and validate an explicit supersession target.
+
+    Returns (supersedes_id, None) when the target is a valid chain head,
+    (None, rejection_response) when the argument is malformed, the target
+    is missing, or the target is already superseded — an existing chain is
+    never forked silently. The head-ness read here is advisory; the
+    compare-and-set in the store is the authority under concurrency.
+    """
+    if supersedes_raw is None:
+        return None, None
+    try:
+        supersedes_id = int(supersedes_raw)
+    except (TypeError, ValueError):
+        supersedes_id = 0
+    if supersedes_id <= 0:
+        return None, {
+            "stored": False,
+            "action": "rejected",
+            "reason": "invalid_supersedes_id",
+        }
+    target = store.get_memory(supersedes_id)
+    if target is None:
+        return None, {
+            "stored": False,
+            "action": "rejected",
+            "reason": "supersede_target_not_found",
+            "supersede_target_id": supersedes_id,
+        }
+    if target.get("superseded_by_id") is not None:
+        return None, {
+            "stored": False,
+            "action": "rejected",
+            "reason": "supersede_target_already_superseded",
+            "supersede_target_id": supersedes_id,
+            "current_superseded_by_id": target.get("superseded_by_id"),
+        }
+    return supersedes_id, None
 
 
 # ── User-mood EMA hook (Bower 1981 mood-congruent recall, signal side) ──
