@@ -1,6 +1,7 @@
-"""Tool registration: Tier 2 navigation tools (5 tools).
+"""Tool registration: Tier 2 navigation tools (7 tools).
 
-Registers fractal navigation and knowledge graph traversal tools.
+Registers fractal navigation, knowledge graph traversal, and injection
+provenance (blame path) tools.
 Tier 3 advanced tools are in tool_registry_advanced.py.
 """
 
@@ -15,6 +16,7 @@ from mcp_server.handlers import (
     navigate_memory,
     recall_hierarchical,
     recall_skills,
+    why,
 )
 from mcp_server.tool_error_handler import safe_handler
 from mcp_server.handlers._tool_meta import tool_kwargs
@@ -29,6 +31,7 @@ SCHEMAS: dict[str, dict] = {
     "navigate_memory": navigate_memory.schema,
     "recall_hierarchical": recall_hierarchical.schema,
     "recall_skills": recall_skills.schema,
+    "why": why.schema,
 }
 
 
@@ -40,6 +43,7 @@ def register(mcp: FastMCP) -> None:
     _register_get_causal_chain(mcp)
     _register_detect_gaps(mcp)
     _register_recall_skills(mcp)
+    _register_why(mcp)
 
 
 def _register_recall_hierarchical(mcp: FastMCP) -> None:
@@ -189,4 +193,18 @@ def _register_recall_skills(mcp: FastMCP) -> None:
                 "min_proficiency": min_proficiency,
             },
             tool_name="recall_skills",
+        )
+
+
+def _register_why(mcp: FastMCP) -> None:
+    @mcp.tool(
+        name="why",
+        **tool_kwargs(why.schema),
+    )
+    async def tool_why(receipt_ids: list[int]) -> dict:
+        """Resolve ⟦rcpt:id⟧ injection receipts into presence-in-context evidence."""
+        return await safe_handler(
+            why.handler,
+            {"receipt_ids": receipt_ids},
+            tool_name="why",
         )

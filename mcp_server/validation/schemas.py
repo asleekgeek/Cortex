@@ -116,6 +116,18 @@ SCHEMAS: dict[str, dict] = {
         },
         "required": ["query"],
     },
+    "why": {
+        "properties": {
+            # maxItems mirrors handlers/why.py _MAX_RECEIPT_IDS (bounded
+            # envelope, ADR-0045 R2; SQLITE_MAX_VARIABLE_NUMBER floor).
+            "receipt_ids": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "maxItems": 999,
+            },
+        },
+        "required": ["receipt_ids"],
+    },
     "wiki_write": {
         "properties": {
             "path": {"type": "string", "maxLength": 500},

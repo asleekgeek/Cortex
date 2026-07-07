@@ -1,8 +1,10 @@
 """Injection-receipt persistence, PostgreSQL backend.
 
-Blame path T1/T2 (decision Cortex 4255039): receipts are an append-only
-record of what a channel injected into a context — there is no update
-or delete surface by design.
+Blame path T1/T2/T3 (decision Cortex 4255039): receipts are an
+append-only record of what a channel injected into a context — there is
+no update or delete surface by design. T3 adds the read path: resolving
+receipt ids (handed back by the model from ⟦rcpt:id⟧ context markers)
+into presence-in-context evidence.
 
 Two write paths share the single-statement SQL below:
 
@@ -66,6 +68,29 @@ def insert_receipt_on_connection(
     return int(row["receipt_id"] if isinstance(row, dict) else row[0])
 
 
+# Read path (T3). LEFT JOIN on purpose: memory_id carries no FK — a
+# memory hard-forgotten after injection must NOT erase the evidence that
+# it WAS in context; such rows come back with every m.* column NULL.
+# superseded_by_id is surfaced, never filtered: a receipt is historical
+# evidence, and a superseded memory that was injected stays part of the
+# record — the caller sees the correction state instead. Ordering is
+# recorded facts only (decision 4255039): emitted_at DESC, receipt id
+# DESC as the deterministic tiebreak, then the persisted injection rank.
+_FETCH_RECEIPTS_SQL = (
+    "SELECT r.id AS receipt_id, r.session_id, r.channel, r.emitted_at,"
+    "       i.memory_id, i.rank, i.score,"
+    "       m.id AS memory_row_id, m.content,"
+    "       m.created_at AS memory_created_at,"
+    "       m.source AS memory_source, m.domain AS memory_domain,"
+    "       m.superseded_by_id "
+    "FROM injection_receipts r "
+    "JOIN injection_receipt_items i ON i.receipt_id = r.id "
+    "LEFT JOIN memories m ON m.id = i.memory_id "
+    "WHERE r.id = ANY(%s::int[]) "
+    "ORDER BY r.emitted_at DESC, r.id DESC, i.rank ASC"
+)
+
+
 class PgReceiptsMixin:
     """Append-only injection receipts (blame path T1)."""
 
@@ -81,3 +106,21 @@ class PgReceiptsMixin:
         ).fetchone()
         self._conn.commit()
         return int(row["receipt_id"])
+
+    def fetch_injection_receipts(
+        self, receipt_ids: list[int]
+    ) -> list[dict]:
+        """Resolve receipt ids into flat (receipt × item × memory) rows.
+
+        One row per injected memory, ordered by recorded facts only
+        (emitted_at DESC, receipt id DESC, persisted rank ASC). Unknown
+        ids simply yield no rows — the handler reports them; an empty
+        input reads as an empty result (the loud non-empty contract
+        lives at the tool boundary, not here).
+        """
+        if not receipt_ids:
+            return []
+        rows = self._execute(
+            _FETCH_RECEIPTS_SQL, ([int(r) for r in receipt_ids],)
+        ).fetchall()
+        return [dict(r) for r in rows]
