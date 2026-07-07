@@ -487,9 +487,7 @@ def _emit_banner_receipt(
     IS in context, so truncation never drops an item (same parity stance
     as recall's bound_payload, decision 4255039 correction 11).
     """
-    payload = [
-        {"memory_id": m["id"]} for m in (*anchors, *team_decisions, *hot)
-    ]
+    payload = [{"memory_id": m["id"]} for m in (*anchors, *team_decisions, *hot)]
     return emit_hook_receipt(
         conn,
         payload,

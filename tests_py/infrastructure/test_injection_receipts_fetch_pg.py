@@ -22,12 +22,8 @@ _SESSION = "sess-why-t3-fixture"
 
 
 def _cleanup(conn) -> None:
-    conn.execute(
-        "DELETE FROM injection_receipts WHERE session_id = %s", (_SESSION,)
-    )
-    conn.execute(
-        "DELETE FROM memories WHERE content LIKE %s", ("WHYFETCH_TEST%",)
-    )
+    conn.execute("DELETE FROM injection_receipts WHERE session_id = %s", (_SESSION,))
+    conn.execute("DELETE FROM memories WHERE content LIKE %s", ("WHYFETCH_TEST%",))
 
 
 @pytest.fixture()

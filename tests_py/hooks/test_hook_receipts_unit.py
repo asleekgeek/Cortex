@@ -34,7 +34,11 @@ def test_budget_dropped_memory_is_excluded_from_included() -> None:
     # Each line renders as "- [<agent>] <200-char content>" ≈ 265 chars
     # with a 60-char agent prefix; the third line crosses the 800-char
     # budget and must be dropped from BOTH the text and the receipt list.
-    memories = [_mem(1, agent="x" * 60), _mem(2, agent="x" * 60), _mem(3, agent="x" * 60)]
+    memories = [
+        _mem(1, agent="x" * 60),
+        _mem(2, agent="x" * 60),
+        _mem(3, agent="x" * 60),
+    ]
     text, included = _format_injection(memories)
 
     assert len(text) <= _MAX_INJECTION_CHARS

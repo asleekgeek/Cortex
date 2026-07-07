@@ -34,17 +34,13 @@ _INSERT_RECEIPT_SQL = (
 )
 
 
-def _receipt_params(
-    channel: str, items: list[dict], session_id: str | None
-) -> tuple:
+def _receipt_params(channel: str, items: list[dict], session_id: str | None) -> tuple:
     """Coerce items into the (session_id, channel, ids, ranks, scores) tuple."""
     if not items:
         raise ValueError("injection receipt requires at least one item")
     memory_ids = [int(i["memory_id"]) for i in items]
     ranks = [int(i["rank"]) for i in items]
-    scores = [
-        None if i.get("score") is None else float(i["score"]) for i in items
-    ]
+    scores = [None if i.get("score") is None else float(i["score"]) for i in items]
     return (session_id, channel, memory_ids, ranks, scores)
 
 
@@ -107,9 +103,7 @@ class PgReceiptsMixin:
         self._conn.commit()
         return int(row["receipt_id"])
 
-    def fetch_injection_receipts(
-        self, receipt_ids: list[int]
-    ) -> list[dict]:
+    def fetch_injection_receipts(self, receipt_ids: list[int]) -> list[dict]:
         """Resolve receipt ids into flat (receipt × item × memory) rows.
 
         One row per injected memory, ordered by recorded facts only

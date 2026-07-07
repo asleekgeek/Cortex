@@ -44,8 +44,7 @@ def test_header_records_channel_and_timestamp() -> None:
     s = _store()
     rid = s.insert_injection_receipt("recall", _payload(), session_id="s-1")
     row = s._conn.execute(
-        "SELECT session_id, channel, emitted_at FROM injection_receipts "
-        "WHERE id = ?",
+        "SELECT session_id, channel, emitted_at FROM injection_receipts WHERE id = ?",
         (rid,),
     ).fetchone()
     assert row["session_id"] == "s-1"
@@ -177,8 +176,7 @@ def test_fetch_orders_by_emitted_at_desc_then_id_desc() -> None:
     assert [r["receipt_id"] for r in rows] == [b, a]
     # Age receipt b below a: emitted_at DESC must now dominate the ids.
     s._conn.execute(
-        "UPDATE injection_receipts SET emitted_at = '2000-01-01T00:00:00' "
-        "WHERE id = ?",
+        "UPDATE injection_receipts SET emitted_at = '2000-01-01T00:00:00' WHERE id = ?",
         (b,),
     )
     rows = s.fetch_injection_receipts([a, b])
@@ -189,9 +187,7 @@ def test_fetch_surfaces_superseded_state_never_filters() -> None:
     s = _store()
     m1 = s.insert_memory({"content": "wrong fact"})
     m2 = s.insert_memory({"content": "corrected fact"})
-    s._conn.execute(
-        "UPDATE memories SET superseded_by_id = ? WHERE id = ?", (m2, m1)
-    )
+    s._conn.execute("UPDATE memories SET superseded_by_id = ? WHERE id = ?", (m2, m1))
     rid = s.insert_injection_receipt(
         "recall", [{"memory_id": m1, "rank": 0, "score": 0.8}]
     )

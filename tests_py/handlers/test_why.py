@@ -78,12 +78,26 @@ def _patch(monkeypatch, rows: list[dict], budget: int = 75_000) -> _FakeStore:
 @pytest.mark.asyncio
 async def test_evidence_replays_store_rows_in_store_order(monkeypatch) -> None:
     rows = [
-        _row(receipt_id=9, channel="auto_recall", session_id="s-1",
-             emitted_at="2026-07-07T11:00:00+00:00", memory_id=42, rank=0,
-             score=None, memory_row_id=42, content="beta"),
+        _row(
+            receipt_id=9,
+            channel="auto_recall",
+            session_id="s-1",
+            emitted_at="2026-07-07T11:00:00+00:00",
+            memory_id=42,
+            rank=0,
+            score=None,
+            memory_row_id=42,
+            content="beta",
+        ),
         _row(receipt_id=4, memory_id=11, rank=0),
-        _row(receipt_id=4, memory_id=7, rank=1, score=0.5,
-             memory_row_id=7, content="gamma"),
+        _row(
+            receipt_id=4,
+            memory_id=7,
+            rank=1,
+            score=0.5,
+            memory_row_id=7,
+            content="gamma",
+        ),
     ]
     _patch(monkeypatch, rows)
     resp = await why.handler({"receipt_ids": [9, 4]})
@@ -195,8 +209,14 @@ async def test_budget_bounds_response_and_keeps_ids(monkeypatch) -> None:
     # bound_payload ships ~20k chars against a 1.2k budget and fails.
     rows = [
         _row(receipt_id=2, memory_id=21, content="x" * 10_000),
-        _row(receipt_id=1, memory_id=22, rank=0, score=0.2,
-             memory_row_id=22, content="y" * 10_000),
+        _row(
+            receipt_id=1,
+            memory_id=22,
+            rank=0,
+            score=0.2,
+            memory_row_id=22,
+            content="y" * 10_000,
+        ),
     ]
     budget = 1_200
     _patch(monkeypatch, rows, budget=budget)

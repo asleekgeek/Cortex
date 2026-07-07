@@ -181,8 +181,10 @@ def test_session_start_banner_receipt_roundtrip(_db) -> None:
     # fact prints before the hot fact, and their receipt ranks must
     # follow that same visible order.
     lines = context.splitlines()
-    anchor_line = next(i for i, l in enumerate(lines) if "anchored critical fact" in l)
-    hot_line = next(i for i, l in enumerate(lines) if "hot memory fact" in l)
+    anchor_line = next(
+        i for i, text in enumerate(lines) if "anchored critical fact" in text
+    )
+    hot_line = next(i for i, text in enumerate(lines) if "hot memory fact" in text)
     assert anchor_line < hot_line
     rank_by_id = {r["memory_id"]: r["rank"] for r in items}
     assert rank_by_id[anchor_id] < rank_by_id[hot_id]
@@ -202,13 +204,9 @@ def test_session_start_read_event_tolerates_garbage(monkeypatch) -> None:
 def test_session_start_empty_banner_emits_no_receipt(_db) -> None:
     from mcp_server.hooks import session_start as ss
 
-    before = _db.execute(
-        "SELECT COUNT(*) AS c FROM injection_receipts"
-    ).fetchone()["c"]
+    before = _db.execute("SELECT COUNT(*) AS c FROM injection_receipts").fetchone()["c"]
     assert ss._emit_banner_receipt(_db, {}, [], [], []) is None
-    after = _db.execute(
-        "SELECT COUNT(*) AS c FROM injection_receipts"
-    ).fetchone()["c"]
+    after = _db.execute("SELECT COUNT(*) AS c FROM injection_receipts").fetchone()["c"]
     assert after == before
 
 
