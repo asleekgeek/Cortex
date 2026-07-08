@@ -25,6 +25,7 @@ from mcp_server.infrastructure.pg_store_wiki import (
     upsert_page,
 )
 from mcp_server.infrastructure.wiki_store import list_pages, read_page
+from mcp_server.shared.wiki_source_paths import extract_document_paths
 
 # Wiki-link syntax: [[slug]] or [[slug|display text]]
 _WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
@@ -82,6 +83,11 @@ def _page_row_from_md(
     if isinstance(tags, str):
         tags = [tags]
 
+    # ADR-0051 STEP 2: extract every legacy documented-file form
+    # (documents:/source_file_path:/file:/file:<path> tag) into the
+    # canonical list. documents_primary is the 1:1 fast-path scalar.
+    documents = extract_document_paths(fm, tags)
+
     return {
         "memory_id": memory_id,
         "rel_path": rel_path,
@@ -102,6 +108,8 @@ def _page_row_from_md(
         "sections": sections,
         "body": body,
         "body_hash": body_hash(body),
+        "documents": documents,
+        "documents_primary": documents[0] if documents else None,
     }
 
 

@@ -6,7 +6,10 @@ Runs three passes over wiki.pages:
      archived → active on revival).
   2. Staleness brake — pages whose file references no longer exist
      get is_stale=True; pages whose refs all came back get
-     is_stale=False (auto-recovery).
+     is_stale=False (auto-recovery). Also persists the harvested refs
+     as wiki.page_sources rows (link_kind='references', ADR-0051 STEP 4)
+     so the file <-> wiki graph exposes not just the one 'documents'
+     primary but every file a page cites.
   3. Memo every transition for the audit trail.
 
 Modes:
@@ -25,19 +28,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from mcp_server.core.wiki_staleness import (
-    StalenessDecision,
-    evaluate_staleness,
-    harvest_page_refs,
-)
 from mcp_server.core.wiki_thermodynamics import evaluate_page, summarise
+from mcp_server.handlers.wiki_consolidate_staleness import run_staleness_pass
 from mcp_server.infrastructure.config import WIKI_ROOT
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
 from mcp_server.infrastructure.pg_store_wiki import (
-    apply_staleness_decisions,
     apply_thermo_decisions,
-    get_claim_file_refs_for_pages,
     insert_memo,
     list_pages_for_decay,
 )
@@ -49,13 +46,13 @@ schema = {
         "lifecycle transitions (active → area → archived, archived → active "
         "on revival), and staleness checks for pages whose file references "
         "no longer exist on disk. Phase 4 of the wiki redesign pipeline; "
-        "schedule on a daily/weekly cadence. Mutates wiki.pages and writes "
-        "audit memos. Distinct from `consolidate` (which operates on "
-        "memories, not wiki pages), and from `wiki_purge` (which deletes "
-        "pages failing classifier rules). File-existence checks are sandboxed "
-        "to repo_root. Latency ~1-3s for 5000 pages. Returns "
-        "{pages_evaluated, pages_decayed, transitions, staleness, "
-        "avg_heat_before/after}."
+        "schedule on a daily/weekly cadence. Mutates wiki.pages, wiki.page_sources "
+        "(link_kind='references') and writes audit memos. Distinct from "
+        "`consolidate` (which operates on memories, not wiki pages), and from "
+        "`wiki_purge` (which deletes pages failing classifier rules). "
+        "File-existence checks are sandboxed to repo_root. Latency ~1-3s for "
+        "5000 pages. Returns {pages_evaluated, pages_decayed, transitions, "
+        "staleness (includes references_written), avg_heat_before/after}."
     ),
     "inputSchema": {
         "type": "object",
@@ -120,49 +117,13 @@ def _get_store() -> MemoryStore:
     return get_shared_store(settings.DB_PATH, settings.EMBEDDING_DIM)
 
 
-def _check_existence(refs: set[str], repo_root: Path) -> dict[str, bool]:
-    """Resolve each ref against repo_root; return existence map."""
-    out: dict[str, bool] = {}
-    for ref in refs:
-        ref = ref.strip().rstrip(".,;:")
-        if not ref:
-            continue
-        # Reject absolute paths and traversal — staleness checks must
-        # not escape the repo root (defence against poisoned page text)
-        try:
-            p = Path(ref)
-            if p.is_absolute():
-                out[ref] = False
-                continue
-            target = (repo_root / p).resolve()
-            target.relative_to(repo_root.resolve())
-            out[ref] = target.exists()
-        except (ValueError, OSError):
-            out[ref] = False
-    return out
+def _run_decay_pass(
+    conn: Any, pages: list[dict], now: datetime, *, dry_run: bool
+) -> tuple[Any, int]:
+    """Pass 1: heat decay + lifecycle transitions.
 
-
-async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
-    args = args or {}
-    limit = int(args.get("limit", 5000))
-    dry_run = bool(args.get("dry_run", False))
-    skip_staleness = bool(args.get("skip_staleness", False))
-    include_archived = bool(args.get("include_archived", False))
-    repo_root_arg = args.get("repo_root")
-    repo_root = Path(repo_root_arg) if repo_root_arg else Path.cwd()
-
-    store = _get_store()
-    conn = store._conn
-    now = datetime.now(tz=timezone.utc)
-
-    # ── Pass 1: Decay + lifecycle ─────────────────────────────────────
-    pages = list_pages_for_decay(conn, limit=limit, include_archived=include_archived)
-    if not pages:
-        return {
-            "pages_evaluated": 0,
-            "note": "no eligible pages (no active/area pages exist)",
-        }
-
+    Returns ``(thermo_stats, pages_updated)``.
+    """
     original_heats = {p["id"]: float(p.get("heat") or 0.0) for p in pages}
     decisions = [evaluate_page(p, now=now) for p in pages]
     stats = summarise(decisions, original_heats)
@@ -183,59 +144,36 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
                     confidence=0.9,
                     author="thermo",
                 )
+    return stats, pages_updated
 
-    # ── Pass 2: Staleness ─────────────────────────────────────────────
+
+async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
+    args = args or {}
+    limit = int(args.get("limit", 5000))
+    dry_run = bool(args.get("dry_run", False))
+    skip_staleness = bool(args.get("skip_staleness", False))
+    include_archived = bool(args.get("include_archived", False))
+    repo_root_arg = args.get("repo_root")
+    repo_root = Path(repo_root_arg) if repo_root_arg else Path.cwd()
+
+    store = _get_store()
+    conn = store._conn
+    now = datetime.now(tz=timezone.utc)
+
+    pages = list_pages_for_decay(conn, limit=limit, include_archived=include_archived)
+    if not pages:
+        return {
+            "pages_evaluated": 0,
+            "note": "no eligible pages (no active/area pages exist)",
+        }
+
+    stats, pages_updated = _run_decay_pass(conn, pages, now, dry_run=dry_run)
+
     stale_summary: dict[str, Any] = {"skipped": True}
     if not skip_staleness:
-        page_ids = [p["id"] for p in pages]
-        claim_refs_by_page = get_claim_file_refs_for_pages(conn, page_ids)
-        # Combine claim refs + inline refs per page
-        per_page_refs: dict[int, list[str]] = {}
-        all_refs: set[str] = set()
-        for p in pages:
-            refs = harvest_page_refs(p, claim_refs_by_page.get(p["id"], []))
-            per_page_refs[p["id"]] = refs
-            all_refs.update(refs)
-        existence = _check_existence(all_refs, repo_root)
-
-        stale_decisions: list[StalenessDecision] = []
-        for p in pages:
-            decision = evaluate_staleness(
-                page_id=p["id"],
-                is_stale_was=bool(p.get("is_stale", False)),
-                file_refs=per_page_refs[p["id"]],
-                existence=existence,
-            )
-            stale_decisions.append(decision)
-
-        stale_written = 0
-        if not dry_run:
-            stale_written = apply_staleness_decisions(conn, stale_decisions)
-            for d in stale_decisions:
-                if d.transitioned:
-                    insert_memo(
-                        conn,
-                        subject_type="page",
-                        subject_id=d.page_id,
-                        decision=(
-                            "staleness_set" if d.is_stale_now else "staleness_cleared"
-                        ),
-                        rationale=d.rationale,
-                        inputs={
-                            "missing": d.missing_refs[:10],
-                            "total_refs": len(d.file_refs),
-                        },
-                        confidence=0.8,
-                        author="staleness",
-                    )
-        stale_summary = {
-            "pages_with_refs": sum(1 for d in stale_decisions if d.file_refs),
-            "pages_now_stale": sum(1 for d in stale_decisions if d.is_stale_now),
-            "transitions_written": stale_written,
-            "files_checked": len(existence),
-            "files_missing": sum(1 for v in existence.values() if not v),
-            "skipped": False,
-        }
+        stale_summary = run_staleness_pass(
+            conn, pages, repo_root=repo_root, dry_run=dry_run
+        )
 
     if not dry_run:
         conn.commit()

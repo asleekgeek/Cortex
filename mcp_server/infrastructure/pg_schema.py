@@ -235,6 +235,12 @@ CREATE TABLE IF NOT EXISTS wiki.pages (
     id              SERIAL PRIMARY KEY,
     memory_id       INTEGER UNIQUE REFERENCES memories(id) ON DELETE SET NULL,
     concept_id      BIGINT REFERENCES wiki.concepts(id) ON DELETE SET NULL,
+    -- Denormalized 1:1 fast-path mirror of wiki.page_sources for the
+    -- dominant single-file-doc case: keeps the recall hot path join-free
+    -- (see "ZERO joins from recall hot path" invariant above). NULL for
+    -- pages that document zero or many files; wiki.page_sources is the
+    -- source of truth for the N:M case. ADR-0051.
+    documents_primary TEXT,
     rel_path        TEXT UNIQUE NOT NULL,
     slug            TEXT NOT NULL,
     kind            TEXT NOT NULL,
@@ -294,6 +300,29 @@ CREATE TABLE IF NOT EXISTS wiki.citations (
     cited_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- page_sources: N:M edge from a wiki page to the source file(s) it
+-- documents. General model — an anchor/scope page can document many
+-- files, and (rarely) a file can be documented by more than one page
+-- (e.g. a module overview plus a deep-dive). Populated from frontmatter
+-- (`documents:`/legacy `source_file_path`/`file`/`file:` tag) and from
+-- wiki.claim_events.evidence_refs (kind='file'). Mirrors wiki.links'
+-- shape (src table row -> target key, typed by link_kind).
+-- Downstream consumer: cortex-viz wiki-page -> source-file edges.
+-- ADR-0051.
+CREATE TABLE IF NOT EXISTS wiki.page_sources (
+    page_id         INTEGER NOT NULL REFERENCES wiki.pages(id) ON DELETE CASCADE,
+    source_path     TEXT NOT NULL,
+    symbol          TEXT,
+    link_kind       TEXT NOT NULL DEFAULT 'documents'
+                    CHECK (link_kind IN ('documents','references','derived')),
+    confidence      REAL NOT NULL DEFAULT 1.0,
+    source          TEXT NOT NULL DEFAULT 'frontmatter'
+                    CHECK (source IN (
+                      'frontmatter','claim_evidence','body','codebase_grounding'
+                    )),
+    PRIMARY KEY (page_id, source_path, link_kind)
+);
+
 -- memos: the grounded-theory audit trail. Every curation decision
 -- (merge, split, promote, abandon, reclassify) writes one row with
 -- its inputs, rationale, alternatives considered, and confidence.
@@ -349,6 +378,11 @@ CREATE INDEX IF NOT EXISTS idx_wiki_links_dst
     ON wiki.links (dst_page_id) WHERE dst_page_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_wiki_links_dst_slug
     ON wiki.links (dst_slug);
+
+-- Reverse index: file -> page(s) documenting it. The query the viz
+-- edge-builder actually runs.
+CREATE INDEX IF NOT EXISTS idx_wiki_page_sources_path
+    ON wiki.page_sources (source_path);
 
 CREATE INDEX IF NOT EXISTS idx_wiki_citations_page_time
     ON wiki.citations (page_id, cited_at DESC);
@@ -1915,6 +1949,22 @@ DO $$ BEGIN
             ADD CONSTRAINT injection_receipts_channel_enum CHECK (
                 channel IN ('recall', 'session_start', 'auto_recall', 'agent_briefing')
             );
+    END IF;
+END $$;
+
+-- Migration: add wiki.pages.documents_primary for DBs provisioned before
+-- ADR-0051 (wiki.page_sources is created fresh via CREATE TABLE IF NOT
+-- EXISTS above and needs no guard; this column was added to an
+-- already-existing table). table_schema qualifies the lookup since
+-- information_schema.columns is not schema-scoped by default.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'wiki' AND table_name = 'pages'
+          AND column_name = 'documents_primary'
+    ) THEN
+        ALTER TABLE wiki.pages ADD COLUMN documents_primary TEXT;
     END IF;
 END $$;
 """
