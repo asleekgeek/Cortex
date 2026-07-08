@@ -63,6 +63,7 @@ from __future__ import annotations
 import math
 
 from mcp_server.core.two_stage_transfer import (
+    _HIPPOCAMPAL_RELEASE_THRESHOLD,
     compute_interleaving_schedule,
     compute_transfer_delta,
     update_hippocampal_dependency,
@@ -89,12 +90,16 @@ __all__ = [
 _HIPPOCAMPAL_CAPACITY = 100
 
 # Engineering choice: dependency threshold below which a memory is considered
-# cortically independent and no longer needs hippocampal support.
+# cortically independent and no longer needs hippocampal support. No paper
+# source (McClelland 1995 gives no scalar dependency metric — see module
+# docstring); picked as the midpoint of the "transitional" band between the
+# release threshold (0.05) and the "still hippocampal" cutoff (0.7) below.
+# source: engineering choice
 _CORTICAL_INDEPENDENCE_THRESHOLD = 0.15
 
-# Engineering choice: threshold below which the hippocampal trace can be freed.
-# Calibrated to the cortical learning rate (0.02) from C-HORSE (Ketz et al., 2023).
-_HIPPOCAMPAL_RELEASE_THRESHOLD = 0.05
+# _HIPPOCAMPAL_RELEASE_THRESHOLD is defined once in two_stage_transfer.py
+# (the lower-level module two_stage_model already imports from) and re-used
+# here — it must not be redefined, or the two copies can drift independently.
 
 
 # ── Store Classification ─────────────────────────────────────────────────

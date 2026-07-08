@@ -12,10 +12,12 @@ import pytest
 from mcp_server.core.active_forgetting import (
     ACUTE_OVERLAP_THRESHOLD,
     ACUTE_RECENCY_WINDOW_HOURS,
+    CORTICAL_AVAILABILITY_BETA,
     PERMANENT_ACCUM_THRESHOLD,
     PRESSURE_LEAK_LAMBDA,
     TAU_DUP,
     chronic_interference,
+    cortical_availability,
     forgetting_pressure,
     is_permanent_forgetting,
     is_transient_forgetting,
@@ -84,6 +86,50 @@ def test_zero_chronic_zero_pressure():
     assert forgetting_pressure("labile", 0.0) == 0.0
 
 
+# ── cortical_availability (CLS-B gate C modulation) ─────────────────────────
+
+
+def test_cortical_availability_at_full_dependency_is_never_zero():
+    """Regression guard: prod today has hippocampal_dependency=1.0 on every
+    memory. The factor must stay strictly positive there or the permanent
+    circuit would be silently zeroed corpus-wide."""
+    factor = cortical_availability(1.0)
+    assert factor > 0.0
+    assert factor == pytest.approx(1.0 - CORTICAL_AVAILABILITY_BETA)
+
+
+def test_cortical_availability_at_zero_dependency_is_normal_forgetting():
+    """Fully cortically-independent → no modulation (non-regression)."""
+    assert cortical_availability(0.0) == pytest.approx(1.0)
+
+
+def test_cortical_availability_monotone_decreasing_in_dependency():
+    assert (
+        cortical_availability(0.0)
+        > cortical_availability(0.5)
+        > cortical_availability(1.0)
+    )
+
+
+def test_cortical_availability_clamps_out_of_range():
+    assert cortical_availability(-1.0) == pytest.approx(1.0)
+    assert cortical_availability(2.0) == pytest.approx(1.0 - CORTICAL_AVAILABILITY_BETA)
+
+
+def test_forgetting_pressure_default_dependency_matches_pre_gate_c_behaviour():
+    """Callers that don't pass hippocampal_dependency see unmodulated pressure —
+    identical to the function's behaviour before CLS-B gate C was wired in."""
+    assert forgetting_pressure("labile", 0.8) == forgetting_pressure(
+        "labile", 0.8, hippocampal_dependency=0.0
+    )
+
+
+def test_forgetting_pressure_hippocampal_dependency_reduces_but_never_zeros():
+    independent = forgetting_pressure("labile", 0.8, hippocampal_dependency=0.0)
+    dependent = forgetting_pressure("labile", 0.8, hippocampal_dependency=1.0)
+    assert 0.0 < dependent < independent
+
+
 # ── update_pressure_accum (leaky integrator) ───────────────────────────────
 
 
@@ -99,6 +145,18 @@ def test_sleep_protected_cycle_adds_no_pressure_and_leaks():
     assert update_pressure_accum(1.0, "labile", 0.95, True) == pytest.approx(
         PRESSURE_LEAK_LAMBDA
     )
+
+
+def test_update_pressure_accum_forwards_hippocampal_dependency():
+    """A hippocampally-dependent memory accumulates less pressure per cycle
+    under identical chronic interference (CLS-B gate C wired through)."""
+    independent = update_pressure_accum(
+        0.0, "labile", 0.8, False, hippocampal_dependency=0.0
+    )
+    dependent = update_pressure_accum(
+        0.0, "labile", 0.8, False, hippocampal_dependency=1.0
+    )
+    assert 0.0 < dependent < independent
 
 
 def test_sustained_pressure_reaches_steady_state():

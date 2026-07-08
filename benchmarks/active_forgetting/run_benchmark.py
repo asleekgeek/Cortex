@@ -63,6 +63,7 @@ sys.path.insert(0, str(REPO))
 from mcp_server.core.active_forgetting import (  # noqa: E402
     ACUTE_OVERLAP_THRESHOLD,
     ACUTE_RECENCY_WINDOW_HOURS,
+    CORTICAL_AVAILABILITY_BETA,
     PRESSURE_LEAK_LAMBDA,
     PERMANENT_ACCUM_THRESHOLD,
     TAU_DUP,
@@ -234,15 +235,38 @@ TRANSIENT_POOL = [
 ]
 
 
+# ── CLS-B gate C pool: cortical_availability modulation of the PERMANENT
+# circuit (see cortex:remember memory_id 4261603 and core.active_forgetting
+# module docstring for the design). Reuses the S1 sustained-interference
+# series (same chronic, same stage, same fire_by=3 at dep=0.0) so
+# non-regression is checked against the EXACT baked S1 fixture above, not a
+# new hand-picked one — the only variable introduced is hippocampal_dependency.
+_S1 = next(s for s in SERIES_POOL if s["id"] == "S1")
+
+
 # ── Accumulator trajectory helper ────────────────────────────────────────────────
 
 
-def _trajectory(series: dict, lam: float) -> list[float]:
-    """Accumulator value after each cycle for a series under leak ``lam``."""
+def _trajectory(
+    series: dict, lam: float, *, hippocampal_dependency: float = 0.0
+) -> list[float]:
+    """Accumulator value after each cycle for a series under leak ``lam``.
+
+    ``hippocampal_dependency`` (CLS-B gate C, default 0.0 = no modulation)
+    forwards to ``update_pressure_accum`` unchanged from every pre-CLS-B call
+    site in this file.
+    """
     accum = 0.0
     out = []
     for chronic, sleep in series["cycles"]:
-        accum = update_pressure_accum(accum, series["stage"], chronic, sleep, lam)
+        accum = update_pressure_accum(
+            accum,
+            series["stage"],
+            chronic,
+            sleep,
+            lam,
+            hippocampal_dependency=hippocampal_dependency,
+        )
         out.append(accum)
     return out
 
@@ -520,6 +544,67 @@ def fixture_reversibility() -> dict:
     }
 
 
+# ── CLS-B gate C: cortical-availability modulation of the PERMANENT circuit ───────
+
+
+def fixture_hippocampal_dependency_non_regression() -> dict:
+    """(i) NON-REGRESSION: a cortically-independent memory (dep=0.0, the
+    default cortical_availability produces no modulation) under S1's sustained
+    interference still fires PERMANENT by cycle 3 — identical to the baked
+    series_reproduced() result with no CLS-B involvement. If this ever
+    diverges from the baseline S1 trajectory, gate C has changed pre-existing
+    (non-CLS-B) forgetting behaviour, which is the one thing it must never do.
+    """
+    baseline = _trajectory(_S1, PRESSURE_LEAK_LAMBDA)
+    cortical = _trajectory(_S1, PRESSURE_LEAK_LAMBDA, hippocampal_dependency=0.0)
+    fire_cycle = next(
+        (i for i, a in enumerate(cortical, start=1) if a >= PERMANENT_ACCUM_THRESHOLD),
+        None,
+    )
+    return {
+        "passed": cortical == baseline
+        and fire_cycle is not None
+        and fire_cycle <= _S1["fire_by"],
+        "fire_cycle": fire_cycle,
+        "expected_fire_by": _S1["fire_by"],
+        "matches_ungated_baseline": cortical == baseline,
+    }
+
+
+def fixture_hippocampal_dependency_protects() -> dict:
+    """(ii) PROTECTION: the SAME S1 interference applied to a fully
+    hippocampally-dependent memory (dep=1.0, today's production value for
+    100% of memories — see decision memory 4261278/4261481) accumulates
+    strictly less pressure every cycle and does NOT fire by S1's fire_by=3 —
+    it resists longer under identical interference, without being exempted
+    (the accumulator still grows, just more slowly)."""
+    cortical = _trajectory(_S1, PRESSURE_LEAK_LAMBDA, hippocampal_dependency=0.0)
+    hippocampal = _trajectory(_S1, PRESSURE_LEAK_LAMBDA, hippocampal_dependency=1.0)
+    less_pressure_every_cycle = all(h < c for h, c in zip(hippocampal, cortical))
+    still_growing = hippocampal[-1] > 0.0
+    fires_late_or_never = not any(
+        a >= PERMANENT_ACCUM_THRESHOLD for a in hippocampal[: _S1["fire_by"]]
+    )
+    return {
+        "passed": less_pressure_every_cycle and still_growing and fires_late_or_never,
+        "cortical_trajectory": [round(a, 4) for a in cortical],
+        "hippocampal_trajectory": [round(a, 4) for a in hippocampal],
+        "beta": CORTICAL_AVAILABILITY_BETA,
+    }
+
+
+def fixture_hippocampal_dependency_never_zeroes_pressure() -> dict:
+    """Regression guard on the constant itself: at dep=1.0 (today's prod
+    value everywhere) the modulated pressure must be STRICTLY POSITIVE, not
+    zero — a naive (1-dep) factor would zero the permanent circuit corpus-wide
+    until the CLS-B producer has decayed dependency, which is the exact
+    regression this design rejected (see core.active_forgetting docstring)."""
+    accum = update_pressure_accum(
+        0.0, "labile", 0.667, False, hippocampal_dependency=1.0
+    )
+    return {"passed": accum > 0.0, "accum_after_one_cycle": round(accum, 6)}
+
+
 def main() -> int:
     th = derive_thresholds()
 
@@ -559,6 +644,9 @@ def main() -> int:
     f_recency = fixture_transient_needs_recency_and_overlap()
     f_indep = fixture_circuits_independent_no_conversion()
     f_rev = fixture_reversibility()
+    f_dep_nonreg = fixture_hippocampal_dependency_non_regression()
+    f_dep_protect = fixture_hippocampal_dependency_protects()
+    f_dep_nonzero = fixture_hippocampal_dependency_never_zeroes_pressure()
 
     print(
         f"\n[signal construction] passed={sig['passed']}  mismatches={sig['mismatches']}"
@@ -585,6 +673,18 @@ def main() -> int:
     )
     print(f"  circuits independent (no conversion)         passed={f_indep['passed']}")
     print(f"  both modes reversible                        passed={f_rev['passed']}")
+    print("\n[CLS-B gate C — cortical_availability(hippocampal_dependency)]")
+    print(
+        f"  (i)  non-regression (dep=0.0 matches S1 baseline)   passed={f_dep_nonreg['passed']}"
+        f"  fire_cycle={f_dep_nonreg['fire_cycle']}"
+    )
+    print(
+        f"  (ii) protection (dep=1.0 resists longer, still grows) passed={f_dep_protect['passed']}"
+    )
+    print(
+        f"  pressure never zeroed at dep=1.0 (β={CORTICAL_AVAILABILITY_BETA})    "
+        f"passed={f_dep_nonzero['passed']}"
+    )
 
     passed = all(
         [
@@ -600,6 +700,9 @@ def main() -> int:
             f_recency["passed"],
             f_indep["passed"],
             f_rev["passed"],
+            f_dep_nonreg["passed"],
+            f_dep_protect["passed"],
+            f_dep_nonzero["passed"],
         ]
     )
 
@@ -630,6 +733,10 @@ def main() -> int:
         "fixture_transient_needs_recency_and_overlap": f_recency["passed"],
         "fixture_circuits_independent": f_indep["passed"],
         "fixture_reversibility": f_rev["passed"],
+        "fixture_hippocampal_dependency_non_regression": f_dep_nonreg["passed"],
+        "fixture_hippocampal_dependency_protects": f_dep_protect["passed"],
+        "fixture_hippocampal_dependency_never_zeroes_pressure": f_dep_nonzero["passed"],
+        "cortical_availability_beta": CORTICAL_AVAILABILITY_BETA,
         "passed": passed,
     }
     _write(report)

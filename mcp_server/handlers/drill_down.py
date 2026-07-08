@@ -17,6 +17,7 @@ from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
 from mcp_server.handlers._tool_meta import READ_ONLY
 from mcp_server.handlers._telemetry_wrap import instrument
+from mcp_server.handlers.replay_tracking import track_replay_event
 
 # ── Schema ────────────────────────────────────────────────────────────────
 
@@ -192,11 +193,7 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
         for child in children:
             mid = child.get("memory_id")
             if mid:
-                try:
-                    store.update_memory_access(mid)
-                    store.increment_replay_count(mid)
-                except Exception:
-                    pass
+                track_replay_event(mid, store)
     else:
         children = _format_cluster_children(children_raw)
 

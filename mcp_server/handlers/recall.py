@@ -27,6 +27,7 @@ from mcp_server.handlers.recall_helpers import (
     inject_triggered_memories,
     inline_related_neighbors,
 )
+from mcp_server.handlers.replay_tracking import track_replay_event
 from mcp_server.infrastructure.embedding_engine import get_embedding_engine
 from mcp_server.infrastructure.memory_config import (
     get_memory_settings,
@@ -340,20 +341,17 @@ def _apply_rules_and_order(
 
 
 def _track_recall_replay(results: list[dict], store: Any) -> None:
-    """Increment access_count and replay_count for recalled memories.
+    """Track a hippocampal replay event for each recalled memory.
 
-    Each recall event counts as a hippocampal replay (McClelland 1995).
-    This drives consolidation stage advancement through the cascade.
+    Each recall event counts as a hippocampal replay (McClelland 1995). This
+    drives consolidation stage advancement through the cascade and CLS-B
+    hippocampal-dependency decay (see ``replay_tracking.track_replay_event``).
     """
     for mem in results:
         mem_id = mem.get("memory_id") or mem.get("id")
         if mem_id is None:
             continue
-        try:
-            store.update_memory_access(mem_id)
-            store.increment_replay_count(mem_id)
-        except Exception:
-            pass
+        track_replay_event(mem_id, store)
 
 
 def _fetch_by_id(memory_id: int, content_offset: int) -> dict[str, Any]:
