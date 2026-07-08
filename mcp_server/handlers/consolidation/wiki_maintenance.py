@@ -128,6 +128,7 @@ async def run_wiki_maintenance(
     apply_classifier_rejects: bool = _AUTONOMOUS_CLASSIFIER_APPLY_DEFAULT,
     max_purges_per_axis: int | None = MAX_PURGES_PER_CYCLE,
     source_backfill_dry_run: bool = False,
+    domain_backfill_dry_run: bool = False,
 ) -> dict[str, Any]:
     """Purge stale wiki pages and report the curation backlog.
 
@@ -141,17 +142,20 @@ async def run_wiki_maintenance(
       * **classifier_rejects** — pages that no longer pass the current
         admission gate.
 
-    Also runs the ADR-0051 STEP 3 primary-source backfill (derives and
-    persists ``documents_primary`` for pages that lack it — see
-    ``consolidation.wiki_source_backfill_pass``). Applies by default,
-    matching the autonomous maintenance policy; ``source_backfill_dry_run``
-    switches it to derive-without-write.
+    Also runs the ADR-0051 STEP 3 primary-source backfill (derives +
+    persists ``documents_primary`` — ``wiki_source_backfill_pass``) and
+    the domain backfill (re-derives the true domain for catch-all pages
+    from the same source-path evidence — ``wiki_domain_backfill_pass``).
+    Both apply by default; ``source_backfill_dry_run`` /
+    ``domain_backfill_dry_run`` switch each to derive-without-write.
 
     Returns a dict with one stanza per axis (``stub`` / ``classifier``)
     each carrying ``{applied, purged, deferred, cap_reached, ...}`` plus
     a backlog stanza (``coverage_gaps``, ``cluster_jobs``,
-    ``pending_total``) and a ``source_backfill`` stanza
-    (``{pages_scanned, primaries_written, by_source, status}``).
+    ``pending_total``), a ``source_backfill`` stanza
+    (``{pages_scanned, primaries_written, by_source, status}``), and a
+    ``domain_backfill`` stanza (``{pages_scanned, domains_reassigned,
+    by_domain, status}``).
     """
     out: dict[str, Any] = {
         "stub": {
@@ -267,6 +271,21 @@ async def run_wiki_maintenance(
         out["source_backfill"] = {"status": f"error: {type(exc).__name__}: {exc}"}
         if out["status"] == "ok":
             out["status"] = f"source_backfill_error: {type(exc).__name__}: {exc}"
+
+    # Domain backfill (Volet 4): re-derives true domain for catch-all pages.
+    try:
+        from mcp_server.handlers.consolidation.wiki_domain_backfill_pass import (
+            run_domain_backfill_pass,
+        )
+
+        out["domain_backfill"] = await run_domain_backfill_pass(
+            store, apply=not domain_backfill_dry_run
+        )
+    except Exception as exc:
+        logger.warning("wiki_maintenance: domain backfill failed (non-fatal): %s", exc)
+        out["domain_backfill"] = {"status": f"error: {type(exc).__name__}: {exc}"}
+        if out["status"] == "ok":
+            out["status"] = f"domain_backfill_error: {type(exc).__name__}: {exc}"
 
     # Curation backlog.
     try:
