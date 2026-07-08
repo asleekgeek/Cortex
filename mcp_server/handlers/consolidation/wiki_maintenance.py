@@ -127,6 +127,7 @@ async def run_wiki_maintenance(
     apply_stubs: bool = _AUTONOMOUS_STUB_APPLY_DEFAULT,
     apply_classifier_rejects: bool = _AUTONOMOUS_CLASSIFIER_APPLY_DEFAULT,
     max_purges_per_axis: int | None = MAX_PURGES_PER_CYCLE,
+    source_backfill_dry_run: bool = False,
 ) -> dict[str, Any]:
     """Purge stale wiki pages and report the curation backlog.
 
@@ -140,10 +141,17 @@ async def run_wiki_maintenance(
       * **classifier_rejects** — pages that no longer pass the current
         admission gate.
 
+    Also runs the ADR-0051 STEP 3 primary-source backfill (derives and
+    persists ``documents_primary`` for pages that lack it — see
+    ``consolidation.wiki_source_backfill_pass``). Applies by default,
+    matching the autonomous maintenance policy; ``source_backfill_dry_run``
+    switches it to derive-without-write.
+
     Returns a dict with one stanza per axis (``stub`` / ``classifier``)
     each carrying ``{applied, purged, deferred, cap_reached, ...}`` plus
     a backlog stanza (``coverage_gaps``, ``cluster_jobs``,
-    ``pending_total``).
+    ``pending_total``) and a ``source_backfill`` stanza
+    (``{pages_scanned, primaries_written, by_source, status}``).
     """
     out: dict[str, Any] = {
         "stub": {
@@ -242,57 +250,29 @@ async def run_wiki_maintenance(
         logger.debug("wiki_maintenance: dashboard render failed (non-fatal): %s", exc)
         out["dashboards"] = {"status": f"error: {type(exc).__name__}: {exc}"}
 
+    # Primary-source backfill (ADR-0051 STEP 3). Runs before the backlog
+    # count below so drifts.pending_total (REASON_MISSING_LINK included)
+    # reflects pages still unlinked *after* this cycle's backfill, not
+    # before it.
+    try:
+        from mcp_server.handlers.consolidation.wiki_source_backfill_pass import (
+            run_source_backfill_pass,
+        )
+
+        out["source_backfill"] = await run_source_backfill_pass(
+            store, apply=not source_backfill_dry_run
+        )
+    except Exception as exc:
+        logger.warning("wiki_maintenance: source backfill failed (non-fatal): %s", exc)
+        out["source_backfill"] = {"status": f"error: {type(exc).__name__}: {exc}"}
+        if out["status"] == "ok":
+            out["status"] = f"source_backfill_error: {type(exc).__name__}: {exc}"
+
     # Curation backlog.
     try:
-        from mcp_server.core.auto_curator import count_pending_clusters_streamed
-        from mcp_server.core.wiki_coverage import (
-            _project_source_root,
-            audit_all_domains,
-            audit_all_file_coverage,
-        )
-        from mcp_server.core.wiki_drift import audit_wiki_drift
-        from mcp_server.infrastructure.config import WIKI_ROOT
+        from mcp_server.handlers.consolidation.wiki_backlog_pass import run_backlog_pass
 
-        chunks = (
-            store.iter_memories_for_decay()
-            if hasattr(store, "iter_memories_for_decay")
-            else [store.get_all_memories_for_decay()]
-        )
-        out["cluster_jobs"] = count_pending_clusters_streamed(
-            chunks, wiki_root=str(WIKI_ROOT)
-        )
-        coverages = audit_all_domains(str(WIKI_ROOT))
-        out["coverage_gaps"] = sum(c.missing_count for c in coverages)
-        # File-level coverage: count files that aren't referenced
-        # anywhere in the wiki. Aggregated across every domain that has
-        # a resolvable source root. This is "nothing left uncovered"
-        # measured at the file granularity.
-        file_rolls = audit_all_file_coverage(str(WIKI_ROOT))
-        out["uncovered_files"] = sum(
-            r.source_file_count - r.covered_file_count for r in file_rolls
-        )
-        out["file_coverage_by_domain"] = [
-            {
-                "domain": r.domain,
-                "covered": r.covered_file_count,
-                "total": r.source_file_count,
-                "ratio": round(r.coverage_ratio, 3),
-            }
-            for r in file_rolls
-        ]
-        # Drift: existing pages out of sync with the code or
-        # off-template. Capped at 1000 entries — a wide-open drift
-        # backlog doesn't need to materialise in full here; the
-        # curate_wiki call can re-enumerate when it needs the actual
-        # job set.
-        drifts = audit_wiki_drift(str(WIKI_ROOT), _project_source_root, limit=1000)
-        out["drifted_pages"] = len(drifts)
-        out["pending_total"] = (
-            out["cluster_jobs"]
-            + out["coverage_gaps"]
-            + out["uncovered_files"]
-            + out["drifted_pages"]
-        )
+        out.update(await run_backlog_pass(store))
     except Exception as exc:
         logger.debug("wiki_maintenance: backlog count failed (non-fatal): %s", exc)
         if out["status"] == "ok":

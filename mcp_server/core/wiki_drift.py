@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from typing import Final
 
 from mcp_server.shared.platform import to_posix
+from mcp_server.shared.wiki_source_paths import extract_document_paths
 
 
 @dataclass
@@ -54,6 +55,16 @@ class PageDrift:
 REASON_MISSING_SOURCE: Final[str] = "missing_source_file"
 REASON_STALE: Final[str] = "stale_content"
 REASON_OFF_TEMPLATE: Final[str] = "off_template"
+REASON_MISSING_LINK: Final[str] = "missing_source_link"
+
+# Page kinds whose entire purpose is to document a source file — these are
+# the kinds the STEP-3 backfill (core.wiki_source_backfill) targets, and
+# the ones REASON_MISSING_LINK applies to. Restricted to ``reference``
+# (the kind ``codebase_analyze``/rebucket route file-docs to, per
+# CHANGELOG 3.15.4 "File-documentation pages") — pages of other kinds
+# (adr, explanation, ...) don't claim to document one file, so an absent
+# link there is not drift.
+_SOURCE_DOCUMENTING_KINDS: Final[frozenset[str]] = frozenset({"reference"})
 
 # Default re-author window. Pages older than this whose body cites
 # source files trigger a re-author job — the prose may still be true,
@@ -307,6 +318,22 @@ def audit_page_drift(
         missing_sections = [s for s in required if s not in body]
         if missing_sections:
             drift.reasons.append(REASON_OFF_TEMPLATE)
+
+    # Reason 4: missing source link. A source-documenting page (kind ==
+    # "reference") that declares no documented file in its frontmatter
+    # AND has no groundable cited path in its body is a page nobody can
+    # trace to a real file — the STEP-3 backfill
+    # (core.wiki_source_backfill.derive_primary_source) either couldn't
+    # find an unambiguous candidate or hasn't run yet. Surfaced as drift
+    # so it queues as a re-authoring job. Without a source_root we can't
+    # verify any citation, so an unlinked page is flagged regardless —
+    # this only affects backlog counts, nothing is deleted.
+    if kind in _SOURCE_DOCUMENTING_KINDS and not extract_document_paths(meta):
+        groundable = source_root is not None and any(
+            _file_exists_under(source_root, c) for c in cited
+        )
+        if not groundable:
+            drift.reasons.append(REASON_MISSING_LINK)
 
     return drift if drift.reasons else None
 

@@ -12,6 +12,38 @@ Pure infrastructure — no core imports, no handler imports.
 from __future__ import annotations
 
 from psycopg import Connection
+from psycopg.rows import dict_row
+
+
+def list_pages_missing_source_link(conn: Connection, *, limit: int) -> list[dict]:
+    """Pages with no primary 'documents' source link (ADR-0051 STEP 3).
+
+    Selects pages where ``documents_primary IS NULL`` (the fast-path
+    mirror is unset) AND no ``wiki.page_sources`` row exists for that
+    page with ``link_kind = 'documents'`` (the N:M source of truth is
+    also empty) — both must be absent, matching the invariant
+    ``upsert_page`` maintains between the two representations.
+
+    Pre-condition:  ``limit`` bounds the per-cycle scan so a large wiki
+                    doesn't stall one ``consolidate`` invocation.
+    Post-condition: every returned row's ``id`` refers to a page with
+                    zero 'documents' rows in wiki.page_sources and a
+                    NULL documents_primary.
+    """
+    sql = """
+    SELECT p.id, p.memory_id, p.rel_path, p.title, p.domain, p.lead, p.sections
+      FROM wiki.pages p
+     WHERE p.documents_primary IS NULL
+       AND NOT EXISTS (
+             SELECT 1 FROM wiki.page_sources s
+              WHERE s.page_id = p.id AND s.link_kind = 'documents'
+           )
+     ORDER BY p.id
+     LIMIT %s
+    """
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql, (limit,))
+        return list(cur.fetchall())
 
 
 def upsert_page_sources(

@@ -6,6 +6,7 @@ import os
 import time
 
 from mcp_server.core.wiki_drift import (
+    REASON_MISSING_LINK,
     REASON_MISSING_SOURCE,
     REASON_OFF_TEMPLATE,
     REASON_STALE,
@@ -149,6 +150,72 @@ class TestAuditPageDrift:
         # No source root → no missing-source flag. Other reasons may still fire.
         if d is not None:
             assert REASON_MISSING_SOURCE not in d.reasons
+
+    def test_reference_page_without_link_flagged_missing_link(self, tmp_path):
+        """A source-documenting page with no frontmatter documents: and
+        no groundable body citation is missing-link drift (ADR-0051
+        STEP 3 — REASON_MISSING_LINK)."""
+        wiki = tmp_path / "wiki"
+        body = """\
+---
+title: Foo
+kind: reference
+updated: 2026-01-01
+---
+
+# `mcp_server/core/foo.py`
+
+## Scope
+
+Undocumented linkage.
+
+## API
+
+None cited here.
+"""
+        _write(str(wiki / "reference" / "cortex" / "foo.md"), body)
+        d = audit_page_drift(str(wiki), "reference/cortex/foo.md", None, max_age_days=365)
+        assert d is not None
+        assert REASON_MISSING_LINK in d.reasons
+
+    def test_reference_page_with_frontmatter_documents_not_flagged(self, tmp_path):
+        """A page whose frontmatter already declares documents: is
+        linked — REASON_MISSING_LINK must not fire even without a
+        source root to verify against."""
+        wiki = tmp_path / "wiki"
+        body = """\
+---
+title: Foo
+kind: reference
+updated: 2026-01-01
+documents: mcp_server/core/foo.py
+---
+
+# `mcp_server/core/foo.py`
+
+## Scope
+
+Documented linkage.
+
+## API
+
+N/A.
+"""
+        _write(str(wiki / "reference" / "cortex" / "foo.md"), body)
+        d = audit_page_drift(str(wiki), "reference/cortex/foo.md", None, max_age_days=365)
+        if d is not None:
+            assert REASON_MISSING_LINK not in d.reasons
+
+    def test_non_reference_kind_never_flagged_missing_link(self, tmp_path):
+        """An ADR page doesn't claim to document a single source file,
+        so REASON_MISSING_LINK never applies to it."""
+        wiki = tmp_path / "wiki"
+        src = tmp_path / "src"
+        _write(str(wiki / "adr" / "p" / "0001-foo.md"), ADR_BODY_WITH_SOURCE)
+        _write(str(src / "mcp_server" / "core" / "foo.py"), "x")
+        d = audit_page_drift(str(wiki), "adr/p/0001-foo.md", str(src), max_age_days=365)
+        if d is not None:
+            assert REASON_MISSING_LINK not in d.reasons
 
 
 class TestAuditWikiDrift:
