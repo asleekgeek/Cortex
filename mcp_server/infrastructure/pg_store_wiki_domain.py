@@ -53,7 +53,9 @@ def update_page_domain(conn: Connection, page_id: int, domain: str) -> None:
     Post-condition: ``wiki.pages.domain`` equals ``domain`` for that row.
     """
     with conn.cursor() as cur:
-        cur.execute("UPDATE wiki.pages SET domain = %s WHERE id = %s", (domain, page_id))
+        cur.execute(
+            "UPDATE wiki.pages SET domain = %s WHERE id = %s", (domain, page_id)
+        )
 
 
 __all__ = ["list_catchall_pages_with_sources", "update_page_domain"]

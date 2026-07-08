@@ -65,9 +65,7 @@ class TestBasenameIgnored:
 
 class TestNoVotes:
     def test_no_matching_domain_returns_none(self):
-        result = derive_page_domain(
-            ["mcp_server/core/foo.py"], _containing({})
-        )
+        result = derive_page_domain(["mcp_server/core/foo.py"], _containing({}))
         assert result is None
 
     def test_empty_source_paths_returns_none(self):
