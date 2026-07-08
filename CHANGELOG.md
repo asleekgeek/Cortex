@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-07-08
+
+### Added
+- **Wiki page→source-file linkage (ADR-0051, STEPS 1–4).** Every wiki page's primary documents now trace to a real file in the codebase via explicit provenance (claim_evidence > codebase_grounding > body audit trail), not fabricated synthetic links: schema surface for the linkage, writer-side persistence, a backfill pass for pages lacking frontmatter, and `references` link_kind persistence. This is the backend that cortex-viz 2.4.0 renders as wiki→file edges in the brain view.
+- **CLS-B hippocampal replay tracking** with a soft non-regression gate C for consolidation.
+
+### Changed
+- `pg_store_wiki.py` split under the 300-line rule into focused modules.
+
 ## [4.1.0] - 2026-07-07
 
 ### Added
