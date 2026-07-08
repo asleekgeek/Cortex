@@ -104,9 +104,7 @@ def _harvest_all_pages(
     both check staleness (the plain sorted-list form) and persist
     'references' rows (path + origin) from one harvest pass.
     """
-    claim_refs_by_page = get_claim_file_refs_for_pages(
-        conn, [p["id"] for p in pages]
-    )
+    claim_refs_by_page = get_claim_file_refs_for_pages(conn, [p["id"] for p in pages])
     per_page_typed: dict[int, dict[str, str]] = {}
     per_page_plain: dict[int, list[str]] = {}
     all_refs: set[str] = set()
@@ -119,7 +117,9 @@ def _harvest_all_pages(
     return per_page_typed, per_page_plain, all_refs
 
 
-def _memo_staleness_transitions(conn: Any, stale_decisions: list[StalenessDecision]) -> None:
+def _memo_staleness_transitions(
+    conn: Any, stale_decisions: list[StalenessDecision]
+) -> None:
     """Audit-trail memo for each staleness transition (set or cleared)."""
     for d in stale_decisions:
         if not d.transitioned:
@@ -174,9 +174,7 @@ def run_staleness_pass(
     if not dry_run:
         stale_written = apply_staleness_decisions(conn, stale_decisions)
         _memo_staleness_transitions(conn, stale_decisions)
-        references_written = _persist_reference_links(
-            conn, pages, per_page_typed_refs
-        )
+        references_written = _persist_reference_links(conn, pages, per_page_typed_refs)
 
     return {
         "pages_with_refs": sum(1 for d in stale_decisions if d.file_refs),

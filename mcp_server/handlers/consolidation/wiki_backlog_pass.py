@@ -40,7 +40,9 @@ async def run_backlog_pass(store: Any) -> dict[str, Any]:
         if hasattr(store, "iter_memories_for_decay")
         else [store.get_all_memories_for_decay()]
     )
-    out["cluster_jobs"] = count_pending_clusters_streamed(chunks, wiki_root=str(WIKI_ROOT))
+    out["cluster_jobs"] = count_pending_clusters_streamed(
+        chunks, wiki_root=str(WIKI_ROOT)
+    )
 
     coverages = audit_all_domains(str(WIKI_ROOT))
     out["coverage_gaps"] = sum(c.missing_count for c in coverages)

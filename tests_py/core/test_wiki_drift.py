@@ -174,7 +174,9 @@ Undocumented linkage.
 None cited here.
 """
         _write(str(wiki / "reference" / "cortex" / "foo.md"), body)
-        d = audit_page_drift(str(wiki), "reference/cortex/foo.md", None, max_age_days=365)
+        d = audit_page_drift(
+            str(wiki), "reference/cortex/foo.md", None, max_age_days=365
+        )
         assert d is not None
         assert REASON_MISSING_LINK in d.reasons
 
@@ -202,7 +204,9 @@ Documented linkage.
 N/A.
 """
         _write(str(wiki / "reference" / "cortex" / "foo.md"), body)
-        d = audit_page_drift(str(wiki), "reference/cortex/foo.md", None, max_age_days=365)
+        d = audit_page_drift(
+            str(wiki), "reference/cortex/foo.md", None, max_age_days=365
+        )
         if d is not None:
             assert REASON_MISSING_LINK not in d.reasons
 

@@ -140,7 +140,11 @@ def _from_body(page: dict[str, object], exists_fn: ExistsFn) -> str | None:
     """
     lead = str(page.get("lead") or "")
     sections = page.get("sections")
-    section_text = "\n".join(str(v) for v in sections.values()) if isinstance(sections, dict) else ""
+    section_text = (
+        "\n".join(str(v) for v in sections.values())
+        if isinstance(sections, dict)
+        else ""
+    )
     body = f"{lead}\n{section_text}"
 
     grounded: dict[str, None] = {}

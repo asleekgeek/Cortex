@@ -43,16 +43,20 @@ class TestClaimEvidence:
 
 class TestCodebaseGrounding:
     def test_slug_reversed_and_grounded(self):
-        page = {"rel_path": "reference/cortex/mcp_server-core-foo.py.md", "domain": "cortex"}
-        result = derive_primary_source(
-            page, [], _exists_only("mcp_server/core/foo.py")
-        )
+        page = {
+            "rel_path": "reference/cortex/mcp_server-core-foo.py.md",
+            "domain": "cortex",
+        }
+        result = derive_primary_source(page, [], _exists_only("mcp_server/core/foo.py"))
         assert result == ("mcp_server/core/foo.py", SOURCE_CODEBASE_GROUNDING)
 
     def test_refuses_to_fabricate_when_guess_does_not_exist(self):
         """Anti-fabrication: a plausible-looking guess that doesn't
         resolve to a real file must never be accepted."""
-        page = {"rel_path": "reference/cortex/mcp_server-core-foo.py.md", "domain": "cortex"}
+        page = {
+            "rel_path": "reference/cortex/mcp_server-core-foo.py.md",
+            "domain": "cortex",
+        }
         result = derive_primary_source(page, [], _exists_only())
         assert result is None
 

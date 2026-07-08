@@ -42,7 +42,12 @@ def _resolve_source_root(domain: str) -> str | None:
 
 
 def _process_one_page(
-    conn: Any, page: dict[str, Any], claim_files: list[str], *, apply: bool, out: dict[str, Any]
+    conn: Any,
+    page: dict[str, Any],
+    claim_files: list[str],
+    *,
+    apply: bool,
+    out: dict[str, Any],
 ) -> None:
     """Derive one page's primary source and, if found, persist it."""
     from mcp_server.core.wiki_source_backfill import derive_primary_source
