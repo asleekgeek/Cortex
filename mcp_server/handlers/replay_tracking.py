@@ -79,6 +79,7 @@ def track_replay_event(memory_id: int, store: Any) -> None:
         store.update_memory_hippocampal_dependency(memory_id, new_dependency)
     except Exception:
         logger.debug(
-            "Hippocampal dependency write failed for memory %s", memory_id,
+            "Hippocampal dependency write failed for memory %s",
+            memory_id,
             exc_info=True,
         )

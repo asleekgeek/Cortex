@@ -247,7 +247,9 @@ _S1 = next(s for s in SERIES_POOL if s["id"] == "S1")
 # ── Accumulator trajectory helper ────────────────────────────────────────────────
 
 
-def _trajectory(series: dict, lam: float, *, hippocampal_dependency: float = 0.0) -> list[float]:
+def _trajectory(
+    series: dict, lam: float, *, hippocampal_dependency: float = 0.0
+) -> list[float]:
     """Accumulator value after each cycle for a series under leak ``lam``.
 
     ``hippocampal_dependency`` (CLS-B gate C, default 0.0 = no modulation)
@@ -560,7 +562,9 @@ def fixture_hippocampal_dependency_non_regression() -> dict:
         None,
     )
     return {
-        "passed": cortical == baseline and fire_cycle is not None and fire_cycle <= _S1["fire_by"],
+        "passed": cortical == baseline
+        and fire_cycle is not None
+        and fire_cycle <= _S1["fire_by"],
         "fire_cycle": fire_cycle,
         "expected_fire_by": _S1["fire_by"],
         "matches_ungated_baseline": cortical == baseline,

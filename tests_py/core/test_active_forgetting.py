@@ -104,7 +104,11 @@ def test_cortical_availability_at_zero_dependency_is_normal_forgetting():
 
 
 def test_cortical_availability_monotone_decreasing_in_dependency():
-    assert cortical_availability(0.0) > cortical_availability(0.5) > cortical_availability(1.0)
+    assert (
+        cortical_availability(0.0)
+        > cortical_availability(0.5)
+        > cortical_availability(1.0)
+    )
 
 
 def test_cortical_availability_clamps_out_of_range():
