@@ -1234,7 +1234,7 @@ wheels = [
 
 [[package]]
 name = "hypermnesia-mcp"
-version = "4.0.0"
+version = "4.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
@@ -1311,8 +1311,8 @@ requires-dist = [
     { name = "networkx", marker = "extra == 'dev'", specifier = ">=3.0" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "pandas", marker = "extra == 'viz-tile'", specifier = ">=2.2" },
-    { name = "pgvector", marker = "extra == 'benchmarks'", specifier = ">=0.3" },
-    { name = "pgvector", marker = "extra == 'postgresql'", specifier = ">=0.3" },
+    { name = "pgvector", marker = "extra == 'benchmarks'", specifier = ">=0.4,<0.6" },
+    { name = "pgvector", marker = "extra == 'postgresql'", specifier = ">=0.4,<0.6" },
     { name = "pillow", marker = "extra == 'viz-tile'", specifier = ">=10.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'benchmarks'", specifier = ">=3.1" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgresql'", specifier = ">=3.1" },
