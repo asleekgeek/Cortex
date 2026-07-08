@@ -46,10 +46,39 @@ def list_pages_missing_source_link(conn: Connection, *, limit: int) -> list[dict
         return list(cur.fetchall())
 
 
+SourceEntry = str | tuple[str, str] | tuple[str, str, float]
+
+
+def _entry_row(
+    entry: SourceEntry,
+    page_id: int,
+    link_kind: str,
+    *,
+    default_source: str,
+    default_confidence: float,
+) -> tuple[int, str, str, float, str]:
+    """Build one INSERT row ``(page_id, path, link_kind, confidence, source)``.
+
+    A bare ``str`` entry uses the call's ``source``/``confidence``
+    defaults (the original, still-supported shape — the ``documents``
+    link_kind callers pass a uniform origin for the whole list). A
+    ``tuple`` carries its own per-entry origin (ADR-0051 STEP 4: the
+    ``references`` link_kind mixes ``claim_evidence`` and ``body``
+    provenance in one call, which a single call-level ``source`` cannot
+    express).
+    """
+    if isinstance(entry, tuple):
+        path = entry[0]
+        entry_source = entry[1] if len(entry) > 1 else default_source
+        entry_confidence = entry[2] if len(entry) > 2 else default_confidence
+        return page_id, path, link_kind, entry_confidence, entry_source
+    return page_id, entry, link_kind, default_confidence, default_source
+
+
 def upsert_page_sources(
     conn: Connection,
     page_id: int,
-    documents: list[str],
+    documents: list[SourceEntry],
     *,
     link_kind: str = "documents",
     source: str = "frontmatter",
@@ -58,19 +87,20 @@ def upsert_page_sources(
     """Idempotently replace a page's ``wiki.page_sources`` rows for one link_kind.
 
     Delete-then-insert scoped to ``(page_id, link_kind)`` — mirrors
-    ``pg_store_wiki`` refreshing ``wiki.links`` per src page before
-    re-inserting the current set, so re-running the writer on an
-    unchanged page produces the same rows (idempotent), and a page
-    whose frontmatter dropped a file removes the stale edge instead
-    of accumulating it forever.
+    ``pg_store_wiki`` refreshing ``wiki.links``, so re-running the writer
+    on an unchanged page produces the same rows (idempotent).
 
-    Pre-condition:  page_id refers to an existing wiki.pages row;
-                    documents entries are already canonical
-                    (mcp_server.shared.wiki_source_paths.normalize_source_path).
-    Post-condition: wiki.page_sources contains exactly one row per
-                    unique path in ``documents`` for this
-                    (page_id, link_kind), and no other rows for that
-                    (page_id, link_kind) survive from a prior call.
+    ``documents`` entries: plain ``str`` uses the call's ``source``/
+    ``confidence`` for every row (original shape, unchanged); a
+    ``(path, source)`` / ``(path, source, confidence)`` tuple carries its
+    own per-entry origin (additive, ADR-0051 STEP 4 — a single call now
+    mixes provenances, e.g. 'references' mixing claim_evidence + body).
+
+    Pre-condition:  page_id exists; every path is already canonical
+                    (wiki_source_paths.normalize_source_path).
+    Post-condition: wiki.page_sources has exactly one row per unique
+                    path in ``documents`` for this (page_id, link_kind);
+                    no prior-call row for that key survives.
 
     Returns the number of rows inserted.
     """
@@ -81,6 +111,16 @@ def upsert_page_sources(
         )
         if not documents:
             return 0
+        rows = [
+            _entry_row(
+                entry,
+                page_id,
+                link_kind,
+                default_source=source,
+                default_confidence=confidence,
+            )
+            for entry in documents
+        ]
         cur.executemany(
             """
             INSERT INTO wiki.page_sources (page_id, source_path, link_kind, confidence, source)
@@ -89,6 +129,6 @@ def upsert_page_sources(
                 confidence = EXCLUDED.confidence,
                 source = EXCLUDED.source
             """,
-            [(page_id, path, link_kind, confidence, source) for path in documents],
+            rows,
         )
-        return len(documents)
+        return len(rows)

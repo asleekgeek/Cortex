@@ -184,3 +184,69 @@ def test_upsert_page_sources_calling_twice_reissues_same_delete_and_insert() -> 
     )
     assert cur.execute.call_args_list[0] == expected_delete
     assert cur.execute.call_args_list[1] == expected_delete
+
+
+# ── upsert_page_sources — per-entry (path, source) tuples (ADR-0051 STEP 4) ──
+
+
+def test_upsert_page_sources_accepts_tuple_entries_with_per_entry_source() -> None:
+    conn = _mock_conn()
+    cur = conn.cursor.return_value.__enter__.return_value
+
+    result = upsert_page_sources(
+        conn,
+        page_id=7,
+        documents=[("a/b.py", "claim_evidence"), ("a/c.py", "body")],
+        link_kind="references",
+    )
+
+    assert result == 2
+    rows = cur.executemany.call_args.args[1]
+    assert (7, "a/b.py", "references", 1.0, "claim_evidence") in rows
+    assert (7, "a/c.py", "references", 1.0, "body") in rows
+
+
+def test_upsert_page_sources_tuple_entry_can_override_confidence() -> None:
+    conn = _mock_conn()
+    cur = conn.cursor.return_value.__enter__.return_value
+
+    upsert_page_sources(
+        conn, page_id=1, documents=[("a/b.py", "body", 0.5)], link_kind="references"
+    )
+
+    rows = cur.executemany.call_args.args[1]
+    assert rows == [(1, "a/b.py", "references", 0.5, "body")]
+
+
+def test_upsert_page_sources_str_entries_unaffected_by_tuple_support() -> None:
+    """The pre-existing all-``str`` documents call site keeps its exact shape."""
+    conn = _mock_conn()
+    cur = conn.cursor.return_value.__enter__.return_value
+
+    upsert_page_sources(
+        conn, page_id=1, documents=["a/b.py"], source="frontmatter", confidence=1.0
+    )
+
+    rows = cur.executemany.call_args.args[1]
+    assert rows == [(1, "a/b.py", "documents", 1.0, "frontmatter")]
+
+
+def test_upsert_page_sources_references_idempotent_double_call_same_rows() -> None:
+    """Two identical 'references' calls with mixed-origin tuples are idempotent."""
+    conn = _mock_conn()
+    cur = conn.cursor.return_value.__enter__.return_value
+    entries = [("a/b.py", "claim_evidence"), ("a/c.py", "body")]
+
+    upsert_page_sources(conn, page_id=3, documents=entries, link_kind="references")
+    first_rows = cur.executemany.call_args.args[1]
+
+    upsert_page_sources(conn, page_id=3, documents=entries, link_kind="references")
+    second_rows = cur.executemany.call_args.args[1]
+
+    assert first_rows == second_rows
+    expected_delete = call(
+        "DELETE FROM wiki.page_sources WHERE page_id = %s AND link_kind = %s",
+        (3, "references"),
+    )
+    assert cur.execute.call_args_list[0] == expected_delete
+    assert cur.execute.call_args_list[1] == expected_delete
