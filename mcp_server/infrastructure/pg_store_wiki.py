@@ -20,6 +20,8 @@ from typing import Any
 from psycopg import Connection
 from psycopg.rows import dict_row
 
+from mcp_server.infrastructure.pg_store_wiki_sources import upsert_page_sources
+
 
 # ── Hashing helper ─────────────────────────────────────────────────────
 
@@ -53,7 +55,13 @@ def upsert_page(conn: Connection, page: dict[str, Any]) -> tuple[int, bool]:
     body_hash matched and nothing changed.
 
     Required fields: rel_path, slug, kind, title.
-    Optional: all other columns.
+    Optional: all other columns, including ``documents`` (list of
+    canonical source-file paths — ADR-0051) and ``documents_primary``
+    (defaults to the first entry of ``documents`` when omitted).
+    ``wiki.page_sources`` is refreshed unconditionally (even on a
+    body_hash no-op) so a frontmatter-only edit still lands, matching
+    how ``wiki.links`` is refreshed independently of body_hash in
+    ``wiki_migrate.migrate_wiki``.
     """
     required = ("rel_path", "slug", "kind", "title")
     for k in required:
@@ -62,6 +70,10 @@ def upsert_page(conn: Connection, page: dict[str, Any]) -> tuple[int, bool]:
 
     body = page.get("body", "")
     bh = page.get("body_hash") or body_hash(body)
+    documents = page.get("documents") or []
+    documents_primary = page.get("documents_primary") or (
+        documents[0] if documents else None
+    )
 
     # Use xmax=0 (Postgres trick) to detect INSERT vs UPDATE: xmax is 0
     # only on a fresh INSERT. We also OR in body_hash equality to detect
@@ -70,13 +82,13 @@ def upsert_page(conn: Connection, page: dict[str, Any]) -> tuple[int, bool]:
     INSERT INTO wiki.pages (
         memory_id, concept_id, rel_path, slug, kind, title, domain, domains,
         tags, audience, requires, status, lifecycle_state, supersedes,
-        superseded_by, verified, lead, sections, body_hash
+        superseded_by, verified, lead, sections, body_hash, documents_primary
     ) VALUES (
         %(memory_id)s, %(concept_id)s, %(rel_path)s, %(slug)s, %(kind)s,
         %(title)s, %(domain)s, %(domains)s::jsonb, %(tags)s::jsonb,
         %(audience)s::jsonb, %(requires)s::jsonb, %(status)s,
         %(lifecycle_state)s, %(supersedes)s, %(superseded_by)s, %(verified)s,
-        %(lead)s, %(sections)s::jsonb, %(body_hash)s
+        %(lead)s, %(sections)s::jsonb, %(body_hash)s, %(documents_primary)s
     )
     ON CONFLICT (rel_path) DO UPDATE SET
         memory_id = EXCLUDED.memory_id,
@@ -97,8 +109,10 @@ def upsert_page(conn: Connection, page: dict[str, Any]) -> tuple[int, bool]:
         lead = EXCLUDED.lead,
         sections = EXCLUDED.sections,
         body_hash = EXCLUDED.body_hash,
+        documents_primary = EXCLUDED.documents_primary,
         tended = NOW()
     WHERE wiki.pages.body_hash <> EXCLUDED.body_hash
+       OR wiki.pages.documents_primary IS DISTINCT FROM EXCLUDED.documents_primary
     RETURNING id, (xmax = 0) AS inserted;
     """
     params = {
@@ -121,15 +135,16 @@ def upsert_page(conn: Connection, page: dict[str, Any]) -> tuple[int, bool]:
         "lead": page.get("lead", ""),
         "sections": json.dumps(page.get("sections", {})),
         "body_hash": bh,
+        "documents_primary": documents_primary,
     }
     with conn.cursor() as cur:
         cur.execute(sql, params)
         row = cur.fetchone()
         if row is not None:
             # Row was inserted or actually updated.
-            if isinstance(row, dict):
-                return row["id"], True
-            return row[0], True
+            page_id = row["id"] if isinstance(row, dict) else row[0]
+            upsert_page_sources(conn, page_id, documents)
+            return page_id, True
         # WHERE clause filtered the UPDATE out → body_hash matched, no-op.
         cur.execute(
             "SELECT id FROM wiki.pages WHERE rel_path = %s", (page["rel_path"],)
@@ -138,6 +153,7 @@ def upsert_page(conn: Connection, page: dict[str, Any]) -> tuple[int, bool]:
         if existing is None:
             return -1, False
         existing_id = existing["id"] if isinstance(existing, dict) else existing[0]
+        upsert_page_sources(conn, existing_id, documents)
         return existing_id, False
 
 

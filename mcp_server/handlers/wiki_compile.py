@@ -35,6 +35,7 @@ from mcp_server.infrastructure.pg_store_wiki import (
     upsert_page,
 )
 from mcp_server.infrastructure.wiki_store import write_page
+from mcp_server.shared.wiki_source_paths import extract_document_paths
 
 
 schema = {
@@ -133,6 +134,9 @@ def _publish_one(conn, draft: dict, *, dry_run: bool) -> dict:
     write_page(WIKI_ROOT, rel_path, markdown, mode="replace")
 
     # 2. Build the wiki.pages mirror payload
+    draft_frontmatter = draft.get("frontmatter") or {}
+    draft_tags = draft_frontmatter.get("tags", [])
+    documents = extract_document_paths(draft_frontmatter, draft_tags)
     page_row = {
         "memory_id": draft.get("memory_id"),
         "concept_id": draft.get("concept_id"),
@@ -142,9 +146,9 @@ def _publish_one(conn, draft: dict, *, dry_run: bool) -> dict:
         "title": draft.get("title", "Untitled"),
         "domain": domain,
         "domains": [domain] if domain else [],
-        "tags": (draft.get("frontmatter") or {}).get("tags", []),
-        "audience": (draft.get("frontmatter") or {}).get("audience", []),
-        "requires": (draft.get("frontmatter") or {}).get("requires", []),
+        "tags": draft_tags,
+        "audience": draft_frontmatter.get("audience", []),
+        "requires": draft_frontmatter.get("requires", []),
         "status": frontmatter.get("status", "seedling"),
         "lifecycle_state": frontmatter.get("lifecycle_state", "active"),
         "lead": (draft.get("lead") or "").strip(),
@@ -156,6 +160,8 @@ def _publish_one(conn, draft: dict, *, dry_run: bool) -> dict:
         },
         "body": markdown,
         "body_hash": body_hash(markdown),
+        "documents": documents,
+        "documents_primary": documents[0] if documents else None,
     }
     page_id, was_modified = upsert_page(conn, page_row)
 
