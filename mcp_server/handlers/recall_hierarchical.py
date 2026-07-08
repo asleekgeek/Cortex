@@ -21,6 +21,7 @@ from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
 from mcp_server.handlers._tool_meta import READ_ONLY
 from mcp_server.handlers._telemetry_wrap import instrument
+from mcp_server.handlers.replay_tracking import track_replay_event
 
 # ── Schema ────────────────────────────────────────────────────────────────
 
@@ -280,15 +281,11 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     )
     results = _enrich_results(raw_results, store, max_results)
 
-    # Track replay for consolidation cascade
+    # Track replay for consolidation cascade + CLS-B hippocampal decay
     for mem in results:
         mem_id = mem.get("memory_id") or mem.get("id")
         if mem_id is not None:
-            try:
-                store.update_memory_access(mem_id)
-                store.increment_replay_count(mem_id)
-            except Exception:
-                pass
+            track_replay_event(mem_id, store)
 
     return {
         "results": results,

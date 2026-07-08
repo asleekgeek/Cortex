@@ -118,6 +118,43 @@ PERMANENT_ACCUM_THRESHOLD = 1.25662
 ACUTE_OVERLAP_THRESHOLD = 0.575
 ACUTE_RECENCY_WINDOW_HOURS = 13.0
 
+# CLS-B cortical-availability modulation of the PERMANENT circuit (gate C — see
+# cortex:remember memory_id 4261603). A memory still hippocampally-dependent
+# (the cortex has not yet taken it over — McClelland 1995) should accumulate
+# permanent-forgetting pressure MORE SLOWLY, not be exempted from it: the
+# accumulator must still cross Θ_accum for a cortically-independent memory
+# under sustained interference (non-regression), while a hippocampally-
+# dependent memory under the SAME interference resists longer (protection).
+#
+#     cortical_availability(dep) = 1 - β·dep,   β in (0, 1)
+#
+# at dep=1.0 (today's value for 100% of production memories, see decision
+# memory 4261278/4261481) the factor is (1-β) > 0 — STRICTLY POSITIVE, never
+# zero. A naive (1-dep) factor was rejected here for exactly this reason: it
+# would zero the permanent circuit for the entire prod corpus (dep=1.0
+# everywhere until the CLS-B producer above has run enough replay cycles),
+# which is a correctness regression, not a feature. At dep=0.0 (fully
+# cortically independent) the factor is 1.0 — forgetting behaves exactly as
+# before this change (non-regression for already-consolidated memories).
+# beta has no biological rate-law source (see module docstring: no paper
+# gives dep vs forgetting-pressure kinetics at this timescale); it is
+# calibrated by benchmarks/active_forgetting/run_benchmark.py fixtures (i)
+# non-regression / (ii) protection.
+# source: engineering choice, calibrated via benchmarks/active_forgetting
+CORTICAL_AVAILABILITY_BETA = 0.5
+
+
+def cortical_availability(hippocampal_dependency: float) -> float:
+    """Bounded, strictly-positive modulation factor for permanent-circuit pressure.
+
+    ``1 - β·dep`` — see ``CORTICAL_AVAILABILITY_BETA`` for the non-regression
+    argument. ``hippocampal_dependency`` is clamped to [0, 1] before use so an
+    out-of-range value (should not occur; the column is constrained [0,1] at
+    write time) cannot push the factor outside (1-β, 1].
+    """
+    dep = max(0.0, min(1.0, hippocampal_dependency))
+    return 1.0 - CORTICAL_AVAILABILITY_BETA * dep
+
 
 def chronic_interference(
     newer_sims: Iterable[float], tau_dup: float = TAU_DUP
@@ -149,16 +186,31 @@ def chronic_interference(
     return 1.0 - product
 
 
-def forgetting_pressure(stage: str, chronic: float) -> float:
-    """Instantaneous permanent-circuit pressure = chronic × stage_vulnerability.
+def forgetting_pressure(
+    stage: str,
+    chronic: float,
+    *,
+    hippocampal_dependency: float = 0.0,
+) -> float:
+    """Instantaneous permanent-circuit pressure.
+
+    ``= chronic × stage_vulnerability × cortical_availability(dep)``.
 
     ``chronic`` (>= 0) is the redundancy-gated interference signal above.
     ``stage_vulnerability`` is the cascade interference_vulnerability (labile 0.9 →
     consolidated 0.05): a graded resistance, so consolidated memories resist
-    strongly but are never zeroed by fiat. The transient circuit does NOT use it.
+    strongly but are never zeroed by fiat. ``hippocampal_dependency`` (CLS-B,
+    default 0.0 = fully cortical = no additional modulation, matching
+    pre-CLS-B-gate-C behaviour for callers that don't pass it) applies the
+    bounded, never-zero cortical_availability factor (see its docstring) —
+    hippocampally-dependent memories accumulate this pressure more slowly, on
+    top of (not instead of) the existing stage-based resistance. The transient
+    circuit does NOT use either factor (Sabandal 2021 — stage- and
+    dependency-independent).
     """
     vuln = get_stage_properties_by_name(stage).interference_vulnerability
-    return max(0.0, chronic) * vuln
+    availability = cortical_availability(hippocampal_dependency)
+    return max(0.0, chronic) * vuln * availability
 
 
 def update_pressure_accum(
@@ -167,6 +219,8 @@ def update_pressure_accum(
     chronic: float,
     recently_active: bool,
     lam: float = PRESSURE_LEAK_LAMBDA,
+    *,
+    hippocampal_dependency: float = 0.0,
 ) -> float:
     """Advance the leaky integrator one cycle: ``λ·accum_{t-1} + pressure_t``.
 
@@ -174,8 +228,16 @@ def update_pressure_accum(
     and lets the accumulator leak down — sleep inhibits the ongoing forgetting
     signal but does not erase accumulated erosion. ``lam`` ∈ [0, 1): the per-cycle
     retention of past pressure (1 − λ is natural recovery when interference abates).
+    ``hippocampal_dependency`` (CLS-B gate C, default 0.0 = no modulation) is
+    forwarded to ``forgetting_pressure`` — see its docstring.
     """
-    pressure = 0.0 if recently_active else forgetting_pressure(stage, chronic)
+    pressure = (
+        0.0
+        if recently_active
+        else forgetting_pressure(
+            stage, chronic, hippocampal_dependency=hippocampal_dependency
+        )
+    )
     return lam * max(0.0, prev_accum) + pressure
 
 

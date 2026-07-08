@@ -42,10 +42,14 @@ _SCHEMA_ACCELERATION = 2.5
 # Engineering choice: minimum replays before transfer begins. No direct paper
 # source; reflects the intuition that a single replay is insufficient to
 # establish a cortical trace.
+# source: engineering choice
 _MIN_REPLAYS_FOR_TRANSFER = 2
 
 # Hippocampal release threshold: below this, hippocampal trace can be freed.
-# Engineering choice calibrated to the transfer rate above.
+# Engineering choice calibrated to the transfer rate above. Single definition —
+# two_stage_model.py imports this constant rather than redefining it (a prior
+# duplicate definition in both modules risked the two copies drifting apart).
+# source: engineering choice
 _HIPPOCAMPAL_RELEASE_THRESHOLD = 0.05
 
 

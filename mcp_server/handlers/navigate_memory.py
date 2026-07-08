@@ -22,6 +22,7 @@ from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
 from mcp_server.handlers._tool_meta import READ_ONLY
 from mcp_server.handlers._telemetry_wrap import instrument
+from mcp_server.handlers.replay_tracking import track_replay_event
 
 # ── Schema ────────────────────────────────────────────────────────────────
 
@@ -192,11 +193,7 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
 
     # Track replay for start memory and traversed neighbors
     for mem_id in [start_id] + list(navigation.keys()):
-        try:
-            store.update_memory_access(mem_id)
-            store.increment_replay_count(mem_id)
-        except Exception:
-            pass
+        track_replay_event(mem_id, store)
 
     result: dict[str, Any] = {
         "start_memory_id": start_id,

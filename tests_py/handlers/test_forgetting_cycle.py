@@ -56,6 +56,11 @@ def _memory(**over):
         "heat": 0.5,
         "is_protected": False,
         "forgetting_pressure_accum": 0.0,
+        # Cortically independent by default (no CLS-B gate-C modulation) so
+        # the pre-existing stage/chronic wiring assertions below are
+        # unaffected by the CLS-B cortical_availability factor; the CLS-B
+        # modulation itself is covered by the dedicated tests further down.
+        "hippocampal_dependency": 0.0,
     }
     base.update(over)
     return base
@@ -169,6 +174,48 @@ def test_cycle_counts_scanned_and_effects():
     assert out["scanned"] == 2
     assert out["transient"] == 2
     assert out["permanent"] == 0
+
+
+# ── CLS-B gate C: cortical-availability modulation wiring ──────────────────
+
+
+def test_hippocampal_dependency_slows_but_does_not_block_accumulation():
+    """A hippocampally-dependent memory (dep=1.0) accumulates LESS pressure than
+    a cortically-independent one (dep=0.0) under the identical interference —
+    protection, not exemption (soft gate C, not a hard veto)."""
+    independent = _FakeStore([(0.9, 100.0)] * 5)
+    dependent = _FakeStore([(0.9, 100.0)] * 5)
+    _evaluate_memory(
+        independent,
+        _memory(consolidation_stage="labile", hippocampal_dependency=0.0),
+        set(),
+    )
+    _evaluate_memory(
+        dependent,
+        _memory(consolidation_stage="labile", hippocampal_dependency=1.0),
+        set(),
+    )
+    assert 0.0 < dependent.accum_writes[1] < independent.accum_writes[1]
+
+
+def test_missing_hippocampal_dependency_defaults_to_fully_hippocampal():
+    """A row with no hippocampal_dependency key defaults to 1.0 (strongest
+    modulation) — matching the production DB column default, per the CLS-B
+    gate-C design decision (cortex memory 4261603)."""
+    base = _memory(consolidation_stage="labile")
+    del base["hippocampal_dependency"]
+    default_store = _FakeStore([(0.9, 100.0)] * 5)
+    _evaluate_memory(default_store, base, set())
+
+    explicit_store = _FakeStore([(0.9, 100.0)] * 5)
+    _evaluate_memory(
+        explicit_store,
+        _memory(consolidation_stage="labile", hippocampal_dependency=1.0),
+        set(),
+    )
+    assert default_store.accum_writes[1] == pytest.approx(
+        explicit_store.accum_writes[1]
+    )
 
 
 def test_ablation_short_circuits_cycle(monkeypatch):

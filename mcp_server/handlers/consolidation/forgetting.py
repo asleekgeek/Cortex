@@ -18,10 +18,15 @@ Per active memory that is neither pinned nor replayed this cycle:
     without a database (SRP).
 
   - ``accum`` = the leaky integrator over cycles: ``λ·accum_{t-1} + chronic ×
-    stage_vulnerability``. Permanent forgetting requires *sustained* pressure
-    (accum ≥ Θ_accum), faithful to the gradual Rac1/cofilin erosion; sleep-
-    protected cycles add 0 and let the accumulator leak. The prior accumulator is
-    read from the row and the new value is written back EVERY cycle.
+    stage_vulnerability × cortical_availability(hippocampal_dependency)``.
+    Permanent forgetting requires *sustained* pressure (accum ≥ Θ_accum),
+    faithful to the gradual Rac1/cofilin erosion; sleep-protected cycles add 0
+    and let the accumulator leak. The prior accumulator is read from the row
+    and the new value is written back EVERY cycle. The cortical-availability
+    factor is CLS-B gate C (McClelland 1995 two-stage transfer, see
+    ``core.active_forgetting.cortical_availability``): a still hippocampally-
+    dependent memory accumulates this pressure more slowly — bounded and
+    never zero, so this is a SOFT modulation of resistance, not a veto.
 
   - the acute interferer = the strongest newer neighbor (``acute_overlap``) and
     its age (``acute_age_hours``), feeding the stage-independent transient DAMB
@@ -138,8 +143,23 @@ def _evaluate_memory(
     is_pinned = bool(mem.get("is_protected")) or heat >= 1.0
     recently_active = memory_id in recently_active_ids
 
-    prev_accum = float(mem.get("forgetting_pressure_accum", 0.0) or 0.0)
-    accum = update_pressure_accum(prev_accum, stage, chronic, recently_active)
+    prev_accum = float(mem.get("forgetting_pressure_accum") or 0.0)
+    # CLS-B gate C: default 1.0 (fully hippocampal) when absent, matching the
+    # production DEFAULT for hippocampal_dependency — an unset value must
+    # apply the STRONGEST modulation, not the weakest, or an unmigrated row
+    # would silently forget at the fully-cortical rate. `or` cannot be used
+    # for this fallback: 0.0 (a legitimate, fully cortical value) is falsy in
+    # Python and would be wrongly overridden to 1.0 — hence the explicit
+    # ``is None`` check.
+    raw_dependency = mem.get("hippocampal_dependency")
+    hippocampal_dependency = 1.0 if raw_dependency is None else float(raw_dependency)
+    accum = update_pressure_accum(
+        prev_accum,
+        stage,
+        chronic,
+        recently_active,
+        hippocampal_dependency=hippocampal_dependency,
+    )
     store.update_forgetting_pressure_accum(memory_id, accum)
 
     if is_permanent_forgetting(accum, is_pinned, recently_active):

@@ -10,6 +10,7 @@ class SqliteStatsMixin:
     """Diagnostics, consolidation stages, CLS queries on SQLite."""
 
     _conn: sqlite3.Connection
+    _raw_conn: sqlite3.Connection
 
     def _normalize_memory_row(self, row: dict) -> dict:
         """Provided by SqliteMemoryStore."""
@@ -187,10 +188,36 @@ class SqliteStatsMixin:
         ).fetchall()
         return {r["consolidation_stage"]: r["c"] for r in rows}
 
-    def increment_replay_count(self, memory_id: int) -> None:
-        self._conn.execute(
-            "UPDATE memories SET replay_count = replay_count + 1 WHERE id = ?",
+    def increment_replay_count(self, memory_id: int) -> dict[str, Any] | None:
+        """Increment replay_count and return the post-increment CLS-B inputs.
+
+        Returns ``{"replay_count", "hippocampal_dependency", "schema_match_score",
+        "importance"}`` read back atomically via ``RETURNING`` (SQLite >= 3.35;
+        single round trip — the caller needs the just-incremented count, not a
+        stale one), or ``None`` if the memory no longer exists. Pure
+        persistence: the caller (handler layer) decides what, if anything, to
+        do with these values.
+
+        Uses ``_raw_conn`` (not the psycopg-compat ``_conn``) because
+        ``PsycopgCompatConnection`` strips ``RETURNING`` down to a single
+        column via regex (see ``sqlite_compat.py``) — this query needs four.
+        """
+        row = self._raw_conn.execute(
+            "UPDATE memories SET replay_count = replay_count + 1 WHERE id = ? "
+            "RETURNING replay_count, hippocampal_dependency, "
+            "schema_match_score, importance",
             (memory_id,),
+        ).fetchone()
+        self._raw_conn.commit()
+        return dict(row) if row else None
+
+    def update_memory_hippocampal_dependency(
+        self, memory_id: int, dependency: float
+    ) -> None:
+        """Persist a new hippocampal_dependency value. No policy — pure write."""
+        self._conn.execute(
+            "UPDATE memories SET hippocampal_dependency = ? WHERE id = ?",
+            (dependency, memory_id),
         )
         self._conn.commit()
 

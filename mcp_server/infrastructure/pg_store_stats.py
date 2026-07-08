@@ -179,10 +179,32 @@ class PgStatsMixin:
         ).fetchall()
         return {r["consolidation_stage"]: r["c"] for r in rows}
 
-    def increment_replay_count(self, memory_id: int) -> None:
-        self._execute(
-            "UPDATE memories SET replay_count = replay_count + 1 WHERE id = %s",
+    def increment_replay_count(self, memory_id: int) -> dict[str, Any] | None:
+        """Increment replay_count and return the post-increment CLS-B inputs.
+
+        Returns ``{"replay_count", "hippocampal_dependency", "schema_match_score",
+        "importance"}`` read back atomically via ``RETURNING`` (single round
+        trip — the caller needs the just-incremented count, not a stale one),
+        or ``None`` if the memory no longer exists. Pure persistence: the
+        caller (handler layer) decides what, if anything, to do with these
+        values.
+        """
+        row = self._execute(
+            "UPDATE memories SET replay_count = replay_count + 1 WHERE id = %s "
+            "RETURNING replay_count, hippocampal_dependency, "
+            "schema_match_score, importance",
             (memory_id,),
+        ).fetchone()
+        self._conn.commit()
+        return dict(row) if row else None
+
+    def update_memory_hippocampal_dependency(
+        self, memory_id: int, dependency: float
+    ) -> None:
+        """Persist a new hippocampal_dependency value. No policy — pure write."""
+        self._execute(
+            "UPDATE memories SET hippocampal_dependency = %s WHERE id = %s",
+            (dependency, memory_id),
         )
         self._conn.commit()
 
