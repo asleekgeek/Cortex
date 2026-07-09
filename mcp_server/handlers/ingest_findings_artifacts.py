@@ -51,10 +51,22 @@ class Receipt:
     ``digest`` is sha256 over the RAW BYTES of the artifact file as read
     from disk — re-verifiable by any caller via ``hashlib.sha256(open(
     artifact_path, 'rb').read())``, independent of AP's internal
-    canonicalization (stage-2's own ``transcript_digest`` is preserved
-    separately in ``raw`` for cross-reference, not reimplemented here —
-    duplicating AP's canonicalization algorithm in Python would be a
-    second, driftable implementation of the same procedure).
+    canonicalization.
+
+    ``transcript_digest`` (stage-2 only, else None) is a VERBATIM COPY of
+    the ``transcript_digest`` field AP itself writes into
+    ``stage-2.verified.json`` (main.rs ``VerifiedArtifact.transcript_digest``,
+    serialized main.rs:1738) — AP's own semantic digest over the
+    canonicalized transcript, which survives a re-serialization of the
+    artifact file (whitespace/key-order changes) that would change
+    ``digest`` above. This is a copy of AP's claim, never a
+    re-derivation: reimplementing AP's canonicalization algorithm in
+    Python would be a second, driftable implementation of the same
+    procedure (INC5.1's original digest decision, preserved). The two
+    digests are deliberately independent anchors: ``digest`` = raw bytes
+    (strict, catches ANY byte change), ``transcript_digest`` = AP's
+    semantic claim (survives harmless re-serialization, distrust-then-
+    verify against AP's own computation).
     """
 
     stage: str
@@ -62,11 +74,24 @@ class Receipt:
     digest: str
     verdict: str
     raw: dict[str, Any]
+    transcript_digest: str | None = None
 
 
 @dataclass(frozen=True)
 class FindingRecord:
-    """One finding's ingestible state, gradated by its stage-2 verdict."""
+    """One finding's ingestible state, gradated by its stage-2 verdict.
+
+    ``source_path`` (from stage-1's ``ExtractedFinding.source_path``,
+    main.rs:201 — an ``Option<String>``, an ABSOLUTE filesystem path to
+    the document AP extracted this finding FROM, or None when the
+    finding was submitted inline) is semantically DISTINCT from
+    ``file_paths`` (stage-4's ``matched_symbols`` — project-relative code
+    files the finding is ABOUT). ``source_path`` is extraction
+    provenance ("where this finding came from"); ``file_paths`` is
+    subject matter ("what code this finding concerns"). See
+    ``ingest_findings_writers._SOURCE_DOCUMENT_LINK_KIND`` for how the
+    two are kept distinguishable in ``wiki.page_sources``.
+    """
 
     run_id: str
     finding_id: str
@@ -76,6 +101,7 @@ class FindingRecord:
     refined_rel_path: str
     file_paths: list[str] = field(default_factory=list)
     receipts: list[Receipt] = field(default_factory=list)
+    source_path: str | None = None
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -113,13 +139,30 @@ def _finding_dir(output_dir: Path, run_id: str, finding_id: str) -> Path:
 
 
 def _load_receipt(finding_dir: Path, stage: str, file_name: str) -> Receipt | None:
-    """Load one optional receipt file; None when the stage never ran."""
+    """Load one optional receipt file; None when the stage never ran.
+
+    ``transcript_digest`` is populated only for stage-2 (the only receipt
+    kind that carries this field per ``VerifiedArtifact``, main.rs:1199-
+    1213) and only when AP's own JSON actually has it — a value is never
+    invented when absent (coding-standards.md §8, "no invented claims").
+    """
     path = finding_dir / file_name
     if not path.exists():
         return None
     raw, digest = _read_json(path)
     verdict = _extract_verdict(stage, raw)
-    return Receipt(stage=stage, rel_path=file_name, digest=digest, verdict=verdict, raw=raw)
+    transcript_digest = None
+    if stage == "stage-2":
+        candidate = raw.get("transcript_digest")
+        transcript_digest = candidate if isinstance(candidate, str) and candidate else None
+    return Receipt(
+        stage=stage,
+        rel_path=file_name,
+        digest=digest,
+        verdict=verdict,
+        raw=raw,
+        transcript_digest=transcript_digest,
+    )
 
 
 def _extract_verdict(stage: str, raw: dict[str, Any]) -> str:
@@ -178,6 +221,8 @@ def load_finding(output_dir: Path, run_id: str, finding_id: str) -> FindingRecor
         raise MalformedArtifact(f"no {REFINED_FILE_NAME} at {finding_dir}")
     refined, _ = _read_json(refined_path)
     extracted = refined.get("extracted", {})
+    raw_source_path = extracted.get("source_path")
+    source_path = raw_source_path if isinstance(raw_source_path, str) and raw_source_path else None
 
     receipts: list[Receipt] = []
     for stage, file_name in _RECEIPT_SPECS:
@@ -196,4 +241,5 @@ def load_finding(output_dir: Path, run_id: str, finding_id: str) -> FindingRecor
         refined_rel_path=f"findings/{finding_id}/{REFINED_FILE_NAME}",
         file_paths=_extract_file_paths(finding_dir),
         receipts=receipts,
+        source_path=source_path,
     )
