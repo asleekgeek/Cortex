@@ -12,6 +12,32 @@ from __future__ import annotations
 import signal
 import sys
 
+# Eager-import scipy/sklearn (pulled in transitively by ``sentence_transformers``,
+# a mandatory dependency — see pyproject.toml) on the main thread, before the
+# FastMCP event loop exists. embedding_engine._ensure_model() lazily does
+# ``from sentence_transformers import SentenceTransformer`` on first
+# embed/encode call; on Windows, that first import of scipy/sklearn's C
+# extensions can deadlock CPython's import lock when it runs inside a
+# FastMCP/anyio worker thread instead of the main thread — the worker never
+# recovers, and every subsequent write (remember) hangs identically since
+# the import lock stays held. Importing here first makes the worker-thread
+# import a no-op sys.modules lookup. Cost: ~1.6s on a cold disk/page cache
+# (measured on macOS, `python -c "import scipy.linalg, scipy.special,
+# sklearn.utils, sklearn.utils.validation"` in isolation, first touch this
+# session), dropping to near-zero once the OS has these .so/.pyc files
+# cached — pays once per fresh boot, not once per server restart.
+# source: cdeust/Cortex#92 (rapporteur mbe14, validated fix, Windows 11,
+# Python 3.13.13, reproduced on FastMCP 3.2.4 and 3.4.4).
+try:  # pragma: no cover — defensive; sentence-transformers is mandatory
+    # (pyproject.toml), so these transitive imports are expected to exist,
+    # but a degraded/partial install must not prevent server startup.
+    import scipy.linalg  # noqa: F401
+    import scipy.special  # noqa: F401
+    import sklearn.utils  # noqa: F401
+    import sklearn.utils.validation  # noqa: F401
+except Exception:
+    pass
+
 from fastmcp import FastMCP
 
 from mcp_server import (
