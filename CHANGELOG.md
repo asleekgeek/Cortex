@@ -6,6 +6,29 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.4.0] - 2026-07-10
+
+### Added
+- **`ingest_findings` MCP tool (ADR-0052).** Cortex consumer of automatised-pipeline findings artifacts (`runs/<run_id>/`): a verified finding (stage-2) becomes a wiki page (`reference/findings/<slug>`) + a re-verifiable decision memo in `wiki.memos` — dual anchoring: sha256 of the raw artifact bytes plus AP's own `transcript_digest` copied verbatim (never recomputed) — + a protected memory; an unverified finding becomes a low-confidence `hypothesis` memory only, never a page. Page↔file anchoring via `wiki.page_sources`: `link_kind='finding'` for code files (stage-4 matched symbols) and `link_kind='extracted_from'` for the source document the finding was extracted from (stage-1 `source_path`). Idempotent by construction (re-ingesting a run duplicates nothing).
+- **ADR-0052** — AP↔Cortex flow direction (Cortex pulls from disk; AP stays file-only), ingestion precedence (`ingest_codebase` primary, `codebase_analyze` explicit fallback), and the `ap_bridge.py` duplication debt with its repayment condition.
+
+### Fixed
+- **Memory rules drift.** `add_rule` now validates against the grammar the engine actually parses (`validate_rule` wired, write-time fail-closed rejection); hard `filter` rules now EXCLUDE matching memories instead of keeping them (semantic inversion); unparseable legacy conditions are fail-safe (match nothing, logged) instead of fail-open.
+- **Windows: `remember` hangs indefinitely (#91).** `_git_root`/`_get_remote_url` replaced with pure-Python lookups (walk up to `.git` dir/worktree file; parse `.git/config`) — no subprocess, no pipes, so the post-timeout `communicate()` handle-inheritance trap is gone by construction. Reported, diagnosed and fix validated by @mbe14.
+- **Windows: first `remember` deadlocks on lazy scipy/sklearn import (#92).** Eager import on the main thread at server startup, before the event loop (~1.6 s cold, once per process). Reported and fix validated by @mbe14.
+- Tool-count test assertions updated for the new standalone tool (45→46).
+
+### Changed
+- `wiki.page_sources` CHECK constraints extended additively (`link_kind`: `finding`, `extracted_from`; `source`: `ap-pipeline`), with idempotent migration for existing databases.
+
+### Note
+- Version realignment: the 4.3.0 release bumped only `plugin.json` (pyproject stayed at 4.2.0, no changelog entry — added retroactively below). 4.4.0 realigns pyproject, plugin manifest and changelog.
+
+## [4.3.0] - 2026-07-09
+
+### Added
+- Wiki domain backfill: real project domain resolution for catch-all wiki pages (PR #90).
+
 ## [4.2.0] - 2026-07-08
 
 ### Added
