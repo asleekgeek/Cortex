@@ -11,12 +11,14 @@ Algorithm (Rejewski + Shannon):
   4. Build a fragment index (all substrings of known names)
   5. Resolve: cwd → git_root → longest prefix match → canonical name
 
-Pure business logic — uses subprocess only for `git remote get-url origin`.
+Pure business logic — zero subprocess I/O. Root discovery and remote-URL
+lookup are pure-Python (filesystem walk + ``.git/config`` parsing) rather
+than shelling out to ``git``, to avoid the Windows subprocess pipe-handle
+deadlock described in cdeust/Cortex#91.
 """
 
 from __future__ import annotations
 
-import subprocess
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -34,17 +36,52 @@ class RepoInfo:
 
 
 def _get_remote_url(repo_path: Path) -> str:
-    """Get git remote origin URL. Returns '' if no remote."""
+    """Get git remote origin URL by parsing ``.git/config`` directly.
+
+    precondition: ``repo_path`` is a directory whose ``.git`` child is a
+    directory (a normal clone — the only shape ``_discover_repos`` passes
+    in; linked worktrees have a ``.git`` *file* and are never routed here).
+    postcondition: returns the ``url`` value of the ``[remote "origin"]``
+    section, or ``''`` if the config file, the section, or the key is
+    absent. Never raises.
+
+    Deliberately does zero subprocess I/O. ``subprocess.check_output``
+    with ``timeout=`` shells out to spawn a child process via pipes; on
+    Windows, a ``TimeoutExpired`` on that child triggers a *second*,
+    timeout-less ``communicate()`` inside CPython's own ``subprocess.run``
+    (subprocess.py:565) which can block forever if a concurrently-spawned
+    sibling process (e.g. the AP upstream bridge) inherited the pipe's
+    write handle — see cdeust/Cortex#91. Reading ``.git/config`` sidesteps
+    the whole class of failure; INI parsing of a config file we control
+    the shape of is simpler than shelling out regardless of platform.
+
+    Decision (worktree blind spot, evaluated and rejected): a linked
+    worktree's remotes live in the *main* repo's ``.git/config``, reached
+    by dereferencing the worktree's ``.git`` file (``gitdir: <path>``) up
+    two levels (``.../.git/worktrees/<name>`` → ``.../.git``). This
+    function does NOT do that dereferencing — not because it's hard, but
+    because it would be speculative generality with no current caller:
+    ``_discover_repos`` (this function's only caller) already filters to
+    ``(item / ".git").is_dir()`` before calling this, so a worktree's
+    ``.git`` *file* is never passed in here. If that precondition is ever
+    violated by a future caller, ``cfg.is_file()`` at line below returns
+    False and this fails safe (empty remote, no crash) rather than
+    silently misresolving — the degradation is explicit, not hidden.
+    """
     try:
-        return (
-            subprocess.check_output(
-                ["git", "-C", str(repo_path), "remote", "get-url", "origin"],
-                stderr=subprocess.DEVNULL,
-                timeout=3,
-            )
-            .decode()
-            .strip()
-        )
+        cfg = repo_path / ".git" / "config"
+        if not cfg.is_file():
+            return ""
+        section = ""
+        for raw in cfg.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = raw.strip()
+            if line.startswith("["):
+                section = line.lower()
+            elif section == '[remote "origin"]' and line.lower().startswith("url"):
+                _, _, value = line.partition("=")
+                if value.strip():
+                    return value.strip()
+        return ""
     except Exception:
         return ""
 
@@ -230,19 +267,46 @@ def _build_fragment_index(
 
 
 def _git_root(path: str) -> str | None:
-    """Find the git repo root for a path. Returns None if not in a repo."""
+    """Find the git repo root for a path by walking up to the nearest ``.git``.
+
+    precondition: ``path`` is a string; it need not exist on disk.
+    postcondition: returns the forward-slash-normalized absolute path of
+    the nearest ancestor of ``path`` (inclusive) that has a ``.git`` entry
+    — a directory for a normal clone, a *file* (``gitdir: <path>``) for a
+    linked worktree (``git-worktree(1)``) — or ``None`` if no such
+    ancestor exists up to the filesystem root or ``path`` cannot be
+    resolved. Reproduces ``git rev-parse --show-toplevel``'s answer (the
+    current worktree's root, not the common ``.git`` dir) for every shape
+    this registry's callers pass in: a subdirectory of a repo, a repo
+    root itself, or a path outside any repo. Does not reproduce
+    ``GIT_DIR``/``GIT_WORK_TREE`` env-var overrides or bare repositories —
+    neither shape is ever discovered by ``_discover_repos`` (it only
+    walks directories with a ``.git`` child), so neither is reachable here.
+
+    Deliberately does zero subprocess I/O — see ``_get_remote_url`` for
+    the Windows pipe-handle-inheritance deadlock (cdeust/Cortex#91) this
+    avoids. Forward-slash normalization matches what ``git`` itself
+    prints on Windows.
+
+    Known limitation (pre-existing, not introduced by this change):
+    ``registry.path_to_repo`` (``_build_registry`` / ``_discover_repos``)
+    keys repos by ``str(item)``, which is backslash-separated on Windows.
+    A forward-slash-normalized root from this function will not match
+    those keys there, so the ``root in registry.path_to_repo`` fast path
+    in ``resolve_domain``/``resolve_cwd`` silently misses on Windows and
+    falls through to the prefix-match / fragment-match paths below it.
+    The subprocess-based implementation had the identical mismatch (git
+    itself prints forward slashes on Windows) — this is not a regression,
+    but it is a real bug worth its own issue.
+    """
     try:
-        return (
-            subprocess.check_output(
-                ["git", "-C", path, "rev-parse", "--show-toplevel"],
-                stderr=subprocess.DEVNULL,
-                timeout=3,
-            )
-            .decode()
-            .strip()
-        )
-    except Exception:
+        candidate = Path(path).resolve()
+    except OSError:
         return None
+    for ancestor in (candidate, *candidate.parents):
+        if (ancestor / ".git").exists():
+            return str(ancestor).replace("\\", "/")
+    return None
 
 
 # ── Registry ──────────────────────────────────────────────────────────
