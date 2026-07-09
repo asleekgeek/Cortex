@@ -314,11 +314,16 @@ CREATE TABLE IF NOT EXISTS wiki.page_sources (
     source_path     TEXT NOT NULL,
     symbol          TEXT,
     link_kind       TEXT NOT NULL DEFAULT 'documents'
-                    CHECK (link_kind IN ('documents','references','derived')),
+                    -- 'finding' added INC5.1 (ADR-0052 D4): AP-finding ->
+                    -- file-reference edges written by ingest_findings.
+                    CHECK (link_kind IN ('documents','references','derived','finding')),
     confidence      REAL NOT NULL DEFAULT 1.0,
     source          TEXT NOT NULL DEFAULT 'frontmatter'
+                    -- 'ap-pipeline' added INC5.1: provenance tag for rows
+                    -- written by ingest_findings from AP artifacts.
                     CHECK (source IN (
-                      'frontmatter','claim_evidence','body','codebase_grounding'
+                      'frontmatter','claim_evidence','body','codebase_grounding',
+                      'ap-pipeline'
                     )),
     PRIMARY KEY (page_id, source_path, link_kind)
 );
@@ -1965,6 +1970,37 @@ BEGIN
           AND column_name = 'documents_primary'
     ) THEN
         ALTER TABLE wiki.pages ADD COLUMN documents_primary TEXT;
+    END IF;
+END $$;
+
+-- Migration: widen wiki.page_sources.link_kind + .source CHECKs for
+-- INC5.1 (ADR-0052 D4) on DBs provisioned before this change. The
+-- CREATE TABLE above already carries 'finding'/'ap-pipeline' for fresh
+-- databases; this DO block patches existing ones. Idempotent: skips if
+-- the live constraint definition already contains 'finding' (pg_get_
+-- constraintdef comparison, same pattern as the documents_primary
+-- migration above using information_schema instead of pg_constraint).
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'page_sources_link_kind_check'
+          AND pg_get_constraintdef(oid) NOT LIKE '%finding%'
+    ) THEN
+        ALTER TABLE wiki.page_sources DROP CONSTRAINT page_sources_link_kind_check;
+        ALTER TABLE wiki.page_sources ADD CONSTRAINT page_sources_link_kind_check
+            CHECK (link_kind IN ('documents','references','derived','finding'));
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'page_sources_source_check'
+          AND pg_get_constraintdef(oid) NOT LIKE '%ap-pipeline%'
+    ) THEN
+        ALTER TABLE wiki.page_sources DROP CONSTRAINT page_sources_source_check;
+        ALTER TABLE wiki.page_sources ADD CONSTRAINT page_sources_source_check
+            CHECK (source IN (
+              'frontmatter','claim_evidence','body','codebase_grounding','ap-pipeline'
+            ));
     END IF;
 END $$;
 """

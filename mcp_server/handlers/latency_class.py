@@ -75,6 +75,7 @@ _LATENCY_CLASS: dict[str, LatencyClass] = {
     "record_session_end": "batch",
     "ingest_codebase": "batch",
     "ingest_prd": "batch",
+    "ingest_findings": "batch",
     "wiki_reindex": "batch",
     "wiki_purge": "batch",
 }

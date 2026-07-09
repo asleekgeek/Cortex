@@ -1,13 +1,20 @@
-"""Tool registration: upstream-integration tools (3 tools).
+"""Tool registration: upstream-integration tools (4 tools).
 
 ingest_codebase — pulls from ai-automatised-pipeline MCP
 change_impact   — pulls from ai-automatised-pipeline MCP (ADR-0046)
 ingest_prd      — pulls from prd-spec-generator MCP
+ingest_findings — reads AP findings artifacts directly off disk (INC5.1)
 
-Cortex consumes upstream artefacts; it does not drive those pipelines. These
-tools are CONDITIONALLY registered: each only registers when its upstream MCP
-server is reachable (see register()). On a standalone install with no upstream
-configured, none register — so every advertised tool works out of the box.
+Cortex consumes upstream artefacts; it does not drive those pipelines. The
+MCP-calling tools (ingest_codebase, change_impact, ingest_prd) are
+CONDITIONALLY registered: each only registers when its upstream MCP server
+is reachable (see register()). ``ingest_findings`` is registered
+UNCONDITIONALLY: per ADR-0052 D1 it never calls an upstream MCP server (AP's
+findings tools are not in APBridge's allowlist — this handler reads
+runs/<run_id>/ straight off disk), so there is no upstream-availability
+flag to gate it on. On a standalone install with no upstream configured,
+ingest_findings still registers but returns {"ingested": false,
+"reason": "output_dir_not_resolved"} until AP artifacts exist on disk.
 source: Anthropic MCP Directory submission decision 2026-06-19.
 """
 
@@ -18,7 +25,7 @@ import functools
 
 from fastmcp import Context, FastMCP
 
-from mcp_server.handlers import change_impact, ingest_codebase, ingest_prd
+from mcp_server.handlers import change_impact, ingest_codebase, ingest_findings, ingest_prd
 from mcp_server.mcp_progress import McpProgress
 from mcp_server.shared.progress import NullProgress
 from mcp_server.tool_error_handler import safe_handler
@@ -32,6 +39,7 @@ SCHEMAS: dict[str, dict] = {
     "ingest_codebase": ingest_codebase.schema,
     "change_impact": change_impact.schema,
     "ingest_prd": ingest_prd.schema,
+    "ingest_findings": ingest_findings.schema,
 }
 
 
@@ -45,12 +53,16 @@ def register(mcp: FastMCP, *, codebase: bool = True, prd: bool = True) -> None:
     caller keeps the full set. When a flag is False the corresponding tools are
     NOT advertised — the standalone tool set is exactly what works without an
     upstream. source: Anthropic MCP Directory submission decision 2026-06-19.
+
+    ``ingest_findings`` always registers (see module docstring — file-only,
+    no upstream MCP dependency to gate on).
     """
     if codebase:
         _register_ingest_codebase(mcp)
         _register_change_impact(mcp)
     if prd:
         _register_ingest_prd(mcp)
+    _register_ingest_findings(mcp)
 
 
 def _register_ingest_codebase(mcp: FastMCP) -> None:
@@ -146,4 +158,26 @@ def _register_ingest_prd(mcp: FastMCP) -> None:
                 "domain": domain,
             },
             tool_name="ingest_prd",
+        )
+
+
+def _register_ingest_findings(mcp: FastMCP) -> None:
+    @mcp.tool(
+        name="ingest_findings",
+        **tool_kwargs(ingest_findings.schema),
+    )
+    async def tool_ingest_findings(
+        run_id: str,
+        output_dir: str | None = None,
+        graph_key: str | None = None,
+    ) -> dict:
+        """Ingest an AP findings run (runs/<run_id>/) into Cortex."""
+        return await safe_handler(
+            ingest_findings.handler,
+            {
+                "run_id": run_id,
+                "output_dir": output_dir,
+                "graph_key": graph_key,
+            },
+            tool_name="ingest_findings",
         )
