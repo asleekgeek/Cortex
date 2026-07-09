@@ -312,7 +312,14 @@ def recall_confabulation_risk(
 # ── Helpers ─────────────────────────────────────────────────────────────────
 # Ingestion pathways that are externally sourced by construction.
 _EXTERNAL_PATHWAYS = frozenset(
-    {"post_tool_capture", "ingest_codebase", "ingest_prd", "import", "seed_project"}
+    {
+        "post_tool_capture",
+        "ingest_codebase",
+        "ingest_prd",
+        "ingest_findings",
+        "import",
+        "seed_project",
+    }
 )
 
 
