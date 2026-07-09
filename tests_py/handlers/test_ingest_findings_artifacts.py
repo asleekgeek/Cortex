@@ -41,7 +41,15 @@ def _make_run(tmp_path: Path, run_id: str) -> Path:
     return output_dir
 
 
-def _write_refined(output_dir: Path, run_id: str, finding_id: str, *, title="T", desc="D") -> None:
+def _write_refined(
+    output_dir: Path,
+    run_id: str,
+    finding_id: str,
+    *,
+    title="T",
+    desc="D",
+    source_path: str | None = None,
+) -> None:
     _write_json(
         output_dir / "runs" / run_id / "findings" / finding_id / "stage-1.refined.json",
         {
@@ -53,8 +61,8 @@ def _write_refined(output_dir: Path, run_id: str, finding_id: str, *, title="T",
                 "relevance_score": 0.8,
                 "extracted_at": "2026-07-09T00:00:00Z",
                 "extractor_version": "0.1.0",
-                "source_form": "inline",
-                "source_path": None,
+                "source_form": "inline" if source_path is None else "file",
+                "source_path": source_path,
             },
             "refined_prompt": {"text": "do the thing", "role_hint": "engineer"},
             "refinement": {"added_context": [], "orchestrator_version": "0.1.0"},
@@ -62,28 +70,37 @@ def _write_refined(output_dir: Path, run_id: str, finding_id: str, *, title="T",
     )
 
 
-def _write_verified(output_dir: Path, run_id: str, finding_id: str, *, verified=True) -> None:
+def _write_verified(
+    output_dir: Path,
+    run_id: str,
+    finding_id: str,
+    *,
+    verified=True,
+    transcript_digest: str | None = "deadbeef",
+) -> None:
+    payload = {
+        "run_id": run_id,
+        "finding_id": finding_id,
+        "verified": verified,
+        "verified_kind": {
+            "schema_ok": True,
+            "completeness_ok": True,
+            "user_acknowledged": True,
+        },
+        "finalized_at": "2026-07-09T00:00:00Z",
+        "stage1_refined_path": f"findings/{finding_id}/stage-1.refined.json",
+        "session_path": f"findings/{finding_id}/stage-2.session.json",
+        "digest_algorithm": "sha256",
+        "transcript_bytes_at_finalize": 42,
+        "turn_count": 2,
+        "verifier_version": "0.1.0",
+        "completeness_checklist": {"has_title": True},
+    }
+    if transcript_digest is not None:
+        payload["transcript_digest"] = transcript_digest
     _write_json(
         output_dir / "runs" / run_id / "findings" / finding_id / "stage-2.verified.json",
-        {
-            "run_id": run_id,
-            "finding_id": finding_id,
-            "verified": verified,
-            "verified_kind": {
-                "schema_ok": True,
-                "completeness_ok": True,
-                "user_acknowledged": True,
-            },
-            "finalized_at": "2026-07-09T00:00:00Z",
-            "stage1_refined_path": f"findings/{finding_id}/stage-1.refined.json",
-            "session_path": f"findings/{finding_id}/stage-2.session.json",
-            "transcript_digest": "deadbeef",
-            "digest_algorithm": "sha256",
-            "transcript_bytes_at_finalize": 42,
-            "turn_count": 2,
-            "verifier_version": "0.1.0",
-            "completeness_checklist": {"has_title": True},
-        },
+        payload,
     )
 
 
@@ -165,6 +182,58 @@ class TestLoadFindingMalformed:
         path.write_text("not json at all", encoding="utf-8")
         with pytest.raises(MalformedArtifact):
             load_finding(output_dir, "run1", "f1")
+
+
+class TestTranscriptDigest:
+    def test_stage2_transcript_digest_copied_verbatim_when_present(self, tmp_path):
+        output_dir = _make_run(tmp_path, "run1")
+        _write_refined(output_dir, "run1", "f1")
+        _write_verified(output_dir, "run1", "f1", transcript_digest="cafef00d")
+
+        finding = load_finding(output_dir, "run1", "f1")
+
+        assert finding.receipts[0].transcript_digest == "cafef00d"
+
+    def test_stage2_transcript_digest_absent_when_ap_omits_field(self, tmp_path):
+        output_dir = _make_run(tmp_path, "run1")
+        _write_refined(output_dir, "run1", "f1")
+        _write_verified(output_dir, "run1", "f1", transcript_digest=None)
+
+        finding = load_finding(output_dir, "run1", "f1")
+
+        assert finding.receipts[0].transcript_digest is None
+
+    def test_non_stage2_receipts_never_carry_transcript_digest(self, tmp_path):
+        output_dir = _make_run(tmp_path, "run1")
+        _write_refined(output_dir, "run1", "f1")
+        _write_verified(output_dir, "run1", "f1")
+        _write_json(
+            output_dir / "runs" / "run1" / "findings" / "f1" / "stage-6.validation.json",
+            {"validation_status": "passed", "transcript_digest": "should-be-ignored"},
+        )
+
+        finding = load_finding(output_dir, "run1", "f1")
+
+        stage6 = next(r for r in finding.receipts if r.stage == "stage-6")
+        assert stage6.transcript_digest is None
+
+
+class TestSourcePath:
+    def test_source_path_carried_when_present(self, tmp_path):
+        output_dir = _make_run(tmp_path, "run1")
+        _write_refined(output_dir, "run1", "f1", source_path="/abs/path/to/report.json")
+
+        finding = load_finding(output_dir, "run1", "f1")
+
+        assert finding.source_path == "/abs/path/to/report.json"
+
+    def test_source_path_none_when_inline_finding(self, tmp_path):
+        output_dir = _make_run(tmp_path, "run1")
+        _write_refined(output_dir, "run1", "f1")
+
+        finding = load_finding(output_dir, "run1", "f1")
+
+        assert finding.source_path is None
 
 
 class TestFilePathsFromStage4:

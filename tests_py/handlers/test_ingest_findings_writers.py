@@ -13,6 +13,7 @@ from mcp_server.handlers.ingest_findings_writers import (
     find_existing_memory,
     write_finding,
     write_finding_memory,
+    write_finding_page,
     write_receipt_memos,
 )
 
@@ -50,8 +51,10 @@ def _verified_finding(**overrides) -> FindingRecord:
                 digest="abc123",
                 verdict="verified",
                 raw={},
+                transcript_digest="cafef00d",
             )
         ],
+        source_path=None,
     )
     base.update(overrides)
     return FindingRecord(**base)
@@ -130,7 +133,31 @@ class TestWriteReceiptMemos:
         assert inserted[0]["inputs"]["finding_id"] == "f1"
         assert inserted[0]["inputs"]["stage"] == "stage-2"
         assert inserted[0]["inputs"]["digest"] == "abc123"
+        assert inserted[0]["inputs"]["transcript_digest"] == "cafef00d"
         assert inserted[0]["author"] == "ap-pipeline"
+
+    def test_transcript_digest_absent_from_inputs_when_ap_omits_it(self, monkeypatch):
+        import mcp_server.handlers.ingest_findings_writers as w
+
+        inserted = []
+        monkeypatch.setattr(w, "insert_memo", lambda conn, **kw: inserted.append(kw) or 1)
+        conn = _mock_conn(memo_exists=False)
+        finding = _verified_finding(
+            receipts=[
+                Receipt(
+                    stage="stage-2",
+                    rel_path="stage-2.verified.json",
+                    digest="abc123",
+                    verdict="verified",
+                    raw={},
+                    transcript_digest=None,
+                )
+            ]
+        )
+
+        write_receipt_memos(conn, finding, page_id=42)
+
+        assert "transcript_digest" not in inserted[0]["inputs"]
 
     def test_skips_receipt_already_recorded(self, monkeypatch):
         import mcp_server.handlers.ingest_findings_writers as w
@@ -144,6 +171,60 @@ class TestWriteReceiptMemos:
 
         assert count == 0
         assert called == []
+
+
+class TestWriteFindingPageSourceAnchoring:
+    def _patch_infra(self, monkeypatch, *, page_id: int = 42):
+        import mcp_server.handlers.ingest_findings_writers as w
+
+        calls = []
+        monkeypatch.setattr(w, "write_page", lambda *a, **k: None)
+        monkeypatch.setattr(w, "upsert_page", lambda conn, row: (page_id, True))
+        monkeypatch.setattr(
+            w,
+            "upsert_page_sources",
+            lambda conn, pid, entries, **kw: calls.append((pid, tuple(entries), kw)) or len(entries),
+        )
+        return calls
+
+    def test_anchors_both_link_kinds_when_source_path_present(self, monkeypatch):
+        calls = self._patch_infra(monkeypatch)
+        finding = _verified_finding(
+            file_paths=["src/foo.rs"], source_path="/abs/report.json"
+        )
+
+        write_finding_page(_mock_conn(), finding, memory_id=1)
+
+        kinds = {kw["link_kind"]: (pid, entries) for pid, entries, kw in calls}
+        assert kinds["finding"] == (42, ("src/foo.rs",))
+        assert kinds["extracted_from"] == (42, ("/abs/report.json",))
+        for _pid, _entries, kw in calls:
+            assert kw["source"] == "ap-pipeline"
+
+    def test_no_extracted_from_call_when_source_path_absent(self, monkeypatch):
+        calls = self._patch_infra(monkeypatch)
+        finding = _verified_finding(file_paths=["src/foo.rs"], source_path=None)
+
+        write_finding_page(_mock_conn(), finding, memory_id=1)
+
+        kinds = [kw["link_kind"] for _pid, _entries, kw in calls]
+        assert kinds == ["finding"]
+
+    def test_reingesting_same_finding_reissues_same_anchoring_idempotently(self, monkeypatch):
+        calls = self._patch_infra(monkeypatch)
+        finding = _verified_finding(
+            file_paths=["src/foo.rs"], source_path="/abs/report.json"
+        )
+
+        write_finding_page(_mock_conn(), finding, memory_id=1)
+        write_finding_page(_mock_conn(), finding, memory_id=1)
+
+        # Same two (link_kind, entries) pairs both times -- delete+insert
+        # semantics in the real upsert_page_sources make a second call
+        # with identical arguments a no-op on row count.
+        first_pass = [(pid, entries, kw["link_kind"]) for pid, entries, kw in calls[:2]]
+        second_pass = [(pid, entries, kw["link_kind"]) for pid, entries, kw in calls[2:]]
+        assert first_pass == second_pass
 
 
 class TestWriteFinding:

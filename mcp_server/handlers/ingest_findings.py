@@ -14,6 +14,14 @@ finding,verified. Non-verified finding -> memory only, tagged
 finding,hypothesis, low confidence. See ingest_findings_writers for the
 write path and ingest_findings_artifacts for the on-disk parsing.
 
+Pipeline convention (5.1b): run AP's stage-4 (``prepare_prd_input``) for
+a verified finding BEFORE calling this handler if you want code
+anchoring (wiki.page_sources, link_kind='finding') in the resulting wiki
+page — stage-4 is optional and this handler never invokes it; without
+it, ``file_paths`` is empty (not guessed from free text). This is
+independent of the 'extracted_from' link (stage-1's source_path), which
+is always anchored when AP set it, with no extra step required.
+
 Cortex consumes; AP produces.
 """
 
@@ -43,12 +51,20 @@ schema = {
         "network call to AP — AP never pushes, ADR-0052 D1). Verified "
         "findings (stage-2 verified:true) get a wiki page under "
         "reference/findings/, file-source links (wiki.page_sources, "
-        "link_kind='finding'), one wiki.memos row per stage-2/6/8 receipt "
-        "(digest-anchored, re-verifiable), and a memory tagged "
-        "finding,verified. Non-verified findings get a memory only, "
-        "tagged finding,hypothesis, at low confidence — a hypothesis is "
-        "not documentation. Idempotent: re-ingesting the same run does "
-        "not duplicate memories, pages, page_sources, or memos. Distinct "
+        "link_kind='finding' for code files the finding is ABOUT — run "
+        "AP's stage-4 `prepare_prd_input` on the finding BEFORE ingesting "
+        "if you want this anchoring, otherwise it is empty, not guessed; "
+        "link_kind='extracted_from' for the source document the finding "
+        "was extracted FROM, when stage-1's source_path is present — "
+        "independent of stage-4), one wiki.memos row per stage-2/6/8 "
+        "receipt (raw-bytes sha256 digest, re-verifiable, plus AP's own "
+        "transcript_digest copied verbatim from stage-2.verified.json "
+        "when present — two independent anchors: byte-exact vs AP's "
+        "semantic claim), and a memory tagged finding,verified. "
+        "Non-verified findings get a memory only, tagged "
+        "finding,hypothesis, at low confidence — a hypothesis is not "
+        "documentation. Idempotent: re-ingesting the same run does not "
+        "duplicate memories, pages, page_sources, or memos. Distinct "
         "from `ingest_codebase` (symbols/files, not findings) and "
         "`ingest_prd` (a PRD document, not a findings run). Mutates "
         "memories + wiki.pages/page_sources/memos. Returns "

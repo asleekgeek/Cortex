@@ -315,8 +315,17 @@ CREATE TABLE IF NOT EXISTS wiki.page_sources (
     symbol          TEXT,
     link_kind       TEXT NOT NULL DEFAULT 'documents'
                     -- 'finding' added INC5.1 (ADR-0052 D4): AP-finding ->
-                    -- file-reference edges written by ingest_findings.
-                    CHECK (link_kind IN ('documents','references','derived','finding')),
+                    -- file-reference edges written by ingest_findings
+                    -- (code files the finding is ABOUT, stage-4
+                    -- matched_symbols). 'extracted_from' added 5.1b:
+                    -- AP-finding -> source-document edge (stage-1
+                    -- ExtractedFinding.source_path — the document the
+                    -- finding was extracted FROM). Kept distinct from
+                    -- 'finding' so a graph reader can tell provenance
+                    -- apart from subject matter.
+                    CHECK (link_kind IN (
+                      'documents','references','derived','finding','extracted_from'
+                    )),
     confidence      REAL NOT NULL DEFAULT 1.0,
     source          TEXT NOT NULL DEFAULT 'frontmatter'
                     -- 'ap-pipeline' added INC5.1: provenance tag for rows
@@ -2000,6 +2009,29 @@ BEGIN
         ALTER TABLE wiki.page_sources ADD CONSTRAINT page_sources_source_check
             CHECK (source IN (
               'frontmatter','claim_evidence','body','codebase_grounding','ap-pipeline'
+            ));
+    END IF;
+END $$;
+
+-- Migration: widen wiki.page_sources.link_kind CHECK for 'extracted_from'
+-- (5.1b, on top of INC5.1's 'finding'/'ap-pipeline' widening above) on
+-- DBs provisioned before this change. The CREATE TABLE above already
+-- carries 'extracted_from' for fresh databases; this DO block patches
+-- existing ones (including ones that already ran the INC5.1 DO block
+-- above and now have the 4-value constraint, not the original 3-value
+-- one). Idempotent: skips if the live constraint already contains
+-- 'extracted_from'.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'page_sources_link_kind_check'
+          AND pg_get_constraintdef(oid) NOT LIKE '%extracted_from%'
+    ) THEN
+        ALTER TABLE wiki.page_sources DROP CONSTRAINT page_sources_link_kind_check;
+        ALTER TABLE wiki.page_sources ADD CONSTRAINT page_sources_link_kind_check
+            CHECK (link_kind IN (
+              'documents','references','derived','finding','extracted_from'
             ));
     END IF;
 END $$;

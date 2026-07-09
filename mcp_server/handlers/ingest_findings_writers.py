@@ -1,10 +1,19 @@
 """Writes one FindingRecord into Cortex's store (INC5.1 design D2-D4).
 
 Gradation (D2): verified finding -> memory(tags: finding,verified) + wiki
-page (draft, published like ingest_prd) + page_sources(link_kind='finding')
-+ one wiki.memos row per receipt. Unverified finding -> memory only
-(tags: finding,hypothesis), low confidence, no page — a hypothesis is not
-documentation.
+page (draft, published like ingest_prd) + page_sources(link_kind='finding',
+code files the finding is ABOUT) + page_sources(link_kind='extracted_from',
+the document the finding was extracted FROM, when stage-1's source_path is
+present) + one wiki.memos row per receipt. Unverified finding -> memory
+only (tags: finding,hypothesis), low confidence, no page — a hypothesis is
+not documentation.
+
+Pipeline convention (5.1b): run stage-4 (``prepare_prd_input``) for a
+verified finding BEFORE calling ``ingest_findings`` if you want code
+anchoring (link_kind='finding') in the resulting wiki page — without it,
+``file_paths`` is empty (not guessed). This is independent of
+``source_path`` (link_kind='extracted_from'), which comes from stage-1
+and needs no extra step.
 
 Idempotence (D2 acceptance criterion, risk 8): every write here is keyed
 by (run_id, finding_id[, stage]) and checked for existence before insert,
@@ -30,6 +39,15 @@ from mcp_server.infrastructure.pg_store_wiki_sources import upsert_page_sources
 from mcp_server.infrastructure.wiki_store import write_page
 
 _FINDING_LINK_KIND = "finding"
+# Distinct from _FINDING_LINK_KIND ('finding' = code files the finding is
+# ABOUT, from stage-4 matched_symbols). 'extracted_from' = the document
+# the finding was EXTRACTED FROM (stage-1 ExtractedFinding.source_path,
+# an absolute filesystem path to a source document, not project-relative
+# code — see ingest_findings_artifacts.FindingRecord docstring). Kept as
+# a separate link_kind, not folded into 'finding', so a graph reader can
+# tell "provenance of the finding" apart from "subject matter of the
+# finding" without inspecting confidence/source metadata.
+_SOURCE_DOCUMENT_LINK_KIND = "extracted_from"
 _MEMO_AUTHOR = "ap-pipeline"
 
 
@@ -126,6 +144,8 @@ def _render_finding_page(finding: FindingRecord) -> str:
         f"- Finding: `{finding.finding_id}`",
         f"- Refined artifact: `{finding.refined_rel_path}`",
     ]
+    if finding.source_path:
+        lines.append(f"- Extracted from: `{finding.source_path}`")
     if finding.file_paths:
         lines.append("")
         lines.append("## Files")
@@ -136,14 +156,28 @@ def _render_finding_page(finding: FindingRecord) -> str:
 
 def write_finding_page(conn: Any, finding: FindingRecord, memory_id: int) -> int:
     """Write the wiki page for a VERIFIED finding: filesystem + wiki.pages
-    + wiki.page_sources(link_kind='finding'). Returns the page_id.
+    + wiki.page_sources(link_kind='finding') + wiki.page_sources
+    (link_kind='extracted_from', when source_path is present). Returns
+    the page_id.
 
     Precondition: finding.verified is True (caller gates this — D2:
     "a hypothesis is not documentation").
     Postcondition: wiki.pages has a row for this rel_path (idempotent via
     upsert_page's ON CONFLICT); wiki.page_sources has one row per
-    finding.file_paths entry under link_kind='finding' (idempotent via
-    upsert_page_sources's DELETE+INSERT scoped to (page_id, link_kind)).
+    finding.file_paths entry under link_kind='finding' (code files the
+    finding is ABOUT) and, iff finding.source_path is not None, exactly
+    one row under link_kind='extracted_from' (the document the finding
+    was extracted FROM) — both idempotent via upsert_page_sources's
+    DELETE+INSERT scoped to (page_id, link_kind). ``finding.file_paths``
+    is empty unless the pipeline convention below was followed for this
+    finding; ``source_path`` is orthogonal (set at stage-1, independent
+    of whether stage-4 ever ran).
+
+    Pipeline convention: stage-4 (``prepare_prd_input``) must be run for
+    a verified finding BEFORE calling ``ingest_findings`` to obtain any
+    code anchoring (link_kind='finding') — ``file_paths`` is empty, not
+    guessed, when stage-4 never ran for this finding (see
+    ``ingest_findings_artifacts._extract_file_paths``).
     """
     rel_path = _page_rel_path(finding)
     markdown = _render_finding_page(finding)
@@ -172,6 +206,15 @@ def write_finding_page(conn: Any, finding: FindingRecord, memory_id: int) -> int
         source=_MEMO_AUTHOR,
         confidence=1.0,
     )
+    if finding.source_path is not None:
+        upsert_page_sources(
+            conn,
+            page_id,
+            [finding.source_path],
+            link_kind=_SOURCE_DOCUMENT_LINK_KIND,
+            source=_MEMO_AUTHOR,
+            confidence=1.0,
+        )
     return page_id
 
 
@@ -193,27 +236,33 @@ def write_receipt_memos(conn: Any, finding: FindingRecord, page_id: int) -> int:
     wiki.memos row exists with inputs matching (run_id, finding_id,
     stage) — re-running this on the same receipts inserts zero new rows
     (idempotence via the existence check, since wiki.memos has no unique
-    constraint to ON CONFLICT against).
+    constraint to ON CONFLICT against). ``inputs.transcript_digest`` is
+    present (verbatim copy of AP's own field, not recomputed) iff the
+    receipt is stage-2 AND AP's stage-2.verified.json actually carried a
+    ``transcript_digest`` field — absent otherwise, never a placeholder.
     Returns the count of memos actually inserted this call.
     """
     inserted = 0
     for receipt in finding.receipts:
         if _memo_exists(conn, finding.run_id, finding.finding_id, receipt.stage):
             continue
+        inputs: dict[str, Any] = {
+            "run_id": finding.run_id,
+            "finding_id": finding.finding_id,
+            "stage": receipt.stage,
+            "artifact_path": receipt.rel_path,
+            "digest": receipt.digest,
+            "digest_algorithm": "sha256",
+        }
+        if receipt.transcript_digest is not None:
+            inputs["transcript_digest"] = receipt.transcript_digest
         insert_memo(
             conn,
             subject_type="page",
             subject_id=page_id,
             decision=receipt.verdict,
             rationale=f"AP {receipt.stage} receipt for {finding.finding_id} (run {finding.run_id})",
-            inputs={
-                "run_id": finding.run_id,
-                "finding_id": finding.finding_id,
-                "stage": receipt.stage,
-                "artifact_path": receipt.rel_path,
-                "digest": receipt.digest,
-                "digest_algorithm": "sha256",
-            },
+            inputs=inputs,
             confidence=1.0 if receipt.verdict in ("verified", "gates_passed") else 0.5,
             author=_MEMO_AUTHOR,
         )
