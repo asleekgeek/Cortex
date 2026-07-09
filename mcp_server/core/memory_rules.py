@@ -1,17 +1,28 @@
 """Neuro-symbolic rules engine — hard constraints and soft preferences over retrieval.
 
 Implements condition parsing (field, operator, value) and evaluation against
-memory dicts. Hard rules filter, soft rules boost/penalize retrieval scores.
+memory dicts. Hard rules EXCLUDE matching memories, soft rules boost/penalize
+retrieval scores, tag rules attach a tag to matching memories.
+
+This module is the single grammar authority for rule text: `add_rule`
+(mcp_server/handlers/add_rule.py) MUST accept only condition/action strings
+this module can parse — enforced by calling `validate_rule` at write time.
+Canonical syntax:
+    condition: "<field> <operator> <value>", operator in VALID_OPERATORS.
+        e.g. "importance > 0.7", "tag contains deprecated".
+    action:    "filter" (hard rules only) | "boost:<float>" | "penalty:<float>"
+               (soft rules only) | "tag:<name>" (tag rules only).
 
 Pure business logic — no I/O. Rule storage is handled by the caller.
-
-Pure business logic -- no I/O.
 """
 
 from __future__ import annotations
 
 import fnmatch
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Valid condition operators
 VALID_OPERATORS = frozenset(
@@ -85,14 +96,15 @@ def parse_condition(condition: str) -> tuple[str, str, str]:
     raise ValueError(f"Cannot parse condition: {condition!r}")
 
 
-def parse_action(action: str) -> tuple[str, float]:
+def parse_action(action: str) -> tuple[str, float | str]:
     """Parse an action string into (action_type, value).
 
-    "filter"     → ("filter", 0.0)
-    "boost:0.3"  → ("boost", 0.3)
-    "penalty:0.2"→ ("penalty", 0.2)
+    "filter"      → ("filter", 0.0)
+    "boost:0.3"   → ("boost", 0.3)
+    "penalty:0.2" → ("penalty", 0.2)
+    "tag:review"  → ("tag", "review")
 
-    Raises ValueError on invalid action.
+    Raises ValueError on invalid action, or on "tag:" with an empty name.
     """
     if action == "filter":
         return "filter", 0.0
@@ -100,6 +112,11 @@ def parse_action(action: str) -> tuple[str, float]:
         return "boost", float(action.split(":", 1)[1])
     if action.startswith("penalty:"):
         return "penalty", float(action.split(":", 1)[1])
+    if action.startswith("tag:"):
+        tag_name = action.split(":", 1)[1].strip()
+        if not tag_name:
+            raise ValueError(f"tag action requires a non-empty name: {action!r}")
+        return "tag", tag_name
     raise ValueError(f"Invalid action: {action!r}")
 
 
@@ -173,13 +190,23 @@ def _evaluate_contains(field_value: Any, value: str, negate: bool) -> bool:
 def evaluate_condition(condition: str, memory: dict) -> bool:
     """Evaluate a parsed condition against a memory dict.
 
-    Returns True if the condition is satisfied.
-    Returns True on parse errors (fail open).
+    Precondition: `condition` is any string (parseable or not); `memory` is a
+    dict, possibly missing the referenced field.
+    Postcondition: returns True iff the condition parses AND the memory
+    satisfies it. An unparseable condition never matches (returns False) —
+    this is the read-side fail-safe: a malformed rule (which should not
+    exist post `validate_rule`, but may for legacy data written before that
+    gate existed) degrades to a silent no-op rather than, under hard-rule
+    semantics, excluding every memory from every recall. The parse failure
+    is logged so operators can find and repair the offending row.
     """
     try:
         field, operator, value = parse_condition(condition)
     except ValueError:
-        return True
+        logger.warning(
+            "memory_rules: unparseable condition %r — rule is a no-op", condition
+        )
+        return False
 
     field_value = get_field_value(memory, field)
     if field_value is None:
@@ -209,6 +236,8 @@ def _apply_soft_rule(
         action_type, action_value = parse_action(action)
     except ValueError:
         return
+    if action_type not in ("boost", "penalty"):
+        return
     for m in memories:
         if evaluate_condition(condition, m):
             score = m.get(score_field, 0.0)
@@ -218,15 +247,43 @@ def _apply_soft_rule(
                 m[score_field] = score - action_value
 
 
+def _apply_tag_rule(memories: list[dict], condition: str, action: str) -> None:
+    """Attach a tag to every memory matching `condition`, in-place, deduped."""
+    try:
+        action_type, tag_name = parse_action(action)
+    except ValueError:
+        return
+    if action_type != "tag":
+        return
+    for m in memories:
+        if evaluate_condition(condition, m):
+            tags = m.setdefault("tags", [])
+            if tag_name not in tags:
+                tags.append(tag_name)
+
+
 def apply_rules(
     memories: list[dict],
     rules: list[dict],
     score_field: str = "score",
 ) -> list[dict]:
-    """Apply rules to filter and re-rank a list of memories.
+    """Apply rules to filter, re-rank, and tag a list of memories.
 
-    Hard rules (rule_type="hard") filter out non-matching memories.
-    Soft rules (rule_type="soft") adjust the score field via boost/penalty.
+    Precondition: `memories` is a list of memory dicts, each carrying
+    `score_field` (missing → treated as 0.0); `rules` is a list of rule
+    dicts as returned by MemoryStore.get_all_active_rules() — each with
+    rule_type/condition/action; rules with an empty condition are skipped.
+    Postcondition: the returned list contains every input memory whose
+    matching hard rules (rule_type="hard") did NOT match its condition —
+    i.e. a hard rule EXCLUDES memories that satisfy its condition (matches
+    add_rule's documented "never surface deprecated memories" semantics: the
+    condition names what you want gone, the rule removes it). Soft rules
+    (rule_type="soft") only adjust `score_field` on matching memories via
+    boost/penalty and never change membership. Tag rules (rule_type="tag")
+    only append a tag to matching memories' "tags" list and never change
+    membership or score. The result is sorted descending by `score_field`.
+    Invariant across the rule loop: `len(result) <= len(memories)` (only
+    hard rules can shrink the list; soft/tag rules are membership-preserving).
 
     Args:
         memories: List of memory dicts (must have `score_field`).
@@ -234,7 +291,7 @@ def apply_rules(
         score_field: Name of the score field to adjust.
 
     Returns:
-        Filtered and re-ranked list.
+        Filtered, re-ranked, and tag-annotated list.
     """
     result = list(memories)
 
@@ -245,9 +302,12 @@ def apply_rules(
             continue
 
         if rule_type == "hard":
-            result = [m for m in result if evaluate_condition(condition, m)]
+            # Exclude memories that MATCH the condition (see postcondition above).
+            result = [m for m in result if not evaluate_condition(condition, m)]
         elif rule_type == "soft":
             _apply_soft_rule(result, condition, rule.get("action", ""), score_field)
+        elif rule_type == "tag":
+            _apply_tag_rule(result, condition, rule.get("action", ""))
 
     result.sort(key=lambda m: m.get(score_field, 0.0), reverse=True)
     return result
@@ -258,11 +318,22 @@ def validate_rule(
     condition: str,
     action: str,
 ) -> list[str]:
-    """Validate a rule definition. Returns list of error messages (empty = valid)."""
+    """Validate a rule definition before it is persisted.
+
+    Precondition: none — inputs may be arbitrary strings.
+    Postcondition: returns the empty list iff `condition` is parseable by
+    parse_condition, `action` is parseable by parse_action, and the action's
+    mechanism matches rule_type (hard→filter, soft→boost/penalty,
+    tag→tag:name). This is the fail-closed write-time gate: it is the only
+    place a rule is rejected outright; evaluate_condition's read-time
+    behavior on unparseable conditions is deliberately permissive (see its
+    docstring) precisely because this gate is expected to prevent
+    unparseable conditions from ever reaching storage in the first place.
+    """
     errors: list[str] = []
 
-    if rule_type not in ("hard", "soft"):
-        errors.append(f"rule_type must be 'hard' or 'soft', got {rule_type!r}")
+    if rule_type not in ("hard", "soft", "tag"):
+        errors.append(f"rule_type must be 'hard', 'soft' or 'tag', got {rule_type!r}")
 
     try:
         parse_condition(condition)
@@ -273,6 +344,10 @@ def validate_rule(
         action_type, _ = parse_action(action)
         if rule_type == "hard" and action_type != "filter":
             errors.append("Hard rules must use 'filter' action")
+        if rule_type == "soft" and action_type not in ("boost", "penalty"):
+            errors.append("Soft rules must use 'boost:N' or 'penalty:N' action")
+        if rule_type == "tag" and action_type != "tag":
+            errors.append("Tag rules must use 'tag:NAME' action")
     except ValueError as e:
         errors.append(str(e))
 

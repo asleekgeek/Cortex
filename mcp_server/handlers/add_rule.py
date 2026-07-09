@@ -1,12 +1,22 @@
 """Handler: add_rule — add a neuro-symbolic rule to the memory system.
 
-Rules are stored in the memory_rules table and applied during recall to
-hard-filter or soft-rerank results.
+Rules are stored in the memory_rules table and applied during recall (via
+mcp_server.core.memory_rules.apply_rules, invoked from
+mcp_server.handlers.recall._apply_rules_and_order on every recall) to
+hard-exclude, soft-rerank, or tag results. condition/action strings MUST use
+the grammar mcp_server.core.memory_rules actually parses — see that
+module's docstring for the canonical syntax. This handler is a thin
+persistence layer over that grammar: it validates via
+`memory_rules.validate_rule` before insert and never invents its own
+condition/action syntax (a prior version of this docstring described a
+'matcher:value' / 'exclude' shorthand no parser ever implemented; rules
+created with it were silently inert at recall time — see the
+fix/add-rule-memory-rules-drift RCA).
 
 Rule types:
-  - hard:  exclude memories matching the condition from results
-  - soft:  boost or penalize matching memories (action = "boost" | "penalize")
-  - tag:   apply a tag to matching memories on retrieval
+  - hard:  EXCLUDE memories whose condition matches (action must be "filter")
+  - soft:  boost or penalize matching memories (action = "boost:N" | "penalty:N")
+  - tag:   attach a tag to matching memories (action = "tag:NAME")
 
 Scopes:
   - global:   applies everywhere
@@ -18,6 +28,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from mcp_server.core.memory_rules import validate_rule
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
 from mcp_server.handlers._tool_meta import IDEMPOTENT_WRITE
@@ -30,17 +41,26 @@ schema = {
     "description": (
         "Insert a neuro-symbolic rule into memory_rules so the "
         "`apply_rules` engine applies it on every subsequent recall — "
-        "hard-filter (exclude), soft-rerank "
-        "(boost/penalize), or tag the matching memories. Conditions match "
-        "on tags / keywords / metadata; actions specify the effect. Scopes: "
-        "global, domain, directory; resolved by priority then specificity. "
-        "Use this to encode operating principles like `never surface "
-        "deprecated memories` or `boost lessons in the recall pipeline`. "
-        "Distinct from `create_trigger` (proactive prospective memory, "
-        "fires on context match — not a recall filter), and from `anchor` "
-        "(per-memory pin, not a population rule). Mutates the memory_rules "
-        "table; effect is visible at the next `recall` call. Latency "
-        "~20ms. Returns {rule_id, condition, action, scope, priority}."
+        "hard rules EXCLUDE matching memories, soft rules boost/penalize "
+        "their rank, tag rules attach a tag. condition is '<field> <operator> "
+        "<value>' (operators: ==, !=, contains, not_contains, >, <, >=, <=, "
+        "matches — field may be a memory attribute like importance/heat, or "
+        "'tag'/'tags' to match against the tags list). action is 'filter' "
+        "(hard only), 'boost:<float>' or 'penalty:<float>' (soft only), or "
+        "'tag:<name>' (tag only). Rejected outright (created=False) if the "
+        "condition or action does not parse, or if the action's mechanism "
+        "does not match rule_type. Scopes: global, domain, directory; "
+        "resolved by priority then specificity. Use this to encode operating "
+        "principles like `never surface deprecated memories` "
+        "(condition='tag contains deprecated', action='filter', "
+        "rule_type='hard') or `boost lessons in the recall pipeline` "
+        "(condition='tag contains lesson', action='boost:0.3', "
+        "rule_type='soft'). Distinct from `create_trigger` (proactive "
+        "prospective memory, fires on context match — not a recall filter), "
+        "and from `anchor` (per-memory pin, not a population rule). Mutates "
+        "the memory_rules table; effect is visible at the next `recall` "
+        "call. Latency ~20ms. Returns {rule_id, condition, action, scope, "
+        "priority}."
     ),
     "inputSchema": {
         "type": "object",
@@ -49,20 +69,26 @@ schema = {
             "condition": {
                 "type": "string",
                 "description": (
-                    "Rule condition expressed as 'matcher:value' (e.g. "
-                    "'tag:deprecated', 'domain:old_project', 'keyword:secret', "
-                    "'source:import')."
+                    "Rule condition as '<field> <operator> <value>' (e.g. "
+                    "'tag contains deprecated', 'importance > 0.7', "
+                    "'domain == old_project'). Operators: ==, !=, contains, "
+                    "not_contains, >, <, >=, <=, matches (glob)."
                 ),
-                "examples": ["tag:deprecated", "keyword:TODO", "domain:auth-service"],
+                "examples": [
+                    "tag contains deprecated",
+                    "content contains TODO",
+                    "domain == auth-service",
+                ],
             },
             "action": {
                 "type": "string",
                 "description": (
                     "Action to perform when the condition matches. "
-                    "'exclude' filters out (hard); 'boost:N' / 'penalize:N' "
-                    "adjusts ranking by N (soft); 'tag:NAME' attaches a tag (tag rule)."
+                    "'filter' excludes the memory (hard rules only); "
+                    "'boost:N' / 'penalty:N' adjusts ranking by N (soft "
+                    "rules only); 'tag:NAME' attaches a tag (tag rules only)."
                 ),
-                "examples": ["exclude", "boost:0.3", "penalize:0.5", "tag:review"],
+                "examples": ["filter", "boost:0.3", "penalty:0.5", "tag:review"],
             },
             "rule_type": {
                 "type": "string",
@@ -119,7 +145,16 @@ def _get_store() -> MemoryStore:
 
 
 def _validate_rule_args(args: dict[str, Any]) -> dict[str, Any] | None:
-    """Validate rule arguments. Returns error dict on failure, None on success."""
+    """Validate rule arguments. Returns error dict on failure, None on success.
+
+    Precondition: `args` is the raw MCP tool-call argument dict.
+    Postcondition: returns None iff every field is well-formed AND
+    condition/action parse under mcp_server.core.memory_rules' grammar for
+    the given rule_type (delegated to `validate_rule` — the single grammar
+    authority; this function does not re-implement or shadow that parsing).
+    Structural checks (presence, enum membership, scope_value requirement)
+    run first so grammar errors are only reported once the shape is sane.
+    """
     condition = (args.get("condition") or "").strip()
     if not condition:
         return {"created": False, "reason": "condition is required"}
@@ -139,6 +174,10 @@ def _validate_rule_args(args: dict[str, Any]) -> dict[str, Any] | None:
     scope_value = (args.get("scope_value") or "").strip() or None
     if scope in ("domain", "directory") and not scope_value:
         return {"created": False, "reason": f"scope_value required when scope={scope}"}
+
+    grammar_errors = validate_rule(rule_type, condition, action)
+    if grammar_errors:
+        return {"created": False, "reason": "; ".join(grammar_errors)}
 
     return None
 
