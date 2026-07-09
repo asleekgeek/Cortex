@@ -1,6 +1,10 @@
 """Tests for mcp_server.handlers.add_rule — neuro-symbolic rule persistence.
 
-Contract under test (from add_rule.py):
+Contract under test (from add_rule.py). condition/action use the grammar
+mcp_server.core.memory_rules parses (the single grammar authority — see
+that module's docstring); this is NOT the pre-fix 'matcher:value' /
+'exclude' shorthand, which no parser ever implemented (RCA
+fix/add-rule-memory-rules-drift).
   POST-1  Success: returns {created: True, rule_id: int, rule_type, scope,
           scope_value, condition, action, priority} — all fields present, all
           values echo the caller's inputs.
@@ -13,10 +17,13 @@ Contract under test (from add_rule.py):
   POST-6  Missing action returns {created: False, reason: ...}.
   POST-7  Invalid rule_type returns {created: False, reason: ...}.
   POST-8  Invalid scope returns {created: False, reason: ...}.
-  POST-9  Hard rule: rule_type="hard", action="exclude" round-trips correctly.
+  POST-9  Hard rule: rule_type="hard", action="filter" round-trips correctly.
   POST-10 Tag rule: rule_type="tag", action="tag:review" round-trips correctly.
   POST-11 Priority bounds: priority integer is preserved in the response.
   POST-12 No-args call (None) treated as empty dict — validated, not crashed.
+  POST-13 Grammar-invalid condition/action (parseable structurally but not
+          by memory_rules, or mechanism mismatch) is rejected by
+          validate_rule at write time: {created: False, reason: ...}.
 """
 
 from __future__ import annotations
@@ -28,8 +35,12 @@ import pytest
 
 
 def _minimal_args(**overrides) -> dict:
-    """Return the minimum valid args, with optional field overrides."""
-    base = {"condition": "tag:deprecated", "action": "exclude"}
+    """Return the minimum valid args, with optional field overrides.
+
+    Uses the default rule_type ("soft"), so action must be a valid soft
+    action ('boost:N' / 'penalty:N') under memory_rules.validate_rule.
+    """
+    base = {"condition": "tag contains deprecated", "action": "boost:0.1"}
     base.update(overrides)
     return base
 
@@ -86,7 +97,7 @@ class TestAddRuleSuccess:
         from mcp_server.handlers.add_rule import handler
 
         args = {
-            "condition": "keyword:secret",
+            "condition": "content contains secret",
             "action": "boost:0.3",
             "rule_type": "soft",
             "scope": "global",
@@ -95,7 +106,7 @@ class TestAddRuleSuccess:
         result = await handler(args)
 
         assert result["created"] is True
-        assert result["condition"] == "keyword:secret"
+        assert result["condition"] == "content contains secret"
         assert result["action"] == "boost:0.3"
         assert result["rule_type"] == "soft"
         assert result["scope"] == "global"
@@ -106,8 +117,8 @@ class TestAddRuleSuccess:
         """POST-2: two separate rules get distinct rule_ids — each is persisted."""
         from mcp_server.handlers.add_rule import handler
 
-        r1 = await handler(_minimal_args(condition="tag:old"))
-        r2 = await handler(_minimal_args(condition="tag:new"))
+        r1 = await handler(_minimal_args(condition="tag contains old"))
+        r2 = await handler(_minimal_args(condition="tag contains new"))
 
         assert r1["created"] is True
         assert r2["created"] is True
@@ -120,20 +131,20 @@ class TestAddRuleSuccess:
 class TestAddRuleHardType:
     @pytest.mark.asyncio
     async def test_hard_rule_round_trips(self):
-        """POST-9: rule_type=hard, action=exclude stored and echoed correctly."""
+        """POST-9: rule_type=hard, action=filter stored and echoed correctly."""
         from mcp_server.handlers.add_rule import handler
 
         result = await handler(
             {
-                "condition": "tag:deprecated",
-                "action": "exclude",
+                "condition": "tag contains deprecated",
+                "action": "filter",
                 "rule_type": "hard",
             }
         )
 
         assert result["created"] is True
         assert result["rule_type"] == "hard"
-        assert result["action"] == "exclude"
+        assert result["action"] == "filter"
 
 
 # ── POST-10: tag rule ─────────────────────────────────────────────────────────
@@ -147,7 +158,7 @@ class TestAddRuleTagType:
 
         result = await handler(
             {
-                "condition": "keyword:TODO",
+                "condition": "content contains TODO",
                 "action": "tag:review",
                 "rule_type": "tag",
             }
@@ -194,8 +205,8 @@ class TestAddRuleDomainScope:
 
         result = await handler(
             {
-                "condition": "tag:old",
-                "action": "penalize:0.5",
+                "condition": "tag contains old",
+                "action": "penalty:0.5",
                 "rule_type": "soft",
                 "scope": "domain",
                 "scope_value": "auth-service",
@@ -213,8 +224,8 @@ class TestAddRuleDomainScope:
 
         result = await handler(
             {
-                "condition": "source:import",
-                "action": "exclude",
+                "condition": "source == import",
+                "action": "filter",
                 "rule_type": "hard",
                 "scope": "directory",
                 "scope_value": "/Users/alice/code/cortex",
@@ -352,7 +363,9 @@ class TestValidateRuleArgs:
     def test_valid_args_returns_none(self):
         from mcp_server.handlers.add_rule import _validate_rule_args
 
-        err = _validate_rule_args({"condition": "tag:old", "action": "exclude"})
+        err = _validate_rule_args(
+            {"condition": "tag contains old", "action": "boost:0.1"}
+        )
         assert err is None
 
     def test_missing_condition_returns_dict(self):
@@ -413,13 +426,77 @@ class TestValidateRuleArgs:
 
         err = _validate_rule_args(
             {
-                "condition": "tag:old",
-                "action": "exclude",
+                "condition": "tag contains old",
+                "action": "boost:0.1",
                 "scope": "domain",
                 "scope_value": "auth",
             }
         )
         assert err is None
+
+
+# ── POST-13: grammar validation wired via validate_rule ───────────────────────
+
+
+class TestAddRuleGrammarValidation:
+    """RCA fix/add-rule-memory-rules-drift: add_rule must call
+    memory_rules.validate_rule and reject rules whose condition/action do
+    not parse under the engine's grammar, instead of silently persisting an
+    inert rule."""
+
+    @pytest.mark.asyncio
+    async def test_unparseable_condition_rejected(self):
+        from mcp_server.handlers.add_rule import handler
+
+        result = await handler({"condition": "no_operator_here", "action": "boost:0.3"})
+
+        assert result["created"] is False
+        assert "reason" in result
+
+    @pytest.mark.asyncio
+    async def test_legacy_matcher_value_syntax_rejected(self):
+        """The pre-fix docstring's 'tag:deprecated' / 'exclude' shorthand
+        must now be rejected — it was never parseable by the engine."""
+        from mcp_server.handlers.add_rule import handler
+
+        result = await handler(
+            {"condition": "tag:deprecated", "action": "exclude", "rule_type": "hard"}
+        )
+
+        assert result["created"] is False
+        assert "reason" in result
+
+    @pytest.mark.asyncio
+    async def test_hard_rule_with_boost_action_rejected(self):
+        """Mechanism mismatch: hard rules must use 'filter', not 'boost:N'."""
+        from mcp_server.handlers.add_rule import handler
+
+        result = await handler(
+            {
+                "condition": "tag contains deprecated",
+                "action": "boost:0.3",
+                "rule_type": "hard",
+            }
+        )
+
+        assert result["created"] is False
+        assert "reason" in result
+
+    @pytest.mark.asyncio
+    async def test_tag_rule_with_filter_action_rejected(self):
+        """Mechanism mismatch: tag rules must use 'tag:NAME', not 'filter'."""
+        from mcp_server.handlers.add_rule import handler
+
+        result = await handler(
+            {
+                "condition": "content contains TODO",
+                "action": "filter",
+                "rule_type": "tag",
+            }
+        )
+
+        assert result["created"] is False
+        assert "reason" in result
 
 
 # ── Schema introspection ───────────────────────────────────────────────────────
