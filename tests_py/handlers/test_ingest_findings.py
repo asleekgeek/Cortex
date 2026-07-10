@@ -26,8 +26,10 @@ def _make_run(output_dir: Path, run_id: str, findings: dict[str, bool]) -> None:
             "started_at": "2026-07-09T00:00:00Z",
             "last_updated_at": "2026-07-09T00:00:00Z",
             "findings": {
-                fid: {"artifact_path": f"findings/{fid}/stage-1.refined.json",
-                      "extractor_version": "0.1.0"}
+                fid: {
+                    "artifact_path": f"findings/{fid}/stage-1.refined.json",
+                    "extractor_version": "0.1.0",
+                }
                 for fid in findings
             },
         },
@@ -60,7 +62,9 @@ def _make_run(output_dir: Path, run_id: str, findings: dict[str, bool]) -> None:
                     "finding_id": fid,
                     "verified": verified,
                     "verified_kind": {
-                        "schema_ok": True, "completeness_ok": True, "user_acknowledged": True
+                        "schema_ok": True,
+                        "completeness_ok": True,
+                        "user_acknowledged": True,
                     },
                     "finalized_at": "2026-07-09T00:00:00Z",
                     "stage1_refined_path": f"findings/{fid}/stage-1.refined.json",
@@ -137,7 +141,8 @@ class TestIngestFindingsHandler:
     @pytest.mark.asyncio
     async def test_output_dir_not_resolved(self, fake_store, monkeypatch):
         monkeypatch.setattr(
-            "mcp_server.handlers.ingest_findings.resolve_output_dir", lambda *a, **k: None
+            "mcp_server.handlers.ingest_findings.resolve_output_dir",
+            lambda *a, **k: None,
         )
         result = await ingest_findings.handler({"run_id": "run1"})
         assert result["ingested"] is False
@@ -164,8 +169,12 @@ class TestIngestFindingsHandler:
         assert by_id["f2"]["page_id"] is None
         assert by_id["f2"]["memos_written"] == 0
         # Gradation reflected in memory tags.
-        f1_tags = [m["tags"] for m in fake_store.memories if "ap-finding:run1:f1" in m["tags"]][0]
-        f2_tags = [m["tags"] for m in fake_store.memories if "ap-finding:run1:f2" in m["tags"]][0]
+        f1_tags = [
+            m["tags"] for m in fake_store.memories if "ap-finding:run1:f1" in m["tags"]
+        ][0]
+        f2_tags = [
+            m["tags"] for m in fake_store.memories if "ap-finding:run1:f2" in m["tags"]
+        ][0]
         assert "verified" in f1_tags
         assert "hypothesis" in f2_tags
 
@@ -176,7 +185,9 @@ class TestIngestFindingsHandler:
         output_dir = tmp_path / "ap-output"
         _make_run(output_dir, "run1", {"f1": True})
         # Corrupt f1's refined artifact after index.json was written.
-        refined_path = output_dir / "runs" / "run1" / "findings" / "f1" / "stage-1.refined.json"
+        refined_path = (
+            output_dir / "runs" / "run1" / "findings" / "f1" / "stage-1.refined.json"
+        )
         refined_path.write_text("not json", encoding="utf-8")
 
         result = await ingest_findings.handler(
@@ -195,8 +206,12 @@ class TestIngestFindingsHandler:
         output_dir = tmp_path / "ap-output"
         _make_run(output_dir, "run1", {"f1": True})
 
-        first = await ingest_findings.handler({"run_id": "run1", "output_dir": str(output_dir)})
-        second = await ingest_findings.handler({"run_id": "run1", "output_dir": str(output_dir)})
+        first = await ingest_findings.handler(
+            {"run_id": "run1", "output_dir": str(output_dir)}
+        )
+        second = await ingest_findings.handler(
+            {"run_id": "run1", "output_dir": str(output_dir)}
+        )
 
         assert first["verified_count"] == second["verified_count"] == 1
         # Exactly one memory row exists after both runs (dedup via tag lookup).

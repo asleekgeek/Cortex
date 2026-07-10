@@ -28,7 +28,9 @@ import pytest
 from mcp_server.handlers import recall as recall_mod
 
 
-def test_resolve_session_id_returns_registry_value(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_session_id_returns_registry_value(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(recall_mod, "current_window_session", lambda: "sess-abc")
     assert recall_mod._resolve_session_id() == "sess-abc"
 
@@ -107,6 +109,7 @@ def _run_recall_with_session(monkeypatch: pytest.MonkeyPatch, session_value):
     # Real settings (env-derived config, no I/O) — avoids hand-maintaining
     # a fake settings object's growing attribute surface.
     if isinstance(session_value, Exception):
+
         def _cws():
             raise session_value
 
@@ -119,7 +122,9 @@ def _run_recall_with_session(monkeypatch: pytest.MonkeyPatch, session_value):
 
 
 class TestRecallReceiptSessionWiring:
-    def test_receipt_carries_resolved_session_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_receipt_carries_resolved_session_id(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         store, result = _run_recall_with_session(monkeypatch, "window-session-xyz")
         assert store.receipt_calls, "expected a receipt insert call"
         assert store.receipt_calls[0]["session_id"] == "window-session-xyz"
@@ -135,6 +140,8 @@ class TestRecallReceiptSessionWiring:
     def test_recall_does_not_fail_when_registry_raises(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        store, result = _run_recall_with_session(monkeypatch, RuntimeError("registry down"))
+        store, result = _run_recall_with_session(
+            monkeypatch, RuntimeError("registry down")
+        )
         assert "memories" in result
         assert store.receipt_calls[0]["session_id"] is None

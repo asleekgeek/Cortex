@@ -151,8 +151,12 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
             continue
         try:
             results.append(write_finding(store, conn, finding))
-        except Exception as exc:  # composition root: one bad finding must not abort the run
-            logger.warning("ingest_findings: finding %s write failed: %s", finding_id, exc)
+        except (
+            Exception
+        ) as exc:  # composition root: one bad finding must not abort the run
+            logger.warning(
+                "ingest_findings: finding %s write failed: %s", finding_id, exc
+            )
             errors.append(f"{finding_id}: {exc}")
 
     conn.commit()

@@ -61,7 +61,9 @@ def _memory_tags(mem: dict) -> list:
     return raw if isinstance(raw, list) else []
 
 
-def find_existing_memory(store: MemoryStore, run_id: str, finding_id: str) -> int | None:
+def find_existing_memory(
+    store: MemoryStore, run_id: str, finding_id: str
+) -> int | None:
     """Return the memory id already written for this finding, or None."""
     tag = finding_tag(run_id, finding_id)
     try:
@@ -74,7 +76,9 @@ def find_existing_memory(store: MemoryStore, run_id: str, finding_id: str) -> in
     return None
 
 
-def write_finding_memory(store: MemoryStore, finding: FindingRecord) -> tuple[int, bool]:
+def write_finding_memory(
+    store: MemoryStore, finding: FindingRecord
+) -> tuple[int, bool]:
     """Write (or reuse) the one memory representing this finding.
 
     Postcondition: returns (memory_id, created). ``created`` is False when
@@ -270,7 +274,9 @@ def write_receipt_memos(conn: Any, finding: FindingRecord, page_id: int) -> int:
     return inserted
 
 
-def write_finding(store: MemoryStore, conn: Any, finding: FindingRecord) -> dict[str, Any]:
+def write_finding(
+    store: MemoryStore, conn: Any, finding: FindingRecord
+) -> dict[str, Any]:
     """Full write for one finding: memory, and (if verified) page + memos.
 
     This is the per-finding orchestration step; ingest_findings.handler()

@@ -101,11 +101,11 @@ def test_get_remote_url_reads_origin_from_git_config(tmp_path):
     git_dir = repo / ".git"
     git_dir.mkdir(parents=True)
     (git_dir / "config").write_text(
-        '[core]\n'
-        '\trepositoryformatversion = 0\n'
+        "[core]\n"
+        "\trepositoryformatversion = 0\n"
         '[remote "origin"]\n'
-        '\turl = https://github.com/cdeust/Cortex.git\n'
-        '\tfetch = +refs/heads/*:refs/remotes/origin/*\n'
+        "\turl = https://github.com/cdeust/Cortex.git\n"
+        "\tfetch = +refs/heads/*:refs/remotes/origin/*\n"
     )
     assert _get_remote_url(repo) == "https://github.com/cdeust/Cortex.git"
 
@@ -115,8 +115,7 @@ def test_get_remote_url_ignores_a_different_remote_section(tmp_path):
     git_dir = repo / ".git"
     git_dir.mkdir(parents=True)
     (git_dir / "config").write_text(
-        '[remote "upstream"]\n'
-        '\turl = https://github.com/other/other.git\n'
+        '[remote "upstream"]\n\turl = https://github.com/other/other.git\n'
     )
     assert _get_remote_url(repo) == ""
 

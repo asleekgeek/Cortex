@@ -141,7 +141,9 @@ async def fetch_ap_version_via_bridge() -> str | None:
     bridge = APBridge()
     try:
         payload = await bridge.health_check()
-    except Exception as exc:  # pragma: no cover - defensive, bridge.call already swallows
+    except (
+        Exception
+    ) as exc:  # pragma: no cover - defensive, bridge.call already swallows
         logger.debug("ap version (bridge path) unavailable: %s", exc)
         return None
     finally:

@@ -34,8 +34,12 @@ def _make_run(tmp_path: Path, run_id: str) -> Path:
             "run_id": run_id,
             "started_at": "2026-07-09T00:00:00Z",
             "last_updated_at": "2026-07-09T00:00:00Z",
-            "findings": {"f1": {"artifact_path": "findings/f1/stage-1.refined.json",
-                                 "extractor_version": "0.1.0"}},
+            "findings": {
+                "f1": {
+                    "artifact_path": "findings/f1/stage-1.refined.json",
+                    "extractor_version": "0.1.0",
+                }
+            },
         },
     )
     return output_dir
@@ -99,7 +103,12 @@ def _write_verified(
     if transcript_digest is not None:
         payload["transcript_digest"] = transcript_digest
     _write_json(
-        output_dir / "runs" / run_id / "findings" / finding_id / "stage-2.verified.json",
+        output_dir
+        / "runs"
+        / run_id
+        / "findings"
+        / finding_id
+        / "stage-2.verified.json",
         payload,
     )
 
@@ -143,7 +152,9 @@ class TestLoadFindingVerified:
         assert finding.receipts[0].stage == "stage-2"
         assert finding.receipts[0].verdict == "verified"
         # digest = sha256 of the raw artifact bytes, independently recomputable.
-        raw = (output_dir / "runs" / "run1" / "findings" / "f1" / "stage-2.verified.json").read_bytes()
+        raw = (
+            output_dir / "runs" / "run1" / "findings" / "f1" / "stage-2.verified.json"
+        ).read_bytes()
         assert finding.receipts[0].digest == hashlib.sha256(raw).hexdigest()
 
     def test_not_verified_stage2_yields_unverified_finding(self, tmp_path):
@@ -208,7 +219,12 @@ class TestTranscriptDigest:
         _write_refined(output_dir, "run1", "f1")
         _write_verified(output_dir, "run1", "f1")
         _write_json(
-            output_dir / "runs" / "run1" / "findings" / "f1" / "stage-6.validation.json",
+            output_dir
+            / "runs"
+            / "run1"
+            / "findings"
+            / "f1"
+            / "stage-6.validation.json",
             {"validation_status": "passed", "transcript_digest": "should-be-ignored"},
         )
 

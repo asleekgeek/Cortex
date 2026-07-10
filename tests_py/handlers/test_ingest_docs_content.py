@@ -56,7 +56,9 @@ class TestRunDocsPass:
         monkeypatch.setattr(cypher, "fetch_doc_files", _fetch_doc_files)
         monkeypatch.setattr(cypher, "fetch_doc_references", _fetch_doc_references)
         monkeypatch.setattr(writers, "write_doc_memory", _write_doc_memory)
-        monkeypatch.setattr(writers, "write_doc_reference_edge", _write_doc_reference_edge)
+        monkeypatch.setattr(
+            writers, "write_doc_reference_edge", _write_doc_reference_edge
+        )
 
         result = await docs_content.run_docs_pass(
             _FakeStore(), "/g", str(tmp_path), "code:proj"
@@ -101,7 +103,9 @@ class TestRunDocsPass:
         async def _fetch_doc_references(graph_path, known_doc_paths):
             return [], []
 
-        def _write_doc_memory_existing(store, domain, directory_context, rel_path, content):
+        def _write_doc_memory_existing(
+            store, domain, directory_context, rel_path, content
+        ):
             return (555, False)  # already ingested
 
         monkeypatch.setattr(cypher, "fetch_doc_files", _fetch_doc_files)

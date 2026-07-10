@@ -400,9 +400,7 @@ class TestIngestCodebaseProvenance:
         replies["health_check_bridge"] = {"version": "0.6.0"}  # bridge path
         replies["get_processes"] = {"processes": []}
 
-        with caplog.at_level(
-            "WARNING", logger="mcp_server.handlers.ingest_provenance"
-        ):
+        with caplog.at_level("WARNING", logger="mcp_server.handlers.ingest_provenance"):
             result = await icb.handler(
                 {
                     "project_path": "/tmp/skewproj",
@@ -435,9 +433,7 @@ class TestIngestCodebaseProvenance:
         graph_dir = tmp_path / "existing-graph-prov"
         graph_dir.mkdir()
         (graph_dir / "data.kz").write_text("x")
-        ingest_helpers.memoise_graph_path(
-            fake_store, "/tmp/cachedproj", str(graph_dir)
-        )
+        ingest_helpers.memoise_graph_path(fake_store, "/tmp/cachedproj", str(graph_dir))
         calls, replies = fake_upstream
         replies["health_check"] = {"version": "0.5.0"}
         replies["get_processes"] = {"processes": []}

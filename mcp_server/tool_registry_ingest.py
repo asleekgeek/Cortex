@@ -25,7 +25,12 @@ import functools
 
 from fastmcp import Context, FastMCP
 
-from mcp_server.handlers import change_impact, ingest_codebase, ingest_findings, ingest_prd
+from mcp_server.handlers import (
+    change_impact,
+    ingest_codebase,
+    ingest_findings,
+    ingest_prd,
+)
 from mcp_server.mcp_progress import McpProgress
 from mcp_server.shared.progress import NullProgress
 from mcp_server.tool_error_handler import safe_handler

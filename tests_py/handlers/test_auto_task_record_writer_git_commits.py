@@ -30,7 +30,9 @@ def real_git_repo(tmp_path):
     subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
     (repo / "a.txt").write_text("hello\n")
     subprocess.run(["git", "add", "a.txt"], cwd=repo, check=True)
-    subprocess.run(["git", "commit", "-q", "-m", "initial commit"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "initial commit"], cwd=repo, check=True
+    )
     return repo
 
 

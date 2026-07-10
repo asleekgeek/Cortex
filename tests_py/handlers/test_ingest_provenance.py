@@ -157,9 +157,7 @@ class TestCheckVersionParity:
         # (iface angle-mort 5).
         monkeypatch.setattr(ip, "fetch_ap_version_via_bridge", _const_async("0.6.0"))
         monkeypatch.setattr(ip, "fetch_ap_version_via_pool", _const_async("0.4.0"))
-        with caplog.at_level(
-            "WARNING", logger="mcp_server.handlers.ingest_provenance"
-        ):
+        with caplog.at_level("WARNING", logger="mcp_server.handlers.ingest_provenance"):
             result = await ip.check_version_parity()
         assert result.status == "mismatch"
         assert result.bridge_version == "0.6.0"
@@ -174,9 +172,7 @@ class TestCheckVersionParity:
     ):
         monkeypatch.setattr(ip, "fetch_ap_version_via_bridge", _const_async(None))
         monkeypatch.setattr(ip, "fetch_ap_version_via_pool", _const_async("0.4.0"))
-        with caplog.at_level(
-            "WARNING", logger="mcp_server.handlers.ingest_provenance"
-        ):
+        with caplog.at_level("WARNING", logger="mcp_server.handlers.ingest_provenance"):
             result = await ip.check_version_parity()
         assert result.status == "unknown"
         assert result.warning is not None

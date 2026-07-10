@@ -95,9 +95,8 @@ class TestNormalizeProjectId:
     def test_lowercases_windows_slug_to_match_stored_original_casing(self):
         # cwd_to_project_id derives 'c--work-myrepo' (lowercase); the
         # profile stores 'C--Work-MyRepo' (original filesystem casing).
-        assert (
-            normalize_project_id("c--work-myrepo")
-            == normalize_project_id("C--Work-MyRepo")
+        assert normalize_project_id("c--work-myrepo") == normalize_project_id(
+            "C--Work-MyRepo"
         )
 
     def test_returns_none_for_none(self):
@@ -117,9 +116,8 @@ class TestNormalizeProjectId:
         # case-sensitive filesystem two distinct sibling directories
         # differing only by case would fold to the same normalized id.
         # Accepted — see rationale in normalize_project_id's docstring.
-        assert (
-            normalize_project_id("-Users-dev-Foo")
-            == normalize_project_id("-Users-dev-foo")
+        assert normalize_project_id("-Users-dev-Foo") == normalize_project_id(
+            "-Users-dev-foo"
         )
 
 

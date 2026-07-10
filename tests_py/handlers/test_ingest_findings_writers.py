@@ -75,7 +75,9 @@ class TestFindExistingMemory:
 
     def test_returns_id_when_tag_present(self):
         tag = "ap-finding:run1:f1"
-        store = _FakeStore(existing_by_tag={tag: [{"id": 777, "tags": ["finding", tag]}]})
+        store = _FakeStore(
+            existing_by_tag={tag: [{"id": 777, "tags": ["finding", tag]}]}
+        )
         assert find_existing_memory(store, "run1", "f1") == 777
 
 
@@ -104,7 +106,9 @@ class TestWriteFindingMemory:
 
     def test_reingesting_same_finding_does_not_duplicate(self):
         tag = "ap-finding:run1:f1"
-        store = _FakeStore(existing_by_tag={tag: [{"id": 555, "tags": ["finding", tag]}]})
+        store = _FakeStore(
+            existing_by_tag={tag: [{"id": 555, "tags": ["finding", tag]}]}
+        )
         finding = _verified_finding()
         mem_id, created = write_finding_memory(store, finding)
         assert created is False
@@ -140,7 +144,9 @@ class TestWriteReceiptMemos:
         import mcp_server.handlers.ingest_findings_writers as w
 
         inserted = []
-        monkeypatch.setattr(w, "insert_memo", lambda conn, **kw: inserted.append(kw) or 1)
+        monkeypatch.setattr(
+            w, "insert_memo", lambda conn, **kw: inserted.append(kw) or 1
+        )
         conn = _mock_conn(memo_exists=False)
         finding = _verified_finding(
             receipts=[
@@ -183,7 +189,9 @@ class TestWriteFindingPageSourceAnchoring:
         monkeypatch.setattr(
             w,
             "upsert_page_sources",
-            lambda conn, pid, entries, **kw: calls.append((pid, tuple(entries), kw)) or len(entries),
+            lambda conn, pid, entries, **kw: (
+                calls.append((pid, tuple(entries), kw)) or len(entries)
+            ),
         )
         return calls
 
@@ -210,7 +218,9 @@ class TestWriteFindingPageSourceAnchoring:
         kinds = [kw["link_kind"] for _pid, _entries, kw in calls]
         assert kinds == ["finding"]
 
-    def test_reingesting_same_finding_reissues_same_anchoring_idempotently(self, monkeypatch):
+    def test_reingesting_same_finding_reissues_same_anchoring_idempotently(
+        self, monkeypatch
+    ):
         calls = self._patch_infra(monkeypatch)
         finding = _verified_finding(
             file_paths=["src/foo.rs"], source_path="/abs/report.json"
@@ -223,7 +233,9 @@ class TestWriteFindingPageSourceAnchoring:
         # semantics in the real upsert_page_sources make a second call
         # with identical arguments a no-op on row count.
         first_pass = [(pid, entries, kw["link_kind"]) for pid, entries, kw in calls[:2]]
-        second_pass = [(pid, entries, kw["link_kind"]) for pid, entries, kw in calls[2:]]
+        second_pass = [
+            (pid, entries, kw["link_kind"]) for pid, entries, kw in calls[2:]
+        ]
         assert first_pass == second_pass
 
 
@@ -232,7 +244,9 @@ class TestWriteFinding:
         import mcp_server.handlers.ingest_findings_writers as w
 
         page_calls = []
-        monkeypatch.setattr(w, "write_finding_page", lambda *a, **k: page_calls.append(a) or 1)
+        monkeypatch.setattr(
+            w, "write_finding_page", lambda *a, **k: page_calls.append(a) or 1
+        )
         store = _FakeStore()
         conn = _mock_conn()
         finding = _verified_finding(verified=False, receipts=[])

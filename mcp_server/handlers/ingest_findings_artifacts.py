@@ -154,7 +154,9 @@ def _load_receipt(finding_dir: Path, stage: str, file_name: str) -> Receipt | No
     transcript_digest = None
     if stage == "stage-2":
         candidate = raw.get("transcript_digest")
-        transcript_digest = candidate if isinstance(candidate, str) and candidate else None
+        transcript_digest = (
+            candidate if isinstance(candidate, str) and candidate else None
+        )
     return Receipt(
         stage=stage,
         rel_path=file_name,
@@ -195,7 +197,9 @@ def _extract_file_paths(finding_dir: Path) -> list[str]:
         raw, _ = _read_json(path)
     except MalformedArtifact:
         return []
-    matched = raw.get("report", {}).get("matched_symbols") or raw.get("matched_symbols") or []
+    matched = (
+        raw.get("report", {}).get("matched_symbols") or raw.get("matched_symbols") or []
+    )
     seen: list[str] = []
     for m in matched:
         qn = m.get("qualified_name") if isinstance(m, dict) else None
@@ -222,7 +226,11 @@ def load_finding(output_dir: Path, run_id: str, finding_id: str) -> FindingRecor
     refined, _ = _read_json(refined_path)
     extracted = refined.get("extracted", {})
     raw_source_path = extracted.get("source_path")
-    source_path = raw_source_path if isinstance(raw_source_path, str) and raw_source_path else None
+    source_path = (
+        raw_source_path
+        if isinstance(raw_source_path, str) and raw_source_path
+        else None
+    )
 
     receipts: list[Receipt] = []
     for stage, file_name in _RECEIPT_SPECS:

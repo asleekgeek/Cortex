@@ -37,7 +37,10 @@ from mcp_server.handlers._tool_meta import IDEMPOTENT_WRITE
 from mcp_server.infrastructure.config import WIKI_ROOT
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
-from mcp_server.infrastructure.pg_store_wiki import get_page_by_rel_path, insert_citation
+from mcp_server.infrastructure.pg_store_wiki import (
+    get_page_by_rel_path,
+    insert_citation,
+)
 from mcp_server.infrastructure.session_registry import current_window_session
 from mcp_server.infrastructure.wiki_store import read_page
 

@@ -152,4 +152,3 @@ def test_auto_recall_does_not_crash_on_short_query(_seeded_db: str) -> None:
     result = _run_hook("ok", _seeded_db)
     assert result.returncode == 0
     assert result.stdout.strip() == ""
-

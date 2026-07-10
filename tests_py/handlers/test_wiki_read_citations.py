@@ -115,7 +115,9 @@ def _write(path: Path, content: str) -> None:
 # ── 1. Read with a resolvable session → 1 citation ─────────────────────
 
 
-def test_read_with_session_records_one_citation(tmp_wiki, wired_pg, monkeypatch) -> None:
+def test_read_with_session_records_one_citation(
+    tmp_wiki, wired_pg, monkeypatch
+) -> None:
     citations, pages = wired_pg
     _register_page(pages, tmp_wiki, "a.md", page_id=1)
     monkeypatch.setattr(wiki_read, "current_window_session", lambda: "sess-A")
@@ -144,7 +146,9 @@ def test_reread_same_session_dedups(tmp_wiki, wired_pg, monkeypatch) -> None:
 # ── 3. Read from a DIFFERENT session → 2nd citation ─────────────────────
 
 
-def test_read_from_second_session_adds_citation(tmp_wiki, wired_pg, monkeypatch) -> None:
+def test_read_from_second_session_adds_citation(
+    tmp_wiki, wired_pg, monkeypatch
+) -> None:
     citations, pages = wired_pg
     _register_page(pages, tmp_wiki, "a.md", page_id=1)
 
@@ -174,7 +178,9 @@ def test_no_session_records_no_citation(tmp_wiki, wired_pg, monkeypatch) -> None
 # ── 5. Page never compiled into PG → 0 citations, read still succeeds ──
 
 
-def test_page_absent_from_pg_records_no_citation(tmp_wiki, wired_pg, monkeypatch) -> None:
+def test_page_absent_from_pg_records_no_citation(
+    tmp_wiki, wired_pg, monkeypatch
+) -> None:
     citations, pages = wired_pg
     # Filesystem page exists but is NOT registered in `pages` (never compiled).
     pid = generate_page_id()

@@ -309,10 +309,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     if fallback_warning:
         _log(f"WARNING: {fallback_warning}")
     else:
-        _log(
-            "running as the documented AP-unreachable fallback "
-            "(ADR-0052 sec 2)"
-        )
+        _log("running as the documented AP-unreachable fallback (ADR-0052 sec 2)")
 
     _log(f"scanning {root} (max_files={max_files}, incremental={incremental})")
     source_files = collect_source_files(root, languages, max_files, max_bytes)

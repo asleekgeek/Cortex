@@ -33,9 +33,7 @@ from mcp_server.shared.subprocess_safe import run_with_hard_timeout
 
 
 def test_returns_stripped_stdout_on_success():
-    out = run_with_hard_timeout(
-        [sys.executable, "-c", "print('hello')"], timeout=5
-    )
+    out = run_with_hard_timeout([sys.executable, "-c", "print('hello')"], timeout=5)
     assert out == "hello"
 
 

@@ -62,8 +62,6 @@ class TestFallbackStatusInResponse:
     async def test_missing_directory_short_circuits_before_fallback_check(
         self, tmp_path
     ):
-        result = await ca.handler(
-            {"directory": str(tmp_path / "does-not-exist")}
-        )
+        result = await ca.handler({"directory": str(tmp_path / "does-not-exist")})
         assert result["analyzed"] is False
         assert "fallback_status" not in result
