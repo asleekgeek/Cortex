@@ -1,0 +1,63 @@
+{
+  "mode": "DRY-RUN",
+  "timestamp_utc": "20260710T151321Z",
+  "target": 0.25,
+  "limit": 5000,
+  "status": "ok",
+  "scanned_rows": 7,
+  "reheated": 0,
+  "unreachable": 7,
+  "already_above_target": 0,
+  "skipped_race": 0,
+  "journal": [
+    {
+      "id": 4196187,
+      "heat_base_before": 0.41743782,
+      "effective_heat_before": 0.07116703,
+      "effective_heat_at_max": 0.17048535,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4196210,
+      "heat_base_before": 0.2975066,
+      "effective_heat_before": 0.061285555,
+      "effective_heat_at_max": 0.2059973,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4196226,
+      "heat_base_before": 0.36204597,
+      "effective_heat_before": 0.06155169,
+      "effective_heat_at_max": 0.1700107,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4196229,
+      "heat_base_before": 0.4504463,
+      "effective_heat_before": 0.0765807,
+      "effective_heat_at_max": 0.17001073,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4197563,
+      "heat_base_before": 0.356721,
+      "effective_heat_before": 0.06670472,
+      "effective_heat_at_max": 0.18699409,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4197566,
+      "heat_base_before": 0.33783472,
+      "effective_heat_before": 0.06317311,
+      "effective_heat_at_max": 0.18699412,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4197568,
+      "heat_base_before": 0.29348257,
+      "effective_heat_before": 0.05487952,
+      "effective_heat_at_max": 0.18699414,
+      "outcome": "unreachable"
+    }
+  ]
+}
