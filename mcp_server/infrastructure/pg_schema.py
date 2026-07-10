@@ -2035,6 +2035,18 @@ BEGIN
             ));
     END IF;
 END $$;
+
+-- Migration: one citation per (page, session) (T2-H4/INC5.4, D7/Q2). A
+-- session that re-reads the same page must not re-trigger the +0.05
+-- heat bump on every read (trg_wiki_citation_bump). Partial unique
+-- index: rows with session_id='' (no window-session identity resolved,
+-- e.g. non-interactive callers) are intentionally excluded — they carry
+-- no CITED_IN provenance semantics and must not collide with each
+-- other. CREATE UNIQUE INDEX IF NOT EXISTS is itself idempotent; no DO
+-- block needed.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_wiki_citations_page_session
+    ON wiki.citations (page_id, session_id)
+    WHERE session_id <> '';
 """
 
 # ── Schema initialization ────────────────────────────────────────────────

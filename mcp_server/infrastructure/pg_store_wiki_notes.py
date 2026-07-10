@@ -23,16 +23,30 @@ def insert_citation(
     session_id: str = "",
     domain: str = "",
     memory_id: int | None = None,
-) -> int:
-    """Record that a page was cited. Trigger bumps heat + citation_count."""
+) -> int | None:
+    """Record that a page was cited. Trigger bumps heat + citation_count.
+
+    Precondition: page_id references an existing wiki.pages row.
+    Postcondition: when session_id is non-empty, at most one
+    wiki.citations row exists for (page_id, session_id) — a re-citation
+    of the same page within the same session is a silent no-op (DB-level
+    dedup via ``uq_wiki_citations_page_session``, T2-H4/D7/Q2: the +0.05
+    heat bump on trg_wiki_citation_bump must not repeat per re-read).
+    Rows with session_id='' carry no dedup semantics and always insert
+    (no CITED_IN provenance — excluded from the partial unique index).
+    Returns the new citation id, or None if the (page_id, session_id)
+    pair already existed (duplicate, not an error).
+    """
     sql = """
     INSERT INTO wiki.citations (page_id, session_id, domain, memory_id)
     VALUES (%s, %s, %s, %s)
+    ON CONFLICT (page_id, session_id) WHERE session_id <> '' DO NOTHING
     RETURNING id;
     """
     with conn.cursor() as cur:
         cur.execute(sql, (page_id, session_id, domain, memory_id))
-        return _returning_id(cur.fetchone())
+        row = cur.fetchone()
+        return _returning_id(row) if row is not None else None
 
 
 def insert_memo(
