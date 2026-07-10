@@ -64,11 +64,19 @@ def _fetch_row(conn, memory_id: int) -> dict:
         return cur.fetchone()
 
 
-def _run(store, *, apply: bool, resolve_directory=None, resolve_project_tag=None):
+def _run(
+    store,
+    *,
+    apply: bool,
+    include_orphans: bool = False,
+    resolve_directory=None,
+    resolve_project_tag=None,
+):
     return asyncio.run(
         run_memory_domain_backfill_pass(
             store,
             apply=apply,
+            include_orphans=include_orphans,
             resolve_directory=resolve_directory or (lambda _d: ""),
             resolve_project_tag=resolve_project_tag or (lambda _s: ""),
         )
@@ -236,6 +244,104 @@ class TestIdempotence:
                     "DELETE FROM memories WHERE id = ANY(%s)",
                     ([filled_id, orphan_id],),
                 )
+                conn.commit()
+
+
+class TestIncludeOrphansRescan:
+    """INC6.2: after a resolution-logic fix (e.g. worktree support in
+    domain_mapping.py), a previously-orphaned row can become resolvable.
+    ``include_orphans=True`` must rescan it, fill its domain, AND remove
+    the stale ``domain-orphan`` tag — the default (``include_orphans=
+    False``) must leave it untouched, preserving the standard campaign's
+    idempotence guarantee (TestIdempotence above)."""
+
+    def test_default_scan_excludes_orphan_tagged_rows(self):
+        store = _pg_only()
+        with store.batch_pool.connection() as conn:
+            memory_id = _insert_raw_memory(
+                conn,
+                content="I6-D3 test: already orphan-tagged, default scan",
+                domain="",
+                directory_context="/Users/x/Developments/widget-project",
+                tags=["domain-orphan"],
+            )
+            conn.commit()
+        try:
+            result = _run(
+                store,
+                apply=True,
+                include_orphans=False,
+                resolve_directory=lambda d: "widget-domain" if "widget" in d else "",
+            )
+            assert not any(j["id"] == memory_id for j in result["journal"])
+            with store.batch_pool.connection() as conn:
+                row = _fetch_row(conn, memory_id)
+            assert row["domain"] == ""
+            assert "domain-orphan" in row["tags"]
+        finally:
+            with store.batch_pool.connection() as conn:
+                conn.execute("DELETE FROM memories WHERE id = %s", (memory_id,))
+                conn.commit()
+
+    def test_include_orphans_rescans_and_fills_and_strips_the_tag(self):
+        store = _pg_only()
+        with store.batch_pool.connection() as conn:
+            memory_id = _insert_raw_memory(
+                conn,
+                content="I6-D3 test: orphan-tagged, now resolvable on rescan",
+                domain="",
+                directory_context="/tmp/wt-widget-project",
+                tags=["domain-orphan"],
+            )
+            conn.commit()
+        try:
+            result = _run(
+                store,
+                apply=True,
+                include_orphans=True,
+                # Simulates the worktree fix: the fixed resolve_cwd now
+                # resolves this directory where the old logic could not.
+                resolve_directory=lambda d: "widget-domain" if "widget" in d else "",
+            )
+            assert any(
+                j["id"] == memory_id and j["evidence"] == "directory_context"
+                for j in result["journal"]
+            )
+            with store.batch_pool.connection() as conn:
+                row = _fetch_row(conn, memory_id)
+            assert row["domain"] == "widget-domain"
+            assert "domain-orphan" not in row["tags"]
+        finally:
+            with store.batch_pool.connection() as conn:
+                conn.execute("DELETE FROM memories WHERE id = %s", (memory_id,))
+                conn.commit()
+
+    def test_include_orphans_still_alive_row_stays_orphan_tagged_if_still_unresolvable(
+        self,
+    ):
+        store = _pg_only()
+        with store.batch_pool.connection() as conn:
+            memory_id = _insert_raw_memory(
+                conn,
+                content="I6-D3 test: orphan-tagged, still unresolvable",
+                domain="",
+                directory_context="",
+                tags=["domain-orphan"],
+            )
+            conn.commit()
+        try:
+            result = _run(store, apply=True, include_orphans=True)
+            assert any(
+                j["id"] == memory_id and j["evidence"] == "" and j["domain"] == ""
+                for j in result["journal"]
+            )
+            with store.batch_pool.connection() as conn:
+                row = _fetch_row(conn, memory_id)
+            assert row["domain"] == ""
+            assert "domain-orphan" in row["tags"]
+        finally:
+            with store.batch_pool.connection() as conn:
+                conn.execute("DELETE FROM memories WHERE id = %s", (memory_id,))
                 conn.commit()
 
 

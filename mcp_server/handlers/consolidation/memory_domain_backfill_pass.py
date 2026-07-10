@@ -100,6 +100,7 @@ async def run_memory_domain_backfill_pass(
     *,
     apply: bool = False,
     limit: int = DEFAULT_MEMORY_DOMAIN_BACKFILL_LIMIT,
+    include_orphans: bool = False,
     resolve_directory: ResolveDirectoryFn | None = None,
     resolve_project_tag: ResolveProjectTagFn | None = None,
 ) -> dict[str, Any]:
@@ -113,10 +114,17 @@ async def run_memory_domain_backfill_pass(
                     to the production functions ``remember``/
                     ``backfill_memories`` already use (dependency
                     injection point for tests — coding-standards.md §5).
+                    ``include_orphans`` defaults to False (standard
+                    campaign behavior — orphans are terminal); set True
+                    only to deliberately rescan rows already tagged
+                    ``domain-orphan``, e.g. after a resolution-logic fix
+                    that could newly resolve some of them (INC6.2).
     Post-condition: for every scanned domain-less memory where
                     ``core.memory_domain_backfill.derive_memory_domain``
                     finds a resolving source, ``memories.domain`` equals
-                    that derived domain IFF ``apply`` is True. Rows with
+                    that derived domain IFF ``apply`` is True, and any
+                    pre-existing ``domain-orphan`` tag is removed
+                    (``update_memory_domain``'s contract). Rows with
                     no resolving source are tagged ``domain-orphan``
                     IFF ``apply`` is True. ``apply=False`` performs the
                     same derivation without writing (dry run) — the
@@ -143,7 +151,9 @@ async def run_memory_domain_backfill_pass(
     }
     try:
         with store.batch_pool.connection() as conn:
-            rows = list_domainless_memories(conn, limit)
+            rows = list_domainless_memories(
+                conn, limit, include_orphans=include_orphans
+            )
             out["scanned"] = len(rows)
             for row in rows:
                 _process_memory(

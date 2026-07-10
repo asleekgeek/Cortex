@@ -20,7 +20,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from mcp_server.shared import domain_mapping as dm
-from mcp_server.shared.domain_mapping import _get_remote_url, _git_root
+from mcp_server.shared.domain_mapping import (
+    _dereference_worktree_gitdir,
+    _get_remote_url,
+    _git_root,
+    _resolve_repo_for_root,
+)
 
 
 # ── _git_root ────────────────────────────────────────────────────────────
@@ -261,3 +266,243 @@ def test_resolve_cwd_uses_the_fast_path_end_to_end(tmp_path, monkeypatch):
         assert dm.resolve_cwd(str(subdir)) == "myrepo"
     finally:
         dm._build_registry.cache_clear()
+
+
+# ── INC6.2: linked worktrees resolve to the main repo's domain ─────────
+#
+# _discover_repos only registers `.git`-as-DIRECTORY entries, so a linked
+# worktree's root is never in registry.path_to_repo even though _git_root
+# correctly finds it. _dereference_worktree_gitdir + _resolve_repo_for_root
+# close that gap by dereferencing the worktree's `.git` FILE to the main
+# repo's root at lookup time — same domain, no duplicate registration.
+
+
+def test_dereference_worktree_gitdir_resolves_to_main_root(tmp_path):
+    main_repo = tmp_path / "main"
+    (main_repo / ".git").mkdir(parents=True)
+    worktree = tmp_path / "wt-feature"
+    worktree.mkdir()
+    (worktree / ".git").write_text(f"gitdir: {main_repo}/.git/worktrees/feature\n")
+
+    result = _dereference_worktree_gitdir(worktree / ".git")
+
+    assert result == main_repo.resolve()
+
+
+def test_dereference_worktree_gitdir_returns_none_for_a_normal_repo(tmp_path):
+    repo = tmp_path / "repo"
+    (repo / ".git").mkdir(parents=True)
+    assert _dereference_worktree_gitdir(repo / ".git") is None
+
+
+def test_dereference_worktree_gitdir_returns_none_for_missing_git_entry(tmp_path):
+    assert _dereference_worktree_gitdir(tmp_path / "nope" / ".git") is None
+
+
+def test_dereference_worktree_gitdir_fails_safe_on_malformed_content(tmp_path):
+    worktree = tmp_path / "wt"
+    worktree.mkdir()
+    (worktree / ".git").write_text("not a gitdir line at all\n")
+    assert _dereference_worktree_gitdir(worktree / ".git") is None
+
+
+def test_dereference_worktree_gitdir_fails_safe_on_empty_file(tmp_path):
+    worktree = tmp_path / "wt"
+    worktree.mkdir()
+    (worktree / ".git").write_text("")
+    assert _dereference_worktree_gitdir(worktree / ".git") is None
+
+
+def test_dereference_worktree_gitdir_fails_safe_when_worktrees_dir_missing(tmp_path):
+    # gitdir points somewhere plausible-looking but not under a
+    # `.git/worktrees/<name>` admin dir — must not misresolve.
+    worktree = tmp_path / "wt"
+    worktree.mkdir()
+    (worktree / ".git").write_text(f"gitdir: {tmp_path}/somewhere/else\n")
+    assert _dereference_worktree_gitdir(worktree / ".git") is None
+
+
+def test_dereference_worktree_gitdir_fails_safe_when_main_root_has_no_git(tmp_path):
+    # Structurally worktree-shaped path, but the computed "main root" has
+    # no `.git` directory of its own — reject rather than guess.
+    fake_main = tmp_path / "not-really-a-repo"
+    worktree = tmp_path / "wt"
+    worktree.mkdir()
+    (worktree / ".git").write_text(f"gitdir: {fake_main}/.git/worktrees/feature\n")
+    assert _dereference_worktree_gitdir(worktree / ".git") is None
+
+
+def test_dereference_worktree_gitdir_handles_relative_gitdir_path(tmp_path):
+    main_repo = tmp_path / "main"
+    (main_repo / ".git").mkdir(parents=True)
+    worktree = tmp_path / "wt-feature"
+    worktree.mkdir()
+    # Relative form, resolved against the worktree's own directory.
+    rel = "../main/.git/worktrees/feature"
+    (worktree / ".git").write_text(f"gitdir: {rel}\n")
+
+    result = _dereference_worktree_gitdir(worktree / ".git")
+
+    assert result == main_repo.resolve()
+
+
+def test_resolve_repo_for_root_hits_directly_registered_repo(tmp_path):
+    repo = dm.RepoInfo(
+        fs_path="/x/repo", dir_name="repo", remote_name="repo", canonical="repo"
+    )
+    registry = dm.DomainRegistry(
+        repos=[repo], name_to_canonical={}, slug_index={}, fragment_index={}
+    )
+    assert _resolve_repo_for_root("/x/repo", registry) is repo
+
+
+def test_resolve_repo_for_root_dereferences_a_worktree_to_the_main_repo(tmp_path):
+    main_repo = tmp_path / "main"
+    (main_repo / ".git").mkdir(parents=True)
+    worktree = tmp_path / "wt-feature"
+    worktree.mkdir()
+    (worktree / ".git").write_text(f"gitdir: {main_repo}/.git/worktrees/feature\n")
+
+    main_fs_path = dm._to_posix(main_repo.resolve())
+    repo = dm.RepoInfo(
+        fs_path=main_fs_path, dir_name="main", remote_name="cortex", canonical="cortex"
+    )
+    registry = dm.DomainRegistry(
+        repos=[repo], name_to_canonical={}, slug_index={}, fragment_index={}
+    )
+
+    worktree_root = _git_root(str(worktree))
+    result = _resolve_repo_for_root(worktree_root, registry)
+
+    assert result is repo
+
+
+def test_resolve_repo_for_root_returns_none_when_worktree_main_repo_unregistered(
+    tmp_path,
+):
+    main_repo = tmp_path / "main"
+    (main_repo / ".git").mkdir(parents=True)
+    worktree = tmp_path / "wt-feature"
+    worktree.mkdir()
+    (worktree / ".git").write_text(f"gitdir: {main_repo}/.git/worktrees/feature\n")
+    registry = dm.DomainRegistry(
+        repos=[], name_to_canonical={}, slug_index={}, fragment_index={}
+    )
+
+    worktree_root = _git_root(str(worktree))
+    assert _resolve_repo_for_root(worktree_root, registry) is None
+
+
+def test_resolve_repo_for_root_returns_none_for_unregistered_non_worktree(tmp_path):
+    plain = tmp_path / "not-a-repo"
+    plain.mkdir()
+    registry = dm.DomainRegistry(
+        repos=[], name_to_canonical={}, slug_index={}, fragment_index={}
+    )
+    assert _resolve_repo_for_root(dm._to_posix(plain), registry) is None
+
+
+def test_resolve_cwd_from_inside_a_linked_worktree_resolves_to_main_repo_domain(
+    tmp_path, monkeypatch
+):
+    # End-to-end: a real filesystem worktree, real registry built from
+    # the main repo only (worktrees are never scanned by _discover_repos),
+    # cwd deep inside the worktree resolves to the main repo's domain.
+    dev_root = tmp_path / "dev"
+    main_repo = dev_root / "cortex"
+    (main_repo / ".git").mkdir(parents=True)
+    (main_repo / ".git" / "config").write_text(
+        '[remote "origin"]\n\turl = https://github.com/cdeust/Cortex.git\n'
+    )
+
+    worktree = tmp_path / "wt-cortex-feature"  # deliberately OUTSIDE dev_root
+    subdir = worktree / "mcp_server" / "shared"
+    subdir.mkdir(parents=True)
+    (worktree / ".git").write_text(f"gitdir: {main_repo}/.git/worktrees/feature\n")
+
+    monkeypatch.setattr(dm, "_candidate_dev_roots", lambda: [dev_root])
+    dm._build_registry.cache_clear()
+    try:
+        assert dm.resolve_cwd(str(subdir)) == "cortex"
+        # The worktree root itself must NOT be a separate registry entry.
+        registry = dm._build_registry()
+        assert dm._git_root(str(subdir)) not in registry.path_to_repo
+    finally:
+        dm._build_registry.cache_clear()
+
+
+def test_resolve_cwd_worktree_with_broken_gitdir_fails_safe_to_empty_domain(
+    tmp_path, monkeypatch
+):
+    dev_root = tmp_path / "dev"
+    main_repo = dev_root / "cortex"
+    (main_repo / ".git").mkdir(parents=True)
+    (main_repo / ".git" / "config").write_text(
+        '[remote "origin"]\n\turl = https://github.com/cdeust/Cortex.git\n'
+    )
+
+    worktree = tmp_path / "wt-broken"
+    worktree.mkdir()
+    (worktree / ".git").write_text("this is not a valid gitdir pointer\n")
+
+    monkeypatch.setattr(dm, "_candidate_dev_roots", lambda: [dev_root])
+    dm._build_registry.cache_clear()
+    try:
+        assert dm.resolve_cwd(str(worktree)) == ""
+    finally:
+        dm._build_registry.cache_clear()
+
+
+def test_resolve_cwd_normal_repo_is_unaffected_by_worktree_change(
+    tmp_path, monkeypatch
+):
+    dev_root = tmp_path / "dev"
+    repo = dev_root / "myrepo"
+    subdir = repo / "src"
+    (repo / ".git").mkdir(parents=True)
+    subdir.mkdir()
+    (repo / ".git" / "config").write_text(
+        '[remote "origin"]\n\turl = https://github.com/org/myrepo.git\n'
+    )
+    monkeypatch.setattr(dm, "_candidate_dev_roots", lambda: [dev_root])
+    dm._build_registry.cache_clear()
+    try:
+        assert dm.resolve_cwd(str(subdir)) == "myrepo"
+    finally:
+        dm._build_registry.cache_clear()
+
+
+def test_resolve_domain_from_inside_a_linked_worktree_path_resolves_to_main_domain(
+    tmp_path, monkeypatch
+):
+    dev_root = tmp_path / "dev"
+    main_repo = dev_root / "cortex"
+    (main_repo / ".git").mkdir(parents=True)
+    (main_repo / ".git" / "config").write_text(
+        '[remote "origin"]\n\turl = https://github.com/cdeust/Cortex.git\n'
+    )
+    worktree = tmp_path / "wt-cortex-feature"
+    worktree.mkdir()
+    (worktree / ".git").write_text(f"gitdir: {main_repo}/.git/worktrees/feature\n")
+
+    monkeypatch.setattr(dm, "_candidate_dev_roots", lambda: [dev_root])
+    dm._build_registry.cache_clear()
+    try:
+        assert dm.resolve_domain(str(worktree)) == "cortex"
+    finally:
+        dm._build_registry.cache_clear()
+
+
+def test_dereference_worktree_gitdir_simulated_windows_path_string(tmp_path):
+    # Windows-shaped gitdir content (backslash separators). Path() on
+    # POSIX CI won't treat backslashes as separators, so this exercises
+    # the "malformed / doesn't match expected shape" fail-safe branch
+    # rather than a true cross-platform resolution (that needs a real
+    # Windows run, same epistemic position as #91/#93/#94/#95).
+    worktree = tmp_path / "wt"
+    worktree.mkdir()
+    (worktree / ".git").write_text(
+        "gitdir: C:\\Users\\dev\\Cortex\\.git\\worktrees\\feature\n"
+    )
+    # Must not raise regardless of outcome.
+    _dereference_worktree_gitdir(worktree / ".git")

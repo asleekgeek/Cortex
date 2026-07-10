@@ -36,7 +36,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 
-async def _run(apply: bool, limit: int) -> dict:
+async def _run(apply: bool, limit: int, include_orphans: bool) -> dict:
     from mcp_server.handlers.consolidation.memory_domain_backfill_pass import (
         run_memory_domain_backfill_pass,
     )
@@ -45,7 +45,9 @@ async def _run(apply: bool, limit: int) -> dict:
 
     settings = get_memory_settings()
     store = get_shared_store(settings.DB_PATH, settings.EMBEDDING_DIM)
-    return await run_memory_domain_backfill_pass(store, apply=apply, limit=limit)
+    return await run_memory_domain_backfill_pass(
+        store, apply=apply, limit=limit, include_orphans=include_orphans
+    )
 
 
 def main() -> int:
@@ -68,15 +70,26 @@ def main() -> int:
         help="Path to write the campaign journal JSON artifact (default: "
         "scratchpad/memory_domain_backfill_<dry-run|apply>_<UTC-timestamp>.json).",
     )
+    parser.add_argument(
+        "--include-orphans",
+        action="store_true",
+        help="Also rescan rows already tagged 'domain-orphan'. Use only "
+        "after a change to the resolution logic itself (e.g. a "
+        "domain_mapping.py fix) that could newly resolve rows the old "
+        "logic could not (INC6.2). A row that resolves on rescan has its "
+        "'domain-orphan' tag removed automatically. Default: off — "
+        "orphans are otherwise a terminal state, excluded from the scan.",
+    )
     args = parser.parse_args()
 
     mode = "APPLY" if args.apply else "DRY-RUN"
     print(
-        f"[{mode}] scanning memories with empty domain (limit={args.limit})",
+        f"[{mode}] scanning memories with empty domain (limit={args.limit}, "
+        f"include_orphans={args.include_orphans})",
         file=sys.stderr,
     )
 
-    result = asyncio.run(_run(args.apply, args.limit))
+    result = asyncio.run(_run(args.apply, args.limit, args.include_orphans))
 
     print("", file=sys.stderr)
     print("Memory domain backfill summary (I6-D3)", file=sys.stderr)
