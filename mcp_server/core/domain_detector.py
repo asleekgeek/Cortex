@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from mcp_server.shared.categorizer import categorize_with_scores
-from mcp_server.shared.project_ids import cwd_to_project_id
+from mcp_server.shared.project_ids import cwd_to_project_id, normalize_project_id
 from mcp_server.shared.similarity import jaccard_similarity
 from mcp_server.shared.text import extract_keywords
 
@@ -24,10 +24,11 @@ THRESHOLD_TENTATIVE = 0.3
 
 
 def _score_project_match(project_id: str | None, domain: dict) -> float:
-    if not project_id:
+    normalized = normalize_project_id(project_id)
+    if normalized is None:
         return 0.0
-    projects = domain.get("projects") or []
-    return 1.0 if project_id in projects else 0.0
+    projects = {normalize_project_id(p) for p in (domain.get("projects") or [])}
+    return 1.0 if normalized in projects else 0.0
 
 
 def _score_content_match(first_message: str | None, domain: dict) -> float:
@@ -64,14 +65,15 @@ def _score_category_match(first_message: str | None, domain: dict) -> float:
 
 def map_project_to_domain(project_id: str | None, profiles: dict | None) -> str | None:
     """Look up which domain owns a given project ID."""
-    if not project_id or not profiles:
+    normalized = normalize_project_id(project_id)
+    if normalized is None or not profiles:
         return None
     domains = profiles.get("domains")
     if not domains:
         return None
     for domain_id, domain in domains.items():
-        projects = domain.get("projects") or []
-        if project_id in projects:
+        projects = {normalize_project_id(p) for p in (domain.get("projects") or [])}
+        if normalized in projects:
             return domain_id
     return None
 

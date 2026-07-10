@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from mcp_server.shared.project_ids import normalize_project_id
+
 _ANALOGY_RE = re.compile(
     r"(like|similar to|analogous to|reminds me of|just as|the same way)"
     r"\s+(?:a\s+)?(.{5,40})",
@@ -24,12 +26,14 @@ def _build_project_domain_map(profiles: dict | None) -> dict[str, str]:
     for domain_id, domain in profiles["domains"].items():
         projects = domain.get("projects") or domain.get("projectIds") or []
         for project_id in projects:
-            mapping[project_id] = domain_id
+            normalized = normalize_project_id(project_id)
+            if normalized is not None:
+                mapping[normalized] = domain_id
     return mapping
 
 
 def _resolve_domain(node: dict, project_domain_map: dict[str, str]) -> str:
-    project_id = node.get("projectId") or node.get("project")
+    project_id = normalize_project_id(node.get("projectId") or node.get("project"))
     if project_id and project_id in project_domain_map:
         return project_domain_map[project_id]
     if node.get("domainId"):

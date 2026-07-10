@@ -64,6 +64,37 @@ class TestFindBridges:
         assert "alpha" in result
         assert "beta" in result
 
+    # ── issue #95: Windows casing mismatch ───────────────────────────────
+
+    def test_structural_bridge_resolves_despite_windows_casing_mismatch(self):
+        # Profile stores original casing ('Proj-A'); the memory's
+        # projectId was derived via cwd_to_project_id, which lowercases
+        # Windows-style paths ('proj-a'). Before the fix, _resolve_domain
+        # fell through to "unknown" and same-domain self-references (m1,
+        # m2 both "unknown") were silently dropped as not cross-domain.
+        profiles = _make_profiles(
+            {
+                "alpha": _make_domain(projects=["Proj-A"]),
+                "beta": _make_domain(projects=["Proj-B"]),
+            }
+        )
+        brain_index = {
+            "memories": {
+                "m1": {
+                    "projectId": "proj-a",
+                    "body": "alpha content",
+                    "crossRefs": ["m2"],
+                },
+                "m2": {"projectId": "proj-b", "body": "beta content", "crossRefs": []},
+            },
+            "conversations": {},
+        }
+        result = find_bridges(profiles, brain_index)
+
+        assert "alpha" in result
+        assert "beta" in result
+        assert result["alpha"][0]["toDomain"] == "beta"
+
         alpha_bridge = next(
             (b for b in result["alpha"] if b["pattern"] == "structural-edge"), None
         )
