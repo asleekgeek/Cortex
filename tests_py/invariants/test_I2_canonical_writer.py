@@ -50,9 +50,10 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # SQLite parity: canonical bump_heat_raw / update_memories_heat_batch.
     ("infrastructure/sqlite_store.py", 419),
     ("infrastructure/sqlite_store.py", 463),
-    # Homeostatic fold (amortized ~once/month per domain). Shifted 292→317
-    # when the bounded-I/O slim-projection helpers were added above it.
-    ("handlers/consolidation/homeostatic.py", 317),
+    # Homeostatic fold (amortized ~once/month per domain). Shifted 317→360
+    # when _streaming_health grew a domain-count accumulator (2026-07-10
+    # dominant-domain regression fix) above it.
+    ("handlers/consolidation/homeostatic.py", 360),
     # Anchor pin: heat_base=1.0 + no_decay=TRUE preserves resist-decay.
     ("handlers/anchor.py", 143),
     # Preemptive boost: heat_base += 0.1 on Read/Edit/Write hook.

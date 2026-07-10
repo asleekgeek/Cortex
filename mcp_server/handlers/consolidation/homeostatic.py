@@ -94,9 +94,14 @@ def run_homeostatic_cycle(
         health_score, mean_heat, std_heat, bimodality, memories_scanned
     """
     try:
+        domain: str | None = None
         if memories is None:
-            # Streaming path: compute health without materializing.
-            health, count = _streaming_health(store)
+            # Streaming path: compute health without materializing, but
+            # still accumulate an exact domain-frequency count in the same
+            # cursor pass (O(distinct domains) memory, not O(N) — see
+            # _streaming_health). The scalar/fold branch needs a dominant
+            # domain even though it never sees the row list.
+            health, count, domain_counts = _streaming_health(store)
             if count == 0:
                 return {
                     "scaling_applied": False,
@@ -105,6 +110,7 @@ def run_homeostatic_cycle(
                     "reason": "no_memories",
                     "memories_scanned": 0,
                 }
+            domain = _pick_dominant_domain(domain_counts)
             # For dispatch we still need the memory list for the cohort
             # branch (needs ids + per-row heats). Only materialize when
             # bimodality triggers cohort path.
@@ -127,7 +133,7 @@ def run_homeostatic_cycle(
             )
 
         heats = [m.get("heat", 0.5) for m in memories] if memories else []
-        outcome = _dispatch(store, memories, heats, health)
+        outcome = _dispatch(store, memories, heats, health, domain)
         _log_diagnostics(outcome)
 
         return {
@@ -173,27 +179,50 @@ def _slim_memories_for_dispatch(store: MemoryStore) -> list[dict]:
     return [_slim_row(m) for chunk in store.iter_memories_for_decay() for m in chunk]
 
 
-def _streaming_health(store: MemoryStore) -> tuple[dict, int]:
+def _streaming_health(store: MemoryStore) -> tuple[dict, int, dict[str, int]]:
     """Compute distribution health via server-side cursor + Welford moments.
 
     Uses ``store.iter_memories_for_decay`` when available (Phase 4);
     falls back to full materialization for SQLite / test fake stores.
+
+    Also accumulates a domain -> row-count map in the *same* pass (one
+    dict entry per distinct domain, not one per row) so the scalar/fold
+    branch can resolve ``_pick_dominant_domain`` without a second table
+    scan or a full materialization. Regression fixed 2026-07-10: prior
+    to this, the scalar branch received an empty memory list on every
+    streaming-path call and always wrote to ``domain=''``
+    (mcp_server/handlers/consolidation/homeostatic.py history, commit
+    84cfdedf "feat(phase-4): chunked consolidate + streaming homeostatic
+    moments" — the materializing shortcut for the cohort branch dropped
+    domain data the scalar branch also needed).
+
+    Returns:
+        (health_dict, total_count, domain_counts).
     """
+    domain_counts: dict[str, int] = {}
+
+    def _accumulate(chunk: list[dict]) -> list[float]:
+        for m in chunk:
+            d = m.get("domain") or ""
+            domain_counts[d] = domain_counts.get(d, 0) + 1
+        return [m.get("heat", 0.5) for m in chunk]
+
     if not hasattr(store, "iter_memories_for_decay"):
         memories = store.get_all_memories_for_decay()
-        heats = [m.get("heat", 0.5) for m in memories]
+        heats = _accumulate(memories)
         health = homeostatic_health.compute_distribution_health(
             heats, target_mean=_TARGET_HEAT
         )
-        return health, len(heats)
+        return health, len(heats), domain_counts
 
     def _heat_chunks():
         for chunk in store.iter_memories_for_decay():
-            yield [m.get("heat", 0.5) for m in chunk]
+            yield _accumulate(chunk)
 
-    return homeostatic_health.compute_distribution_health_streaming(
+    health, count = homeostatic_health.compute_distribution_health_streaming(
         _heat_chunks(), target_mean=_TARGET_HEAT
     )
+    return health, count, domain_counts
 
 
 def _dispatch(
@@ -201,8 +230,16 @@ def _dispatch(
     memories: list[dict],
     heats: list[float],
     health: dict,
+    domain: str | None = None,
 ) -> dict:
-    """Pick the right primitive given distribution health."""
+    """Pick the right primitive given distribution health.
+
+    ``domain`` is the dominant-domain key pre-resolved by the streaming
+    caller (from an exact frequency count taken during the health pass).
+    When ``None`` (materializing callers — hot-path consolidate, unit
+    tests that pass a pre-loaded ``memories`` list), the scalar branch
+    falls back to resolving it from ``memories`` directly.
+    """
     bimodality = health["bimodality_coefficient"]
     mean = health["mean"]
     std = health["std"]
@@ -219,7 +256,7 @@ def _dispatch(
     if bimodality > _BIMODALITY_TRIGGER:
         return _apply_cohort(store, memories, heats, mean, std, bimodality)
 
-    return _apply_scalar(store, memories, mean, bimodality)
+    return _apply_scalar(store, memories, mean, bimodality, domain)
 
 
 # ── Scalar + fold ────────────────────────────────────────────────────────
@@ -230,12 +267,17 @@ def _apply_scalar(
     memories: list[dict],
     mean: float,
     bimodality: float,
+    domain: str | None = None,
 ) -> dict:
     """One UPDATE on homeostatic_state.factor + optional fold.
 
     Replaces the legacy N-row Turrigiano UPDATE with one scalar write.
     Fold (factor ∉ [0.5, 2.0]) writes heat_base per-row and resets
     factor=1.0 — expected ~once/month per domain.
+
+    ``domain``: pre-resolved dominant-domain key (streaming callers).
+    When ``None``, resolved here from ``memories`` (materializing
+    callers — hot-path consolidate, unit tests).
     """
     if mean <= _MIN_SAFE_MEAN:
         return {
@@ -246,7 +288,8 @@ def _apply_scalar(
             "reason_for_zero": "mean_below_safety_floor",
         }
 
-    domain = _dominant_domain(memories)
+    if domain is None:
+        domain = _dominant_domain(memories)
     factor_old = _safe_get_factor(store, domain)
     factor_new = factor_old * (_TARGET_HEAT / mean)
     factor_new = _clamp_step(factor_old, factor_new, max_step=_MAX_STEP)
@@ -328,11 +371,25 @@ def _apply_fold(store: MemoryStore, domain: str, factor: float) -> int:
 
 
 def _dominant_domain(memories: list[dict]) -> str:
-    """Pick the most-frequent domain as the scaling key."""
+    """Pick the most-frequent domain as the scaling key (materialized rows)."""
     counts: dict[str, int] = {}
     for mem in memories:
         d = mem.get("domain") or ""
         counts[d] = counts.get(d, 0) + 1
+    return _pick_dominant_domain(counts)
+
+
+def _pick_dominant_domain(counts: dict[str, int]) -> str:
+    """Pick the most-frequent domain key from a precomputed frequency map.
+
+    Shared selection rule (max by count) for both the materializing path
+    (``_dominant_domain``, counts built from a full row list) and the
+    streaming path (counts accumulated incrementally during the Welford
+    moments pass — see ``_streaming_health``). Same doctrine as before
+    Phase 4: docs/program/phase-3-a3-migration-design.md §5 describes
+    one scalar UPDATE per cycle, keyed by domain — this is that key's
+    resolution rule, not a new weighting scheme.
+    """
     if not counts:
         return ""
     return max(counts.items(), key=lambda kv: kv[1])[0]
