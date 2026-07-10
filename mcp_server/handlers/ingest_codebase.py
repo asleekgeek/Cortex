@@ -35,6 +35,7 @@ from mcp_server.handlers import ingest_codebase_cypher as cypher
 from mcp_server.handlers import ingest_codebase_graph as graphmod
 from mcp_server.handlers import ingest_codebase_pages as pages
 from mcp_server.handlers import ingest_codebase_writers as writers
+from mcp_server.handlers import ingest_docs_content
 from mcp_server.handlers.ingest_codebase_schema import schema  # re-exported
 from mcp_server.handlers.ingest_helpers import call_upstream, normalise_mcp_payload
 from mcp_server.infrastructure.memory_config import get_memory_settings
@@ -86,6 +87,7 @@ _STAGES: tuple[str, ...] = (
     "ingest edges",
     "pull processes",
     "enrich process symbols",
+    "ingest docs content",
 )
 
 __all__ = ["schema", "handler"]
@@ -594,6 +596,17 @@ async def handler(
                 graph_path, processes, diagnostics, progress=_progress
             )
         wiki_paths = pages.write_process_pages(processes)
+
+        # ── Phase 5: docs content (INC5.3, D6) — optional, cheap relative to
+        # the symbol/edge phases above; content indexing of Markdown-family
+        # files happens on Cortex's side only (D6 rationale in
+        # ingest_docs_content_writers.py's module docstring). ────────────────
+        docs_stats: dict[str, Any] = {}
+        if args.get("ingest_docs", True):
+            _progress.stage(_STAGES[6], 6, len(_STAGES))
+            docs_stats = await ingest_docs_content.run_docs_pass(
+                store, graph_path, project_path, domain
+            )
     finally:
         _progress.close()
 
@@ -613,6 +626,7 @@ async def handler(
         "symbol_count_seen": total_symbols_seen,
         "file_count_seen": len(files),
         "process_count_seen": len(processes),
+        "docs_ingested": docs_stats,
     }
     if diagnostics:
         response["diagnostics"] = diagnostics
