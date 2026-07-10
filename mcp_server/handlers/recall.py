@@ -9,6 +9,7 @@ co-activation Hebbian learning, neuro-symbolic rules, strategic ordering.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from mcp_server.core import memory_rules
@@ -34,6 +35,7 @@ from mcp_server.infrastructure.memory_config import (
     root_agent_topic,
 )
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
+from mcp_server.infrastructure.session_registry import current_window_session
 
 schema = {
     "title": "Recall (retrieve memories)",
@@ -264,8 +266,30 @@ schema = {
     },
 }
 
+logger = logging.getLogger(__name__)
+
 _store: MemoryStore | None = None
 _momentum_state: dict = {"momentum": 0.5}
+
+
+def _resolve_session_id() -> str | None:
+    """Best-effort session-identity lookup for the T1 receipt (T2-H3).
+
+    precondition: none. postcondition: returns the current window's
+    session id, or None on absence/tombstone/pid-divergence (the
+    registry's own contract — ``current_window_session`` never raises
+    by construction, ``session_registry.py`` docstring) OR on any
+    unforeseen exception surfacing from the registry. Recall's primary
+    read path must never fail because of a blame-path side channel —
+    a bare ``except Exception`` here is the named degradation mode
+    (design risk/§1: a false attribution is worse than a missing one,
+    and a failed recall is worse than an unattributed receipt).
+    """
+    try:
+        return current_window_session()
+    except Exception:
+        logger.warning("session registry lookup failed", exc_info=True)
+        return None
 
 
 def _get_store() -> MemoryStore:
@@ -500,9 +524,16 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     # Blame path T1 (decision 4255039): the receipt is emitted AFTER
     # bound_payload so it mirrors exactly what enters the context
     # (transcript↔DB parity invariant) — entries dropped by the response
-    # budget were never injected. session_id stays NULL until the hook
-    # channels land (T2); this handler has no session identity in scope.
-    receipt_id = emit_injection_receipt(store, resp["memories"])
+    # budget were never injected. T2-D7/T2-H3: session identity is
+    # resolved fresh at THIS emission (no cache — the window's session
+    # changes under the process across /clear, T2-D7) via the per-window
+    # registry (T2-H1). Degrades to None on any registry anomaly (no
+    # entry, dead pid, pid-reuse, tombstone, unknown schema) — never a
+    # guessed value (design §1 invariant); the recall read path itself
+    # never fails on registry errors (current_window_session's contract).
+    receipt_id = emit_injection_receipt(
+        store, resp["memories"], session_id=_resolve_session_id()
+    )
     if receipt_id is not None:
         resp["receipt_id"] = receipt_id
     return resp
