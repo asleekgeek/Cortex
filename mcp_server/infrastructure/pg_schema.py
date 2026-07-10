@@ -412,6 +412,35 @@ CREATE INDEX IF NOT EXISTS idx_wiki_memos_subject
 # a single atomic unit (CREATE FUNCTION body may contain semicolons).
 WIKI_TRIGGERS_DDL = """
 -- Trigger: denormalise citation_count + last_cited_at + heat bump on cite
+--
+-- The +0.05 bump has NO published or measured source (coding-standards.md
+-- §8 gap, flagged twice: design inc5 risk D7, report T2-H4). It is an
+-- unvalidated engineering default, introduced at the trigger's origin
+-- (commit 4516b489, "feat(wiki redesign): Phase 1.1") with no derivation
+-- beyond "same physics as pg_store memory decay" (wiki_thermodynamics.py
+-- module docstring). It is internally consistent with two other
+-- single-reinforcement-event heat bumps in this codebase that are
+-- likewise unsourced engineering defaults of the same magnitude:
+--   - mcp_server/core/reconsolidation.py:310 _RECONS_HEAT_BUMP_UPDATE = 0.05
+--     (memories.heat bump on retrieval-driven reconsolidation update;
+--     explicitly labelled "calibration pending" in that module)
+--   - mcp_server/infrastructure/pg_store_relationships.py:181
+--     entities.heat bump on Hebbian co-activation, also +0.05, also
+--     unsourced.
+-- No empirical calibration is possible yet either: wiki.citations has 0
+-- rows in the dev DB as of 2026-07-10 (feature not yet exercised in
+-- practice), and all 154 existing wiki.pages sit at heat 0.95-1.0
+-- (cap-saturated at LEAST(1.0, ...)), so the bump has had zero observable
+-- effect to date and no distribution exists to calibrate against.
+-- Structural implication of the current value (informational, not a
+-- justification): with the 1.0 cap and the 0.4 ARCHIVED_REVIVAL_HEAT
+-- threshold (wiki_thermodynamics.py), a single citation cannot revive an
+-- archived page (heat near AREA_TO_ARCHIVED_HEAT=0.1 floor) on its own —
+-- reaching 0.4 needs >=6 citations with no intervening decay.
+-- source: none — engineering default, calibration pending. See
+-- docs/provenance/ (blend-weight-calibration.md precedent for how this
+-- codebase resolves "engineering default" placeholders: pre-register a
+-- sweep, cite the resulting optimum, update this comment).
 CREATE OR REPLACE FUNCTION wiki.on_citation_insert() RETURNS trigger AS $$
 BEGIN
     UPDATE wiki.pages
