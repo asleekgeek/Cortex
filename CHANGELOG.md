@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-07-10
+
+### Added
+- **Document content indexing (D6).** `ingest_codebase` gains a docs pass (`ingest_docs` flag, default on): the content of discovered `.md`/`.markdown`/`.mdx` files becomes recallable memories (tags `doc`, `src:ap`, project domain), and AP's Markdown-link edges are projected as `references` relations — idempotent by construction. Per-file bound of 1 MiB reused verbatim from AP's `MAX_PARSE_BYTES` (`indexer/mod.rs:48`), cross-checked against real corpora.
+- **Ingestion provenance (D5, ADR-0052 §2).** The primary path (`ingest_codebase`) tags what it writes with `src:ap` + `src:ap-version:<resolved>`; the fallback path (`codebase_analyze`) tags `src:native` and reports an explicit `fallback_status` — `src:native-fallback` when AP is unreachable, `src:native-precedence-violation` (with an ADR-0052 warning log) when it is not. A version-parity guard compares the two AP client paths (`ap_bridge` vs `mcp_client_pool`) and surfaces `match`/`mismatch`/`unknown` in the analyze stats.
+
+### Fixed
+- **Windows: domain registry fast-path (#93).** Registry keys are now normalized to forward slashes at the single construction choke point — the fast-path dict lookup works on Windows instead of silently falling back to slower matching.
+- **Windows: post-timeout `communicate()` trap (#94).** New shared `subprocess_safe.run_with_hard_timeout` (kill-without-recollect pattern) now backs the two high-risk git call sites reachable from live handlers (`record_session_end`'s commit-window scan, graph diff execution).
+
 ## [4.4.0] - 2026-07-10
 
 ### Added
