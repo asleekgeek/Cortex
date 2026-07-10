@@ -22,8 +22,19 @@ make reproduce           # ALL benchmarks + ablation sweep, full — several hou
 ```
 
 `make reproduce` provisions a single ephemeral PostgreSQL + pgvector container
-on port 55432 (it never touches an existing Cortex install), then against that
-one clean database:
+on a fresh, kernel-assigned port (it never touches an existing Cortex
+install), then against that one clean database:
+
+Every run gets its OWN container name and port — `cortex-bench-pg-<pid>-<hex>`,
+port chosen by the kernel and discovered via `docker port`, both logged at
+startup and recorded in `MANIFEST.json`. This is deliberate: two `reproduce.sh`
+runs from different worktrees used to share one fixed container/port
+(`cortex-bench-pg` on 55432) and could silently cross-contaminate each
+other's scores with no visible error (measured 2026-07-11: 0.9163 isolated
+vs. 0.78-0.86 under concurrency). Concurrent runs from different worktrees
+are now safe. Pin a specific port with `CORTEX_BENCH_PORT` only if you
+specifically need one — you take on the collision risk that existed to
+prevent.
 
 1. runs each retrieval benchmark through the production `recall_memories()`
    path — **LongMemEval-S, LoCoMo, BEAM-100K**;
