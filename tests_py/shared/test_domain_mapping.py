@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from mcp_server.shared import domain_mapping as dm
 from mcp_server.shared.domain_mapping import _get_remote_url, _git_root
 
 
@@ -159,3 +160,105 @@ def test_get_remote_url_never_raises_on_unreadable_config(tmp_path, monkeypatch)
 
     monkeypatch.setattr(Path, "read_text", _boom)
     assert _get_remote_url(repo) == ""
+
+
+# ── #93 regression: registry keys must match _git_root's normalization ──
+#
+# `registry.path_to_repo` used to be keyed by `str(item)` (backslash-
+# separated on Windows) while `_git_root` returns forward-slash-normalized
+# paths (see `_git_root`'s docstring, and cdeust/Cortex#91 for why it does
+# zero subprocess I/O). The fast-path lookup `root in registry.path_to_repo`
+# in `resolve_domain`/`resolve_cwd` silently missed on every Windows call
+# as a result, falling through to the slower prefix/fragment matching.
+# Fix: normalize at the single choke point where `RepoInfo.fs_path` is
+# constructed (`_to_posix`, used by `_discover_repos`).
+
+
+def test_to_posix_normalizes_windows_style_backslashes():
+    # PosixPath never treats backslash as a separator, so this literally
+    # round-trips a Windows-shaped path string through the same code the
+    # real `_discover_repos` call sites use — a faithful simulation on
+    # macOS/Linux CI of what a Windows `Path` would stringify to.
+    windows_path = Path("C:\\Users\\dev\\Cortex")
+    assert dm._to_posix(windows_path) == "C:/Users/dev/Cortex"
+
+
+def test_to_posix_is_a_no_op_on_already_forward_slash_paths():
+    assert dm._to_posix(Path("/Users/dev/Cortex")) == "/Users/dev/Cortex"
+
+
+def test_discover_repos_fs_path_matches_git_root_normalization(tmp_path):
+    # The real regression check: for the same underlying directory, the
+    # registry's fs_path (what becomes the path_to_repo key) must be
+    # byte-identical to what _git_root returns for that directory — that
+    # identity is what makes the fast-path dict lookup hit.
+    dev_root = tmp_path / "dev"
+    repo = dev_root / "myrepo"
+    (repo / ".git").mkdir(parents=True)
+
+    repos = dm._discover_repos(dev_root)
+
+    assert len(repos) == 1
+    assert repos[0].fs_path == dm._git_root(str(repo))
+    assert "\\" not in repos[0].fs_path
+
+
+def test_registry_path_to_repo_keys_are_forward_slash_even_from_windows_style_input():
+    windows_repo_root = Path("C:\\Users\\dev\\Cortex")
+    repo = dm.RepoInfo(
+        fs_path=dm._to_posix(windows_repo_root),
+        dir_name="cortex",
+        remote_name="cortex",
+        canonical="cortex",
+    )
+    registry = dm.DomainRegistry(
+        repos=[repo], name_to_canonical={}, slug_index={}, fragment_index={}
+    )
+
+    assert registry.path_to_repo == {"C:/Users/dev/Cortex": repo}
+
+
+def test_resolve_domain_fast_path_hits_for_windows_style_registry_key(monkeypatch):
+    # Simulates the exact Windows scenario from #93: registry key is
+    # forward-slash (post-fix), _git_root returns the matching
+    # forward-slash string (it always did, even pre-fix) — the dict
+    # lookup in resolve_domain must hit directly, not fall through to
+    # prefix matching.
+    windows_repo_root = Path("C:\\Users\\dev\\Cortex")
+    repo = dm.RepoInfo(
+        fs_path=dm._to_posix(windows_repo_root),
+        dir_name="cortex",
+        remote_name="cortex",
+        canonical="cortex",
+    )
+    registry = dm.DomainRegistry(
+        repos=[repo], name_to_canonical={}, slug_index={}, fragment_index={}
+    )
+    monkeypatch.setattr(dm, "_build_registry", lambda: registry)
+    monkeypatch.setattr(dm, "_git_root", lambda path: "C:/Users/dev/Cortex")
+
+    assert dm.resolve_domain("C:/Users/dev/Cortex/mcp_server") == "cortex"
+
+
+def test_resolve_cwd_uses_the_fast_path_end_to_end(tmp_path, monkeypatch):
+    # No mocking of _git_root/_build_registry here — real filesystem,
+    # real registry construction, real resolve_cwd call. Proves the fast
+    # path (dict lookup) is what resolves it, by asserting the exact key
+    # _git_root produces is present in path_to_repo before calling.
+    dev_root = tmp_path / "dev"
+    repo = dev_root / "myrepo"
+    subdir = repo / "src"
+    (repo / ".git").mkdir(parents=True)
+    subdir.mkdir()
+    (repo / ".git" / "config").write_text(
+        '[remote "origin"]\n\turl = https://github.com/org/myrepo.git\n'
+    )
+    monkeypatch.setattr(dm, "_candidate_dev_roots", lambda: [dev_root])
+    dm._build_registry.cache_clear()
+    try:
+        registry = dm._build_registry()
+        assert dm._git_root(str(subdir)) in registry.path_to_repo
+
+        assert dm.resolve_cwd(str(subdir)) == "myrepo"
+    finally:
+        dm._build_registry.cache_clear()
