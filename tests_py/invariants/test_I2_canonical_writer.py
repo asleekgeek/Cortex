@@ -60,6 +60,15 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # Pipeline-impact boost: heat_base += 0.15 for symbols touched by an
     # edit, resolved via pipeline detect_changes (PostToolUse hook).
     ("hooks/pipeline_impact_bump.py", 167),
+    # I6-D5 deliberate re-heat campaign (INC6.6): CAS-guarded single-row
+    # writer. Cannot route through bump_heat_raw — that would (1) turn a
+    # concurrent-write race into a silent overwrite instead of a detected
+    # skip (apply_reheat's WHERE clause requires heat_base still equal to
+    # the value observed at scan time) and (2) stamp heat_base_set_at,
+    # resetting the decay clock the campaign's J+30 re-measurement
+    # (2026-08-09) depends on staying untouched. Source: ADR-0053
+    # (docs/adr/ADR-0053-deliberate-reheat-cas-writer-i2-exception.md).
+    ("infrastructure/pg_store_memory_reheat.py", 157),
 }
 
 

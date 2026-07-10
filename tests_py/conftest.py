@@ -252,6 +252,28 @@ _TABLES_TO_CLEAN = [
     "checkpoints",
     "engram_slots",
     "oscillatory_state",
+    # A3 scalar homeostatic factor (root cause, CI run 29109251545,
+    # 2026-07-10): mcp_server/handlers/consolidate.py unconditionally runs
+    # run_homeostatic_cycle(store, None) on every handler() call. In the
+    # streaming path (real PG store), the scalar-update branch calls
+    # _dominant_domain([]) — memories is deliberately left unmaterialized
+    # for that branch (homeostatic.py:110) — which always resolves to the
+    # empty-string domain (_dominant_domain's fallback for an empty list),
+    # regardless of which domain's memories actually triggered the scaling.
+    # tests_py/handlers/test_consolidate.py's real-store handler() calls
+    # therefore write a real, non-1.0 factor to homeostatic_state
+    # (domain=''); without this table in the cleanup list that row survives
+    # for the rest of the pytest session and silently perturbs every later
+    # test whose query joins homeostatic_state (fetch_member_stats,
+    # fetch_contents-adjacent CTEs) — reproduced deterministically: a fresh
+    # DB running the full suite always leaves factor=0.9409 for domain=''
+    # (matches CI's observed 0.395178 = 0.42 * 0.9409 exactly, byte-for-
+    # byte across Python 3.10-3.13). The domain-mislabeling in
+    # _dominant_domain([]) is a separate production correctness bug
+    # (tracked, not fixed here — see checkpoint/lesson notes); this line
+    # only closes the test-isolation gap so no handler test's homeostatic
+    # side effect leaks into an unrelated test's assertions.
+    "homeostatic_state",
     "schemas",
     # Receipts before memories: items cascade from receipts, and the hook
     # subprocess tests (test_auto_recall, test_hook_receipts) emit receipts
