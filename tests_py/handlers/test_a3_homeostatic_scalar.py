@@ -14,20 +14,29 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from mcp_server.handlers.consolidation.homeostatic import (
-    _apply_scalar,
+from mcp_server.handlers.consolidation.homeostatic import run_homeostatic_cycle
+from mcp_server.handlers.consolidation.homeostatic_apply import (
+    apply_scalar as _apply_scalar,
+)
+from mcp_server.handlers.consolidation.homeostatic_apply import (
     _fold_triggered,
-    run_homeostatic_cycle,
 )
 
 
-def _memory(mid: int, heat: float, domain: str = "default") -> dict:
+def _memory(
+    mid: int, heat: float, domain: str = "default", source: str = "post_tool_capture"
+) -> dict:
+    # M-D3: source defaults to "post_tool_capture" — the "auto" write
+    # class, the only one regulated (homeostatic._REGULATED_CLASSES).
+    # These fixtures test the scalar/fold mechanism itself, which only
+    # ever runs for that class in production.
     return {
         "id": mid,
         "heat": heat,
         "domain": domain,
         "is_protected": False,
         "is_stale": False,
+        "source": source,
     }
 
 
@@ -155,10 +164,12 @@ class _StreamingStore:
         if self._memories[mid:]:
             yield self._memories[mid:]
 
-    def get_homeostatic_factor(self, domain: str) -> float:
+    def get_homeostatic_factor(self, domain: str, write_class: str = "auto") -> float:
         return self._factor_return
 
-    def set_homeostatic_factor(self, domain: str, factor: float) -> None:
+    def set_homeostatic_factor(
+        self, domain: str, factor: float, write_class: str = "auto"
+    ) -> None:
         self.factor_writes.append((domain, factor))
 
 

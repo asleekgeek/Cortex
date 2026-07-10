@@ -730,19 +730,29 @@ class PgMemoryStore(
         )
         self._conn.commit()
 
-    def get_homeostatic_factor(self, domain: str) -> float:
-        """A3: fetch per-domain homeostatic factor, defaulting to 1.0.
+    def get_homeostatic_factor(self, domain: str, write_class: str = "auto") -> float:
+        """A3: fetch per-(domain, write_class) homeostatic factor, default 1.0.
 
         Readers MUST use this helper rather than querying the table
         directly — new domains arrive between homeostatic runs and have
         no row. The COALESCE-to-1.0 default preserves neutral scaling.
 
+        M-D3 (7.1, stratification): ``homeostatic_state``'s primary key is
+        ``(domain, write_class)`` — one row per class, not one per domain.
+        ``write_class`` defaults to ``"auto"`` because that is the only
+        class the recall-path read query (``pg_schema.py::recall_memories``
+        / ``fetch_member_stats`` / the reheat + dedup probes) ever
+        resolves; every other caller of this method (currently only
+        ``handlers/consolidation/homeostatic.py``) passes its class
+        explicitly. See ``mcp_server.core.write_class`` for the taxonomy
+        this parameter is drawn from.
+
         Source: docs/program/phase-3-a3-migration-design.md §5.
         """
         row = self._execute(
             "SELECT COALESCE(MAX(factor), 1.0)::REAL AS factor "
-            "FROM homeostatic_state WHERE domain = %s",
-            (domain or "",),
+            "FROM homeostatic_state WHERE domain = %s AND write_class = %s",
+            (domain or "", write_class),
         ).fetchone()
         if row is None:
             return 1.0
@@ -751,22 +761,50 @@ class PgMemoryStore(
         except (KeyError, TypeError):
             return 1.0
 
-    def set_homeostatic_factor(self, domain: str, factor: float) -> None:
-        """A3: upsert per-domain homeostatic factor (Feynman scalar-state).
+    def set_homeostatic_factor(
+        self, domain: str, factor: float, write_class: str = "auto"
+    ) -> None:
+        """A3: upsert per-(domain, write_class) homeostatic factor.
 
         Replaces the per-row heat UPDATE pattern in the homeostatic cycle
         — one row written per cycle instead of 66K. Clamped to the
-        CHECK bounds (0 < factor < 10).
+        CHECK bounds (0 < factor < 10). See ``get_homeostatic_factor`` for
+        the M-D3 ``write_class`` rationale.
         """
         clamped = max(0.01, min(9.99, float(factor)))
         self._execute(
-            "INSERT INTO homeostatic_state (domain, factor, updated_at) "
-            "VALUES (%s, %s, NOW()) "
-            "ON CONFLICT (domain) DO UPDATE "
+            "INSERT INTO homeostatic_state (domain, write_class, factor, updated_at) "
+            "VALUES (%s, %s, %s, NOW()) "
+            "ON CONFLICT (domain, write_class) DO UPDATE "
             "SET factor = EXCLUDED.factor, updated_at = NOW()",
-            (domain or "", clamped),
+            (domain or "", write_class, clamped),
         )
         self._conn.commit()
+
+    def log_homeostatic_fold(
+        self,
+        domain: str,
+        write_class: str,
+        factor: float,
+        rows_folded: int,
+    ) -> int:
+        """M-D3 (7.1): journal a fold event — the telemetry step 1 asked for.
+
+        The 2026-07-10 19:22 fold that re-suppressed the deliberate class
+        left no queryable trace anywhere except the row-level signature on
+        ``memories`` itself (``heat_base_set_at`` matching a batched
+        write) — confirmed by direct SQL, not by this table, because this
+        table did not exist yet. Every fold from this point forward is
+        DB-queryable without reconstructing it from row timestamps.
+        """
+        row = self._execute(
+            "INSERT INTO homeostatic_fold_log "
+            "(domain, write_class, factor, rows_folded) "
+            "VALUES (%s, %s, %s, %s) RETURNING id",
+            (domain or "", write_class, float(factor), int(rows_folded)),
+        ).fetchone()
+        self._conn.commit()
+        return row["id"] if row else 0
 
     def update_memories_heat_batch(self, updates: list[tuple[int, float]]) -> int:
         """A3 batch heat writer. Writes heat_base + refreshes heat_base_set_at.

@@ -212,56 +212,80 @@ def compute_distribution_health_streaming(
     Computation of Covariances and Arbitrary-Order Statistical Moments."
     Sandia Report SAND2008-6212. §3.1 (pairwise merge of moments).
     """
-    import math
-
     # Running aggregated moments (Pébay §3.1 notation).
-    n = 0
-    m1 = 0.0
-    m2 = 0.0
-    m3 = 0.0
-    m4 = 0.0
+    n, m1, m2, m3, m4 = 0, 0.0, 0.0, 0.0, 0.0
 
     for chunk in value_chunks:
         if not chunk:
             continue
-        n_b, m1_b, m2_b, m3_b, m4_b = _chunk_raw_moments(chunk)
-        if n_b == 0:
-            continue
-        if n == 0:
-            n, m1, m2, m3, m4 = n_b, m1_b, m2_b, m3_b, m4_b
-            continue
-        # Pairwise combine running (a) and chunk (b) moments.
-        # Pébay 2008 §3.1 equations 2.1–2.4.
-        n_ab = n + n_b
-        delta = m1_b - m1
-        delta_n = delta / n_ab
-        delta_n2 = delta_n * delta_n
-        na_nb = n * n_b
-        # M4_ab = M4_a + M4_b
-        #   + δ^4 · n_a·n_b·(n_a² - n_a·n_b + n_b²) / n_ab^3
-        #   + 6·δ²·(n_a²·M2_b + n_b²·M2_a) / n_ab²
-        #   + 4·δ·(n_a·M3_b - n_b·M3_a) / n_ab
-        # Factor δ⁴/n_ab³ = delta * delta_n³.
-        m4_new = (
-            m4
-            + m4_b
-            + delta * delta_n * delta_n2 * na_nb * (n * n - na_nb + n_b * n_b)
-            + 6 * delta_n2 * (n * n * m2_b + n_b * n_b * m2)
-            + 4 * delta_n * (n * m3_b - n_b * m3)
-        )
-        m3_new = (
-            m3
-            + m3_b
-            + delta * delta_n2 * na_nb * (n - n_b)
-            + 3 * delta_n * (n * m2_b - n_b * m2)
-        )
-        m2_new = m2 + m2_b + delta * delta_n * na_nb
-        m1_new = m1 + delta_n * n_b
-        n, m1, m2, m3, m4 = n_ab, m1_new, m2_new, m3_new, m4_new
+        n, m1, m2, m3, m4 = _merge_chunk_moments(n, m1, m2, m3, m4, chunk)
 
     if n == 0:
         return dict(_EMPTY_HEALTH), 0
+    return _moments_to_health(n, m1, m2, m3, m4, target_mean), n
 
+
+def _merge_chunk_moments(
+    n: int,
+    m1: float,
+    m2: float,
+    m3: float,
+    m4: float,
+    chunk: list[float],
+) -> tuple[int, float, float, float, float]:
+    """Fold one chunk's raw moments into the running (n, M1, M2, M3, M4).
+
+    Extracted from ``compute_distribution_health_streaming`` so the same
+    tested pairwise-merge (Pébay 2008 §3.1, eq. 2.1-2.4) can be reused by
+    the per-write-class streaming variant below without duplicating the
+    equations — one canonical implementation, two callers (§8 coding
+    standards: no invented/duplicated math).
+    """
+    n_b, m1_b, m2_b, m3_b, m4_b = _chunk_raw_moments(chunk)
+    if n_b == 0:
+        return n, m1, m2, m3, m4
+    if n == 0:
+        return n_b, m1_b, m2_b, m3_b, m4_b
+
+    # Pairwise combine running (a) and chunk (b) moments.
+    n_ab = n + n_b
+    delta = m1_b - m1
+    delta_n = delta / n_ab
+    delta_n2 = delta_n * delta_n
+    na_nb = n * n_b
+    # M4_ab = M4_a + M4_b
+    #   + δ^4 · n_a·n_b·(n_a² - n_a·n_b + n_b²) / n_ab^3
+    #   + 6·δ²·(n_a²·M2_b + n_b²·M2_a) / n_ab²
+    #   + 4·δ·(n_a·M3_b - n_b·M3_a) / n_ab
+    # Factor δ⁴/n_ab³ = delta * delta_n³.
+    m4_new = (
+        m4
+        + m4_b
+        + delta * delta_n * delta_n2 * na_nb * (n * n - na_nb + n_b * n_b)
+        + 6 * delta_n2 * (n * n * m2_b + n_b * n_b * m2)
+        + 4 * delta_n * (n * m3_b - n_b * m3)
+    )
+    m3_new = (
+        m3
+        + m3_b
+        + delta * delta_n2 * na_nb * (n - n_b)
+        + 3 * delta_n * (n * m2_b - n_b * m2)
+    )
+    m2_new = m2 + m2_b + delta * delta_n * na_nb
+    m1_new = m1 + delta_n * n_b
+    return n_ab, m1_new, m2_new, m3_new, m4_new
+
+
+def _moments_to_health(
+    n: int,
+    m1: float,
+    m2: float,
+    m3: float,
+    m4: float,
+    target_mean: float,
+) -> dict[str, float]:
+    """Convert raw running moments to the health dict (shared tail of the
+    streaming reducers — list-based and per-class)."""
     variance = m2 / max(n - 1, 1)
     std = math.sqrt(variance)
     if std > 1e-10:
@@ -270,7 +294,54 @@ def compute_distribution_health_streaming(
     else:
         skew = 0.0
         kurtosis = 0.0
-    return _health_from_moments(m1, std, skew, kurtosis, target_mean), n
+    return _health_from_moments(m1, std, skew, kurtosis, target_mean)
+
+
+def compute_distribution_health_streaming_by_class(
+    class_chunks,
+    target_mean: float,
+    classes: tuple[str, ...],
+) -> dict[str, tuple[dict[str, float], int]]:
+    """Per-write-class streaming moments — M-D3 full stratification.
+
+    Same Pébay pairwise-merge as ``compute_distribution_health_streaming``
+    (reused via ``_merge_chunk_moments``, not reimplemented), but keeps one
+    running-moments accumulator per class instead of one global one, so
+    each class's health is measured against its own distribution rather
+    than the corpus mean it would otherwise be diluted into (the exact
+    failure this stratification fixes — see homeostatic.py module
+    docstring / M-D3).
+
+    Args:
+        class_chunks: iterable yielding ``dict[class_name, list[float]]``
+            — one bucketed-by-class heat list per DB chunk. Buckets absent
+            from a given chunk are simply omitted (sparse).
+        target_mean: shared homeostatic target (0.4, Turrigiano 2008).
+        classes: the full set of classes to report on (``ALL_WRITE_
+            CLASSES``) — classes with zero observations across every
+            chunk still appear in the result with the empty-health dict
+            and count 0, so callers never need a membership check.
+
+    Returns:
+        ``{class_name: (health_dict, count)}`` for every class in
+        ``classes``.
+    """
+    running: dict[str, tuple[int, float, float, float, float]] = {
+        c: (0, 0.0, 0.0, 0.0, 0.0) for c in classes
+    }
+    for chunk in class_chunks:
+        for cls, values in chunk.items():
+            if cls not in running or not values:
+                continue
+            running[cls] = _merge_chunk_moments(*running[cls], values)
+
+    result: dict[str, tuple[dict[str, float], int]] = {}
+    for cls, (n, m1, m2, m3, m4) in running.items():
+        if n == 0:
+            result[cls] = (dict(_EMPTY_HEALTH), 0)
+        else:
+            result[cls] = (_moments_to_health(n, m1, m2, m3, m4, target_mean), n)
+    return result
 
 
 def _chunk_raw_moments(

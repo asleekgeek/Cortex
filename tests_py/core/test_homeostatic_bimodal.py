@@ -19,10 +19,8 @@ from mcp_server.core.homeostatic_plasticity import (
     apply_synaptic_scaling,
     detect_hot_cohort,
 )
-from mcp_server.handlers.consolidation.homeostatic import (
-    _dispatch,
-    run_homeostatic_cycle,
-)
+from mcp_server.handlers.consolidation.homeostatic import run_homeostatic_cycle
+from mcp_server.handlers.consolidation.homeostatic_apply import dispatch as _dispatch
 
 
 def _moments(values: list[float]) -> tuple[float, float]:
@@ -160,8 +158,18 @@ class _FakeStore:
         self.factor_writes: list[tuple[str, float]] = []
 
     def get_all_memories_for_decay(self) -> list[dict]:
+        # M-D3: source="post_tool_capture" classifies as the "auto" write
+        # class — the only regulated class (homeostatic._REGULATED_
+        # CLASSES) — matching what these fixtures test: a flood-like
+        # population subject to scalar/fold/cohort regulation.
         return [
-            {"id": i, "heat": h, "domain": "default", "is_protected": False}
+            {
+                "id": i,
+                "heat": h,
+                "domain": "default",
+                "is_protected": False,
+                "source": "post_tool_capture",
+            }
             for i, h in enumerate(self._heats)
         ]
 
@@ -169,10 +177,12 @@ class _FakeStore:
         self.updates.append((memory_id, heat))
         self._heats[memory_id] = heat
 
-    def get_homeostatic_factor(self, domain: str) -> float:
+    def get_homeostatic_factor(self, domain: str, write_class: str = "auto") -> float:
         return self._factor
 
-    def set_homeostatic_factor(self, domain: str, factor: float) -> None:
+    def set_homeostatic_factor(
+        self, domain: str, factor: float, write_class: str = "auto"
+    ) -> None:
         self.factor_writes.append((domain, factor))
         self._factor = factor
 
