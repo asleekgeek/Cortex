@@ -5,10 +5,30 @@ Composition root for the authoring path. Renders templated content via
 atomic write to ``infrastructure.wiki_store``. After a successful write,
 stores a protected PG pointer memory tagged ``wiki`` so ``recall`` can
 surface the page like any other memory.
+
+I6-D7/INC6.8 ("flux avant" citations): this is the completion handler
+for ``curate_wiki``'s authoring jobs — the in-session LLM reads a job's
+``memory_ids``/``supporting_memory_ids``, decides which of them it
+actually used while authoring, and passes THAT subset back here via
+``memory_ids``. Two additional best-effort side effects fire after a
+successful write, mirroring ``wiki_read``'s ``_cite_page`` contract
+(same degrade-to-no-op discipline, same "the write already succeeded
+on disk, this is pure observability" boundary):
+
+  1. Sync the page into ``wiki.pages`` synchronously (reuses
+     ``wiki_migrate.page_row_from_md`` + ``upsert_page`` — the same
+     row-shape ``wiki_migrate``'s batch sweep would produce later).
+     Without this, ``wiki.citations`` would have no ``page_id`` to
+     attach to until the next migration sweep ran.
+  2. If ``memory_ids`` was passed, insert one ``wiki.citations`` row
+     per memory_id — dedup key is ``(page_id, memory_id)``, distinct
+     from ``wiki_read``'s ``(page_id, session_id)`` key (see
+     ``insert_citation``'s docstring, pg_store_wiki_notes.py).
 """
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from mcp_server.core.wiki_layout import page_path
@@ -18,7 +38,12 @@ from mcp_server.core.wiki_pages import (
     build_note,
     build_spec,
 )
+from mcp_server.handlers.wiki_migrate import page_row_from_md
 from mcp_server.infrastructure.config import WIKI_ROOT
+from mcp_server.infrastructure.memory_config import get_memory_settings
+from mcp_server.infrastructure.memory_store import get_shared_store
+from mcp_server.infrastructure.pg_store_wiki import insert_citation, upsert_page
+from mcp_server.infrastructure.session_registry import current_window_session
 from mcp_server.infrastructure.wiki_store import (
     WikiExists,
     WikiMissing,
@@ -26,6 +51,8 @@ from mcp_server.infrastructure.wiki_store import (
 )
 
 from mcp_server.handlers._tool_meta import IDEMPOTENT_WRITE
+
+logger = logging.getLogger(__name__)
 
 schema = {
     "title": "Wiki — write page",
@@ -42,9 +69,14 @@ schema = {
         "future ADR. Distinct from `wiki_adr` (auto-numbered ADRs from "
         "structured Context/Decision/Consequences), `wiki_compile` "
         "(publishes already-curated drafts), and `remember` (no markdown "
-        "page, just a memory). Mutates the wiki/ tree and the memories "
-        "table. Latency ~50ms. Returns {path, mode, created, "
-        "bytes_written, root} or {error}."
+        "page, just a memory). Mutates the wiki/ tree, the memories "
+        "table, wiki.pages (synced synchronously so the page has a "
+        "resolvable id immediately), and — when `memory_ids` is passed "
+        "— wiki.citations (one deduplicated row per memory actually used "
+        "to author the page; how a curate_wiki job's memory cluster "
+        "becomes durable, queryable provenance). Latency ~50ms. Returns "
+        "{path, mode, created, bytes_written, root, citations_written} "
+        "or {error}."
     ),
     "inputSchema": {
         "type": "object",
@@ -96,6 +128,22 @@ schema = {
                 "default": [],
                 "examples": [["lesson", "recall"], ["adr", "embeddings"]],
             },
+            "memory_ids": {
+                "type": "array",
+                "description": (
+                    "IDs of the memories you actually drew on while "
+                    "authoring this content — typically a subset of a "
+                    "`curate_wiki` job's `memory_ids`/"
+                    "`supporting_memory_ids` (a job proposes candidates; "
+                    "you may not have used all of them). Recorded as one "
+                    "deduplicated wiki.citations row per id, best-effort — "
+                    "never blocks or fails the write. Omit if this page "
+                    "wasn't authored from a curate_wiki job."
+                ),
+                "items": {"type": "integer"},
+                "default": [],
+                "examples": [[10234, 10240, 10256]],
+            },
         },
     },
 }
@@ -116,6 +164,65 @@ async def _store_pointer_memory(rel_path: str, content: str, tags: list[str]) ->
         )
     except Exception:
         return
+
+
+def _sync_page_and_cite(rel_path: str, content: str, memory_ids: list[int]) -> int:
+    """Sync ``wiki.pages`` and record citations for the memories used, best-effort.
+
+    precondition: rel_path/content are the page just written to disk by
+    ``write_page`` (already succeeded by the time this runs).
+    postcondition: on success, exactly one wiki.pages row exists for
+    rel_path (inserted or refreshed by ``page_row_from_md`` +
+    ``upsert_page`` — same shape ``wiki_migrate``'s batch sweep would
+    produce) and, for each id in ``memory_ids``, at most one new
+    wiki.citations row exists keyed on (page_id, memory_id) — a repeat
+    id (this call or a prior one) is a silent DB-level no-op, never an
+    error (``insert_citation``'s unqualified ON CONFLICT DO NOTHING).
+    Unlike wiki_read's ``_cite_page``, a resolvable window session is
+    NOT required: this citation records "memory used to author the
+    page", not "page read in this session" — the two are orthogonal
+    provenance signals sharing one table. session_id falls back to ''
+    (the column's own NOT NULL DEFAULT) when no window session is
+    resolvable, matching the schema rather than skipping the row.
+    On ANY exception (PG down, store not PG-backed, etc.) this
+    degrades to a no-op — the markdown write already succeeded and
+    must never be affected by this observability side channel.
+    Returns the number of new citation rows written (0 on any failure
+    or when memory_ids is empty).
+    """
+    try:
+        settings = get_memory_settings()
+        store = get_shared_store(settings.DB_PATH, settings.EMBEDDING_DIM)
+        conn = store._conn
+        page_row = page_row_from_md(rel_path, content)
+        page_id, _was_modified = upsert_page(conn, page_row)
+        if page_id is None or page_id < 0 or not memory_ids:
+            conn.commit()
+            return 0
+        try:
+            session_id = current_window_session() or ""
+        except Exception:
+            session_id = ""
+        written = 0
+        for mid in memory_ids:
+            new_id = insert_citation(
+                conn,
+                page_id=page_id,
+                session_id=session_id,
+                domain=page_row.get("domain", ""),
+                memory_id=mid,
+            )
+            if new_id is not None:
+                written += 1
+        conn.commit()
+        return written
+    except Exception:
+        logger.debug(
+            "wiki_write page-sync/citation side-effect failed for %s",
+            rel_path,
+            exc_info=True,
+        )
+        return 0
 
 
 async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -146,12 +253,16 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     tags = [str(t) for t in (args.get("tags") or [])]
     await _store_pointer_memory(rel_path, str(content), tags)
 
+    memory_ids = [int(m) for m in (args.get("memory_ids") or [])]
+    citations_written = _sync_page_and_cite(rel_path, str(content), memory_ids)
+
     return {
         "path": result.path,
         "mode": result.mode,
         "created": result.created,
         "bytes_written": result.bytes_written,
         "root": str(WIKI_ROOT),
+        "citations_written": citations_written,
     }
 
 

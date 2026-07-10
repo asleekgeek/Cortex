@@ -4,7 +4,7 @@ Covers:
   1. ``mcp_server.shared.wiki_source_paths.extract_document_paths`` reads
      each legacy frontmatter form (documents:/source_file_path:/file:/
      file:<path> tag) and canonicalizes them.
-  2. ``wiki_migrate._page_row_from_md`` wires that extraction into the
+  2. ``wiki_migrate.page_row_from_md`` wires that extraction into the
      upsert_page payload (documents/documents_primary).
   3. ``pg_store_wiki_sources.upsert_page_sources`` is idempotent —
      calling it twice with the same documents yields the same rows.
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, call
 
-from mcp_server.handlers.wiki_migrate import _page_row_from_md
+from mcp_server.handlers.wiki_migrate import page_row_from_md
 from mcp_server.infrastructure.pg_store_wiki_sources import upsert_page_sources
 from mcp_server.shared.wiki_source_paths import (
     extract_document_paths,
@@ -90,7 +90,7 @@ def test_extract_no_documented_files_returns_empty() -> None:
     assert extract_document_paths({}, ["unrelated"]) == []
 
 
-# ── _page_row_from_md wiring ─────────────────────────────────────────────
+# ── page_row_from_md wiring ─────────────────────────────────────────────
 
 
 def test_page_row_from_md_carries_documents_primary() -> None:
@@ -105,14 +105,14 @@ def test_page_row_from_md_carries_documents_primary() -> None:
         "---\n\n"
         "# foo.py\n"
     )
-    row = _page_row_from_md("reference/cortex/1-foo-py.md", content)
+    row = page_row_from_md("reference/cortex/1-foo-py.md", content)
     assert row["documents"] == ["mcp_server/core/foo.py"]
     assert row["documents_primary"] == "mcp_server/core/foo.py"
 
 
 def test_page_row_from_md_no_documents_is_none() -> None:
     content = "---\ntitle: Some ADR\nkind: adr\ndomain: cortex\n---\n\nBody.\n"
-    row = _page_row_from_md("adr/cortex/1-some-adr.md", content)
+    row = page_row_from_md("adr/cortex/1-some-adr.md", content)
     assert row["documents"] == []
     assert row["documents_primary"] is None
 
@@ -128,7 +128,7 @@ def test_page_row_from_md_file_tag_form() -> None:
         "---\n\n"
         "# bar.py\n"
     )
-    row = _page_row_from_md("reference/cortex/2-bar-py.md", content)
+    row = page_row_from_md("reference/cortex/2-bar-py.md", content)
     assert row["documents"] == ["mcp_server/core/bar.py"]
     assert row["documents_primary"] == "mcp_server/core/bar.py"
 

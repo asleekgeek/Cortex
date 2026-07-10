@@ -55,6 +55,7 @@ from mcp_server.infrastructure.pg_store_wiki_links import (
 from mcp_server.infrastructure.pg_store_wiki_notes import (
     insert_citation,
     insert_memo,
+    list_uncited_deliberate_memories,
     wiki_stats,
 )
 from mcp_server.infrastructure.pg_store_wiki_pages import (
@@ -95,6 +96,7 @@ __all__ = [
     "list_concepts",
     "list_drafts",
     "list_pages_for_decay",
+    "list_uncited_deliberate_memories",
     "resolve_unresolved_links",
     "update_claim_entities",
     "update_claim_supersedes",
