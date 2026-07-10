@@ -76,18 +76,17 @@ def _get_remote_url(repo_path: Path) -> str:
     the whole class of failure; INI parsing of a config file we control
     the shape of is simpler than shelling out regardless of platform.
 
-    Decision (worktree blind spot, evaluated and rejected): a linked
-    worktree's remotes live in the *main* repo's ``.git/config``, reached
-    by dereferencing the worktree's ``.git`` file (``gitdir: <path>``) up
-    two levels (``.../.git/worktrees/<name>`` → ``.../.git``). This
-    function does NOT do that dereferencing — not because it's hard, but
-    because it would be speculative generality with no current caller:
-    ``_discover_repos`` (this function's only caller) already filters to
-    ``(item / ".git").is_dir()`` before calling this, so a worktree's
-    ``.git`` *file* is never passed in here. If that precondition is ever
-    violated by a future caller, ``cfg.is_file()`` at line below returns
-    False and this fails safe (empty remote, no crash) rather than
-    silently misresolving — the degradation is explicit, not hidden.
+    Decision (worktree blind spot — superseded, see below): a linked
+    worktree's remotes live in the *main* repo's ``.git/config``. This
+    function still does NOT dereference a worktree's ``.git`` file itself
+    — ``_discover_repos`` (its only caller) still filters to
+    ``(item / ".git").is_dir()``, so a worktree's ``.git`` *file* is never
+    passed in here, and ``cfg.is_file()`` below fails safe if that ever
+    changes. Worktree resolution is instead handled one layer up, at
+    lookup time: ``_resolve_repo_for_root`` dereferences a worktree's
+    ``.git`` file to the *main* repo's root and reuses that repo's
+    already-discovered remote/canonical — no duplicate discovery, no
+    duplicate domain (cdeust/Cortex INC6.2).
     """
     try:
         cfg = repo_path / ".git" / "config"
@@ -322,6 +321,86 @@ def _git_root(path: str) -> str | None:
     return None
 
 
+def _dereference_worktree_gitdir(git_entry: Path) -> Path | None:
+    """Resolve a linked worktree's ``.git`` file to its main repo's root.
+
+    precondition: ``git_entry`` is the ``.git`` path found at the root
+    ``_git_root`` returned (i.e. ``<git_root>/.git``) — may or may not
+    exist, may be a directory (normal clone) or a file (linked worktree,
+    ``git-worktree(1)``: ``gitdir: <path>`` where ``<path>`` is
+    ``<main>/.git/worktrees/<name>``).
+    postcondition: returns the main repo's root directory (the directory
+    ``_discover_repos`` would have registered) when ``git_entry`` is a
+    well-formed worktree gitdir-file. Returns ``None`` — never raises —
+    when ``git_entry`` is a directory (nothing to dereference, normal
+    clone), missing, unreadable, empty, or its content does not match the
+    expected ``<main>/.git/worktrees/<name>`` shape (relocated
+    ``.git/worktrees`` admin dir, corrupted file, non-worktree gitdir
+    pointer). Fail-safe by construction: every early return is ``None``,
+    so callers that only act on a non-``None`` result inherit today's
+    empty-domain behavior for anything this function cannot confidently
+    parse — no new failure mode is introduced. Pure filesystem read, zero
+    subprocess I/O (cdeust/Cortex#91 precedent).
+    """
+    if not git_entry.is_file():
+        return None
+    try:
+        text = git_entry.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return None
+    if not text.startswith("gitdir:"):
+        return None
+    raw = text[len("gitdir:") :].strip()
+    if not raw:
+        return None
+    gitdir_path = Path(raw)
+    if not gitdir_path.is_absolute():
+        gitdir_path = git_entry.parent / gitdir_path
+    try:
+        gitdir_path = gitdir_path.resolve()
+    except OSError:
+        return None
+    # Expected shape: <main>/.git/worktrees/<name>
+    worktrees_dir = gitdir_path.parent
+    if worktrees_dir.name != "worktrees":
+        return None
+    git_dir = worktrees_dir.parent
+    if git_dir.name != ".git":
+        return None
+    main_root = git_dir.parent
+    if not (main_root / ".git").is_dir():
+        return None
+    return main_root
+
+
+def _resolve_repo_for_root(root: str, registry: DomainRegistry) -> RepoInfo | None:
+    """Look up the registered repo for a git root, dereferencing worktrees.
+
+    precondition: ``root`` is the forward-slash string ``_git_root``
+    returned for some path (the nearest ancestor with a ``.git`` entry).
+    ``registry`` is the current ``DomainRegistry``.
+    postcondition: if ``root`` is itself a registered repo (the common
+    case — a normal clone under a discovered dev root), returns its
+    ``RepoInfo`` directly. Otherwise, if ``root`` is a linked worktree
+    (its ``.git`` is a file), dereferences the gitdir pointer to the main
+    repo's root and returns *that* repo's ``RepoInfo`` — a cwd inside a
+    linked worktree resolves to the SAME domain as the main checkout,
+    never a new one (worktrees are never inserted into ``path_to_repo``
+    by ``_discover_repos``, so no duplicate domain can be created here).
+    Returns ``None`` if ``root`` is unregistered and not a resolvable
+    worktree of a registered repo, or the gitdir pointer cannot be parsed
+    (fail-safe, matches pre-existing behavior — caller falls through to
+    an empty domain).
+    """
+    repo = registry.path_to_repo.get(root)
+    if repo is not None:
+        return repo
+    main_root = _dereference_worktree_gitdir(Path(root) / ".git")
+    if main_root is None:
+        return None
+    return registry.path_to_repo.get(_to_posix(main_root))
+
+
 # ── Registry ──────────────────────────────────────────────────────────
 
 
@@ -411,8 +490,10 @@ def resolve_domain(input_str: str) -> str:
     # 1. Is it a filesystem path? → git_root → repo match
     if "/" in clean and not clean.startswith("-"):
         root = _git_root(clean)
-        if root and root in registry.path_to_repo:
-            return registry.path_to_repo[root].canonical
+        if root:
+            repo = _resolve_repo_for_root(root, registry)
+            if repo:
+                return repo.canonical
         # Try prefix match against known repo paths
         for repo in registry.repos:
             if clean.startswith(repo.fs_path):
@@ -481,7 +562,7 @@ def resolve_cwd(cwd: str) -> str:
     root = _git_root(cwd)
     if root:
         registry = _build_registry()
-        repo = registry.path_to_repo.get(root)
+        repo = _resolve_repo_for_root(root, registry)
         if repo:
             return repo.canonical
     # If not in a known git repo, return '' so callers can fall through
