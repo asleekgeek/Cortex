@@ -1,5 +1,10 @@
 """End-to-end tests for the auto_recall UserPromptSubmit hook.
 
+Unit-level tests (no PG needed) for the T2-H2 session registry refresh
+wiring live in ``test_auto_recall_registry.py`` — this file's module
+level ``pytestmark`` skips everything when PG is unreachable, which
+would wrongly skip registry-only tests that need no database.
+
 Issue #20 root cause: auto_recall.py queried ``memories.heat`` — a
 column that does NOT exist in the storage schema (the stored column
 is ``heat_base``; ``heat`` is only a derived projection returned by
@@ -147,3 +152,4 @@ def test_auto_recall_does_not_crash_on_short_query(_seeded_db: str) -> None:
     result = _run_hook("ok", _seeded_db)
     assert result.returncode == 0
     assert result.stdout.strip() == ""
+
