@@ -149,7 +149,7 @@ class TestPersonaDrift:
     def test_zero_magnitude_for_identical(self):
         pv = build_persona_vector(_make_profile())
         drift = persona_drift(pv, pv)
-        assert drift["magnitude"] < 1e-10
+        assert drift.magnitude < 1e-10
 
     def test_nonzero_magnitude_for_different(self):
         old = build_persona_vector(_make_profile())
@@ -163,9 +163,9 @@ class TestPersonaDrift:
             )
         )
         drift = persona_drift(old, new)
-        assert drift["magnitude"] > 0
-        assert isinstance(drift["interpretation"], str)
-        assert len(drift["interpretation"]) > 0
+        assert drift.magnitude > 0
+        assert isinstance(drift.interpretation, str)
+        assert len(drift.interpretation) > 0
 
     def test_direction_contains_all_dims(self):
         old = build_persona_vector(_make_profile())
@@ -180,7 +180,7 @@ class TestPersonaDrift:
         )
         drift = persona_drift(old, new)
         for dim in PERSONA_DIMENSIONS:
-            assert isinstance(drift["direction"][dim], (int, float))
+            assert isinstance(drift.direction[dim], (int, float))
 
 
 class TestComposePersonas:

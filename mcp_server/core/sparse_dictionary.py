@@ -7,8 +7,6 @@ K=15 atoms, sparsity S=3, Cramer's rule least-squares.
 
 from __future__ import annotations
 
-from typing import Any
-
 from mcp_server.core.sparse_dictionary_activation import (
     SIGNAL_NAMES,
     D,
@@ -24,6 +22,12 @@ from mcp_server.core.sparse_dictionary_learning import (
     update_dictionary as _update_dictionary,
 )
 from mcp_server.shared.linear_algebra import norm, normalize, zeros
+from mcp_server.shared.types_features import (
+    EncodedSession,
+    Feature,
+    FeatureDictionary,
+    TopSignal,
+)
 
 # ---------------------------------------------------------------------------
 # Static seed dictionary for cold start (<10 sessions)
@@ -98,7 +102,7 @@ _SEED_FEATURES = [
 ]
 
 
-def _build_seed_feature(idx: int, seed: dict) -> dict[str, Any]:
+def _build_seed_feature(idx: int, seed: dict) -> Feature:
     """Build a single seed feature from its definition."""
     direction = zeros(D)
     for signal, weight in seed["signals"].items():
@@ -107,32 +111,32 @@ def _build_seed_feature(idx: int, seed: dict) -> dict[str, Any]:
             direction[si] = weight
     normalized = normalize(direction)
     top_signals = sorted(
-        [{"signal": s, "weight": w} for s, w in seed["signals"].items()],
-        key=lambda x: abs(x["weight"]),
+        (TopSignal(signal=s, weight=w) for s, w in seed["signals"].items()),
+        key=lambda ts: abs(ts.weight),
         reverse=True,
     )
-    return {
-        "index": idx,
-        "label": seed["label"],
-        "description": seed["description"],
-        "direction": normalized,
-        "topSignals": top_signals,
-    }
+    return Feature(
+        index=idx,
+        label=seed["label"],
+        description=seed["description"],
+        direction=normalized,
+        topSignals=top_signals,
+    )
 
 
-def build_seed_dictionary() -> dict[str, Any]:
+def build_seed_dictionary() -> FeatureDictionary:
     """Build the cold-start seed dictionary from static feature definitions."""
     features = [
         _build_seed_feature(idx, seed) for idx, seed in enumerate(_SEED_FEATURES)
     ]
-    return {
-        "K": len(features),
-        "D": D,
-        "sparsity": 3,
-        "signalNames": list(SIGNAL_NAMES),
-        "features": features,
-        "learnedFromSessions": 0,
-    }
+    return FeatureDictionary(
+        K=len(features),
+        D=D,
+        sparsity=3,
+        signalNames=list(SIGNAL_NAMES),
+        features=features,
+        learnedFromSessions=0,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +147,7 @@ def build_seed_dictionary() -> dict[str, Any]:
 def learn_dictionary(
     conversations: list[dict] | None,
     options: dict | None = None,
-) -> dict[str, Any]:
+) -> FeatureDictionary:
     """Learn a feature dictionary from conversation data via K-SVD.
 
     Falls back to the seed dictionary if fewer than 10 conversations.
@@ -162,14 +166,14 @@ def learn_dictionary(
 
     features = [label_feature(direction, idx) for idx, direction in enumerate(atoms)]
 
-    return {
-        "K": len(atoms),
-        "D": D,
-        "sparsity": sparsity,
-        "signalNames": list(SIGNAL_NAMES),
-        "features": features,
-        "learnedFromSessions": len(conversations),
-    }
+    return FeatureDictionary(
+        K=len(atoms),
+        D=D,
+        sparsity=sparsity,
+        signalNames=list(SIGNAL_NAMES),
+        features=features,
+        learnedFromSessions=len(conversations),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -207,14 +211,14 @@ _SIGNAL_LABELS = {
 }
 
 
-def label_feature(direction: list[float], index: int) -> dict[str, Any]:
+def label_feature(direction: list[float], index: int) -> Feature:
     """Generate a human-readable label and description for a feature atom."""
     weighted = [
-        {"signal": SIGNAL_NAMES[i], "weight": direction[i]}
+        TopSignal(signal=SIGNAL_NAMES[i], weight=direction[i])
         for i in range(len(SIGNAL_NAMES))
         if i < len(direction) and abs(direction[i]) > 0.05
     ]
-    weighted.sort(key=lambda x: abs(x["weight"]), reverse=True)
+    weighted.sort(key=lambda ts: abs(ts.weight), reverse=True)
     top_signals = weighted[:5]
     top_signal = top_signals[0] if top_signals else None
 
@@ -222,36 +226,36 @@ def label_feature(direction: list[float], index: int) -> dict[str, Any]:
     description = "Behavioral feature"
 
     if top_signal:
-        label = _SIGNAL_LABELS.get(top_signal["signal"], f"feature-{index}")
+        label = _SIGNAL_LABELS.get(top_signal.signal, f"feature-{index}")
         secondary = top_signals[1] if len(top_signals) > 1 else None
         if secondary:
-            second_label = _SIGNAL_LABELS.get(secondary["signal"], "")
+            second_label = _SIGNAL_LABELS.get(secondary.signal, "")
             description = f"{label} with {second_label} tendency"
         else:
             description = f"Dominant {label} behavioral mode"
 
-    return {
-        "index": index,
-        "label": label,
-        "description": description,
-        "direction": direction,
-        "topSignals": top_signals,
-    }
+    return Feature(
+        index=index,
+        label=label,
+        description=description,
+        direction=direction,
+        topSignals=top_signals,
+    )
 
 
-def encode_session(conversation: dict, dictionary: dict) -> dict[str, Any]:
+def encode_session(conversation: dict, dictionary: FeatureDictionary) -> EncodedSession:
     """Encode a single conversation against a learned dictionary."""
     activation = extract_session_activation(conversation)
-    atoms = [f["direction"] for f in dictionary["features"]]
-    result = omp(activation, atoms, dictionary["sparsity"])
+    atoms = [f.direction for f in dictionary.features]
+    result = omp(activation, atoms, dictionary.sparsity)
 
     weights: dict[str, float] = {}
     for i, idx in enumerate(result["indices"]):
-        feature = dictionary["features"][idx]
+        feature = dictionary.features[idx]
         if feature and abs(result["coefficients"][i]) > 1e-10:
-            weights[feature["label"]] = result["coefficients"][i]
+            weights[feature.label] = result["coefficients"][i]
 
-    return {
-        "weights": weights,
-        "reconstructionError": norm(result["residual"]),
-    }
+    return EncodedSession(
+        weights=weights,
+        reconstructionError=norm(result["residual"]),
+    )

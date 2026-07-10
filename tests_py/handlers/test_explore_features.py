@@ -4,6 +4,12 @@ import asyncio
 from unittest.mock import patch
 
 from mcp_server.handlers.explore_features import handler, schema
+from mcp_server.shared.types_features import (
+    AttributionGraph,
+    AttributionNode,
+    FeatureDictionary,
+    PersistentFeature,
+)
 
 
 class TestExploreSchema:
@@ -39,6 +45,7 @@ class TestExploreFeatures:
             "K": 8,
             "D": 27,
             "sparsity": 3,
+            "signalNames": [],
             "learnedFromSessions": 0,
             "features": [
                 {
@@ -65,7 +72,9 @@ class TestExploreFeatures:
 
     def test_features_uses_seed_dictionary_when_none(self):
         profiles = {"domains": {"d1": {"label": "D1"}}}
-        seed = {"K": 8, "D": 27, "sparsity": 3, "features": []}
+        seed = FeatureDictionary(
+            K=8, D=27, sparsity=3, signalNames=[], features=[], learnedFromSessions=0
+        )
         with (
             patch(
                 "mcp_server.handlers.explore_features.load_profiles",
@@ -105,12 +114,21 @@ class TestExploreAttribution:
                     "featureActivations": {"feat-a": 0.9},
                 }
             },
-            "featureDictionary": {"K": 8, "D": 27, "sparsity": 3, "features": []},
+            "featureDictionary": {
+                "K": 8,
+                "D": 27,
+                "sparsity": 3,
+                "signalNames": [],
+                "features": [],
+                "learnedFromSessions": 0,
+            },
         }
-        graph = {
-            "nodes": [{"id": "n1", "layer": "feature", "label": "feat-a"}],
-            "edges": [],
-        }
+        graph = AttributionGraph(
+            nodes=[
+                AttributionNode(id="n1", layer="feature", label="feat-a", activation=0)
+            ],
+            edges=[],
+        )
         with (
             patch(
                 "mcp_server.handlers.explore_features.load_profiles",
@@ -128,9 +146,16 @@ class TestExploreAttribution:
     def test_attribution_defaults_to_first_domain(self):
         profiles = {
             "domains": {"first-dom": {"label": "First"}},
-            "featureDictionary": {"K": 8, "D": 27, "sparsity": 3, "features": []},
+            "featureDictionary": {
+                "K": 8,
+                "D": 27,
+                "sparsity": 3,
+                "signalNames": [],
+                "features": [],
+                "learnedFromSessions": 0,
+            },
         }
-        graph = {"nodes": [], "edges": []}
+        graph = AttributionGraph(nodes=[], edges=[])
         with (
             patch(
                 "mcp_server.handlers.explore_features.load_profiles",
@@ -244,7 +269,14 @@ class TestExploreCrosscoder:
                 "dom-a": {"label": "A", "featureActivations": {"f1": 0.9}},
                 "dom-b": {"label": "B", "featureActivations": {"f1": 0.7}},
             },
-            "featureDictionary": {"K": 8, "D": 27, "features": []},
+            "featureDictionary": {
+                "K": 8,
+                "D": 27,
+                "sparsity": 3,
+                "signalNames": [],
+                "features": [],
+                "learnedFromSessions": 0,
+            },
         }
         comparison = {"shared": ["f1"], "divergent": []}
         with (
@@ -274,7 +306,14 @@ class TestExploreCrosscoder:
     def test_crosscoder_error_missing_domain_a(self):
         profiles = {
             "domains": {"dom-b": {"label": "B"}},
-            "featureDictionary": {"K": 8, "D": 27, "features": []},
+            "featureDictionary": {
+                "K": 8,
+                "D": 27,
+                "sparsity": 3,
+                "signalNames": [],
+                "features": [],
+                "learnedFromSessions": 0,
+            },
         }
         with patch(
             "mcp_server.handlers.explore_features.load_profiles", return_value=profiles
@@ -294,7 +333,14 @@ class TestExploreCrosscoder:
     def test_crosscoder_error_missing_domain_b(self):
         profiles = {
             "domains": {"dom-a": {"label": "A"}},
-            "featureDictionary": {"K": 8, "D": 27, "features": []},
+            "featureDictionary": {
+                "K": 8,
+                "D": 27,
+                "sparsity": 3,
+                "signalNames": [],
+                "features": [],
+                "learnedFromSessions": 0,
+            },
         }
         with patch(
             "mcp_server.handlers.explore_features.load_profiles", return_value=profiles
@@ -314,9 +360,23 @@ class TestExploreCrosscoder:
     def test_crosscoder_persistent_features_fallback(self):
         profiles = {
             "domains": {"d1": {"label": "D1"}, "d2": {"label": "D2"}},
-            "featureDictionary": {"K": 8, "D": 27, "features": []},
+            "featureDictionary": {
+                "K": 8,
+                "D": 27,
+                "sparsity": 3,
+                "signalNames": [],
+                "features": [],
+                "learnedFromSessions": 0,
+            },
         }
-        persistent = [{"feature": "shared-feat", "persistence": 0.8}]
+        persistent = [
+            PersistentFeature(
+                label="shared-feat",
+                persistence=0.8,
+                consistency=0.0,
+                domains=["d1", "d2"],
+            )
+        ]
         with (
             patch(
                 "mcp_server.handlers.explore_features.load_profiles",
@@ -329,7 +389,7 @@ class TestExploreCrosscoder:
         ):
             result = asyncio.run(handler({"mode": "crosscoder"}))
         assert result["status"] == "ok"
-        assert result["persistentFeatures"] == persistent
+        assert result["persistentFeatures"] == [pf.model_dump() for pf in persistent]
         assert result["domainCount"] == 2
 
 

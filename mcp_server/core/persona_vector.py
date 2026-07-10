@@ -6,9 +6,8 @@ Dimensions 4-9: thoroughness, autonomy, verbosity, riskTolerance, focusScope, it
 
 from __future__ import annotations
 
-from typing import Any
-
 from mcp_server.shared.linear_algebra import add, cosine_similarity, scale, zeros
+from mcp_server.shared.types_features import PersonaDrift
 
 PERSONA_DIMENSIONS = [
     "activeReflective",
@@ -96,7 +95,7 @@ def persona_distance(a: dict, b: dict) -> float:
     return 1 - cosine_similarity(persona_to_array(a), persona_to_array(b))
 
 
-def persona_drift(old_pv: dict, new_pv: dict) -> dict[str, Any]:
+def persona_drift(old_pv: dict, new_pv: dict) -> PersonaDrift:
     old_arr = persona_to_array(old_pv)
     new_arr = persona_to_array(new_pv)
 
@@ -127,11 +126,11 @@ def persona_drift(old_pv: dict, new_pv: dict) -> dict[str, Any]:
     labels = dim_labels.get(max_dim, ("shifted", "shifted"))
     interpretation = labels[0] if max_drift < 0 else labels[1]
 
-    return {
-        "magnitude": magnitude,
-        "direction": direction,
-        "interpretation": interpretation,
-    }
+    return PersonaDrift(
+        magnitude=magnitude,
+        direction=direction,
+        interpretation=interpretation,
+    )
 
 
 def compose_personas(vectors: list[dict], weights: list[float]) -> dict[str, float]:

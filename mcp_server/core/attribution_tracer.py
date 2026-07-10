@@ -6,14 +6,18 @@ measures |output_perturbed - output_original| / epsilon. Samples at most 20 sess
 
 from __future__ import annotations
 
-from typing import Any
-
 from mcp_server.core.sparse_dictionary_activation import (
     SIGNAL_NAMES,
     D,
     extract_session_activation,
 )
 from mcp_server.shared.linear_algebra import norm, subtract
+from mcp_server.shared.types_features import (
+    AttributionEdge,
+    AttributionGraph,
+    AttributionNode,
+    FeatureDictionary,
+)
 
 # ---------------------------------------------------------------------------
 # Node construction helpers
@@ -24,15 +28,15 @@ def _build_layer_nodes(
     names: list[str],
     layer: str,
     prefix: str,
-) -> list[dict[str, Any]]:
+) -> list[AttributionNode]:
     """Build nodes for a single layer with uniform activation=0."""
     return [
-        {"id": f"{prefix}:{name}", "label": name, "layer": layer, "activation": 0}
+        AttributionNode(id=f"{prefix}:{name}", label=name, layer=layer, activation=0)
         for name in names
     ]
 
 
-def _build_classifier_nodes(profile: dict) -> list[dict[str, Any]]:
+def _build_classifier_nodes(profile: dict) -> list[AttributionNode]:
     """Build classifier nodes with activation from metacognitive profile."""
     classifiers = [
         "activeReflective",
@@ -44,57 +48,57 @@ def _build_classifier_nodes(profile: dict) -> list[dict[str, Any]]:
     ]
     mc = profile.get("metacognitive") or {}
     return [
-        {
-            "id": f"classifier:{cls}",
-            "label": cls,
-            "layer": "classifier",
-            "activation": mc.get(cls) or 0,
-        }
+        AttributionNode(
+            id=f"classifier:{cls}",
+            label=cls,
+            layer="classifier",
+            activation=mc.get(cls) or 0,
+        )
         for cls in classifiers
     ]
 
 
-def _build_feature_nodes(dictionary: dict | None) -> list[dict[str, Any]]:
+def _build_feature_nodes(dictionary: FeatureDictionary | None) -> list[AttributionNode]:
     """Build feature nodes from dictionary features."""
-    if not dictionary or not dictionary.get("features"):
+    if not dictionary or not dictionary.features:
         return []
     return [
-        {
-            "id": f"feature:{f['label']}",
-            "label": f["label"],
-            "layer": "feature",
-            "activation": 0,
-        }
-        for f in dictionary["features"]
+        AttributionNode(
+            id=f"feature:{f.label}",
+            label=f.label,
+            layer="feature",
+            activation=0,
+        )
+        for f in dictionary.features
     ]
 
 
 def build_attribution_nodes(
     profile: dict,
-    dictionary: dict | None,
-) -> list[dict[str, Any]]:
+    dictionary: FeatureDictionary | None,
+) -> list[AttributionNode]:
     extractors = ["entryPoints", "recurringPatterns", "toolPreferences", "sessionShape"]
 
-    nodes: list[dict[str, Any]] = []
+    nodes: list[AttributionNode] = []
     nodes.extend(_build_layer_nodes(list(SIGNAL_NAMES), "input", "input"))
     nodes.extend(_build_layer_nodes(extractors, "extractor", "extractor"))
     nodes.extend(_build_classifier_nodes(profile))
     nodes.extend(_build_feature_nodes(dictionary))
     nodes.append(
-        {
-            "id": "aggregator:profile",
-            "label": "Domain Profile",
-            "layer": "aggregator",
-            "activation": profile.get("confidence") or 0,
-        }
+        AttributionNode(
+            id="aggregator:profile",
+            label="Domain Profile",
+            layer="aggregator",
+            activation=profile.get("confidence") or 0,
+        )
     )
     nodes.append(
-        {
-            "id": "output:context",
-            "label": "Context Output",
-            "layer": "output",
-            "activation": 1,
-        }
+        AttributionNode(
+            id="output:context",
+            label="Context Output",
+            layer="output",
+            activation=1,
+        )
     )
     return nodes
 
@@ -175,9 +179,9 @@ def _compute_mean_baseline(conversations: list[dict], max_samples: int) -> list[
 def _compute_input_to_extractor_edges(
     mean_baseline: list[float],
     epsilon: float,
-) -> list[dict[str, Any]]:
+) -> list[AttributionEdge]:
     """Compute perturbation-based edges from input signals to extractors."""
-    edges: list[dict[str, Any]] = []
+    edges: list[AttributionEdge] = []
     for s in range(D):
         signal = SIGNAL_NAMES[s]
         extractor = _SIGNAL_TO_EXTRACTOR.get(signal)
@@ -192,38 +196,40 @@ def _compute_input_to_extractor_edges(
 
         if weight > 0.01:
             edges.append(
-                {
-                    "source": f"input:{signal}",
-                    "target": extractor,
-                    "weight": round(weight * 1000) / 1000,
-                }
+                AttributionEdge(
+                    source=f"input:{signal}",
+                    target=extractor,
+                    weight=round(weight * 1000) / 1000,
+                )
             )
     return edges
 
 
-def _compute_feature_edges(dictionary: dict | None) -> list[dict[str, Any]]:
+def _compute_feature_edges(
+    dictionary: FeatureDictionary | None,
+) -> list[AttributionEdge]:
     """Compute classifier-to-feature and feature-to-aggregator edges."""
-    if not dictionary or not dictionary.get("features"):
+    if not dictionary or not dictionary.features:
         return []
 
-    edges: list[dict[str, Any]] = []
-    for feature in dictionary["features"]:
-        for ts in feature.get("topSignals") or []:
-            classifier_for = _get_classifier_for_signal(ts["signal"])
+    edges: list[AttributionEdge] = []
+    for feature in dictionary.features:
+        for ts in feature.topSignals or []:
+            classifier_for = _get_classifier_for_signal(ts.signal)
             if classifier_for:
                 edges.append(
-                    {
-                        "source": classifier_for,
-                        "target": f"feature:{feature['label']}",
-                        "weight": abs(ts["weight"]),
-                    }
+                    AttributionEdge(
+                        source=classifier_for,
+                        target=f"feature:{feature.label}",
+                        weight=abs(ts.weight),
+                    )
                 )
         edges.append(
-            {
-                "source": f"feature:{feature['label']}",
-                "target": "aggregator:profile",
-                "weight": 0.5,
-            }
+            AttributionEdge(
+                source=f"feature:{feature.label}",
+                target="aggregator:profile",
+                weight=0.5,
+            )
         )
     return edges
 
@@ -231,36 +237,36 @@ def _compute_feature_edges(dictionary: dict | None) -> list[dict[str, Any]]:
 def compute_edge_weights(
     conversations: list[dict],
     profile: dict,
-    dictionary: dict | None,
-) -> list[dict[str, Any]]:
+    dictionary: FeatureDictionary | None,
+) -> list[AttributionEdge]:
     EPSILON = 0.1
     MAX_SAMPLES = 20
 
     mean_baseline = _compute_mean_baseline(conversations, MAX_SAMPLES)
 
-    edges: list[dict[str, Any]] = []
+    edges: list[AttributionEdge] = []
     edges.extend(_compute_input_to_extractor_edges(mean_baseline, EPSILON))
 
     # Extractor -> Classifier edges
     for extractor, classifiers in _EXTRACTOR_CLASSIFIER_MAP.items():
         for classifier in classifiers:
             edges.append(
-                {
-                    "source": extractor,
-                    "target": classifier,
-                    "weight": 0.5,
-                }
+                AttributionEdge(
+                    source=extractor,
+                    target=classifier,
+                    weight=0.5,
+                )
             )
 
     edges.extend(_compute_feature_edges(dictionary))
 
     # Aggregator -> Output
     edges.append(
-        {
-            "source": "aggregator:profile",
-            "target": "output:context",
-            "weight": profile.get("confidence") or 0.5,
-        }
+        AttributionEdge(
+            source="aggregator:profile",
+            target="output:context",
+            weight=profile.get("confidence") or 0.5,
+        )
     )
     return edges
 
@@ -272,11 +278,11 @@ def compute_edge_weights(
 
 def trace_attribution(
     conversations: list[dict] | None,
-    dictionary: dict | None,
+    dictionary: FeatureDictionary | None,
     profile: dict | None,
-) -> dict[str, list]:
+) -> AttributionGraph:
     if not conversations or len(conversations) == 0 or not profile:
-        return {"nodes": [], "edges": []}
+        return AttributionGraph(nodes=[], edges=[])
 
     nodes = build_attribution_nodes(profile, dictionary)
 
@@ -286,9 +292,9 @@ def trace_attribution(
         for s in range(D):
             mean = sum(act[s] for act in activations) / len(activations)
             for n in nodes:
-                if n["id"] == f"input:{SIGNAL_NAMES[s]}":
-                    n["activation"] = round(mean * 1000) / 1000
+                if n.id == f"input:{SIGNAL_NAMES[s]}":
+                    n.activation = round(mean * 1000) / 1000
                     break
 
     edges = compute_edge_weights(conversations, profile, dictionary)
-    return {"nodes": nodes, "edges": edges}
+    return AttributionGraph(nodes=nodes, edges=edges)
