@@ -103,11 +103,62 @@ class SqliteMemoryStore(
     def _run_migrations(self) -> None:
         """Add columns that may be missing from older databases."""
         self._migrate_heat_to_heat_base()
+        self._migrate_homeostatic_state_write_class()
         for table, column, col_def in MIGRATIONS:
             try:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
             except sqlite3.OperationalError:
                 pass
+
+    def _migrate_homeostatic_state_write_class(self) -> None:
+        """M-D3 (7.1): rebuild homeostatic_state with PK (domain, write_class).
+
+        SQLite cannot ALTER a PRIMARY KEY in place. Idempotent: only runs
+        when the legacy single-column-PK table still exists (detected via
+        absence of the ``write_class`` column — a fresh DB already has it
+        from ``HOMEOSTATIC_STATE_DDL`` and this is a no-op). Same one-shot,
+        no-read-shim policy as the PG migration (pg_schema.py): legacy rows
+        are relabeled write_class='auto', the honest label given the
+        pre-stratification factor was driven by a 92%-auto-capture corpus.
+        """
+        try:
+            cols = self._conn.execute(
+                "SELECT name FROM pragma_table_info('homeostatic_state')"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return  # no table yet — DDL above will create it with write_class
+        names: set[str] = set()
+        for row in cols:
+            try:
+                names.add(row["name"])
+            except (TypeError, KeyError, IndexError):
+                try:
+                    names.add(row[0])
+                except (TypeError, IndexError):
+                    pass
+        if not names or "write_class" in names:
+            return  # no legacy table, or already migrated
+        try:
+            self._conn.execute(
+                "ALTER TABLE homeostatic_state RENAME TO homeostatic_state_legacy"
+            )
+            self._conn.execute(
+                "CREATE TABLE homeostatic_state ("
+                "  domain TEXT NOT NULL,"
+                "  write_class TEXT NOT NULL DEFAULT 'auto'"
+                "    CHECK (write_class IN ('auto','deliberate','derived','mechanical')),"
+                "  factor REAL NOT NULL DEFAULT 1.0 CHECK (factor > 0.0 AND factor < 10.0),"
+                "  updated_at TEXT NOT NULL DEFAULT (datetime('now')),"
+                "  PRIMARY KEY (domain, write_class)"
+                ")"
+            )
+            self._conn.execute(
+                "INSERT INTO homeostatic_state (domain, write_class, factor, updated_at) "
+                "SELECT domain, 'auto', factor, updated_at FROM homeostatic_state_legacy"
+            )
+            self._conn.execute("DROP TABLE homeostatic_state_legacy")
+        except sqlite3.OperationalError:
+            pass
 
     def _migrate_heat_to_heat_base(self) -> None:
         """Phase 3 A3 migration (SQLite parity): rename heat → heat_base,
@@ -422,12 +473,16 @@ class SqliteMemoryStore(
         )
         self._conn.commit()
 
-    def get_homeostatic_factor(self, domain: str) -> float:
-        """SQLite parity: default 1.0 when no row exists."""
+    def get_homeostatic_factor(self, domain: str, write_class: str = "auto") -> float:
+        """SQLite parity: default 1.0 when no row exists.
+
+        M-D3 (7.1): ``write_class`` defaults to ``"auto"`` — see
+        ``pg_store.py::get_homeostatic_factor`` for the full rationale.
+        """
         row = self._conn.execute(
             "SELECT COALESCE(MAX(factor), 1.0) AS factor "
-            "FROM homeostatic_state WHERE domain = ?",
-            (domain or "",),
+            "FROM homeostatic_state WHERE domain = ? AND write_class = ?",
+            (domain or "", write_class),
         ).fetchone()
         if row is None:
             return 1.0
@@ -436,17 +491,33 @@ class SqliteMemoryStore(
         except (KeyError, TypeError, IndexError):
             return 1.0
 
-    def set_homeostatic_factor(self, domain: str, factor: float) -> None:
-        """SQLite parity UPSERT on homeostatic_state."""
+    def set_homeostatic_factor(
+        self, domain: str, factor: float, write_class: str = "auto"
+    ) -> None:
+        """SQLite parity UPSERT on homeostatic_state (M-D3: PK includes
+        write_class — see ``pg_store.py::set_homeostatic_factor``)."""
         clamped = max(0.01, min(9.99, float(factor)))
         self._conn.execute(
-            "INSERT INTO homeostatic_state (domain, factor, updated_at) "
-            "VALUES (?, ?, CURRENT_TIMESTAMP) "
-            "ON CONFLICT(domain) DO UPDATE "
+            "INSERT INTO homeostatic_state (domain, write_class, factor, updated_at) "
+            "VALUES (?, ?, ?, CURRENT_TIMESTAMP) "
+            "ON CONFLICT(domain, write_class) DO UPDATE "
             "SET factor = excluded.factor, updated_at = CURRENT_TIMESTAMP",
-            (domain or "", clamped),
+            (domain or "", write_class, clamped),
         )
         self._conn.commit()
+
+    def log_homeostatic_fold(
+        self, domain: str, write_class: str, factor: float, rows_folded: int
+    ) -> int:
+        """SQLite parity fold-event journal (M-D3, 7.1) — see
+        ``pg_store.py::log_homeostatic_fold``."""
+        cur = self._conn.execute(
+            "INSERT INTO homeostatic_fold_log "
+            "(domain, write_class, factor, rows_folded) VALUES (?, ?, ?, ?)",
+            (domain or "", write_class, float(factor), int(rows_folded)),
+        )
+        self._conn.commit()
+        return cur.lastrowid or 0
 
     def update_memories_heat_batch(self, updates: list[tuple[int, float]]) -> int:
         """A3 batch writer on heat_base (SQLite parity).

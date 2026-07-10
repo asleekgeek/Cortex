@@ -77,11 +77,37 @@ CREATE VIEW IF NOT EXISTS current_memories AS
 """
 
 HOMEOSTATIC_STATE_DDL = """
+-- M-D3 (7.1, 2026-07-10): one row per (domain, write_class) — see
+-- pg_schema.py::HOMEOSTATIC_STATE_DDL for the full rationale. Fresh
+-- SQLite DBs get the composite key directly; pre-existing ones are
+-- migrated by sqlite_store.py::_migrate_homeostatic_state_write_class
+-- (SQLite cannot ALTER a PRIMARY KEY in place — same one-shot,
+-- no-read-shim policy as the PG migration: legacy rows relabel
+-- write_class='auto').
 CREATE TABLE IF NOT EXISTS homeostatic_state (
-    domain      TEXT PRIMARY KEY,
+    domain      TEXT NOT NULL,
+    write_class TEXT NOT NULL DEFAULT 'auto'
+                CHECK (write_class IN ('auto', 'deliberate', 'derived', 'mechanical')),
     factor      REAL NOT NULL DEFAULT 1.0
                 CHECK (factor > 0.0 AND factor < 10.0),
-    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (domain, write_class)
+);
+"""
+
+# Kept as its own DDL constant (not appended to HOMEOSTATIC_STATE_DDL
+# above): sqlite3's execute() runs only the FIRST statement in a
+# multi-statement string (see get_all_ddl's own docstring note on
+# INDEXES_DDL for the same constraint) — each CREATE must be its own
+# list entry in get_all_ddl() below.
+HOMEOSTATIC_FOLD_LOG_DDL = """
+CREATE TABLE IF NOT EXISTS homeostatic_fold_log (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    domain      TEXT NOT NULL,
+    write_class TEXT NOT NULL,
+    factor      REAL NOT NULL,
+    rows_folded INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 """
 
@@ -346,6 +372,7 @@ def get_all_ddl() -> list[str]:
     return [
         MEMORIES_DDL,
         HOMEOSTATIC_STATE_DDL,
+        HOMEOSTATIC_FOLD_LOG_DDL,
         MEMORIES_FTS_DDL,
         # MEMORIES_VEC_DDL is handled separately — requires sqlite-vec
         ENTITIES_DDL,

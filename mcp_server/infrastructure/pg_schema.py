@@ -113,12 +113,46 @@ CREATE TABLE IF NOT EXISTS entities (
 """
 
 HOMEOSTATIC_STATE_DDL = """
+-- M-D3 (7.1, 2026-07-10): one row per (domain, write_class), not one row
+-- per domain. The pre-stratification single-row-per-domain fold regulated
+-- every write class toward the same target mean using the same factor —
+-- confirmed (SQL, dev DB) to have re-suppressed the deliberate class in
+-- the SAME UPDATE as the auto-capture flood at 2026-07-10 19:22 (1021
+-- rows folded together, 511 post_tool_capture + 510 deliberate-class
+-- sources, domain=''). See mcp_server/core/write_class.py for the
+-- taxonomy and mcp_server/handlers/consolidation/homeostatic.py for the
+-- per-class regulation policy. Fresh installs get the composite key
+-- directly; existing installs are migrated by the DO block below
+-- (MIGRATIONS_DDL) which backfills write_class='auto' via column DEFAULT
+-- — the honest one-shot label for legacy rows, since their factor
+-- history was driven by a corpus that was 92% auto-capture by volume.
 CREATE TABLE IF NOT EXISTS homeostatic_state (
-    domain     TEXT PRIMARY KEY,
-    factor     REAL NOT NULL DEFAULT 1.0
-               CHECK (factor > 0.0 AND factor < 10.0),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    domain      TEXT NOT NULL,
+    write_class TEXT NOT NULL DEFAULT 'auto'
+                CHECK (write_class IN ('auto', 'deliberate', 'derived', 'mechanical')),
+    factor      REAL NOT NULL DEFAULT 1.0
+                CHECK (factor > 0.0 AND factor < 10.0),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (domain, write_class)
 );
+
+-- M-D3 (7.1): fold-event journal — instrumentation the design doc's
+-- acceptance criterion required BEFORE any fold-policy change ("pas de
+-- correctif sans confirmation du coupable"). The 2026-07-10 19:22 fold
+-- left no queryable trace anywhere except memories.heat_base_set_at
+-- matching a batched write — every fold from this point forward is
+-- queryable directly, no row-timestamp archaeology required.
+CREATE TABLE IF NOT EXISTS homeostatic_fold_log (
+    id          SERIAL PRIMARY KEY,
+    domain      TEXT NOT NULL,
+    write_class TEXT NOT NULL,
+    factor      REAL NOT NULL,
+    rows_folded INTEGER NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_homeostatic_fold_log_domain_class
+    ON homeostatic_fold_log (domain, write_class, created_at DESC);
 """
 
 RELATIONSHIPS_DDL = """
@@ -1181,9 +1215,17 @@ DECLARE
     v_min_heat_base REAL;
 BEGIN
     -- Resolve the homeostatic factor for this domain (1.0 default).
+    -- M-D3 (7.1): homeostatic_state's PK is (domain, write_class) since
+    -- the fold/scalar regulator was stratified per write class — 'auto'
+    -- is the only class ever regulated (see homeostatic.py doctrine
+    -- comment), so it is the only class whose factor departs from the
+    -- neutral 1.0 default; pinning the filter here reproduces the
+    -- pre-stratification recall behavior exactly (same numeric factor
+    -- for the same corpus) while remaining correct once other classes'
+    -- rows exist in the table.
     SELECT COALESCE(MAX(hs.factor), 1.0) INTO v_factor
     FROM homeostatic_state hs
-    WHERE hs.domain = COALESCE(p_domain, '');
+    WHERE hs.domain = COALESCE(p_domain, '') AND hs.write_class = 'auto';
 
     -- Prefilter threshold: heat_base >= p_min_heat / factor is the
     -- monotonic transform that preserves ordering (Zhuangzi: positive
@@ -2095,6 +2137,34 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_wiki_citations_page_session
 CREATE UNIQUE INDEX IF NOT EXISTS uq_wiki_citations_page_memory
     ON wiki.citations (page_id, memory_id)
     WHERE memory_id IS NOT NULL;
+
+-- Migration: stratify homeostatic_state by write_class (M-D3, 7.1,
+-- 2026-07-10). Pre-existing installs have homeostatic_state(domain PK,
+-- factor, updated_at) — one row per domain, written by a fold that did
+-- not distinguish write class and re-suppressed the deliberate class
+-- (confirmed by SQL against the dev DB: 2026-07-10 19:22 fold, 1021 rows,
+-- domain='', 511 post_tool_capture + 510 deliberate-class sources, same
+-- UPDATE, same factor). One-shot migration, no read shim (arbitrage
+-- user 2026-07-10): existing rows are relabeled write_class='auto' via
+-- column DEFAULT during the ADD COLUMN — the honest label, since their
+-- factor history was driven by a corpus that was 92% auto-capture by
+-- volume (I6 audit) — not a placeholder read-time interpretation.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'homeostatic_state' AND column_name = 'write_class'
+    ) THEN
+        ALTER TABLE homeostatic_state ADD COLUMN write_class TEXT NOT NULL DEFAULT 'auto'
+            CHECK (write_class IN ('auto', 'deliberate', 'derived', 'mechanical'));
+        -- Old PK was (domain) alone; the CHECK above already guarantees
+        -- every legacy row is 'auto', so dropping and re-adding as
+        -- (domain, write_class) is a pure widening — no row loses its
+        -- unique identity (there was at most one row per domain before).
+        ALTER TABLE homeostatic_state DROP CONSTRAINT homeostatic_state_pkey;
+        ALTER TABLE homeostatic_state ADD PRIMARY KEY (domain, write_class);
+    END IF;
+END $$;
 """
 
 # ── Schema initialization ────────────────────────────────────────────────

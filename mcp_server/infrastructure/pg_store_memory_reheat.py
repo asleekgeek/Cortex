@@ -93,7 +93,10 @@ def list_deliberate_below_target(
                        NOW(), COALESCE(hs.factor, 1.0)::REAL
                    ) AS effective_heat_at_max
               FROM candidates c
-         LEFT JOIN homeostatic_state hs ON hs.domain = c.domain
+         -- M-D3 (7.1): homeostatic_state's PK is now (domain, write_class);
+         -- pin the join to 'auto' — the only class the fold/scalar factor
+         -- is ever regulated on — or the join fans out one row per class.
+         LEFT JOIN homeostatic_state hs ON hs.domain = c.domain AND hs.write_class = 'auto'
         )
         SELECT id, heat_base, effective_heat, effective_heat_at_max
           FROM probed

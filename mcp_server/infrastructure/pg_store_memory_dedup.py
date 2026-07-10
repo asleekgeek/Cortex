@@ -103,7 +103,10 @@ def list_exact_duplicate_groups(conn: Connection, limit: int) -> list[dict]:
                c.tags
           FROM candidates c
           JOIN dup_keys dk ON dk.dup_key = {_dup_key_expr("c.content")}
-     LEFT JOIN homeostatic_state hs ON hs.domain = c.domain
+     -- M-D3 (7.1): homeostatic_state's PK is now (domain, write_class);
+     -- pin to 'auto' — the only class ever regulated — or the join fans
+     -- out one row per class and effective_heat sees an arbitrary factor.
+     LEFT JOIN homeostatic_state hs ON hs.domain = c.domain AND hs.write_class = 'auto'
          ORDER BY dk.dup_key, c.id
          LIMIT %(limit)s
     """

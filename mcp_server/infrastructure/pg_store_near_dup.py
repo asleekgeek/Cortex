@@ -160,7 +160,12 @@ def fetch_member_stats(conn: Connection, ids: list[int]) -> dict[int, dict]:
                    AS effective_heat,
                c.created_at
           FROM candidates c
-     LEFT JOIN homeostatic_state hs ON hs.domain = c.domain
+     -- M-D3 (7.1): homeostatic_state's PK is now (domain, write_class) —
+     -- without this filter the join fans out to one row per class and
+     -- COALESCE/effective_heat would see an arbitrary row, not the one
+     -- factor this table's readers were written for (auto is the only
+     -- class the fold/scalar mechanism regulates; see homeostatic.py).
+     LEFT JOIN homeostatic_state hs ON hs.domain = c.domain AND hs.write_class = 'auto'
          WHERE c.id = ANY(%(ids)s)
     """
     with conn.cursor(row_factory=dict_row) as cur:
