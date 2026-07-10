@@ -15,8 +15,9 @@ subprocess boundary, no policy.
 from __future__ import annotations
 
 import shutil
-import subprocess
 from pathlib import Path
+
+from mcp_server.shared.subprocess_safe import run_with_hard_timeout
 
 # Resolve git binary once at import time — never from user input.
 _GIT_BINARY = shutil.which("git") or "git"
@@ -54,28 +55,30 @@ def git_cmd_safe(subcommand: str, args: list[str], cwd: Path) -> str:
       3. sanitised args are new ``str`` objects (breaks taint)
       4. ``shell=False`` everywhere
       5. _GIT_BINARY was resolved at import time via ``shutil.which``
+
+    precondition: ``subcommand``/``args`` are attacker-influenceable
+    (diff/entity retrieval on the graph path); ``cwd`` is a resolved
+    git root, not user input.
+    postcondition: returns stdout (stripped) on a clean exit, or ``""``
+    on any failure — disallowed subcommand, a rejected arg, spawn
+    failure, non-zero exit, or timeout. Never raises.
+
+    Execution goes through ``run_with_hard_timeout`` (not
+    ``subprocess.run``) so a timeout kills the child without CPython's
+    own post-kill ``communicate()`` retry — the Windows pipe-handle
+    deadlock described in cdeust/Cortex#91/#94.
     """
-    try:
-        if subcommand not in _ALLOWED_SUBCOMMANDS:
-            return ""
-        safe_args: list[str] = []
-        for arg in args:
-            sanitized = _sanitize_arg(arg)
-            if sanitized is None:
-                return ""
-            safe_args.append(sanitized)
-        run_cmd = [_GIT_BINARY, subcommand, *safe_args]
-        result = subprocess.run(
-            run_cmd,  # noqa: S603 — all components validated above
-            capture_output=True,
-            text=True,
-            shell=False,
-            cwd=str(cwd),
-            timeout=10,
-        )
-        return result.stdout.strip() if result.returncode == 0 else ""
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+    if subcommand not in _ALLOWED_SUBCOMMANDS:
         return ""
+    safe_args: list[str] = []
+    for arg in args:
+        sanitized = _sanitize_arg(arg)
+        if sanitized is None:
+            return ""
+        safe_args.append(sanitized)
+    run_cmd = [_GIT_BINARY, subcommand, *safe_args]  # noqa: S603 — validated above
+    out = run_with_hard_timeout(run_cmd, cwd=cwd, timeout=10)
+    return out if out is not None else ""
 
 
 def get_tracked_files(git_root: Path) -> set[str]:

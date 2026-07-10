@@ -22,7 +22,6 @@ from __future__ import annotations
 import logging
 import os
 import re
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +31,7 @@ from mcp_server.core.auto_task_record import (
     is_substantive,
 )
 from mcp_server.infrastructure.config import WIKI_ROOT
+from mcp_server.shared.subprocess_safe import run_with_hard_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -68,26 +68,35 @@ def _git_commits_in_window(cwd: str, since_minutes: float) -> list[dict]:
     """Return commits authored under ``cwd`` in the trailing window.
 
     Each entry: ``{"hash", "message", "files", "timestamp"}``. Returns
-    an empty list when ``cwd`` isn't a git repo or git fails.
+    an empty list when ``cwd`` isn't a git repo, git fails, or the call
+    times out.
+
+    Reached from the live ``record_session_end`` tool
+    (``record_session_end.py``). Execution goes through
+    ``run_with_hard_timeout`` (not ``subprocess.check_output``) so a
+    timeout kills the child without CPython's own post-kill
+    ``communicate()`` retry — the Windows pipe-handle deadlock described
+    in cdeust/Cortex#91/#94. ``None`` (timeout/spawn-failure/non-zero
+    exit) degrades to the same empty-list result as a git failure always
+    produced here — no caller-visible behavior change.
     """
     if not cwd or not os.path.isdir(cwd):
         return []
-    try:
-        since = f"{int(max(since_minutes, 1))} minutes ago"
-        out = subprocess.check_output(
-            [
-                "git",
-                "-C",
-                cwd,
-                "log",
-                f"--since={since}",
-                "--pretty=format:%H%n%s%n%ai%n--BODY--",
-                "--name-only",
-            ],
-            stderr=subprocess.DEVNULL,
-            timeout=10,
-        ).decode()
-    except Exception:
+    since = f"{int(max(since_minutes, 1))} minutes ago"
+    out = run_with_hard_timeout(
+        [
+            "git",
+            "-C",
+            cwd,
+            "log",
+            f"--since={since}",
+            "--pretty=format:%H%n%s%n%ai%n--BODY--",
+            "--name-only",
+        ],
+        timeout=10,
+        encoding="utf-8",
+    )
+    if out is None:
         return []
     commits: list[dict] = []
     current: dict[str, Any] | None = None
