@@ -19,6 +19,9 @@ from mcp_server.handlers.consolidation.entity_merge import run_entity_merge_cycl
 from mcp_server.handlers.consolidation.forgetting import run_forgetting_cycle
 from mcp_server.handlers.consolidation.homeostatic import run_homeostatic_cycle
 from mcp_server.handlers.consolidation.memify import run_memify_cycle
+from mcp_server.handlers.consolidation.memify_derive import (
+    run_memify_derivation_cycle,
+)
 from mcp_server.handlers.consolidation.plasticity import run_plasticity_cycle
 from mcp_server.handlers.consolidation.pruning import run_pruning_cycle
 from mcp_server.handlers.consolidation.sleep import run_deep_sleep
@@ -90,8 +93,11 @@ schema = {
             "memify": {
                 "type": "boolean",
                 "description": (
-                    "Run the memify self-improvement cycle (extract reusable "
-                    "lessons and rules from recent successes/failures)."
+                    "Run the memify self-improvement cycle: prune/strengthen/"
+                    "reweight, plus derive new candidate facts from high-weight "
+                    "entity relationships (extract reusable lessons and rules) "
+                    "and offer each one to the write gate — a gate rejection is "
+                    "a valid, counted outcome, never overridden."
                 ),
                 "default": True,
             },
@@ -217,6 +223,15 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     # would OOM. A future single-pass combined reducer can fold these scans.
     stats = _run_cycles(args, store, settings, embeddings)
     stats = _run_always_cycles(args, store, stats)
+
+    # Fact derivation (INC6.1b, 2026-07-10): gated by the same `memify` flag
+    # as the prune/strengthen/reweight cycle above (one user-facing switch,
+    # per the schema description), but tracked as its own top-level stage so
+    # the failed_stages rollup below can see it independently. Routed through
+    # the real write gate (async remember() call) — it cannot run inside the
+    # sync `_run_cycles` above, so it lives here instead.
+    if args.get("memify", True):
+        stats["memify_derivation"] = await _atimed(run_memify_derivation_cycle, store)
 
     # 2026-05-18: autonomous wiki maintenance. The wiki has to stay up
     # to date without a human in the loop, so every consolidation cycle
