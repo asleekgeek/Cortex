@@ -200,6 +200,38 @@ class TestHookScripts:
         process_event(None)
         process_event({"session_id": "test-compaction"})
 
+    def test_compaction_checkpoint_prefers_transcript_stem(self):
+        """Q2 alignment: when transcript_path is present, the saved
+        checkpoint's session_id is the transcript stem, not the raw
+        (potentially resume/clear-diverged) event session_id."""
+        from unittest.mock import AsyncMock, patch
+
+        from mcp_server.hooks.compaction_checkpoint import process_event
+
+        mock_checkpoint_handler = AsyncMock(return_value={"checkpoint_id": "cp-1"})
+        with patch("mcp_server.handlers.checkpoint.handler", mock_checkpoint_handler):
+            process_event(
+                {
+                    "session_id": "raw-diverged-id",
+                    "transcript_path": "/tmp/projects/x/7374abf5-stem.jsonl",
+                }
+            )
+        called_args = mock_checkpoint_handler.call_args[0][0]
+        assert called_args["session_id"] == "7374abf5-stem"
+
+    def test_compaction_checkpoint_falls_back_without_transcript_path(self):
+        """No transcript_path in the event -> documented degradation to
+        the raw event session_id (unchanged current behavior)."""
+        from unittest.mock import AsyncMock, patch
+
+        from mcp_server.hooks.compaction_checkpoint import process_event
+
+        mock_checkpoint_handler = AsyncMock(return_value={"checkpoint_id": "cp-2"})
+        with patch("mcp_server.handlers.checkpoint.handler", mock_checkpoint_handler):
+            process_event({"session_id": "raw-only-id"})
+        called_args = mock_checkpoint_handler.call_args[0][0]
+        assert called_args["session_id"] == "raw-only-id"
+
 
 class TestMicroCheckpointIntegration:
     @pytest.mark.asyncio

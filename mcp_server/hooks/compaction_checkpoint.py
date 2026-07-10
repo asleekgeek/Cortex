@@ -52,6 +52,9 @@ def process_event(event: dict[str, Any] | None) -> None:
         import asyncio
 
         from mcp_server.handlers.checkpoint import handler as checkpoint_handler
+        from mcp_server.handlers.injection_receipts import (
+            session_id_from_transcript,
+        )
         from mcp_server.infrastructure.memory_config import get_memory_settings
         from mcp_server.infrastructure.memory_store import MemoryStore
 
@@ -61,11 +64,19 @@ def process_event(event: dict[str, Any] | None) -> None:
         new_epoch = store.increment_epoch()
         _log(f"Epoch incremented to {new_epoch}")
 
+        # Q2 alignment (decision 4255039 correction 7): Notification events
+        # carry the same {"session_id", "transcript_path", ...} envelope as
+        # every other Claude Code hook (session_start.py:49). Prefer the
+        # transcript-stem identity when available; the raw event session_id
+        # (defaulting to "auto-compaction" for synthetic/test events with no
+        # transcript_path) is the documented degradation, not a regression.
+        ev = event or {}
         result = asyncio.run(
             checkpoint_handler(
                 {
                     "action": "save",
-                    "session_id": (event or {}).get("session_id", "auto-compaction"),
+                    "session_id": session_id_from_transcript(ev.get("transcript_path"))
+                    or ev.get("session_id", "auto-compaction"),
                     "current_task": "Auto-checkpoint before context compaction",
                     "custom_context": json.dumps(event) if event else "",
                 }
