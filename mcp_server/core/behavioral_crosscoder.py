@@ -7,19 +7,23 @@ Ranks by persistence then consistency (low variance).
 from __future__ import annotations
 
 import math
-from typing import Any
+
+from mcp_server.shared.types_features import (
+    EncodedSession,
+    FeatureDictionary,
+    PersistentFeature,
+)
 
 
 def _populate_from_domain_activations(
-    domain_activations: dict,
+    domain_activations: dict[str, list[EncodedSession]],
     feature_activations: dict[str, dict[str, dict]],
 ) -> None:
     """Fill feature_activations from explicit per-domain activation data."""
     for domain_id, activations in domain_activations.items():
         for activation in activations:
-            weights = activation.get("weights") or {}
-            items = weights.items() if isinstance(weights, dict) else weights
-            for label, weight in items:
+            weights = activation.weights
+            for label, weight in weights.items():
                 if label not in feature_activations:
                     continue
                 domain_map = feature_activations[label]
@@ -76,13 +80,13 @@ def _compute_persistence_stats(
 
 def _build_feature_activations(
     profiles: dict | None,
-    dictionary: dict,
-    domain_activations: dict | None,
+    dictionary: FeatureDictionary,
+    domain_activations: dict[str, list[EncodedSession]] | None,
 ) -> dict[str, dict[str, dict]]:
     """Initialize and populate feature activation maps."""
     feature_activations: dict[str, dict[str, dict]] = {}
-    for feature in dictionary["features"]:
-        feature_activations[feature["label"]] = {}
+    for feature in dictionary.features:
+        feature_activations[feature.label] = {}
 
     if domain_activations:
         _populate_from_domain_activations(domain_activations, feature_activations)
@@ -94,10 +98,10 @@ def _build_feature_activations(
 
 def detect_persistent_features(
     profiles: dict | None,
-    dictionary: dict | None,
-    domain_activations: dict | None = None,
-) -> list[dict[str, Any]]:
-    if not dictionary or not dictionary.get("features"):
+    dictionary: FeatureDictionary | None,
+    domain_activations: dict[str, list[EncodedSession]] | None = None,
+) -> list[PersistentFeature]:
+    if not dictionary or not dictionary.features:
         return []
 
     domain_ids = list((profiles or {}).keys())
@@ -111,29 +115,29 @@ def detect_persistent_features(
     activation_threshold = 0.1
     persistence_threshold = 0.5
 
-    results = []
+    results: list[PersistentFeature] = []
     for label, domain_map in feature_activations.items():
         persistence, consistency, active_domains = _compute_persistence_stats(
             domain_map, len(domain_ids), activation_threshold
         )
         if persistence >= persistence_threshold:
             results.append(
-                {
-                    "label": label,
-                    "persistence": round(persistence * 100) / 100,
-                    "consistency": round(consistency * 1000) / 1000,
-                    "domains": active_domains,
-                }
+                PersistentFeature(
+                    label=label,
+                    persistence=round(persistence * 100) / 100,
+                    consistency=round(consistency * 1000) / 1000,
+                    domains=active_domains,
+                )
             )
 
-    results.sort(key=lambda x: (-x["persistence"], x["consistency"]))
+    results.sort(key=lambda pf: (-pf.persistence, pf.consistency))
     return results
 
 
 def compare_feature_profiles(
     activations_a: dict | None,
     activations_b: dict | None,
-    dictionary: dict | None = None,
+    dictionary: FeatureDictionary | None = None,
 ) -> dict[str, list[str]]:
     threshold = 0.1
     active_a = {

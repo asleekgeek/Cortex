@@ -160,20 +160,20 @@ def _build_feature_dictionary(
     all_convs = [c for d in domain_conversations.values() for c in d["conversations"]]
     fd = learn_dictionary(all_convs)
     return {
-        "K": fd["K"],
-        "D": fd["D"],
-        "sparsity": fd["sparsity"],
-        "signalNames": fd["signalNames"],
+        "K": fd.K,
+        "D": fd.D,
+        "sparsity": fd.sparsity,
+        "signalNames": fd.signalNames,
         "features": [
             {
-                "index": f["index"],
-                "label": f["label"],
-                "description": f["description"],
-                "topSignals": f["topSignals"],
+                "index": f.index,
+                "label": f.label,
+                "description": f.description,
+                "topSignals": [ts.model_dump() for ts in f.topSignals],
             }
-            for f in fd["features"]
+            for f in fd.features
         ],
-        "learnedFromSessions": fd["learnedFromSessions"],
+        "learnedFromSessions": fd.learnedFromSessions,
         "_raw": fd,
     }
 
@@ -195,9 +195,7 @@ def _encode_domain_activations(
 
         mean_activations: dict[str, float] = {}
         for enc in encodings:
-            weights = enc["weights"]
-            items = weights.items() if isinstance(weights, dict) else weights
-            for label, weight in items:
+            for label, weight in enc.weights.items():
                 mean_activations[label] = mean_activations.get(label, 0) + weight / len(
                     encodings
                 )
@@ -268,11 +266,14 @@ def _apply_cross_domain_analysis(
         profiles,
         fd,
     )
-    profiles["persistentFeatures"] = detect_persistent_features(
+    persistent_features = detect_persistent_features(
         profiles.get("domains"),
         fd["_raw"],
         domain_activations,
     )
+    # profiles is JSON-persisted (profiles.json) — project the typed models
+    # back to plain dicts at this exact disk boundary.
+    profiles["persistentFeatures"] = [pf.model_dump() for pf in persistent_features]
 
 
 def build_domain_profiles(

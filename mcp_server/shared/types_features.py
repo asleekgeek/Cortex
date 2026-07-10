@@ -1,0 +1,133 @@
+"""Typed shapes for the explore_features interpretability lenses.
+
+Types the internal core-layer boundary between mcp_server/core/{persona_vector,
+attribution_tracer, behavioral_crosscoder, sparse_dictionary}.py and their
+consumers (mcp_server/handlers/explore_features.py,
+mcp_server/core/profile_assembler.py). Prior to this module those functions
+returned dict[str, Any] — a §3.2 coding-standards violation (untyped dict
+across a layer boundary).
+
+Field names mirror the JSON keys these modules already produce (camelCase,
+matching the JS-era MCP/profiles.json contract). This is a typing-only
+refactor: it does not change what is computed, only what carries the result.
+
+Two data-provenance families, two ``extra`` policies:
+  - FeatureDictionary / Feature / TopSignal / PersistentFeature round-trip
+    through profiles.json (written by profile_assembler.py, re-read by
+    explore_features.py via load_profiles()). They use extra="ignore" —
+    the same tolerance types_profiles.py uses for JS-authored data.
+  - EncodedSession / PersonaDrift / AttributionNode / AttributionEdge /
+    AttributionGraph are computed fresh in-process every call and never
+    persisted. They use extra="forbid" — the stricter policy wiki_ir.py
+    uses for pure-internal pipeline types.
+
+Feature.direction is Optional: the live sparse_dictionary.py output always
+includes it, but profile_assembler._build_feature_dictionary() strips it
+before persisting to profiles.json (disk-loaded features never carry it).
+This models the real observed union of shapes, not an approximation.
+"""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict
+
+
+class TopSignal(BaseModel):
+    """One (signal, weight) contribution to a feature's direction."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    signal: str
+    weight: float
+
+
+class Feature(BaseModel):
+    """A single behavioral-feature atom (seed or learned)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    index: int
+    label: str
+    description: str
+    topSignals: list[TopSignal]
+    direction: list[float] | None = None
+
+
+class FeatureDictionary(BaseModel):
+    """Sparse-dictionary of behavioral feature atoms (K atoms, D=27 dims)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    K: int
+    D: int
+    sparsity: int
+    signalNames: list[str]
+    features: list[Feature]
+    learnedFromSessions: int
+
+
+class EncodedSession(BaseModel):
+    """A single conversation's sparse encoding against a FeatureDictionary."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    weights: dict[str, float]
+    reconstructionError: float
+
+
+class PersonaDrift(BaseModel):
+    """Magnitude + direction + interpretation of persona change over time."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    magnitude: float
+    direction: dict[str, float]
+    interpretation: str
+
+
+class AttributionNode(BaseModel):
+    """One node in the pipeline attribution graph.
+
+    activation is float | str, not just float: 3 of the 6 classifier nodes
+    (problemDecomposition, explorationStyle, verificationBehavior) copy a
+    categorical CognitiveStyle value straight from the metacognitive profile
+    (see types_profiles.CognitiveStyle) and are never numerically normalized.
+    This is the real, pre-existing observed shape — not a typing bug.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    label: str
+    layer: str
+    activation: float | str
+
+
+class AttributionEdge(BaseModel):
+    """One perturbation-weighted edge in the pipeline attribution graph."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: str
+    target: str
+    weight: float
+
+
+class AttributionGraph(BaseModel):
+    """Full pipeline attribution graph (nodes + edges)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    nodes: list[AttributionNode]
+    edges: list[AttributionEdge]
+
+
+class PersistentFeature(BaseModel):
+    """A behavioral feature persistently active across >=50% of domains."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    label: str
+    persistence: float
+    consistency: float
+    domains: list[str]

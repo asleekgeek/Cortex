@@ -4,17 +4,18 @@ from mcp_server.core.behavioral_crosscoder import (
     detect_persistent_features,
     compare_feature_profiles,
 )
+from mcp_server.shared.types_features import EncodedSession, FeatureDictionary
 
 
 def _make_dictionary(feature_labels=None):
     if feature_labels is None:
         feature_labels = ["reading", "editing", "testing"]
-    return {
-        "K": len(feature_labels),
-        "D": 27,
-        "sparsity": 3,
-        "signalNames": [],
-        "features": [
+    return FeatureDictionary(
+        K=len(feature_labels),
+        D=27,
+        sparsity=3,
+        signalNames=[],
+        features=[
             {
                 "index": i,
                 "label": label,
@@ -24,12 +25,12 @@ def _make_dictionary(feature_labels=None):
             }
             for i, label in enumerate(feature_labels)
         ],
-        "learnedFromSessions": 10,
-    }
+        learnedFromSessions=10,
+    )
 
 
 def _make_activation(weights):
-    return {"weights": weights, "reconstructionError": 0.1}
+    return EncodedSession(weights=weights, reconstructionError=0.1)
 
 
 class TestDetectPersistentFeatures:
@@ -55,10 +56,10 @@ class TestDetectPersistentFeatures:
         }
         result = detect_persistent_features(profiles, d, activations)
         assert len(result) >= 1
-        reading = next((f for f in result if f["label"] == "reading"), None)
+        reading = next((f for f in result if f.label == "reading"), None)
         assert reading is not None
-        assert reading["persistence"] == 1
-        assert len(reading["domains"]) == 3
+        assert reading.persistence == 1
+        assert len(reading.domains) == 3
 
     def test_excludes_below_persistence_threshold(self):
         d = _make_dictionary(["reading", "editing"])
@@ -69,7 +70,7 @@ class TestDetectPersistentFeatures:
             "domain-c": [_make_activation({})],
         }
         result = detect_persistent_features(profiles, d, activations)
-        editing = next((f for f in result if f["label"] == "editing"), None)
+        editing = next((f for f in result if f.label == "editing"), None)
         assert editing is None
 
     def test_sorts_by_persistence_then_consistency(self):
@@ -83,7 +84,7 @@ class TestDetectPersistentFeatures:
         }
         result = detect_persistent_features(profiles, d, activations)
         if len(result) >= 2:
-            assert result[0]["persistence"] >= result[1]["persistence"]
+            assert result[0].persistence >= result[1].persistence
 
     def test_uses_profile_fallback(self):
         d = _make_dictionary(["reading"])
