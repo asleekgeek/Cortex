@@ -1,5 +1,7 @@
 """Tests for mcp_server.handlers.checkpoint — hippocampal replay."""
 
+from unittest.mock import patch
+
 import pytest
 
 
@@ -119,3 +121,63 @@ class TestCheckpointSchema:
         assert "description" in schema
         assert "inputSchema" in schema
         assert schema["inputSchema"]["required"] == ["action"]
+
+
+class TestResolveSessionId:
+    """Q2 alignment: checkpoint.save's session_id resolution chain."""
+
+    def test_explicit_session_id_wins(self):
+        from mcp_server.handlers.checkpoint import _resolve_session_id
+
+        assert _resolve_session_id("explicit-123") == "explicit-123"
+
+    def test_falls_back_to_registry_stem_when_absent(self):
+        from mcp_server.handlers import checkpoint
+
+        with patch(
+            "mcp_server.handlers.checkpoint.current_window_session",
+            return_value="7374abf5-stem",
+        ):
+            assert checkpoint._resolve_session_id(None) == "7374abf5-stem"
+
+    def test_falls_back_to_default_when_registry_empty(self):
+        from mcp_server.handlers import checkpoint
+
+        with patch(
+            "mcp_server.handlers.checkpoint.current_window_session",
+            return_value=None,
+        ):
+            assert checkpoint._resolve_session_id(None) == "default"
+
+    def test_registry_exception_degrades_to_default(self):
+        from mcp_server.handlers import checkpoint
+
+        with patch(
+            "mcp_server.handlers.checkpoint.current_window_session",
+            side_effect=RuntimeError("boom"),
+        ):
+            assert checkpoint._resolve_session_id(None) == "default"
+
+    def test_empty_string_explicit_falls_back(self):
+        """An explicit but empty session_id degrades the same as absence
+        (falsy check) rather than persisting an empty string."""
+        from mcp_server.handlers import checkpoint
+
+        with patch(
+            "mcp_server.handlers.checkpoint.current_window_session",
+            return_value="stem-x",
+        ):
+            assert checkpoint._resolve_session_id("") == "stem-x"
+
+    @pytest.mark.asyncio
+    async def test_save_uses_registry_stem_when_session_id_omitted(self):
+        """Live proof: a save with no session_id arg persists the
+        registry's canonical stem, not the hardcoded 'default'."""
+        from mcp_server.handlers.checkpoint import handler
+
+        with patch(
+            "mcp_server.handlers.checkpoint.current_window_session",
+            return_value="live-stem-abc",
+        ):
+            result = await handler({"action": "save", "current_task": "t"})
+        assert result["status"] == "saved"

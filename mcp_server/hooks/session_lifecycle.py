@@ -40,6 +40,9 @@ from typing import Any
 
 try:
     from mcp_server.core.profile_builder import apply_session_update
+    from mcp_server.handlers.injection_receipts import (
+        session_id_from_transcript,
+    )
     from mcp_server.infrastructure.profile_store import (
         load_profiles,
         save_profile,
@@ -152,10 +155,23 @@ def _run_consolidation(turn_count: int = 0) -> None:
 
 
 def _build_session_entry(event: dict[str, Any], domain_id: str) -> dict[str, Any]:
-    """Build a session log entry from event data."""
+    """Build a session log entry from event data.
+
+    precondition: ``event["session_id"]`` is present (enforced by
+    ``process_event``'s guard before this is called). postcondition:
+    ``sessionId`` is the transcript-stem canonical identity (Q2 alignment,
+    decision 4255039 correction 7) when ``event["transcript_path"]`` is a
+    non-empty string; otherwise it degrades to the raw
+    ``event["session_id"]`` — the documented divergence window (no
+    transcript_path in the SessionEnd payload, e.g. synthetic/test
+    events). No historical rows are rewritten; readers of session-log.json
+    (profile_builder, procedural_skill_writer) key on domain/tools/
+    duration, not sessionId, so old-vs-new rows are read-compatible.
+    """
     keywords = event.get("keywords") or []
     return {
-        "sessionId": event["session_id"],
+        "sessionId": session_id_from_transcript(event.get("transcript_path"))
+        or event["session_id"],
         "domain": domain_id,
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "project": event.get("project") or cwd_to_project_id(event.get("cwd")),

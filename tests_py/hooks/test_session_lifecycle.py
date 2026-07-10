@@ -200,6 +200,51 @@ class TestProcessEvent:
         assert entry["entryKeywords"] == ["deploy"]
         assert "timestamp" in entry
 
+    @patch("mcp_server.hooks.session_lifecycle.save_profile")
+    @patch("mcp_server.hooks.session_lifecycle.save_session_log")
+    @patch(
+        "mcp_server.hooks.session_lifecycle.load_session_log",
+        return_value=_session_log(),
+    )
+    @patch(
+        "mcp_server.hooks.session_lifecycle.load_profiles",
+        return_value=_empty_profiles(),
+    )
+    def test_sessionid_prefers_transcript_stem(
+        self, mock_lp, mock_lsl, mock_ssl, mock_sp
+    ):
+        """Q2 alignment: transcript_path present -> canonical stem wins
+        over the raw (potentially resume/clear-diverged) event session_id."""
+        process_event(
+            {
+                "session_id": "raw-diverged-id",
+                "transcript_path": "/tmp/projects/x/7374abf5-stem.jsonl",
+                "cwd": "/tmp",
+            }
+        )
+        entry = mock_ssl.call_args[0][0]["sessions"][0]
+        assert entry["sessionId"] == "7374abf5-stem"
+
+    @patch("mcp_server.hooks.session_lifecycle.save_profile")
+    @patch("mcp_server.hooks.session_lifecycle.save_session_log")
+    @patch(
+        "mcp_server.hooks.session_lifecycle.load_session_log",
+        return_value=_session_log(),
+    )
+    @patch(
+        "mcp_server.hooks.session_lifecycle.load_profiles",
+        return_value=_empty_profiles(),
+    )
+    def test_sessionid_falls_back_without_transcript_path(
+        self, mock_lp, mock_lsl, mock_ssl, mock_sp
+    ):
+        """No transcript_path -> documented degradation to raw event
+        session_id (same as pre-alignment behavior, e.g. every existing
+        fixture in this file that omits transcript_path)."""
+        process_event({"session_id": "raw-only-id", "cwd": "/tmp"})
+        entry = mock_ssl.call_args[0][0]["sessions"][0]
+        assert entry["sessionId"] == "raw-only-id"
+
 
 class TestTombstoneSessionRegistry:
     """T2-H2 — SessionEnd write path (user arbitrage Q1)."""

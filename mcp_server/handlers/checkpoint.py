@@ -17,6 +17,7 @@ from mcp_server.core.replay import format_restoration
 from mcp_server.handlers._tool_meta import IDEMPOTENT_WRITE
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
+from mcp_server.infrastructure.session_registry import current_window_session
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +136,13 @@ schema = {
             },
             "session_id": {
                 "type": "string",
-                "description": "Session identifier this checkpoint belongs to. Defaults to 'default'.",
+                "description": (
+                    "Session identifier this checkpoint belongs to. When "
+                    "omitted, falls back to the current window's canonical "
+                    "session id (transcript-stem identity, via the T2 "
+                    "session registry); if that is also unavailable, "
+                    "defaults to 'default' (Q2 alignment)."
+                ),
                 "default": "default",
                 "examples": ["dbaca0ec-b346-464a-84b9-afe97b91d27d"],
             },
@@ -168,6 +175,29 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
         return {"error": f"Unknown action: {action}"}
 
 
+def _resolve_session_id(explicit: str | None) -> str:
+    """Resolve the checkpoint's session identity (Q2 alignment).
+
+    precondition: none. postcondition: returns ``explicit`` when it is a
+    non-empty string (an explicit caller-supplied session_id is honored,
+    never silently overridden — mirrors compaction_checkpoint.py's
+    explicit-session_id-passthrough contract); otherwise returns the
+    current window's canonical session id via the T2 session registry
+    (``current_window_session``, transcript-stem identity, same pattern
+    as recall.py/wiki_read.py's ``_resolve_session_id``); otherwise
+    ``"default"``. This is the sole handler-context (no hook event, no
+    transcript_path) writer in the checkpoint save path — the registry
+    is the only canonical source available here.
+    """
+    if explicit:
+        return explicit
+    try:
+        return current_window_session() or "default"
+    except Exception:
+        logger.warning("session registry lookup failed", exc_info=True)
+        return "default"
+
+
 def _save_checkpoint(args: dict) -> dict:
     """Create a working state checkpoint."""
     store = _get_store()
@@ -175,7 +205,7 @@ def _save_checkpoint(args: dict) -> dict:
 
     checkpoint_id = store.insert_checkpoint(
         {
-            "session_id": args.get("session_id", "default"),
+            "session_id": _resolve_session_id(args.get("session_id")),
             "directory_context": args.get("directory", ""),
             "current_task": args.get("current_task", ""),
             "files_being_edited": args.get("files_being_edited", []),

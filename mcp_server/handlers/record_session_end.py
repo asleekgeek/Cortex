@@ -80,7 +80,15 @@ schema = {
                 "type": "string",
                 "description": (
                     "Unique session identifier (Claude Code session UUID or "
-                    "similar). Used as the row key in the session log."
+                    "similar). Used as the row key in the session log. "
+                    "Q2 alignment note: intentionally NOT auto-resolved to "
+                    "the transcript-stem canonical identity — this is a "
+                    "required, caller-supplied value used for offline/"
+                    "manual session reconstruction (see module docstring); "
+                    "silently overriding it would break that use case. The "
+                    "live SessionEnd hook path writes session-log.json "
+                    "directly via session_lifecycle.py (which IS aligned), "
+                    "not through this handler."
                 ),
                 "examples": ["dbaca0ec-b346-464a-84b9-afe97b91d27d"],
             },
