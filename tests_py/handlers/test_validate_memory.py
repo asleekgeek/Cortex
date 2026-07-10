@@ -391,3 +391,264 @@ class TestValidateMemorySingleton:
 
         store = _get_store()
         assert store is not None
+
+
+# ── I6-D6: graded provenance verifier ─────────────────────────────────────
+
+
+class TestProvenanceGradeWiring:
+    """Handler postcondition: every report carries a provenance_grade in
+    {verified, verifiable, unverifiable}, persisted to source_attribution
+    unless dry_run."""
+
+    @pytest.mark.asyncio
+    async def test_report_carries_provenance_grade(self, tmp_path):
+        store_result = await remember_handler(
+            {"content": "Plain testimony, no references at all.", "force": True}
+        )
+        assert store_result["stored"] is True
+
+        result = await handler({"memory_id": store_result["memory_id"]})
+        assert result["reports"][0]["provenance_grade"] in (
+            "verified",
+            "verifiable",
+            "unverifiable",
+        )
+        # No extractable reference -> unverifiable (I6-D6 grading contract).
+        assert result["reports"][0]["provenance_grade"] == "unverifiable"
+
+    @pytest.mark.asyncio
+    async def test_grade_persisted_to_source_attribution(self, tmp_path):
+        subdir = tmp_path / "proj" / "src"
+        subdir.mkdir(parents=True)
+        real_file = subdir / "real_module.py"
+        real_file.write_text("# exists")
+        content = f"Grounded in {real_file}"
+        store_result = await remember_handler({"content": content, "force": True})
+        mid = store_result["memory_id"]
+
+        result = await handler(
+            {"memory_id": mid, "base_dir": str(tmp_path), "dry_run": False}
+        )
+        assert result["graded"] == 1
+        assert result["reports"][0]["provenance_grade"] == "verified"
+
+        from mcp_server.handlers.validate_memory import _get_store
+
+        store = _get_store()
+        mem = store.get_memory(mid)
+        assert mem["source_attribution"] == "verified"
+
+    @pytest.mark.asyncio
+    async def test_dry_run_does_not_write_source_attribution(self, tmp_path):
+        store_result = await remember_handler(
+            {"content": "No refs at all here.", "force": True}
+        )
+        mid = store_result["memory_id"]
+
+        from mcp_server.handlers.validate_memory import _get_store
+
+        store = _get_store()
+        before = store.get_memory(mid)["source_attribution"]
+
+        result = await handler({"memory_id": mid, "dry_run": True})
+        assert result["graded"] == 0
+        after = store.get_memory(mid)["source_attribution"]
+        assert after == before, "dry_run must not write source_attribution"
+
+    @pytest.mark.asyncio
+    async def test_verifier_is_sole_writer_overwrites_epistemic_tag(self, tmp_path):
+        """I6-D6 arbitrage (Q3): whatever C1 source-monitoring wrote at
+        remember() time (perceived/told/inferred/unknown) is overwritten
+        by the verifier's grade the next time validate_memory runs."""
+        store_result = await remember_handler(
+            {
+                "content": "I think this is probably true, no grounding at all.",
+                "force": True,
+            }
+        )
+        mid = store_result["memory_id"]
+
+        from mcp_server.handlers.validate_memory import _get_store
+
+        store = _get_store()
+        pre_grade_value = store.get_memory(mid)["source_attribution"]
+        # C1 classifies ungrounded "I think ... probably" content as inferred.
+        assert pre_grade_value in ("inferred", "unknown", "perceived", "told")
+
+        result = await handler({"memory_id": mid, "dry_run": False})
+        post_grade_value = store.get_memory(mid)["source_attribution"]
+        assert post_grade_value == result["reports"][0]["provenance_grade"]
+        assert post_grade_value in ("verified", "verifiable", "unverifiable")
+
+
+class TestProvenanceDeStale:
+    """Handler postcondition (I6-D6): a stale memory whose file refs all
+    resolve again is rehabilitated — is_stale flips back to false."""
+
+    @pytest.mark.asyncio
+    async def test_memory_rehabilitated_when_refs_resolve(self, tmp_path):
+        subdir = tmp_path / "proj" / "src"
+        subdir.mkdir(parents=True)
+        target = subdir / "module.py"
+        # First pass: file does NOT exist -> memory goes stale.
+        content = f"References {target} for the implementation"
+        store_result = await remember_handler({"content": content, "force": True})
+        mid = store_result["memory_id"]
+
+        first = await handler(
+            {
+                "memory_id": mid,
+                "base_dir": str(tmp_path),
+                "staleness_threshold": 0.0,
+                "dry_run": False,
+            }
+        )
+        assert first["stale_updated"] == 1
+
+        from mcp_server.handlers.validate_memory import _get_store
+
+        store = _get_store()
+        assert store.get_memory(mid)["is_stale"] in (True, 1)
+
+        # File now created -> re-verification must rehabilitate.
+        target.write_text("# now exists")
+        second = await handler(
+            {
+                "memory_id": mid,
+                "base_dir": str(tmp_path),
+                "staleness_threshold": 0.0,
+                "dry_run": False,
+            }
+        )
+        assert second["destaled"] == 1
+        assert store.get_memory(mid)["is_stale"] in (False, 0)
+
+    @pytest.mark.asyncio
+    async def test_still_missing_ref_not_destaled(self, tmp_path):
+        subdir = tmp_path / "proj" / "src"
+        subdir.mkdir(parents=True)
+        target = subdir / "gone_forever.py"
+        content = f"References {target}"
+        store_result = await remember_handler({"content": content, "force": True})
+        mid = store_result["memory_id"]
+
+        await handler(
+            {
+                "memory_id": mid,
+                "base_dir": str(tmp_path),
+                "staleness_threshold": 0.0,
+                "dry_run": False,
+            }
+        )
+        second = await handler(
+            {
+                "memory_id": mid,
+                "base_dir": str(tmp_path),
+                "staleness_threshold": 0.0,
+                "dry_run": False,
+            }
+        )
+        assert second["destaled"] == 0
+        assert second["stale_updated"] == 0  # already stale, no new mark
+
+
+class TestProvenanceIdempotence:
+    """Re-running the verifier on an unchanged memory must be a no-op on
+    the grade: same content, same filesystem state -> same grade."""
+
+    @pytest.mark.asyncio
+    async def test_repeat_verification_same_grade(self, tmp_path):
+        subdir = tmp_path / "proj" / "src"
+        subdir.mkdir(parents=True)
+        real_file = subdir / "stable.py"
+        real_file.write_text("# stable")
+        content = f"Grounded reference to {real_file}"
+        store_result = await remember_handler({"content": content, "force": True})
+        mid = store_result["memory_id"]
+
+        first = await handler({"memory_id": mid, "base_dir": str(tmp_path)})
+        second = await handler({"memory_id": mid, "base_dir": str(tmp_path)})
+        third = await handler({"memory_id": mid, "base_dir": str(tmp_path)})
+
+        grades = {r["reports"][0]["provenance_grade"] for r in (first, second, third)}
+        assert grades == {"verified"}
+        # Nothing gets re-marked stale/destaled on repeat verified passes.
+        assert second["stale_updated"] == 0
+        assert second["destaled"] == 0
+        assert third["stale_updated"] == 0
+        assert third["destaled"] == 0
+
+
+class TestProvenancePagination:
+    """Handler postcondition (I6-D6): all-scope calls are cursor-paginated
+    via after_id; next_after_id lets a caller continue a sweep."""
+
+    @pytest.mark.asyncio
+    async def test_next_after_id_present_for_all_scope(self, tmp_path):
+        await remember_handler(
+            {"content": "Pagination probe memory, no refs.", "force": True}
+        )
+        result = await handler({"base_dir": str(tmp_path)})
+        assert result["validated"] >= 1
+        assert result["next_after_id"] is not None
+        assert isinstance(result["next_after_id"], int)
+
+    @pytest.mark.asyncio
+    async def test_next_after_id_none_for_memory_id_scope(self, tmp_path):
+        store_result = await remember_handler(
+            {"content": "Single-scope probe, no refs.", "force": True}
+        )
+        result = await handler(
+            {"memory_id": store_result["memory_id"], "base_dir": str(tmp_path)}
+        )
+        assert result["next_after_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_after_id_excludes_earlier_ids(self, tmp_path):
+        store_result = await remember_handler(
+            {"content": "Cursor probe memory, no refs.", "force": True}
+        )
+        mid = store_result["memory_id"]
+
+        # Cursor set past this memory's id -> it must not be revalidated.
+        result = await handler({"base_dir": str(tmp_path), "after_id": mid})
+        ids_seen = {r["memory_id"] for r in result["reports"]}
+        assert mid not in ids_seen
+
+
+class TestUrlAndCommitRefsGrading:
+    """Handler postcondition: URL refs never feed is_stale, but do feed
+    provenance_grade; commit refs never grade dead memories unverifiable
+    on their own."""
+
+    @pytest.mark.asyncio
+    async def test_url_ref_does_not_affect_staleness_score(self, tmp_path):
+        content = "See https://this-domain-should-not-resolve.invalid/x for docs"
+        store_result = await remember_handler({"content": content, "force": True})
+        mid = store_result["memory_id"]
+
+        result = await handler(
+            {
+                "memory_id": mid,
+                "base_dir": str(tmp_path),
+                "url_check_limit": 0,  # bound network entirely for this test
+            }
+        )
+        report = result["reports"][0]
+        # URL refs are not file refs -> staleness score stays 0 regardless
+        # of URL reachability.
+        assert report["total_refs"] == 0
+        assert report["is_stale"] is False
+
+    @pytest.mark.asyncio
+    async def test_unresolvable_commit_grades_verifiable_not_unverifiable(
+        self, tmp_path
+    ):
+        content = "Fixed in commit deadbeefcafebabe1234567890abcdef12345678"
+        store_result = await remember_handler({"content": content, "force": True})
+        mid = store_result["memory_id"]
+
+        result = await handler({"memory_id": mid, "base_dir": str(tmp_path)})
+        report = result["reports"][0]
+        assert report["provenance_grade"] in ("verifiable",)

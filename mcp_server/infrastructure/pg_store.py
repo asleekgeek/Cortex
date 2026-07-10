@@ -950,6 +950,16 @@ class PgMemoryStore(
         )
         self._conn.commit()
 
+    def set_source_attribution(self, memory_id: int, attribution: str) -> None:
+        """Persist a provenance grade (I6-D6). Sole intended writer:
+        handlers/validate_memory.py — see core/provenance.py for the
+        verified/verifiable/unverifiable vocabulary this column now holds."""
+        self._execute(
+            "UPDATE memories SET source_attribution = %s WHERE id = %s",
+            (attribution, memory_id),
+        )
+        self._conn.commit()
+
     def update_forgetting_pressure_accum(self, memory_id: int, accum: float) -> None:
         """Persist the permanent-circuit leaky-integrator state for one memory.
 

@@ -169,13 +169,25 @@ def assess_staleness(
     ]
     score = compute_staleness_score(len(refs), len(missing), len(changed))
 
+    # Bug fix (I6-D6, found while wiring de-stale rehabilitation): a memory
+    # with ZERO missing/changed refs must never be stale, regardless of how
+    # strict `threshold` is set. The naive `score >= threshold` boundary
+    # broke at threshold=0.0 (the documented "flag anything with one
+    # missing reference" setting): score=0.0 >= threshold=0.0 was True for
+    # a memory whose refs ALL resolved, permanently blocking
+    # de-stale rehabilitation at that threshold. `score > 0` gates out the
+    # no-problem case without changing behavior for any threshold > 0
+    # (there, score=0 already implied score < threshold under the old
+    # formula too).
+    is_stale = score > 0 and score >= threshold
+
     return StalenessReport(
         memory_id=memory_id,
         total_refs=len(refs),
         missing_refs=missing,
         changed_refs=changed,
         staleness_score=round(score, 4),
-        is_stale=score >= threshold,
+        is_stale=is_stale,
         reason=_build_staleness_reason(missing, changed),
     )
 

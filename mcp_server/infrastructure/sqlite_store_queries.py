@@ -89,12 +89,21 @@ class SqliteQueryMixin:
         return results
 
     def get_all_memories_for_validation(
-        self, limit: int = 1000
+        self,
+        limit: int = 1000,
+        *,
+        after_id: int = 0,
+        include_stale: bool = False,
     ) -> list[dict[str, Any]]:
+        """Page through memories for validation, ``id`` order (I6-D6).
+
+        Mirrors PgQueryMixin.get_all_memories_for_validation — see there
+        for the cursor/include_stale rationale.
+        """
         rows = self._conn.execute(
-            "SELECT * FROM memories WHERE NOT is_stale "
-            "ORDER BY last_accessed ASC LIMIT ?",
-            (limit,),
+            "SELECT * FROM memories WHERE id > ? AND (NOT is_stale OR ?) "
+            "ORDER BY id ASC LIMIT ?",
+            (after_id, int(include_stale), limit),
         ).fetchall()
         return [self._normalize_memory_row(r) for r in rows]
 

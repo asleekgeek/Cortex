@@ -553,6 +553,16 @@ class SqliteMemoryStore(
         )
         self._conn.commit()
 
+    def set_source_attribution(self, memory_id: int, attribution: str) -> None:
+        """Persist a provenance grade (I6-D6). Sole intended writer:
+        handlers/validate_memory.py — see core/provenance.py for the
+        verified/verifiable/unverifiable vocabulary this column now holds."""
+        self._conn.execute(
+            "UPDATE memories SET source_attribution = ? WHERE id = ?",
+            (attribution, memory_id),
+        )
+        self._conn.commit()
+
     # ── Compression ───────────────────────────────────────────────────
 
     def update_memory_compression(
