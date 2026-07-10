@@ -33,7 +33,26 @@
 #   Anything else is passed through to the underlying run_benchmark.py calls.
 #
 # Environment overrides:
-#   CORTEX_BENCH_PORT   host port for the ephemeral PG (default 55432)
+#   CORTEX_BENCH_PORT   pin the host port for the ephemeral PG (default: a
+#                       kernel-assigned free port, discovered per run — see
+#                       "Per-run container isolation" below). Set this only if
+#                       you need a stable, predictable port; you take on the
+#                       cross-worktree collision risk it existed to prevent.
+#
+# Per-run container isolation (fix 2026-07-11, incident: two concurrent
+# `make longmemeval` runs from different worktrees silently cross-
+# contaminated each other's scores with no visible error — 0.9163 isolated
+# vs. 0.78-0.86 measured under concurrency. Root cause: every worktree
+# checkout runs this SAME script but with a FIXED container name
+# (cortex-bench-pg) and FIXED port (55432), so two runs from different
+# worktrees raced on ONE shared container/database. The intra-worktree
+# mkdir-lock below did not (and structurally cannot) catch this: its lock
+# directory lives under REPO_ROOT, which is a *different path per worktree*,
+# so two worktrees each acquire their own lock and both proceed into
+# start_db() believing they are the only run. Same family as 2304cdda
+# (tests_py/conftest.py per-process throwaway DB) — the fix is the same
+# shape: give every run its own throwaway container AND port, name-tagged
+# with the owning PID so a future diagnostic never has to guess again.
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -87,10 +106,17 @@ FLOOR_TOLERANCE=0.005
 
 # ── Ephemeral PostgreSQL + pgvector (any PG>=15 with vector works; the schema
 # code creates the extension itself on first connect).
+#
+# CONTAINER and PG_PORT are per-run and finalized inside start_db(): the name
+# carries this process's PID + a random suffix (mirrors conftest.py's
+# cortex_test_pw<pid>_<hex>), and the port is kernel-assigned (docker -p 0)
+# unless CORTEX_BENCH_PORT pins one explicitly. BENCH_DB_URL is therefore
+# only valid AFTER start_db() returns — nothing before it in this script
+# reads BENCH_DB_URL.
 PG_IMAGE="pgvector/pgvector:pg16"
-PG_PORT="${CORTEX_BENCH_PORT:-55432}"
-CONTAINER="cortex-bench-pg"
-BENCH_DB_URL="postgresql://postgres:cortex_bench@localhost:${PG_PORT}/cortex_bench"
+CONTAINER="cortex-bench-pg-$$-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
+PG_PORT=""
+BENCH_DB_URL=""
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RESULTS_DIR="$REPO_ROOT/benchmarks/results/repro/$STAMP"
@@ -160,29 +186,91 @@ fetch_longmemeval() {
     echo "==> LongMemEval checksum OK."
 }
 
+# Best-effort sweep of orphaned `cortex-bench-pg-*` containers whose owning
+# PID is dead — same pattern as tests_py/conftest.py::_drop_dead_orphaned_databases.
+# A run killed by SIGKILL (OOM, `docker kill` on the wrong target, machine
+# sleep) never reaches the teardown EXIT trap, so its container leaks; this
+# reclaims it on the NEXT run instead of requiring manual `docker rm`.
+# Non-fatal and conservative: a name that doesn't parse as <pid>-<hex>, or a
+# PID that's still alive (even if reused by an unrelated process — the
+# window is the container's own lifetime, seconds to low hours, so PID reuse
+# racing this exact check is not a realistic concern here), is left alone.
+sweep_orphaned_containers() {
+    local names name rest pid
+    names="$(docker ps -a --format '{{.Names}}' | grep '^cortex-bench-pg-' || true)"
+    [ -z "$names" ] && return
+    while IFS= read -r name; do
+        rest="${name#cortex-bench-pg-}"
+        pid="${rest%%-*}"
+        case "$pid" in
+            ''|*[!0-9]*) continue ;;  # doesn't parse as <pid>-<hex> — leave it
+        esac
+        if kill -0 "$pid" 2>/dev/null; then
+            continue  # owning process still alive — not an orphan
+        fi
+        echo "==> Reclaiming orphaned container ${name} (owning pid ${pid} is dead)."
+        docker rm -f "$name" >/dev/null 2>&1 || true
+    done <<< "$names"
+}
+
+# Discover the kernel-assigned host port docker bound for the container's
+# 5432/tcp. `docker port` output is "0.0.0.0:PORT" (one line per binding);
+# take the numeric suffix of the last line. Preferred over scanning for a
+# free port ourselves: asking the kernel for port 0 and reading back what it
+# bound is atomic — a manual scan-then-bind has a TOCTOU race another
+# process (or another concurrent reproduce.sh run) can win in between.
+discover_assigned_port() {
+    docker port "$CONTAINER" 5432/tcp | tail -1 | awk -F: '{print $NF}'
+}
+
 start_db() {
-    if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
-        echo "==> Reusing running container ${CONTAINER}."; return
+    sweep_orphaned_containers
+    local publish
+    if [ -n "${CORTEX_BENCH_PORT:-}" ]; then
+        # Explicit override: caller takes responsibility for the port being
+        # free and for any cross-run collision it may cause (mirrors
+        # conftest.py's CORTEX_TEST_DATABASE_URL override — respected verbatim).
+        PG_PORT="$CORTEX_BENCH_PORT"
+        publish="${PG_PORT}:5432"
+    else
+        # Kernel-assigned free port — the default, and the fix for the
+        # cross-worktree contamination this file documents above.
+        publish="0:5432"
     fi
-    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-    echo "==> Starting ephemeral PostgreSQL (${PG_IMAGE}) on port ${PG_PORT}..."
+    echo "==> Starting ephemeral PostgreSQL (${PG_IMAGE}), container '${CONTAINER}'..."
     docker run -d --name "$CONTAINER" \
         -e POSTGRES_PASSWORD=cortex_bench \
         -e POSTGRES_DB=cortex_bench \
-        -p "${PG_PORT}:5432" \
+        -p "${publish}" \
         "$PG_IMAGE" >/dev/null
     started_container=1
+    if [ -z "${CORTEX_BENCH_PORT:-}" ]; then
+        PG_PORT="$(discover_assigned_port)"
+        if [ -z "$PG_PORT" ]; then
+            echo "error: could not discover the port docker assigned to ${CONTAINER}." >&2
+            exit 1
+        fi
+    fi
+    BENCH_DB_URL="postgresql://postgres:cortex_bench@localhost:${PG_PORT}/cortex_bench"
+    echo "==> Run container: ${CONTAINER}   port: ${PG_PORT}   (isolated per-run — see MANIFEST.json)"
     echo "==> Waiting for PostgreSQL to accept connections..."
     until docker exec "$CONTAINER" pg_isready -U postgres -d cortex_bench >/dev/null 2>&1; do
         sleep 1
     done
 }
 
-# Two concurrent runs share the container + database and silently corrupt
-# each other: BenchmarkDB purges is_benchmark rows on every open, so each
-# run's phases delete the other's in-flight data (observed 2026-07-03, two
-# smoke runs 8s apart produced divergent locomo results). mkdir is the
-# portable atomic lock — flock(1) does not ship on macOS.
+# Intra-worktree guard only: two reproduce.sh invocations from the SAME
+# checkout still share RESULTS_DIR's parent and DATASET_PATH, so a second
+# concurrent run in this worktree can race the first's `curl` writing
+# longmemeval_s.json (partial/corrupt file) or collide on a same-second
+# STAMP. Cross-worktree contamination — the 2026-07-11 incident where two
+# `make longmemeval` runs from different worktrees shared one FIXED
+# container/port and silently corrupted each other's scores — is no longer
+# possible regardless of this lock: start_db() now gives every run its own
+# container name and port (see the file-header note). This lock cannot see
+# across worktrees anyway (LOCK_DIR is under REPO_ROOT, which differs per
+# checkout) — it never could, which is why it did not catch that incident.
+# mkdir is the portable atomic lock — flock(1) does not ship on macOS.
 acquire_lock() {
     if mkdir "$LOCK_DIR" 2>/dev/null; then
         echo $$ > "$LOCK_DIR/pid"
@@ -257,10 +345,11 @@ run_ablation_sweep() {
 
 write_manifest() {
     local git_sha; git_sha="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
-    DATABASE_URL="$BENCH_DB_URL" uv run --extra benchmarks python - "$RESULTS_DIR" "$git_sha" "$DATASET_SHA256" "$PG_IMAGE" <<'PY'
+    DATABASE_URL="$BENCH_DB_URL" uv run --extra benchmarks python - \
+        "$RESULTS_DIR" "$git_sha" "$DATASET_SHA256" "$PG_IMAGE" "$CONTAINER" "$PG_PORT" "$$" <<'PY'
 import json, sys, platform, subprocess
 from pathlib import Path
-results_dir, git_sha, ds_sha, pg_image = sys.argv[1:5]
+results_dir, git_sha, ds_sha, pg_image, container, pg_port, pid = sys.argv[1:8]
 def ver(pkg):
     try:
         import importlib.metadata as m
@@ -286,6 +375,15 @@ manifest = {
     "git_sha": git_sha,
     "longmemeval_dataset_sha256": ds_sha,
     "pg_image": pg_image,
+    # Per-run container isolation fix (2026-07-11, incident: two concurrent
+    # runs from different worktrees shared one fixed container/port and
+    # silently cross-contaminated scores — 0.9163 isolated vs. 0.78-0.86
+    # under concurrency). Recorded so a future diagnostic can always match a
+    # result set to the exact container/port/PID that produced it instead
+    # of guessing.
+    "bench_container_name": container,
+    "bench_container_port": int(pg_port),
+    "bench_runner_pid": int(pid),
     "python": platform.python_version(),
     "packages": {p: ver(p) for p in
                  ("datasets", "sentence-transformers", "torch", "psycopg", "psycopg-pool")},
