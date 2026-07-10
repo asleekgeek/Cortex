@@ -15,7 +15,22 @@ import subprocess
 import sys
 import time
 
+import pytest
+
 import mcp_server.infrastructure.session_registry as sr
+
+
+@pytest.fixture(autouse=True)
+def _clear_start_signature_cache():
+    """Isolation: the process-lifetime signature cache is module-level
+    global state by design (see the correctness proof in
+    session_registry.py above ``_start_signature_cache``) — it must
+    outlive individual calls within one server process, but each TEST
+    is its own scenario and must not observe a stale entry left by an
+    earlier test that happened to reuse the same fake pid number."""
+    sr._start_signature_cache.clear()
+    yield
+    sr._start_signature_cache.clear()
 
 
 def _patch_dir(tmp_path, monkeypatch):
@@ -269,3 +284,100 @@ def test_purge_skips_non_numeric_stems(tmp_path, monkeypatch):
 def test_purge_empty_dir_returns_zero(tmp_path, monkeypatch):
     _patch_dir(tmp_path, monkeypatch)  # dir does not even exist yet
     assert sr.purge_dead_entries() == 0
+
+
+# ── start-signature memoization (perf follow-up to T2-H3) ───────────────
+
+
+def test_cached_start_signature_hits_after_first_call(tmp_path, monkeypatch):
+    d = _patch_dir(tmp_path, monkeypatch)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "5001.json").write_text(
+        json.dumps(
+            {
+                "v": 1,
+                "session_id": "stem-cache-hit",
+                "claude_pid": 5001,
+                "claude_start_time": "sig-5001",
+                "updated_at": time.time(),
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(os, "getppid", lambda: 5001)
+    monkeypatch.setattr(sr, "_pid_alive", lambda pid: True)
+
+    calls = []
+
+    def counting_probe(pid):
+        calls.append(pid)
+        return "sig-5001"
+
+    monkeypatch.setattr(sr, "_process_start_signature", counting_probe)
+
+    assert sr.current_window_session() == "stem-cache-hit"
+    assert sr.current_window_session() == "stem-cache-hit"
+    assert sr.current_window_session() == "stem-cache-hit"
+    # the expensive probe ran exactly once across 3 calls — cache hit
+    assert calls == [5001]
+
+
+def test_cache_keyed_independently_per_pid(monkeypatch):
+    calls = []
+
+    def counting_probe(pid):
+        calls.append(pid)
+        return f"sig-{pid}"
+
+    monkeypatch.setattr(sr, "_process_start_signature", counting_probe)
+
+    assert sr._cached_process_start_signature(111) == "sig-111"
+    assert sr._cached_process_start_signature(222) == "sig-222"
+    assert sr._cached_process_start_signature(111) == "sig-111"
+    assert sr._cached_process_start_signature(222) == "sig-222"
+    # each pid probed exactly once — a simulated ppid change (e.g. the
+    # window's claude process dying and this server being reparented,
+    # see the module-level correctness proof) is a NEW cache key, not
+    # an invalidation of the old one; the old key is simply never
+    # looked up again.
+    assert calls == [111, 222]
+
+
+def test_transient_probe_failure_is_not_cached(monkeypatch):
+    calls = []
+    outcomes = [None, "sig-recovered"]
+
+    def flaky_probe(pid):
+        calls.append(pid)
+        return outcomes.pop(0)
+
+    monkeypatch.setattr(sr, "_process_start_signature", flaky_probe)
+
+    # first call: probe fails transiently (e.g. a race against pid
+    # death) — must NOT be memoized as a permanent None
+    assert sr._cached_process_start_signature(333) is None
+    # second call: probe now succeeds — must be re-attempted, not
+    # short-circuited by a cached failure
+    assert sr._cached_process_start_signature(333) == "sig-recovered"
+    assert calls == [333, 333]
+
+
+def test_session_id_change_seen_immediately_despite_cached_signature(
+    tmp_path, monkeypatch
+):
+    """T2-D7 invariant preserved: only the start-time signature is
+    memoized. The registry file (and therefore session_id) is read
+    fresh on every call, so a session_id change under the same pid +
+    same start signature is visible on the very next call."""
+    _patch_dir(tmp_path, monkeypatch)
+    monkeypatch.setattr(sr, "_pid_alive", lambda pid: True)
+    monkeypatch.setattr(sr, "_process_start_signature", lambda pid: "sig-fixed")
+    monkeypatch.setattr(os, "getppid", lambda: 6001)
+
+    assert sr.write_session("stem-first", claude_pid=6001) is True
+    assert sr.current_window_session() == "stem-first"  # populates cache
+
+    # rewrite the registry under the SAME pid/signature — only the
+    # session_id changes, exactly what happens across a /clear
+    assert sr.write_session("stem-second", claude_pid=6001) is True
+    assert sr.current_window_session() == "stem-second"

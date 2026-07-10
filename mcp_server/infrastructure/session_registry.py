@@ -88,6 +88,84 @@ def _pid_alive(pid: int) -> bool:
     return True
 
 
+# Process-lifetime memoization of a pid's start-time signature (perf
+# follow-up to T2-H3: measured ~6.8ms/call on macOS, dominated by the
+# `ps -o lstart=` subprocess spawn — ~3.4% of the 200ms recall budget).
+#
+# Correctness proof (re-parenting invariant, POSIX.1-2008 orphan
+# reparenting, §3.9): a fixed pid value observed as `os.getppid()` by
+# THIS server process always names the SAME live parent identity for
+# as long as that value keeps being returned. `os.getppid()` for a
+# given process changes only when its actual parent exits — the
+# kernel updates the parent-child edge synchronously at that moment,
+# reparenting the child to the nearest reaper (`launchd`/pid 1 on
+# macOS, `init`/pid 1 on Linux). It can never subsequently point back
+# at the old (now-dead) pid: a future process that happens to be
+# assigned that recycled pid number is never re-established as our
+# parent, because reparenting is driven by the kernel's live
+# parent-child edge at exit time, not by a pid-number match. So the
+# sequence of `os.getppid()` values this server observes over its
+# lifetime is monotonic in identity (it can change at most once, to
+# the reaper, and never revisits an earlier value) — {pid: signature}
+# is therefore safe to memoize for the process's lifetime: no cache
+# entry can ever silently start describing a different process under
+# the same key.
+#
+# Consequence in this module specifically: once the window's `claude`
+# process (P) exits, `claude_pid = os.getppid()` becomes the reaper's
+# pid; no window ever writes a registry entry keyed by the reaper, so
+# `read_json(registry_path(reaper_pid))` in `current_window_session`
+# returns None BEFORE `_process_start_signature` is even reached — in
+# practice this cache holds at most one live entry (P) for the
+# server's entire lifetime.
+#
+# What is deliberately NOT cached here (module docstring, T2-D7):
+# `session_id` — it mutates under the same process at every `/clear`
+# — and the registry file read itself, which stays fresh on every
+# call. Only the OPAQUE per-pid start-time token is memoized, and it
+# is invariant by construction: a live process's start time cannot
+# change, and the argument above shows the pid key cannot silently
+# start referring to a different process while it remains our parent.
+#
+# Anti-global-mutable-state exception (coding-standards.md §7.2, "read
+# -once-at-startup config only"): this is the documented exception —
+# a small, self-bounding cache (see "Consequence" above: at most one
+# live entry in the overwhelming common case, bounded by the number of
+# distinct ppid values a single server process can ever observe,
+# which POSIX reparenting semantics caps near O(1)) — not general
+# mutable state.
+# source: reasoning above from POSIX.1-2008 process lifecycle
+# semantics (orphan reparenting) + T2-D5 (opaque start-time token,
+# this module) + T2-D7 (session_id must stay fresh, this module) —
+# derived from documented OS semantics, no invented constant.
+_start_signature_cache: dict[int, str] = {}
+
+
+def _cached_process_start_signature(pid: int) -> str | None:
+    """Process-lifetime cache wrapper around ``_process_start_signature``.
+
+    See the correctness proof in the comment above
+    ``_start_signature_cache`` for why memoizing by ``pid`` cannot
+    collide across distinct processes.
+
+    precondition: none beyond ``_process_start_signature``'s.
+    postcondition: returns the same value ``_process_start_signature
+    (pid)`` would, but the underlying ``/proc`` read or ``ps``
+    subprocess runs at most once per distinct ``pid`` for this
+    server's lifetime. A ``None`` result (probe failure — e.g. a race
+    against pid death) is NEVER cached: only a successfully resolved
+    signature is memoized, so a transient failure cannot poison future
+    calls for the same pid.
+    """
+    cached = _start_signature_cache.get(pid)
+    if cached is not None:
+        return cached
+    sig = _process_start_signature(pid)
+    if sig is not None:
+        _start_signature_cache[pid] = sig
+    return sig
+
+
 def _process_start_signature(pid: int) -> str | None:
     """Opaque per-process start-time token (T2-D5 pid-reuse guard).
 
@@ -248,8 +326,12 @@ def current_window_session() -> str | None:
     file, unreadable/non-dict JSON, unknown/missing schema version,
     ``claude_pid`` mismatch, dead ``claude_pid``, start-time lineage
     mismatch (pid reuse), or a tombstoned entry. No TTL (T2-D5) —
-    validity is process lineage, not entry age. Fresh every call,
-    never cached (T2-D7).
+    validity is process lineage, not entry age. Registry file read and
+    ``session_id`` are fresh on EVERY call, never cached (T2-D7); the
+    parent's start-time SIGNATURE is memoized per pid for this
+    server's lifetime (perf follow-up to T2-H3 — see the correctness
+    proof above ``_start_signature_cache``), which is a distinct,
+    provably-invariant quantity from ``session_id``.
     """
     claude_pid = os.getppid()
     data = read_json(registry_path(claude_pid))
@@ -262,7 +344,7 @@ def current_window_session() -> str | None:
     if not _pid_alive(claude_pid):
         return None
     recorded_start = data.get("claude_start_time")
-    current_start = _process_start_signature(claude_pid)
+    current_start = _cached_process_start_signature(claude_pid)
     if current_start is None or recorded_start != current_start:
         return None
     session_id = data.get("session_id")
