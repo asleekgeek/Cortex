@@ -360,7 +360,10 @@ def _create_semantic_memories(
             tags = list(semantic["tags"])
             if semantic.get("confabulation_risk") and "confabulation-risk" not in tags:
                 tags.append("confabulation-risk")
-            mem_id = store.insert_memory(
+            tags = _with_source_provenance(tags, semantic["source_memory_ids"])
+            # mem_id is not needed here: provenance is embedded in `tags`
+            # above, written atomically with the row at insert time.
+            store.insert_memory(
                 {
                     "content": semantic["schema"],
                     "embedding": emb,
@@ -376,34 +379,43 @@ def _create_semantic_memories(
                     "store_type": "semantic",
                 }
             )
-            _link_source_memories(store, mem_id, semantic["source_memory_ids"])
             created += 1
         except Exception:
             logger.exception("Failed to create semantic memory")
     return created
 
 
-def _link_source_memories(
-    store: MemoryStore,
-    mem_id: int,
-    source_ids: list,
-) -> None:
-    """Link source episodic memories to the new semantic memory."""
+def _with_source_provenance(tags: list[str], source_ids: list) -> list[str]:
+    """Append source-episodic provenance tags to a to-be-created semantic memory.
+
+    Precondition: `tags` is the tag list about to be written on a NEW row
+    (semantic memory not yet inserted); `source_ids` are the episodic memory
+    ids the CLS cluster crystallized from (may contain None from incomplete
+    pattern rows — filtered out).
+    Postcondition: returns `tags` plus one `cls-derived` category tag and one
+    `derived-src:<memory_id>` pointer per non-null source id (append-only,
+    order-preserving, no dedup needed — each call builds one fresh row).
+
+    Tags, not a `relationships` row: `relationships.source_entity_id` /
+    `target_entity_id` are `NOT NULL REFERENCES entities(id)`, so they cannot
+    address a memory id. The prior implementation
+    (`_link_source_memories`, removed here) looped `source_ids` into
+    `store.insert_relationship({"source_entity_id": source_id, ...})` inside a
+    bare `except Exception: pass` — every call raised the FK violation and was
+    silently swallowed, so no source→semantic link was ever persisted since
+    this code's introduction. Fixed at the source (this function), not by
+    guarding the throw site: provenance is now embedded in the row's own
+    tags at insert time, reusing the `derived-src:<memory_id>` convention
+    already established and live-proven by
+    `handlers/consolidation/memify_derive.py` (INC6.1b).
+    """
+    result = list(tags)
+    result.append("cls-derived")
     for source_id in source_ids:
         if source_id is None:
             continue
-        try:
-            store.insert_relationship(
-                {
-                    "source_entity_id": source_id,
-                    "target_entity_id": mem_id,
-                    "relationship_type": "derived_from",
-                    "weight": 1.0,
-                    "confidence": 0.8,
-                }
-            )
-        except Exception:
-            pass
+        result.append(f"derived-src:{source_id}")
+    return result
 
 
 def _discover_causal_edges(
