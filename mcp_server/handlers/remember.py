@@ -343,6 +343,13 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
         return supersede_rejection
 
     domain = _resolve_domain(directory, args.get("domain", ""))
+    # i7d3 pivot (2026-07-11): the STORED embedding is raw content —
+    # unchanged from pre-M-D1 behavior. Template normalization is scoped
+    # to the write-gate's novelty DECISION only (evaluate_gate, below),
+    # never to what lands in the `embedding` column or the recall vector
+    # space. See core/capture_template_normalize.py's module docstring
+    # for the incident that narrowed the scope from "normalize the
+    # stored embedding" to "normalize the novelty signal only".
     embedding = emb_engine.encode(content)
     valence = thermodynamics.compute_valence(content)
 
