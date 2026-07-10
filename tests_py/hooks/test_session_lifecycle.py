@@ -8,6 +8,7 @@ from unittest.mock import patch
 from mcp_server.hooks.session_lifecycle import (
     process_event,
     _resolve_domain,
+    _tombstone_session_registry,
     main,
     MAX_SESSION_LOG_ENTRIES,
 )
@@ -200,6 +201,47 @@ class TestProcessEvent:
         assert "timestamp" in entry
 
 
+class TestTombstoneSessionRegistry:
+    """T2-H2 — SessionEnd write path (user arbitrage Q1)."""
+
+    def test_tombstones_resolved_ancestor(self):
+        with (
+            patch(
+                "mcp_server.infrastructure.session_registry.find_claude_ancestor",
+                return_value=4242,
+            ),
+            patch(
+                "mcp_server.infrastructure.session_registry.tombstone"
+            ) as mock_tombstone,
+        ):
+            _tombstone_session_registry()
+        mock_tombstone.assert_called_once_with(4242)
+
+    def test_no_ancestor_skips_write(self):
+        """No resolvable claude ancestor -> no tombstone call, no crash
+        (degrade, never invent — design §1)."""
+        with (
+            patch(
+                "mcp_server.infrastructure.session_registry.find_claude_ancestor",
+                return_value=None,
+            ),
+            patch(
+                "mcp_server.infrastructure.session_registry.tombstone"
+            ) as mock_tombstone,
+        ):
+            _tombstone_session_registry()
+        mock_tombstone.assert_not_called()
+
+    def test_registry_failure_never_raises(self):
+        """Etancheite: must not block the profile update / consolidation
+        work that follows it in main()."""
+        with patch(
+            "mcp_server.infrastructure.session_registry.find_claude_ancestor",
+            side_effect=RuntimeError("boom"),
+        ):
+            _tombstone_session_registry()  # must not raise
+
+
 class TestMain:
     @patch("mcp_server.hooks.session_lifecycle.process_event")
     @patch("sys.stdin")
@@ -230,4 +272,18 @@ class TestMain:
         mock_stdin.isatty.return_value = False
         mock_stdin.read.return_value = ""
         main()
+        mock_pe.assert_not_called()
+
+    @patch("mcp_server.hooks.session_lifecycle.process_event")
+    @patch("mcp_server.hooks.session_lifecycle._tombstone_session_registry")
+    @patch("sys.stdin")
+    def test_tombstone_runs_even_on_tty_with_no_event(
+        self, mock_stdin, mock_tomb, mock_pe
+    ):
+        """The registry tombstone must fire even when there is no usable
+        SessionEnd event — the window ending is what matters, not the
+        event payload (T2-D6 extension, Q1 arbitrage)."""
+        mock_stdin.isatty.return_value = True
+        main()
+        mock_tomb.assert_called_once_with()
         mock_pe.assert_not_called()

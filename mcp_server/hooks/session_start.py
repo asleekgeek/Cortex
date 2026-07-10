@@ -885,12 +885,53 @@ def _lookup_cached_graph_path(project_root: str) -> str | None:
     return None
 
 
+def _refresh_session_registry(event: dict) -> None:
+    """Best-effort write of this window's current session into the
+    per-window registry (T2-D6, T2-D11), plus an opportunistic purge of
+    dead-pid entries.
+
+    precondition: ``event`` is the tolerant ``_read_event()`` result —
+    may be ``{}``. postcondition: on success, this window's registry
+    entry (keyed by the ancestor ``claude`` pid) holds the transcript
+    stem computed by ``session_id_from_transcript`` and stale entries
+    for closed windows are removed. Any failure — resolution, I/O,
+    import — degrades to a stderr log line and NEVER raises: the
+    SessionStart banner is critical and must ship regardless of the
+    registry's state (design §1 directing invariant).
+
+    Called unconditionally near the top of ``main()`` rather than after
+    the last banner line: three of ``main()``'s branches return early
+    (no PostgreSQL, setup failed, empty DB) and a real interactive
+    window can legitimately hit any of them on first launch — the
+    registry entry must exist for those windows too (T2-D9 case 3),
+    not only on the "normal flow" happy path. This is a deliberate
+    placement deviation from the design note's "dernière position du
+    hook" — the design's binding requirement is best-effort
+    non-interference with the banner, which top-of-main placement
+    satisfies identically (produces no stdout, no exception escapes).
+    """
+    try:
+        from mcp_server.infrastructure.session_registry import (
+            purge_dead_entries,
+            write_session,
+        )
+
+        write_session(session_id_from_transcript(event.get("transcript_path")))
+        purge_dead_entries()
+    except Exception as exc:
+        _log(f"session registry refresh skipped (non-fatal): {exc}")
+
+
 def main() -> None:
     """Entry point — print context block to stdout."""
 
     # Hook event first: stdin carries transcript_path, the stable session
     # identity for the injection receipt (decision 4255039 correction 7).
     event = _read_event()
+
+    # Best-effort registry refresh (T2-H2) — see _refresh_session_registry
+    # docstring for why this runs here rather than at the tail of main().
+    _refresh_session_registry(event)
 
     # Auto-discovery runs before the PG path so users see it work even
     # on a fresh machine without a DB set up yet.

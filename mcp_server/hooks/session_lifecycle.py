@@ -177,6 +177,39 @@ def _append_session(session_log: dict, entry: dict[str, Any]) -> None:
     session_log["sessions"] = sessions
 
 
+def _tombstone_session_registry() -> None:
+    """Best-effort SessionEnd write path (user arbitrage Q1, T2-D6
+    extension): tombstones this window's registry entry so a handler
+    call in the interstice before the next SessionStart resolves to
+    NULL rather than the just-ended session — a false attribution is
+    worse than a missing one (design §1 directing invariant).
+
+    precondition: called from a SessionEnd hook's python process
+    (``claude -> bash -> python`` chain, same as every other hook).
+    postcondition: on success, this window's registry entry is
+    tombstoned (lineage preserved, ``session_id`` becomes ``None`` on
+    read). No-op when the ancestor ``claude`` pid cannot be resolved.
+    Never raises — must not block the profile update / consolidation
+    work that follows it.
+
+    Independent of the event payload (unlike ``process_event`` below,
+    which requires ``session_id``): the window ending is what matters
+    here, not the event's content, so this runs even for a malformed
+    or empty SessionEnd event.
+    """
+    try:
+        from mcp_server.infrastructure.session_registry import (
+            find_claude_ancestor,
+            tombstone,
+        )
+
+        pid = find_claude_ancestor()
+        if pid is not None:
+            tombstone(pid)
+    except Exception as exc:
+        _log(f"session registry tombstone skipped (non-fatal): {exc}")
+
+
 def process_event(event: dict[str, Any] | None) -> None:
     """Process a single session lifecycle event.
 
@@ -219,6 +252,10 @@ def process_event(event: dict[str, Any] | None) -> None:
 
 def main() -> None:
     """Entry point — read JSON event from stdin and process it."""
+    # Registry tombstone (T2-H2) runs first and unconditionally: the
+    # window ended regardless of whether stdin carries a usable event.
+    _tombstone_session_registry()
+
     if sys.stdin.isatty():
         _log("No stdin data (TTY mode), exiting")
         return

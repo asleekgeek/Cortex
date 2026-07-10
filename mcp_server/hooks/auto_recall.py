@@ -239,8 +239,32 @@ def _format_injection(memories: list[dict]) -> tuple[str, list[dict]]:
     return "\n".join(lines), included
 
 
+def _refresh_session_registry(event: dict[str, Any]) -> None:
+    """Best-effort refresh of this window's registry entry on every
+    prompt (T2-D6: "rafraîchir write_session à chaque prompt").
+
+    precondition: ``event`` is the parsed UserPromptSubmit JSON — may
+    lack ``transcript_path``. postcondition: on success, this window's
+    registry entry is refreshed to the current transcript stem. Any
+    failure degrades to a stderr log line and never raises or exits —
+    a registry hiccup must never block the recall injection this hook
+    exists for (same degradation contract as the emitted receipt).
+
+    Called unconditionally at the top of every UserPromptSubmit turn,
+    before the skip/relevance logic — the registry must stay fresh
+    every prompt regardless of whether THIS prompt triggers a recall.
+    """
+    try:
+        from mcp_server.infrastructure.session_registry import write_session
+
+        write_session(session_id_from_transcript(event.get("transcript_path")))
+    except Exception as exc:
+        _log(f"session registry refresh skipped (non-fatal): {exc}")
+
+
 def process_event(event: dict[str, Any]) -> None:
     """Process UserPromptSubmit and inject relevant memories."""
+    _refresh_session_registry(event)
     query = _extract_query(event)
 
     if not query:
