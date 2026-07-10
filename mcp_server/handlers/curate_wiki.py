@@ -52,6 +52,13 @@ from mcp_server.core.auto_curator import (
 from mcp_server.core.wiki_coverage import _project_source_root, audit_all_domains
 from mcp_server.core.wiki_drift import audit_wiki_drift
 from mcp_server.handlers._tool_meta import READ_ONLY
+from mcp_server.handlers.curate_wiki_serialize import (
+    instructions_for_llm,
+    serialise_coverage_job,
+    serialise_job,
+    serialise_reauthor_job,
+)
+from mcp_server.handlers.curate_wiki_uncited import report_uncited_deliberate
 from mcp_server.infrastructure.config import WIKI_ROOT
 from mcp_server.infrastructure.memory_store import get_shared_store
 
@@ -181,6 +188,28 @@ schema = {
                     "keeps each batch tractable for the LLM."
                 ),
             },
+            "report_uncited_deliberate": {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "I6-D7 reverse loop: when true, SKIP job generation "
+                    "entirely and instead return a read-only report of "
+                    "active, deliberate (non-auto-captured), verifiably-"
+                    "important memories that have zero wiki.citations "
+                    "rows — candidates for documentation, not pages "
+                    "written for you. Never writes anything (no page, "
+                    "no citation, no job)."
+                ),
+            },
+            "uncited_deliberate_limit": {
+                "type": "integer",
+                "default": 20,
+                "minimum": 1,
+                "maximum": 200,
+                "description": (
+                    "Max candidates returned by report_uncited_deliberate=true."
+                ),
+            },
         },
     },
 }
@@ -236,6 +265,12 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
          the user actually worked on.
     """
     args = args or {}
+
+    if bool(args.get("report_uncited_deliberate", False)):
+        return report_uncited_deliberate(
+            int(args.get("uncited_deliberate_limit") or 20)
+        )
+
     domain = args.get("domain") or None
     limit = int(args.get("limit") or 3)
     min_memories = int(args.get("min_memories") or MIN_MEMORIES_PER_CLUSTER)
@@ -289,7 +324,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
             )
         )
         coverage_payload = [
-            _serialise_coverage_job(j) for j in coverage_jobs[:coverage_jobs_max]
+            serialise_coverage_job(j) for j in coverage_jobs[:coverage_jobs_max]
         ]
         domain_coverages_summary = [
             {
@@ -317,7 +352,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
             source_root_resolver=_project_source_root,
             today=today,
         )
-        reauthor_payload = [_serialise_reauthor_job(j) for j in reauthor_jobs]
+        reauthor_payload = [serialise_reauthor_job(j) for j in reauthor_jobs]
 
     # 3. Cluster jobs — bottom-up heat clusters.
     cluster_payload: list[dict[str, Any]] = []
@@ -336,7 +371,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
         # Reserve space for coverage + reauthor jobs in the user-specified limit.
         already_used = len(coverage_payload) + len(reauthor_payload)
         cluster_budget = max(0, limit - already_used)
-        cluster_payload = [_serialise_job(j) for j in cluster_jobs[:cluster_budget]]
+        cluster_payload = [serialise_job(j) for j in cluster_jobs[:cluster_budget]]
 
     # Order: coverage → reauthor → cluster. Coverage anchors the
     # structural backbone, reauthor fixes existing pages, cluster fills
@@ -364,120 +399,10 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
         "memory_pool_size": len(memories),
         "domain_filter": domain or "(all)",
         "domain_coverage_summary": domain_coverages_summary,
-        "instructions": _instructions_for_llm(
+        "instructions": instructions_for_llm(
             len(payload),
             total_clusters_eligible,
             len(coverage_payload),
             len(reauthor_payload),
         ),
     }
-
-
-def _serialise_job(job: Any) -> dict[str, Any]:
-    """Flatten a cluster-driven CurationJob for MCP wire transport."""
-    c = job.cluster
-    return {
-        "job_type": "cluster",
-        "suggested_path": c.suggested_path,
-        "suggested_kind": c.suggested_kind,
-        "topic": c.topic,
-        "domain": c.domain,
-        "memory_count": len(c.memory_ids),
-        "memory_ids": c.memory_ids,
-        "top_entities": c.entities[:8],
-        "avg_heat": round(c.avg_heat, 3),
-        "earliest_memory_at": c.earliest_at,
-        "latest_memory_at": c.latest_at,
-        "related_pages": job.related_pages,
-        "prompt": job.prompt,
-    }
-
-
-def _serialise_reauthor_job(job: Any) -> dict[str, Any]:
-    """Flatten a ReauthorJob for MCP wire transport.
-
-    Re-author jobs target an existing page; the wire shape carries the
-    wiki path being rewritten and the drift reasons that triggered the
-    job so the UI can show "Updating: <path> (missing source file)".
-    """
-    return {
-        "job_type": "reauthor",
-        "suggested_path": job.wiki_path,  # rewrite in place
-        "suggested_kind": job.kind or "explanation",
-        "domain": job.domain,
-        "reasons": job.reasons,
-        "cited_source_files": job.cited_source_files[:20],
-        "missing_source_files": job.missing_source_files[:10],
-        "prompt": job.prompt,
-    }
-
-
-def _serialise_coverage_job(job: Any) -> dict[str, Any]:
-    """Flatten a CoverageJob for MCP wire transport.
-
-    Coverage jobs differ from cluster jobs: they target a structural
-    scope, not a topic, so the wire shape carries ``scope_name`` and
-    ``scope_title`` instead of cluster-specific fields. ``job_type``
-    discriminates the two so the consuming LLM (and the unified UI)
-    can render them differently.
-    """
-    return {
-        "job_type": "coverage",
-        "suggested_path": job.suggested_path,
-        "suggested_kind": job.suggested_kind,
-        "scope_name": job.scope_name,
-        "scope_title": job.scope_title,
-        "domain": job.domain,
-        "supporting_memory_ids": job.supporting_memory_ids,
-        "related_pages": job.related_pages,
-        "prompt": job.prompt,
-    }
-
-
-def _instructions_for_llm(
-    n_jobs: int,
-    n_clusters_eligible: int,
-    n_coverage: int,
-    n_reauthor: int,
-) -> str:
-    """The recipe the conversational Opus 4.7 follows when consuming jobs."""
-    if n_jobs == 0:
-        return (
-            f"No authoring jobs returned. {n_clusters_eligible} clusters "
-            "were eligible. If you expected jobs, relax `min_memories` "
-            "or `min_avg_heat`, pass `recent_only=false`, or check that "
-            "domains have uncovered scopes (`include_coverage=true`)."
-        )
-    n_cluster = n_jobs - n_coverage - n_reauthor
-    return (
-        f"Auto-curator returned {n_jobs} job(s): {n_coverage} structural "
-        f"(coverage) + {n_reauthor} re-author (existing pages out of sync) + "
-        f"{n_cluster} topical (cluster), out of "
-        f"{n_clusters_eligible} eligible clusters. Process them IN ORDER:\n\n"
-        "  1. Coverage jobs first — anchor pages (architecture, services, "
-        "api, data-flow) ground every subsequent topical page.\n"
-        "  2. Re-author jobs next — existing pages drifted from the "
-        "codebase. Each carries `reasons` and `missing_source_files`. "
-        "Rewrite the page in place at `suggested_path` (same as the "
-        "page's current path); preserve every accurate claim, fix the "
-        "stale ones, fill template gaps. Don't delete the page even "
-        "for a deprecated feature — prefix the title with '(deprecated)' "
-        "and link to the replacement.\n"
-        "  3. Cluster jobs last — new topical pages from memory heat.\n\n"
-        "For each job:\n"
-        "  * Read `prompt` — it carries everything you need.\n"
-        "  * For coverage and re-author jobs, consult the actual source "
-        "tree (open the project's directories) to verify against the "
-        "current code.\n"
-        "  * For `adr` kind (task-record), the body MUST carry: Status, "
-        "Entry, Mandatory elements, How, Result, Serves, Alternatives, "
-        "References — in that order.\n"
-        "  * Write via `wiki_write(path=<job.suggested_path>, "
-        "content=<your authored Markdown>, tags=['wiki', 'llm-authored', "
-        "<topic-or-scope>, <domain>])`. For re-author jobs this overwrites "
-        "the existing file.\n"
-        "  * Call `curate_wiki` again when this batch is done.\n\n"
-        "Do not skip structure. Do not dump raw memory content; "
-        "synthesise. Each page should be 8-15 KB of substantive "
-        "authored prose, not a template."
-    )

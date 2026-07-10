@@ -2076,6 +2076,25 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_wiki_citations_page_session
     ON wiki.citations (page_id, session_id)
     WHERE session_id <> '';
+
+-- Migration: one citation per (page, memory) (I6-D7/INC6.8 — "flux
+-- avant" write-path). Distinct dedup key from uq_wiki_citations_page_
+-- session above: that index dedups "was this page read in this
+-- session" (CITED_IN semantics, memory_id is incidental — always the
+-- page's own anchor memory). THIS index dedups "was this memory
+-- reported as used to author this page" (DOCUMENTS semantics,
+-- consumed by cortex-viz's _WIKI_MEMORY_LINKS_SQL) regardless of
+-- session — a re-curation that reports the same memory_id again for
+-- the same page must be a no-op, not a growing row count. The two
+-- indexes are independent partial uniques on the same table; insert_
+-- citation's INSERT omits an explicit conflict target (unqualified
+-- ON CONFLICT DO NOTHING) so a single statement is safely deduped by
+-- whichever of the two applies — Postgres infers the arbiter per-row
+-- when no target is named. CREATE UNIQUE INDEX IF NOT EXISTS is
+-- itself idempotent; no DO block needed.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_wiki_citations_page_memory
+    ON wiki.citations (page_id, memory_id)
+    WHERE memory_id IS NOT NULL;
 """
 
 # ── Schema initialization ────────────────────────────────────────────────

@@ -60,10 +60,17 @@ def _extract_body_sections(body: str) -> tuple[str, dict[str, str]]:
     return lead, sections
 
 
-def _page_row_from_md(
+def page_row_from_md(
     rel_path: str, content: str, memory_id: int | None = None
 ) -> dict[str, Any]:
-    """Build an upsert_page payload from a parsed markdown file."""
+    """Build an upsert_page payload from a parsed markdown file.
+
+    Public (no leading underscore): reused by ``wiki_write`` (INC6.8,
+    I6-D7) to sync a freshly-written page into ``wiki.pages``
+    synchronously instead of waiting for the next ``wiki_migrate``
+    sweep — a citation row needs a resolvable ``page_id`` immediately
+    after the write, not after the next batch migration.
+    """
     doc = parse_page(content)
     fm = doc.frontmatter or {}
     body = doc.body or ""
@@ -186,7 +193,7 @@ def migrate_wiki(wiki_root: Path | str, conn) -> dict:
                 continue
             mid = _memory_id_from_rel_path(rp)
             mid = mid if mid in valid_ids else None
-            row = _page_row_from_md(rp, content, memory_id=mid)
+            row = page_row_from_md(rp, content, memory_id=mid)
             page_id, was_modified = upsert_page(conn, row)
             id_by_rel[rp] = page_id
             if was_modified:
