@@ -9,7 +9,11 @@ that is the point.
 
 Scope note (behavior-preserving, I6-D8): this guard covers only the
 handlers whose descriptions were corrected in 6.1 — validate_memory,
-backfill_memories, detect_gaps, assess_coverage, navigate_memory.
+backfill_memories, detect_gaps, assess_coverage, navigate_memory — plus
+recall, recall_hierarchical, drill_down (corrected in the follow-up
+honesty batch, same pattern as navigate_memory: READ_ONLY was false
+because ``track_replay_event`` mutates ``access_count``/``replay_count``/
+``hippocampal_dependency`` on every call).
 ``consolidation/memify.py`` / ``handlers/consolidate.py`` still promise
 "extract reusable lessons and rules" that the code does not implement
 (``consolidate.py:93-95`` vs ``memify.py:36-74``) — that drift is a
@@ -75,6 +79,28 @@ REQUIRED_PHRASES: list[tuple[str, str, str]] = [
         "commits, and papers are not verified; the description must not "
         "let a reader assume broader provenance checking.",
     ),
+    (
+        "mcp_server.handlers.recall",
+        "Not read-only",
+        "recall writes replay-tracking state on every returned memory "
+        "(_track_recall_replay -> track_replay_event) — the description "
+        "must say so, matching the NON_IDEMPOTENT_WRITE annotation "
+        "(honesty batch, same pattern as navigate_memory a8d52838).",
+    ),
+    (
+        "mcp_server.handlers.recall_hierarchical",
+        "Not read-only",
+        "recall_hierarchical writes replay-tracking state on every "
+        "surfaced memory (track_replay_event) — the description must say "
+        "so, matching the NON_IDEMPOTENT_WRITE annotation.",
+    ),
+    (
+        "mcp_server.handlers.drill_down",
+        "Not read-only",
+        "drill_down writes replay-tracking state on every surfaced "
+        "memory (track_replay_event) — the description must say so, "
+        "matching the NON_IDEMPOTENT_WRITE annotation.",
+    ),
 ]
 
 
@@ -122,6 +148,27 @@ def test_backfill_memories_annotation_is_non_idempotent_write() -> None:
 
 def test_navigate_memory_annotation_is_non_idempotent_write() -> None:
     mod = importlib.import_module("mcp_server.handlers.navigate_memory")
+    ann = mod.schema["annotations"]
+    assert ann["readOnlyHint"] is False
+    assert ann["idempotentHint"] is False
+
+
+@pytest.mark.parametrize(
+    "module_path",
+    [
+        "mcp_server.handlers.recall",
+        "mcp_server.handlers.recall_hierarchical",
+        "mcp_server.handlers.drill_down",
+    ],
+)
+def test_replay_tracking_handler_annotation_is_non_idempotent_write(
+    module_path: str,
+) -> None:
+    """Same drift as navigate_memory (a8d52838): every handler that calls
+    ``track_replay_event`` on its results is not read-only — repeat calls
+    mutate access_count/replay_count/hippocampal_dependency. Flags checked
+    directly, not by re-deriving the NON_IDEMPOTENT_WRITE preset."""
+    mod = importlib.import_module(module_path)
     ann = mod.schema["annotations"]
     assert ann["readOnlyHint"] is False
     assert ann["idempotentHint"] is False

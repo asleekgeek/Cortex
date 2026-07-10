@@ -15,7 +15,7 @@ from mcp_server.core import fractal
 from mcp_server.infrastructure.embedding_engine import get_embedding_engine
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
-from mcp_server.handlers._tool_meta import READ_ONLY
+from mcp_server.handlers._tool_meta import NON_IDEMPOTENT_WRITE
 from mcp_server.handlers._telemetry_wrap import instrument
 from mcp_server.handlers.replay_tracking import track_replay_event
 
@@ -23,7 +23,7 @@ from mcp_server.handlers.replay_tracking import track_replay_event
 
 schema = {
     "title": "Drill down",
-    "annotations": READ_ONLY,
+    "annotations": NON_IDEMPOTENT_WRITE,
     "description": (
         "Descend one level into a fractal memory cluster previously "
         "returned by `recall_hierarchical`: an L2 root cluster expands to "
@@ -35,8 +35,11 @@ schema = {
         "Distinct from `recall` (flat ranked list, no hierarchy), "
         "`navigate_memory` (graph BFS via co-access edges, not cluster "
         "tree), and `recall_hierarchical` (entry point that builds the "
-        "tree). Mutates access_count on surfaced memories (drives "
-        "consolidation cascade). Latency <100ms. Returns {cluster_id, "
+        "tree). Not read-only: every surfaced memory is recorded as a "
+        "hippocampal replay event — access_count/replay_count increment "
+        "and hippocampal_dependency decays (CLS-B, Ketz et al. 2023) — so "
+        "repeat calls are not idempotent (`track_replay_event`, "
+        "`replay_tracking.py`). Latency <100ms. Returns {cluster_id, "
         "level, children: [{id, label, members?, content?}]}."
     ),
     "inputSchema": {

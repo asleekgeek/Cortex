@@ -176,6 +176,17 @@ class PgRelationshipMixin:
             return
         sid, tid = int(src["id"]), int(tgt["id"])
         # Touch entities: update last_accessed and warm heat on co-activation.
+        # The +0.05 magnitude has no published or measured source: none —
+        # engineering default, calibration pending (Cortex coding standard
+        # §8). Same unsourced-+0.05-magnitude family as
+        # core/reconsolidation.py:_RECONS_HEAT_BUMP_UPDATE (explicitly
+        # labelled "calibration pending" there) and the wiki citation heat
+        # bump (infrastructure/pg_schema.py WIKI_TRIGGERS_DDL, cfd8e4c3) —
+        # internally consistent, not independently derived. See
+        # docs/provenance/blend-weight-calibration.md for the procedural
+        # precedent this codebase follows to graduate a placeholder like
+        # this to a cited, measured value (that document itself does not
+        # cover this constant).
         self._execute(
             "UPDATE entities SET last_accessed = NOW(), "
             "heat = LEAST(1.0, heat + 0.05) "

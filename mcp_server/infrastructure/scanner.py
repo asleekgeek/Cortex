@@ -189,7 +189,6 @@ def discover_all_memories() -> list[dict[str, Any]]:
 def _parse_conversation_file(
     file_path: Path,
     project_name: str,
-    fallback_id: str,
 ) -> dict[str, Any] | None:
     """Parse a single JSONL conversation file. Returns record or None."""
     raw_records = read_head_tail(file_path)
@@ -202,7 +201,7 @@ def _parse_conversation_file(
     if stats["user_count"] + stats["assistant_count"] == 0:
         return None
 
-    return build_conversation_record(meta, stats, file_path, project_name, fallback_id)
+    return build_conversation_record(meta, stats, file_path, project_name)
 
 
 def discover_conversations() -> list[dict[str, Any]]:
@@ -233,9 +232,7 @@ def discover_conversations() -> list[dict[str, Any]]:
                 continue
 
             try:
-                record = _parse_conversation_file(
-                    file_path, pdir.name, entry.name.replace(".jsonl", "")
-                )
+                record = _parse_conversation_file(file_path, pdir.name)
                 if record:
                     conversations.append(record)
             except Exception as e:

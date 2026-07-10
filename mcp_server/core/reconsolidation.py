@@ -18,9 +18,19 @@ deliberately distinct from the archive branch above — extinction keeps the
 memory fully present.
 
 Modulation — the qualitative mechanisms trace to cited papers, but every
-numeric coefficient below is an engineering default (calibration pending —
-see docs/provenance/blend-weight-calibration.md). The papers establish the
-*direction* of each effect, not the magnitude:
+numeric coefficient below is an engineering default with no published or
+measured source (calibration pending). docs/provenance/blend-weight-
+calibration.md does NOT cover these coefficients — that pre-registration
+calibrates 6 different post-WRRF blend weights (HOPFIELD/HDC/SA/
+DENDRITIC/EMOTIONAL_RETRIEVAL/MOOD_CONGRUENT betas in recall_pipeline.py)
+and none of them is one of these; it is cited here only as the
+PROCEDURAL PRECEDENT this codebase follows to resolve an "engineering
+default" placeholder (pre-register a sweep, cite the resulting optimum,
+update the comment) — not as an existing calibration of these constants.
+Corrected pointer (honesty batch): the original "see docs/provenance/
+blend-weight-calibration.md" phrasing at 9d6bc96d implied direct
+coverage of these coefficients that was never true. The papers establish
+the *direction* of each effect, not the magnitude:
   - Prediction-error gate PE = mismatch * (1 - stability * 0.5): Lee (2009)
     gives only the qualitative trace-strength → lability relationship; the
     0.5 coefficient is ours.
@@ -261,11 +271,15 @@ def update_stability(
 #
 # Engineering defaults — heat / valence step magnitudes are not paper-
 # prescribed (the papers establish the *qualitative* mechanism, not numeric
-# step sizes for a tag-and-vector memory store). Defaults are conservative
-# and labelled "engineering default, calibration pending" per the source-
-# discipline rule (CLAUDE.md §8). Calibration belongs to the same blend-
-# weight grid that owns HOPFIELD/HDC/SA/DENDRITIC/EMOTIONAL betas
-# (docs/provenance/blend-weight-calibration.md).
+# step sizes for a tag-and-vector memory store). source: none — engineering
+# default, calibration pending, per the source-discipline rule (CLAUDE.md
+# §8). docs/provenance/blend-weight-calibration.md does NOT calibrate these
+# constants (that sweep covers 6 different post-WRRF blend weights in
+# recall_pipeline.py) — cited only as the procedural precedent for how this
+# codebase resolves an "engineering default" placeholder (pre-register a
+# sweep, cite the resulting optimum, update this comment). Corrected
+# pointer (honesty batch); the prior phrasing here implied direct coverage
+# that was never true.
 
 
 @dataclass
@@ -304,9 +318,17 @@ class ReconsolidationOutcome:
     extinction_strength: float | None = None
 
 
-# Engineering defaults (calibration pending — see docs/provenance/blend-weight-calibration.md).
-# Bounded so the recall-time bump can never dominate the thermodynamic decay
-# signal that drives the heat WRRF weight; these are tie-breakers, not filters.
+# source: none — engineering default, calibration pending. Bounded so the
+# recall-time bump can never dominate the thermodynamic decay signal that
+# drives the heat WRRF weight; these are tie-breakers, not filters. Same
+# unsourced-+0.05-magnitude family as the entity Hebbian bump
+# (infrastructure/pg_store_relationships.py:181) and the wiki citation
+# bump (pg_schema.py WIKI_TRIGGERS_DDL, cfd8e4c3) — internally consistent
+# but not independently derived. See docs/provenance/blend-weight-
+# calibration.md for the procedural precedent this codebase follows to
+# graduate an "engineering default" to a cited, measured value (that doc
+# itself does NOT cover this constant — see the module-docstring note
+# above for the corrected pointer).
 _RECONS_HEAT_BUMP_UPDATE: float = 0.05
 _RECONS_HEAT_BUMP_NONE: float = 0.02  # successful passive retrieval
 _RECONS_HEAT_BUMP_ARCHIVE: float = -0.10

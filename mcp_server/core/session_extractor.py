@@ -84,7 +84,6 @@ def extract_user_messages(records: list[dict]) -> list[dict[str, Any]]:
             {
                 "text": text[:_MAX_CONTENT_LEN],
                 "timestamp": rec.get("timestamp", ""),
-                "session_id": rec.get("sessionId", ""),
             }
         )
 
@@ -144,7 +143,6 @@ def _classify_and_build_item(msg: dict, min_importance: float) -> dict[str, Any]
         "tags": list(categories) + ["imported"],
         "importance": importance,
         "timestamp": msg["timestamp"],
-        "session_id": msg["session_id"],
     }
 
 
@@ -155,7 +153,7 @@ def extract_memorable_items(
 ) -> list[dict[str, Any]]:
     """Extract items worth remembering from conversation records.
 
-    Returns list of dicts with: content, tags, importance, timestamp, session_id.
+    Returns list of dicts with: content, tags, importance, timestamp.
     Filters by minimum importance threshold.
     """
     messages = extract_user_messages(records)
@@ -189,7 +187,6 @@ def _extract_tools_from_assistant(rec: dict, tools_used: set[str]) -> None:
 
 def extract_session_summary(records: list[dict]) -> dict[str, Any]:
     """Build a session-level summary from records."""
-    session_id = ""
     cwd = ""
     first_message = ""
     timestamps: list[str] = []
@@ -197,8 +194,6 @@ def extract_session_summary(records: list[dict]) -> dict[str, Any]:
     tools_used: set[str] = set()
 
     for rec in records:
-        if not session_id and rec.get("sessionId"):
-            session_id = rec["sessionId"]
         if not cwd and rec.get("cwd"):
             cwd = rec["cwd"]
 
@@ -218,7 +213,6 @@ def extract_session_summary(records: list[dict]) -> dict[str, Any]:
             _extract_tools_from_assistant(rec, tools_used)
 
     return {
-        "session_id": session_id,
         "cwd": cwd,
         "first_message": first_message,
         "user_count": user_count,

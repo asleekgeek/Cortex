@@ -277,14 +277,12 @@ class TestExtractSessionSummary:
             },
         ]
         summary = extract_session_summary(records)
-        assert summary["session_id"] == "s123"
         assert "cortex" in summary["cwd"]
         assert "import_sessions" in summary["first_message"]
         assert "Read" in summary["tools_used"]
 
     def test_empty_records(self):
         summary = extract_session_summary([])
-        assert summary["session_id"] == ""
         assert summary["user_count"] == 0
 
     def test_skips_tool_results_for_first_message(self):

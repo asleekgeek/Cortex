@@ -18,7 +18,7 @@ from mcp_server.core.knowledge_graph import extract_entities
 from mcp_server.core.pg_recall import recall as pg_recall
 from mcp_server.core.query_intent import QueryIntent, classify_query_intent
 from mcp_server.core.response_budget import ListTarget, bound_payload
-from mcp_server.handlers._tool_meta import READ_ONLY
+from mcp_server.handlers._tool_meta import NON_IDEMPOTENT_WRITE
 from mcp_server.handlers.injection_receipts import emit_injection_receipt
 from mcp_server.handlers.recall_helpers import (
     annotate_source_attribution,
@@ -39,7 +39,7 @@ from mcp_server.infrastructure.session_registry import current_window_session
 
 schema = {
     "title": "Recall (retrieve memories)",
-    "annotations": READ_ONLY,
+    "annotations": NON_IDEMPOTENT_WRITE,
     "outputSchema": {
         "type": "object",
         "required": ["memories"],
@@ -126,8 +126,12 @@ schema = {
         "`recall_hierarchical` (returns the L0/L1/L2 cluster topology, not "
         "a flat ranked list), `navigate_memory` (graph BFS over co-access "
         "edges from one seed memory), and `get_causal_chain` (entity-graph "
-        "traversal, not memory recall). Returns ranked memories with scores, "
-        "heat, and source."
+        "traversal, not memory recall). Not read-only: every returned "
+        "memory is recorded as a hippocampal replay event — access_count/"
+        "replay_count increment and hippocampal_dependency decays (CLS-B, "
+        "Ketz et al. 2023) — so repeat calls are not idempotent "
+        "(`track_replay_event`, `replay_tracking.py`). Returns ranked "
+        "memories with scores, heat, and source."
     ),
     "inputSchema": {
         "type": "object",
