@@ -24,16 +24,145 @@ if sys.platform == "win32":
 
 _CURRENT_URL = os.environ.get("DATABASE_URL", "")
 _IS_CI = os.environ.get("CI", "").lower() in ("true", "1")
+_EXPLICIT_TEST_DB_URL = os.environ.get("CORTEX_TEST_DATABASE_URL")
 
 if _IS_CI:
     _TEST_DB_URL = _CURRENT_URL or "postgresql://cortex:cortex@localhost:5432/cortex"
 else:
-    _TEST_DB_URL = os.environ.get(
-        "CORTEX_TEST_DATABASE_URL",
-        "postgresql://localhost:5432/cortex_test",
-    )
+    _TEST_DB_URL = _EXPLICIT_TEST_DB_URL or "postgresql://localhost:5432/cortex_test"
+
+# ── Per-process DB isolation (local dev only) ─────────────────────────────
+#
+# ROOT CAUSE (reproduced deterministically 3/3 + 3/3, 2026-07-10): every
+# worktree/agent defaults to the SAME physical DB (cortex_test). The autouse
+# `_test_isolation` fixture below runs unconditional `DELETE FROM <table>`
+# before/after EVERY test, in EVERY concurrently-running pytest process. Two
+# pytest invocations sharing that DB race: process A's between-test purge
+# can delete the row process B just stored, between B's remember() and its
+# later recall()/get_memory() call. This produced both previously-reported
+# flakes with unrelated proximate symptoms:
+#   - test_store_consolidate_recall: recall_result["count"] == 0
+#     (see /tmp/wt-flake-hunt/run_b_{1,2,3}.log)
+#   - test_memory_count_unchanged_after_validation: store.get_memory() is None
+#     (see /tmp/wt-flake-hunt/run_v3_{1,2,3}.log)
+# Neither is an intra-suite ordering bug nor an embeddings-backend issue —
+# both are inter-process contention on one shared table set. Retrying or
+# skipping would hide the race, not fix it (forbidden anti-pattern). The
+# correct fix is to give each local pytest process its own throwaway
+# database — CI already gets a fresh service-container DB per run, and an
+# explicit CORTEX_TEST_DATABASE_URL override is respected verbatim (the
+# caller has taken responsibility for isolation).
+_CORTEX_TEST_ISOLATE_DB = os.environ.get("CORTEX_TEST_ISOLATE_DB", "1") not in (
+    "0",
+    "false",
+    "False",
+)
+_OWNED_ISOLATED_DB: tuple[str, str] | None = None  # (maintenance_url, db_name)
+
+
+def _maintenance_url(url: str) -> str:
+    """Same host/creds as `url`, database swapped to the `postgres` maintenance DB."""
+    base, _, _query = url.partition("?")
+    prefix, _, _dbname = base.rpartition("/")
+    return f"{prefix}/postgres"
+
+
+def _drop_dead_orphaned_databases(conn) -> None:
+    """Drop leftover `cortex_test_pw<pid>_<hex>` databases whose owning PID
+    is no longer alive.
+
+    A pytest process killed abnormally (SIGTERM/SIGKILL — e.g. a CI job
+    cancellation or a shell timeout) never reaches `pytest_sessionfinish`,
+    so its throwaway database is never dropped (measured: 1 orphan produced
+    by a bash-tool 2-minute timeout during this investigation, 2026-07-10).
+    Best-effort, non-fatal: an unreachable/ambiguous entry is left alone
+    rather than risking a false-positive drop of a database still in use.
+    """
+    try:
+        rows = conn.execute(
+            "SELECT datname FROM pg_database WHERE datname LIKE 'cortex_test_pw%';"
+        ).fetchall()
+    except Exception:
+        return
+    for row in rows:
+        name = row[0] if isinstance(row, tuple) else row.get("datname")
+        if not name:
+            continue
+        # Format: cortex_test_pw<pid>_<8-hex>
+        rest = name[len("cortex_test_pw") :]
+        pid_str = rest.split("_", 1)[0]
+        if not pid_str.isdigit():
+            continue
+        pid = int(pid_str)
+        try:
+            os.kill(pid, 0)
+            continue  # process still alive — not an orphan
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            continue  # alive but owned by another user — leave it
+        except Exception:
+            continue
+        try:
+            conn.execute(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                "WHERE datname = %s AND pid <> pg_backend_pid()",
+                (name,),
+            )
+            conn.execute(f'DROP DATABASE IF EXISTS "{name}"')
+        except Exception:
+            pass
+
+
+def _create_isolated_test_database(base_url: str) -> str | None:
+    """Create a throwaway PG database for this pytest process; return its URL.
+
+    Returns None on any failure (unreachable server, no CREATEDB privilege,
+    etc.) so the caller falls back to the shared `base_url` — degrading to
+    prior (contention-prone but functional) behavior rather than failing the
+    whole session.
+    """
+    try:
+        import psycopg
+
+        db_name = f"cortex_test_pw{os.getpid()}_{os.urandom(4).hex()}"
+        maint_url = _maintenance_url(base_url)
+        with psycopg.connect(maint_url, autocommit=True, connect_timeout=3) as conn:
+            _drop_dead_orphaned_databases(conn)
+            conn.execute(f'CREATE DATABASE "{db_name}"')
+    except Exception:
+        return None
+    global _OWNED_ISOLATED_DB
+    _OWNED_ISOLATED_DB = (maint_url, db_name)
+    prefix = base_url.rpartition("/")[0]
+    return f"{prefix}/{db_name}"
+
+
+if not _IS_CI and _CORTEX_TEST_ISOLATE_DB and not _EXPLICIT_TEST_DB_URL:
+    _isolated_url = _create_isolated_test_database(_TEST_DB_URL)
+    if _isolated_url is not None:
+        _TEST_DB_URL = _isolated_url
 
 os.environ["DATABASE_URL"] = _TEST_DB_URL
+
+
+def pytest_sessionfinish(session, exitstatus) -> None:  # noqa: ARG001
+    """Drop the throwaway per-process database created above, if any."""
+    if _OWNED_ISOLATED_DB is None:
+        return
+    maint_url, db_name = _OWNED_ISOLATED_DB
+    try:
+        import psycopg
+
+        with psycopg.connect(maint_url, autocommit=True, connect_timeout=3) as conn:
+            conn.execute(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                "WHERE datname = %s AND pid <> pg_backend_pid()",
+                (db_name,),
+            )
+            conn.execute(f'DROP DATABASE IF EXISTS "{db_name}"')
+    except Exception:
+        pass
 
 
 def _looks_like_test_db(url: str) -> bool:
