@@ -1,0 +1,38 @@
+{
+  "timestamp_utc": "20260710T150815Z",
+  "labels_source": "docs/campaigns/i6d2_labels_20260710T151000Z.json",
+  "n_labeled": 100,
+  "precision_by_threshold": [
+    {
+      "threshold": 0.75,
+      "n_labeled": 100,
+      "n_duplicate": 2,
+      "precision": 0.02
+    },
+    {
+      "threshold": 0.8,
+      "n_labeled": 80,
+      "n_duplicate": 2,
+      "precision": 0.025
+    },
+    {
+      "threshold": 0.85,
+      "n_labeled": 60,
+      "n_duplicate": 2,
+      "precision": 0.03333333333333333
+    },
+    {
+      "threshold": 0.9,
+      "n_labeled": 40,
+      "n_duplicate": 2,
+      "precision": 0.05
+    },
+    {
+      "threshold": 0.95,
+      "n_labeled": 20,
+      "n_duplicate": 2,
+      "precision": 0.1
+    }
+  ],
+  "selected_threshold": null
+}

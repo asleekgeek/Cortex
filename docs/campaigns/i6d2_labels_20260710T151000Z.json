@@ -1,0 +1,708 @@
+{
+  "labels_of": "docs/campaigns/i6d2_sample_to_label_20260710T150444Z.json",
+  "labeler": "engineer agent, LLM judgment by reading both full contents per pair (I6-D2 design doc explicitly names the labeler as LLM judgment, auditable via this file's id/verdict/justification per pair)",
+  "labeled_at_utc": "2026-07-10T15:10:00Z",
+  "n_labels": 100,
+  "labels": [
+    {
+      "id_a": 4195796,
+      "id_b": 4198871,
+      "similarity": 0.7970849,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4196090,
+      "id_b": 4196105,
+      "similarity": 0.7538828,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4196410,
+      "id_b": 4199795,
+      "similarity": 0.75008774,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197451,
+      "id_b": 4197589,
+      "similarity": 0.77695614,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197656,
+      "id_b": 4198338,
+      "similarity": 0.77822155,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197814,
+      "id_b": 4201670,
+      "similarity": 0.7891422,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198084,
+      "id_b": 4202783,
+      "similarity": 0.7552714,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198328,
+      "id_b": 4202085,
+      "similarity": 0.7590226,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198601,
+      "id_b": 4198791,
+      "similarity": 0.7658416,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198790,
+      "id_b": 4199447,
+      "similarity": 0.7540707,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199130,
+      "id_b": 4199794,
+      "similarity": 0.76180565,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199398,
+      "id_b": 4199854,
+      "similarity": 0.7740898,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199692,
+      "id_b": 4199958,
+      "similarity": 0.7766075,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200078,
+      "id_b": 4201852,
+      "similarity": 0.79133993,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200513,
+      "id_b": 4200592,
+      "similarity": 0.77966243,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200798,
+      "id_b": 4200920,
+      "similarity": 0.77012,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4201184,
+      "id_b": 4201453,
+      "similarity": 0.75522673,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4201704,
+      "id_b": 4202938,
+      "similarity": 0.77583385,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4202103,
+      "id_b": 4202158,
+      "similarity": 0.7823455,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4254251,
+      "id_b": 4254867,
+      "similarity": 0.76509964,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4195796,
+      "id_b": 4195996,
+      "similarity": 0.8445922,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4196238,
+      "id_b": 4199692,
+      "similarity": 0.84319985,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4196487,
+      "id_b": 4199783,
+      "similarity": 0.8444553,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197637,
+      "id_b": 4199691,
+      "similarity": 0.8379843,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197681,
+      "id_b": 4200742,
+      "similarity": 0.8088039,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197828,
+      "id_b": 4199934,
+      "similarity": 0.84956586,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198136,
+      "id_b": 4199673,
+      "similarity": 0.8041641,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198337,
+      "id_b": 4202647,
+      "similarity": 0.84123665,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198671,
+      "id_b": 4199860,
+      "similarity": 0.8173113,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198958,
+      "id_b": 4199613,
+      "similarity": 0.81931484,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199259,
+      "id_b": 4202727,
+      "similarity": 0.83847755,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199417,
+      "id_b": 4200900,
+      "similarity": 0.8422312,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199696,
+      "id_b": 4199774,
+      "similarity": 0.8346089,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199993,
+      "id_b": 4200181,
+      "similarity": 0.83014137,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200430,
+      "id_b": 4202161,
+      "similarity": 0.8258647,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200746,
+      "id_b": 4201197,
+      "similarity": 0.84307164,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4201034,
+      "id_b": 4202244,
+      "similarity": 0.8204504,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4201511,
+      "id_b": 4202100,
+      "similarity": 0.8114834,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4201945,
+      "id_b": 4202205,
+      "similarity": 0.8123851,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4254084,
+      "id_b": 4254299,
+      "similarity": 0.8012417,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4195796,
+      "id_b": 4197891,
+      "similarity": 0.88539696,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4196285,
+      "id_b": 4200573,
+      "similarity": 0.8514063,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197444,
+      "id_b": 4198182,
+      "similarity": 0.8501986,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197662,
+      "id_b": 4201669,
+      "similarity": 0.87633675,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197687,
+      "id_b": 4197759,
+      "similarity": 0.87629616,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197812,
+      "id_b": 4198767,
+      "similarity": 0.852323,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198016,
+      "id_b": 4200374,
+      "similarity": 0.8995765,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198233,
+      "id_b": 4202708,
+      "similarity": 0.87324065,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198467,
+      "id_b": 4198948,
+      "similarity": 0.86399055,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198689,
+      "id_b": 4199314,
+      "similarity": 0.8923994,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198970,
+      "id_b": 4199566,
+      "similarity": 0.86666816,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199231,
+      "id_b": 4202386,
+      "similarity": 0.8611606,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199408,
+      "id_b": 4199435,
+      "similarity": 0.8925605,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199593,
+      "id_b": 4201883,
+      "similarity": 0.8571502,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199917,
+      "id_b": 4255675,
+      "similarity": 0.88267946,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200376,
+      "id_b": 4202720,
+      "similarity": 0.8706855,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200848,
+      "id_b": 4201900,
+      "similarity": 0.870744,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4201413,
+      "id_b": 4201792,
+      "similarity": 0.8540707,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4201988,
+      "id_b": 4201996,
+      "similarity": 0.8754025,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4254068,
+      "id_b": 4254302,
+      "similarity": 0.8963,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4195834,
+      "id_b": 4196232,
+      "similarity": 0.9201199,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4196263,
+      "id_b": 4197891,
+      "similarity": 0.928122,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197444,
+      "id_b": 4199866,
+      "similarity": 0.90543956,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197666,
+      "id_b": 4199007,
+      "similarity": 0.9078328,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197714,
+      "id_b": 4197884,
+      "similarity": 0.9243943,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197823,
+      "id_b": 4199553,
+      "similarity": 0.9169408,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198152,
+      "id_b": 4198624,
+      "similarity": 0.933208,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198473,
+      "id_b": 4199137,
+      "similarity": 0.91106796,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198771,
+      "id_b": 4201814,
+      "similarity": 0.9126338,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198984,
+      "id_b": 4199071,
+      "similarity": 0.936523,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199137,
+      "id_b": 4199773,
+      "similarity": 0.93276155,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199351,
+      "id_b": 4199936,
+      "similarity": 0.9329586,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199504,
+      "id_b": 4199657,
+      "similarity": 0.910908,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199640,
+      "id_b": 4200745,
+      "similarity": 0.94102746,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199996,
+      "id_b": 4200592,
+      "similarity": 0.9095057,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200456,
+      "id_b": 4201058,
+      "similarity": 0.9450665,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200958,
+      "id_b": 4201186,
+      "similarity": 0.9167539,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4201752,
+      "id_b": 4201777,
+      "similarity": 0.9041724,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4202317,
+      "id_b": 4202749,
+      "similarity": 0.92047673,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4254146,
+      "id_b": 4254397,
+      "similarity": 0.92035586,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4195947,
+      "id_b": 4199078,
+      "similarity": 0.95431864,
+      "verdict": true,
+      "justification": "same file, same code region (autocommit psycopg helper); line numbers shifted by exactly +2 across all 5 matches -- a grep/view re-run of the identical block after an unrelated 2-line insertion above it, not a different fact."
+    },
+    {
+      "id_a": 4197626,
+      "id_b": 4197646,
+      "similarity": 0.9902283,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4197781,
+      "id_b": 4198929,
+      "similarity": 0.98244643,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198534,
+      "id_b": 4202269,
+      "similarity": 0.9814017,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4198785,
+      "id_b": 4261906,
+      "similarity": 0.98957807,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199092,
+      "id_b": 4199156,
+      "similarity": 0.96323794,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199305,
+      "id_b": 4202748,
+      "similarity": 0.9934234,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199560,
+      "id_b": 4199567,
+      "similarity": 0.98531055,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199709,
+      "id_b": 4199891,
+      "similarity": 0.9843751,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4199829,
+      "id_b": 4254761,
+      "similarity": 0.98963684,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200274,
+      "id_b": 4200356,
+      "similarity": 0.95122254,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4200559,
+      "id_b": 4255888,
+      "similarity": 0.9738911,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4201149,
+      "id_b": 4254144,
+      "similarity": 0.99476016,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4201513,
+      "id_b": 4201529,
+      "similarity": 1.0,
+      "verdict": true,
+      "justification": "content_a is a byte-identical prefix of content_b for all 1354 shared chars (same get_all_ddl() Python function, same docstring, same block list); content_b is content_a plus an adjacent TS-port comparison grepped in the same call -- same underlying fact (the get_all_ddl definition), captured with a larger context window."
+    },
+    {
+      "id_a": 4202379,
+      "id_b": 4261891,
+      "similarity": 0.98723245,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4202766,
+      "id_b": 4255865,
+      "similarity": 0.992742,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4202984,
+      "id_b": 4253549,
+      "similarity": 0.9918203,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4253717,
+      "id_b": 4261648,
+      "similarity": 0.9860279,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4254144,
+      "id_b": 4255615,
+      "similarity": 0.9926742,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    },
+    {
+      "id_a": 4254955,
+      "id_b": 4261671,
+      "similarity": 0.9959041,
+      "verdict": false,
+      "justification": "different underlying referenced entity (file path / checkpoint UUID / session task-output id / command output / search query) despite near-identical auto-capture template boilerplate ('# Tool: Read|Bash|Write ... **Artifact:** ...') driving the cosine similarity -- distinct facts, not a duplicate."
+    }
+  ]
+}
