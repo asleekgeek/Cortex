@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.9.0] - 2026-07-10
+
+### Added
+- **Graded provenance verifier (I6-D6).** `validate_memory` now grades every memory `verified / verifiable / unverifiable` (worst-case across its references: file paths + wired `changed_paths`, git commits via the hardened subprocess helper, URLs capped at *verifiable* and excluded from the staleness score, artifact digests recomputed, DOI/arXiv recognized) and is the sole writer of `source_attribution` — the C1 epistemic classification (Johnson 1993) is preserved at initial write and overwritten by verification passes. De-stale and pagination included; a `threshold=0.0` de-stale blocker was found and fixed en route.
+- **Flow-forward memory→wiki citations (I6-D7).** `wiki_write` — the real executor of curation jobs — records one deduplicated citation per memory actually used (partial unique index on `(page_id, memory_id)`; unqualified `ON CONFLICT` lets Postgres pick the applicable index per row), feeding the brain graph's DOCUMENTS edges. `curate_wiki(report_uncited_deliberate=true)` reports important memories still lacking a page. No retroactive backfill for existing pages (reversible default).
+- **One-shot deliberate-memory re-heat (I6-D5).** 544 deliberate memories raised to `effective_heat ≥ 0.25` (the measured top-10 cliff bound) by probing the real PL/pgSQL decay function — never lowering anyone, 7 structurally unreachable left intact. Median deliberate heat 0.14 → 0.25; rank protocol: 5/5 improved-or-stable, 4/5 at rank 1. Re-measure scheduled 2026-08-09.
+- **Exact-duplicate collapse (I6-D1).** 91 exact duplicates (55 groups, re-measured) superseded via CAS batch toward the hottest survivor — append-only, metadata untouched, zero duplicate groups remain among current memories.
+
+### Changed
+- **Near-duplicate auto-collapse: measured NO-GO (I6-D2).** Calibration on 100 audited labeled pairs shows no cosine threshold reaches 100% precision (0.95–1.00 stratum: 10%) — auto-capture templating pushes similarity to 0.99 between genuinely distinct facts. Per the campaign gate: zero auto-supersession; 35,869 candidate pairs filed for review; calibration tooling committed for future re-runs.
+- **Read-path source down-weighting (6.7): NOT triggered.** The suppression class that motivated it is eliminated by the corpus levers alone (see re-heat ranks); the residual case is content-generic lexical competition, deferred to the benchmark-neutral template-normalization lead.
+
+### Note
+- Pre-tag guard with variance arbitration: candidate tree measured MRR 0.9163 twice (R@10 0.982); a same-day control run on the v4.8.0 tree also measured 0.9163 — equivalence proven, the earlier 0.9166 being the top of the observed identical-code band. Manifests `20260710T152643Z`, `20260710T155614Z` and `20260710T162510Z-control-v480` committed.
+
 ## [4.8.0] - 2026-07-10
 
 ### Added
