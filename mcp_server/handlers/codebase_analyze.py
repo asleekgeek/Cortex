@@ -20,6 +20,7 @@ from mcp_server.core.codebase_parser import (
     build_memory_content,
     parse_file,
 )
+from mcp_server.handlers import ingest_provenance
 from mcp_server.handlers.codebase_analyze_helpers import (
     CODEBASE_AGENT_CONTEXT,
     FILE_TAG_PREFIX,
@@ -52,11 +53,16 @@ schema = {
         "`seed_project` (5-stage shallow structural sweep, no AST), "
         "`backfill_memories` (Claude Code conversations, not source "
         "files), `wiki_seed_codebase` (seeds wiki pages from .md docs), "
-        "and `ingest_codebase` (downstream PRD-generator consumer). "
+        "and `ingest_codebase` (downstream PRD-generator consumer, and the "
+        "PRIMARY ingestion path when the automatised-pipeline upstream is "
+        "reachable — this tool is its explicit fallback, per ADR-0052 "
+        "sec 2; every written memory carries a src:native provenance tag, "
+        "and the response states fallback_status so a run made while AP "
+        "is reachable is never silent). "
         "Mutates memories + entities + relationships tables. Latency "
         "varies (~10s-10min depending on tree size). Returns "
         "{files_analyzed, files_skipped, memories_written, entities_"
-        "created, relationships_created}."
+        "created, relationships_created, fallback_status}."
     ),
     "inputSchema": {
         "type": "object",
@@ -161,9 +167,16 @@ def _parse_args(args: dict[str, Any] | None) -> tuple:
 
 
 def _build_tags(rel_path: str, analysis: Any) -> list[str]:
-    """Build memory tags for a file analysis."""
+    """Build memory tags for a file analysis.
+
+    Every tag list carries the native-engine provenance tag (ADR-0052
+    sec 2, INC5.2) — ``codebase_analyze`` is the only handler writing one
+    memory per file, so "every memory this path writes carries a
+    provenance tag" is satisfied here, at the single tag-building site.
+    """
     tags = [
         CODEBASE_TAG,
+        *ingest_provenance.native_provenance_tags(),
         f"{FILE_TAG_PREFIX}{rel_path}",
         f"{HASH_TAG_PREFIX}{analysis.content_hash}",
         f"{LANG_TAG_PREFIX}{analysis.language}",
@@ -289,6 +302,18 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     if not root.exists() or not root.is_dir():
         return {"analyzed": False, "reason": f"directory not found: {root}"}
 
+    # ADR-0052 sec 2: codebase_analyze is the EXPLICIT fallback for when AP
+    # is unreachable — never a silent alternative to ingest_codebase. State
+    # which case this run is, every time, before any file is processed.
+    fallback_status, fallback_warning = ingest_provenance.native_fallback_status()
+    if fallback_warning:
+        _log(f"WARNING: {fallback_warning}")
+    else:
+        _log(
+            "running as the documented AP-unreachable fallback "
+            "(ADR-0052 sec 2)"
+        )
+
     _log(f"scanning {root} (max_files={max_files}, incremental={incremental})")
     source_files = collect_source_files(root, languages, max_files, max_bytes)
     _log(f"found {len(source_files)} source files")
@@ -301,6 +326,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
             "directory": str(root),
             "source_files": len(source_files),
             "languages": langs,
+            "fallback_status": fallback_status,
         }
 
     store = _get_store()
@@ -337,6 +363,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
         "languages": list(
             {EXT_TO_LANG.get(f.suffix.lower(), "?") for f in source_files}
         ),
+        "fallback_status": fallback_status,
     }
 
 

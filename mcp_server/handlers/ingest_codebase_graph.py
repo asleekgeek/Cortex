@@ -7,11 +7,13 @@ when we don't.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from pathlib import Path
 from typing import Any
 
 from mcp_server.errors import McpConnectionError
+from mcp_server.handlers import ingest_provenance
 from mcp_server.handlers.ingest_helpers import (
     call_upstream,
     find_cached_graph,
@@ -64,11 +66,28 @@ async def ensure_graph(
 
     Reuses the cached graph when available; otherwise calls upstream
     analyze_codebase and memoises the resulting graph path.
+
+    Every call checks AP client-path version parity (ADR-0052 sec 2,
+    INC5.2) exactly once, regardless of whether the graph is reused or
+    freshly built — the parity check is a property of the two Cortex->AP
+    client paths, not of any one ingestion run. The result rides in
+    ``analyze_stats["ap_client_parity"]`` (the handler forwards this dict
+    verbatim into the tool response's "analyze" field), satisfying the
+    "surface in the response" half of D5's acceptance criterion; a
+    genuine mismatch is additionally logged once by
+    ``ingest_provenance.check_version_parity``.
     """
+    parity = await ingest_provenance.check_version_parity()
+    parity_dict = dataclasses.asdict(parity)
+
     if not force_reindex:
         cached = find_cached_graph(store, project_path)
         if cached:
-            return cached, {"reused_cached": True, "graph_path": cached}
+            return cached, {
+                "reused_cached": True,
+                "graph_path": cached,
+                "ap_client_parity": parity_dict,
+            }
 
     silent_clean_stale_graph_slot(output_dir)
     payload = await _call_analyze(project_path, output_dir, language)
@@ -96,7 +115,13 @@ async def ensure_graph(
     graph_path = result.get("graph_path") or str(
         Path(output_dir).expanduser() / "graph"
     )
-    memoise_graph_path(store, project_path, graph_path)
+    memoise_graph_path(
+        store,
+        project_path,
+        graph_path,
+        ingest_provenance.ap_provenance_tags(parity.pool_version),
+    )
     result["graph_path"] = graph_path
     result["reused_cached"] = False
+    result["ap_client_parity"] = parity_dict
     return graph_path, result

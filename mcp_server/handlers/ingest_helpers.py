@@ -212,16 +212,28 @@ def graph_is_fresh(project_path: str, graph_path: str) -> bool:
     return True
 
 
-def memoise_graph_path(store, project_path: str, graph_path: str) -> int | None:
+def memoise_graph_path(
+    store,
+    project_path: str,
+    graph_path: str,
+    extra_tags: list[str] | None = None,
+) -> int | None:
     """Persist the graph path as a protected memory for future lookups.
 
     Uses raw insert_memory (not the predictive-coding gate) so ingestion
     state is always recorded, even when low-surprise.
+
+    ``extra_tags`` carries provenance (ADR-0052 sec 2, INC5.2) — e.g. the
+    ``src:ap`` / AP-version tags from ``ingest_provenance.ap_provenance_tags``
+    — appended to the base tag set.
     """
     tag = code_graph_tag(project_path)
+    tags = [tag, "_ingest", "code-graph"]
+    if extra_tags:
+        tags.extend(extra_tags)
     record = {
         "content": f"graph_path={graph_path}",
-        "tags": [tag, "_ingest", "code-graph"],
+        "tags": tags,
         "source": "ingest_codebase",
         "domain": "cortex-ingest",
         "directory_context": str(Path(project_path).expanduser().resolve()),

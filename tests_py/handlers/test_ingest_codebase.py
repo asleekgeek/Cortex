@@ -151,6 +151,27 @@ def fake_upstream(monkeypatch):
     monkeypatch.setattr(
         "mcp_server.handlers.ingest_codebase_graph.call_upstream", _call
     )
+    # ensure_graph's version-parity check (ADR-0052 sec 2, INC5.2) reaches AP
+    # through TWO separate client-path bindings: ingest_provenance's OWN
+    # call_upstream import (the mcp_client_pool / "codebase" path) and an
+    # APBridge instance (the ap_bridge.py path). Route both through this same
+    # fake so the check stays hermetic — default health_check reply is {} on
+    # both sides (status="unknown", never a real subprocess spawn) unless a
+    # test sets replies["health_check"] (mirrored to both paths) or
+    # replies["health_check_bridge"] (bridge path only, to test a genuine
+    # skew).
+    monkeypatch.setattr("mcp_server.handlers.ingest_provenance.call_upstream", _call)
+
+    class _FakeBridge:
+        async def health_check(self):
+            return replies.get("health_check_bridge", replies.get("health_check", {}))
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr(
+        "mcp_server.handlers.ingest_provenance.APBridge", lambda: _FakeBridge()
+    )
     return calls, replies
 
 
@@ -322,6 +343,114 @@ class TestIngestCodebaseHappyPath:
         assert result["analyze"]["reused_cached"] is False
         tools_called = [tool for (_, tool, _) in calls]
         assert "analyze_codebase" in tools_called
+
+
+class TestIngestCodebaseProvenance:
+    """ADR-0052 sec 2 (INC5.2): src:ap provenance tag + AP version on the
+    graph memo, and version-parity surfaced under analyze.ap_client_parity.
+    Uses top_symbols=0 to skip the (PG-gated) entity/edge staging writes —
+    only ensure_graph's own memo write is under test here.
+    """
+
+    @pytest.mark.asyncio
+    async def test_fresh_ingest_tags_graph_memo_with_ap_provenance(
+        self, fake_store, fake_upstream, no_wiki
+    ):
+        calls, replies = fake_upstream
+        replies["analyze_codebase"] = {
+            "graph_path": "/tmp/graph-prov",
+            "node_count": 0,
+        }
+        replies["health_check"] = {"version": "0.5.0"}
+        replies["get_processes"] = {"processes": []}
+
+        result = await icb.handler(
+            {"project_path": "/tmp/provproj", "force_reindex": True, "top_symbols": 0}
+        )
+
+        assert result["ingested"] is True
+        assert result["analyze"]["ap_client_parity"] == {
+            "bridge_version": "0.5.0",
+            "pool_version": "0.5.0",
+            "status": "match",
+            "warning": None,
+        }
+        graph_memo = next(
+            m
+            for m in fake_store.memories
+            if m["content"] == "graph_path=/tmp/graph-prov"
+        )
+        assert "src:ap" in graph_memo["tags"]
+        assert "src:ap-version:0.5.0" in graph_memo["tags"]
+
+    @pytest.mark.asyncio
+    async def test_version_skew_surfaced_not_silent(
+        self, fake_store, fake_upstream, no_wiki, caplog
+    ):
+        """Reproduces the observed skew (iface angle-mort 5): the APBridge
+        path resolves one AP version, the mcp_client_pool path resolves
+        another. The mismatch must show up BOTH in the log AND in the
+        response — never silently."""
+        calls, replies = fake_upstream
+        replies["analyze_codebase"] = {
+            "graph_path": "/tmp/graph-skew",
+            "node_count": 0,
+        }
+        replies["health_check"] = {"version": "0.4.0"}  # pool path
+        replies["health_check_bridge"] = {"version": "0.6.0"}  # bridge path
+        replies["get_processes"] = {"processes": []}
+
+        with caplog.at_level(
+            "WARNING", logger="mcp_server.handlers.ingest_provenance"
+        ):
+            result = await icb.handler(
+                {
+                    "project_path": "/tmp/skewproj",
+                    "force_reindex": True,
+                    "top_symbols": 0,
+                }
+            )
+
+        parity = result["analyze"]["ap_client_parity"]
+        assert parity["status"] == "mismatch"
+        assert parity["bridge_version"] == "0.6.0"
+        assert parity["pool_version"] == "0.4.0"
+        assert parity["warning"] is not None
+        assert any("skew" in rec.message for rec in caplog.records)
+        # The memo is tagged with the POOL path's version — the binary that
+        # actually produced this graph (analyze_codebase runs over the pool
+        # path, not the bridge path).
+        graph_memo = next(
+            m
+            for m in fake_store.memories
+            if m["content"] == "graph_path=/tmp/graph-skew"
+        )
+        assert "src:ap-version:0.4.0" in graph_memo["tags"]
+        assert "src:ap-version:0.6.0" not in graph_memo["tags"]
+
+    @pytest.mark.asyncio
+    async def test_cached_reuse_still_reports_parity(
+        self, fake_store, fake_upstream, no_wiki, tmp_path
+    ):
+        graph_dir = tmp_path / "existing-graph-prov"
+        graph_dir.mkdir()
+        (graph_dir / "data.kz").write_text("x")
+        ingest_helpers.memoise_graph_path(
+            fake_store, "/tmp/cachedproj", str(graph_dir)
+        )
+        calls, replies = fake_upstream
+        replies["health_check"] = {"version": "0.5.0"}
+        replies["get_processes"] = {"processes": []}
+
+        result = await icb.handler(
+            {"project_path": "/tmp/cachedproj", "top_symbols": 0}
+        )
+
+        assert result["analyze"]["reused_cached"] is True
+        assert result["analyze"]["ap_client_parity"]["status"] == "match"
+        tools_called = [tool for (_, tool, _) in calls]
+        assert "analyze_codebase" not in tools_called
+        assert "health_check" in tools_called
 
 
 class TestIngestCodebaseFailures:
