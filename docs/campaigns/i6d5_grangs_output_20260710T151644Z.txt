@@ -1,0 +1,12 @@
+G-rangs INC6.6 (I6-D5) -- scripts/campaign_guards/i6d5_measure_reheat_ranks.py
+Run: 2026-07-10T15:16:44Z, dev DB 127.0.0.1:5432/cortex
+
+      id label                       hb_avant  rang_avant  rang_apres  requete
+ 4198018 min (eh~0.015)                0.0339           1           1  LESSON — store-contract completeness when severing a store b
+ 4196447 p25 (eh~0.10)                 0.0815           1           1  The previous version cited `EnhancementOrchestrator.swift`,
+ 4253211 median (eh~0.10)              0.0543           1           1  description: "Post-v3.24.1 release: cache cleanup, PG recall
+ 4201644 p75 (eh~0.159)                0.3131           2           1  LESSON (agentic-ai BEAM parity, 2026-06-22): before "fixing"
+ 4196608 max/near-cliff (eh~0.25)      0.2594          98          98  Audit the integration wiring of /Users/cdeust/Developments/a
+
+Ameliore ou stable: 5/5
+Top-10 apres: 4/5

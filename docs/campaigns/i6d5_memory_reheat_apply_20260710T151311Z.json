@@ -1,0 +1,3843 @@
+{
+  "mode": "APPLY",
+  "timestamp_utc": "20260710T151311Z",
+  "target": 0.25,
+  "limit": 5000,
+  "status": "ok",
+  "scanned_rows": 547,
+  "reheated": 540,
+  "unreachable": 7,
+  "already_above_target": 0,
+  "skipped_race": 0,
+  "journal": [
+    {
+      "id": 4195832,
+      "heat_base_before": 0.50687975,
+      "heat_base_after": 0.5069516704587252,
+      "effective_heat_before": 0.24998952,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4195864,
+      "heat_base_before": 0.50687975,
+      "heat_base_after": 0.5069516704587252,
+      "effective_heat_before": 0.24998952,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4195897,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196007,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196034,
+      "heat_base_before": 0.48006248,
+      "heat_base_after": 0.48012546536308354,
+      "effective_heat_before": 0.24999218,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196054,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196128,
+      "heat_base_before": 0.25495744,
+      "heat_base_after": 0.25499405902852657,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196141,
+      "heat_base_before": 0.7847333,
+      "heat_base_after": 0.7848650457475634,
+      "effective_heat_before": 0.24998303,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196145,
+      "heat_base_before": 0.4998253,
+      "heat_base_after": 0.4998970814827744,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196152,
+      "heat_base_before": 0.25346005,
+      "heat_base_after": 0.2534931410600996,
+      "effective_heat_before": 0.24999236,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196154,
+      "heat_base_before": 0.25348875,
+      "heat_base_after": 0.253521885679207,
+      "effective_heat_before": 0.24999233,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196157,
+      "heat_base_before": 0.2544155,
+      "heat_base_after": 0.25445084160360054,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196163,
+      "heat_base_before": 0.25497773,
+      "heat_base_after": 0.25501435587264837,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196164,
+      "heat_base_before": 0.254985,
+      "heat_base_after": 0.25502163897238594,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196165,
+      "heat_base_before": 0.25443107,
+      "heat_base_after": 0.25446644978047495,
+      "effective_heat_before": 0.24999024,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196169,
+      "heat_base_before": 0.25381964,
+      "heat_base_after": 0.2538544193005913,
+      "effective_heat_before": 0.24999075,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196175,
+      "heat_base_before": 0.31914052,
+      "heat_base_after": 0.3191858194967137,
+      "effective_heat_before": 0.24998952,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196178,
+      "heat_base_before": 0.3889709,
+      "heat_base_after": 0.38902402232089994,
+      "effective_heat_before": 0.24999088,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196186,
+      "heat_base_before": 0.26854062,
+      "heat_base_after": 0.26858620283445267,
+      "effective_heat_before": 0.24998257,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196187,
+      "heat_base_before": 0.41743782,
+      "effective_heat_before": 0.07116777,
+      "effective_heat_at_max": 0.1704871,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4196188,
+      "heat_base_before": 0.27972516,
+      "heat_base_after": 0.2797635898359742,
+      "effective_heat_before": 0.24999067,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196190,
+      "heat_base_before": 0.25495744,
+      "heat_base_after": 0.25499406943100195,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196191,
+      "heat_base_before": 0.41822612,
+      "heat_base_after": 0.4182850588627164,
+      "effective_heat_before": 0.24998978,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196194,
+      "heat_base_before": 0.25362647,
+      "heat_base_after": 0.25365994704109895,
+      "effective_heat_before": 0.24999198,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196197,
+      "heat_base_before": 0.2632311,
+      "heat_base_after": 0.2632676802371447,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196198,
+      "heat_base_before": 0.2683676,
+      "heat_base_after": 0.26840615108209465,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196199,
+      "heat_base_before": 0.2681045,
+      "heat_base_after": 0.2681430217662102,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196200,
+      "heat_base_before": 0.25440285,
+      "heat_base_after": 0.2544375708505979,
+      "effective_heat_before": 0.24999088,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196202,
+      "heat_base_before": 0.26810467,
+      "heat_base_after": 0.26814319431069905,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196203,
+      "heat_base_before": 0.26810467,
+      "heat_base_after": 0.2681432058136729,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196204,
+      "heat_base_before": 0.2552812,
+      "heat_base_after": 0.2553178513993634,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196205,
+      "heat_base_before": 0.25441554,
+      "heat_base_after": 0.25445086749910595,
+      "effective_heat_before": 0.24999028,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196206,
+      "heat_base_before": 0.25528118,
+      "heat_base_after": 0.2553178513993634,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196207,
+      "heat_base_before": 0.2681047,
+      "heat_base_after": 0.2681432058136729,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196208,
+      "heat_base_before": 0.3851237,
+      "heat_base_after": 0.3851789932674363,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196209,
+      "heat_base_before": 0.26836753,
+      "heat_base_after": 0.26840607616607076,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196210,
+      "heat_base_before": 0.2975066,
+      "effective_heat_before": 0.06128612,
+      "effective_heat_at_max": 0.2059992,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4196211,
+      "heat_base_before": 0.25497022,
+      "heat_base_after": 0.25500683910952765,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196214,
+      "heat_base_before": 0.32421246,
+      "heat_base_after": 0.32425900931658613,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196215,
+      "heat_base_before": 0.26631364,
+      "heat_base_after": 0.26635065439434213,
+      "effective_heat_before": 0.24999025,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196217,
+      "heat_base_before": 0.26631382,
+      "heat_base_after": 0.2663507849158687,
+      "effective_heat_before": 0.2499903,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196220,
+      "heat_base_before": 0.26631373,
+      "heat_base_after": 0.26635073951706234,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196222,
+      "heat_base_before": 0.27457204,
+      "heat_base_after": 0.2746114702133021,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196224,
+      "heat_base_before": 0.2549851,
+      "heat_base_after": 0.2550217170078499,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196226,
+      "heat_base_before": 0.36204597,
+      "effective_heat_before": 0.06155233,
+      "effective_heat_at_max": 0.17001247,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4196227,
+      "heat_base_before": 0.26836744,
+      "heat_base_after": 0.2684059897245567,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196229,
+      "heat_base_before": 0.4504463,
+      "effective_heat_before": 0.0765815,
+      "effective_heat_at_max": 0.17001249,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4196234,
+      "heat_base_before": 0.5035026,
+      "heat_base_after": 0.5035719824452218,
+      "effective_heat_before": 0.24999055,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196235,
+      "heat_base_before": 0.50367147,
+      "heat_base_after": 0.5037409806892474,
+      "effective_heat_before": 0.24999051,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196243,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196295,
+      "heat_base_before": 0.48144108,
+      "heat_base_after": 0.4815076229478994,
+      "effective_heat_before": 0.24999045,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196313,
+      "heat_base_before": 0.49666822,
+      "heat_base_after": 0.49673952908238334,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196316,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196322,
+      "heat_base_before": 0.50316614,
+      "heat_base_after": 0.5032352780157284,
+      "effective_heat_before": 0.24999066,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196324,
+      "heat_base_before": 0.4807789,
+      "heat_base_after": 0.4808421820282626,
+      "effective_heat_before": 0.2499921,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196335,
+      "heat_base_before": 0.48156446,
+      "heat_base_after": 0.48163135730757234,
+      "effective_heat_before": 0.2499903,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196336,
+      "heat_base_before": 0.47890303,
+      "heat_base_after": 0.47897096672538264,
+      "effective_heat_before": 0.24998952,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196340,
+      "heat_base_before": 0.50499994,
+      "heat_base_after": 0.5050704711935297,
+      "effective_heat_before": 0.24999009,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196344,
+      "heat_base_before": 0.4791813,
+      "heat_base_after": 0.4792455665592114,
+      "effective_heat_before": 0.24999145,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196345,
+      "heat_base_before": 0.5003032,
+      "heat_base_after": 0.5003701067721064,
+      "effective_heat_before": 0.24999157,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196347,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196351,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196358,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196365,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196373,
+      "heat_base_before": 0.48063803,
+      "heat_base_after": 0.48070706861935986,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196375,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196378,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196388,
+      "heat_base_before": 0.5024981,
+      "heat_base_after": 0.5025667234838591,
+      "effective_heat_before": 0.24999087,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196389,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196390,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196391,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196392,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196394,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196395,
+      "heat_base_before": 0.4806281,
+      "heat_base_after": 0.4806971334089555,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196396,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196398,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196399,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196400,
+      "heat_base_before": 0.48396328,
+      "heat_base_after": 0.4840327746475819,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196401,
+      "heat_base_before": 0.5245866,
+      "heat_base_after": 0.5246723486497857,
+      "effective_heat_before": 0.24998415,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196402,
+      "heat_base_before": 0.5049936,
+      "heat_base_after": 0.5050641251149032,
+      "effective_heat_before": 0.2499901,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196403,
+      "heat_base_before": 0.5044531,
+      "heat_base_after": 0.5045232341701938,
+      "effective_heat_before": 0.24999025,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196424,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196430,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196433,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196445,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196446,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196447,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196448,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196461,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196491,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196493,
+      "heat_base_before": 0.48334947,
+      "heat_base_after": 0.48341893826680704,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196496,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196499,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196501,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196526,
+      "heat_base_before": 0.49886474,
+      "heat_base_after": 0.4989363740132025,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196560,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196562,
+      "heat_base_before": 0.25495744,
+      "heat_base_after": 0.25499406943100195,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196573,
+      "heat_base_before": 0.38318247,
+      "heat_base_after": 0.38323745946327903,
+      "effective_heat_before": 0.24998912,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196576,
+      "heat_base_before": 0.76162267,
+      "heat_base_after": 0.7617520031008128,
+      "effective_heat_before": 0.24998255,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196582,
+      "heat_base_before": 0.7574347,
+      "heat_base_after": 0.7575633623238992,
+      "effective_heat_before": 0.24998255,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196586,
+      "heat_base_before": 0.25346005,
+      "heat_base_after": 0.2534931410600996,
+      "effective_heat_before": 0.24999236,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196587,
+      "heat_base_before": 0.26328015,
+      "heat_base_after": 0.26331462887613166,
+      "effective_heat_before": 0.24999227,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196595,
+      "heat_base_before": 0.25497022,
+      "heat_base_after": 0.25500683910952765,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196596,
+      "heat_base_before": 0.26836753,
+      "heat_base_after": 0.26840607616607076,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196597,
+      "heat_base_before": 0.76162267,
+      "heat_base_after": 0.7617520031008128,
+      "effective_heat_before": 0.24998254,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196601,
+      "heat_base_before": 0.25417778,
+      "heat_base_after": 0.254212541511299,
+      "effective_heat_before": 0.2499908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196602,
+      "heat_base_before": 0.2680823,
+      "heat_base_after": 0.26812062162590533,
+      "effective_heat_before": 0.24998927,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196604,
+      "heat_base_before": 0.6008299,
+      "heat_base_after": 0.6009318993038828,
+      "effective_heat_before": 0.24998255,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196605,
+      "heat_base_before": 0.2552812,
+      "heat_base_after": 0.2553178670427293,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196606,
+      "heat_base_before": 0.26373112,
+      "heat_base_after": 0.2637690002825211,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196607,
+      "heat_base_before": 0.32100722,
+      "heat_base_after": 0.3210533297156381,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196608,
+      "heat_base_before": 0.25983593,
+      "heat_base_after": 0.2598713973083133,
+      "effective_heat_before": 0.24999088,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196611,
+      "heat_base_before": 0.25438634,
+      "heat_base_after": 0.2544213500444989,
+      "effective_heat_before": 0.24999058,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196613,
+      "heat_base_before": 0.25483248,
+      "heat_base_after": 0.25486879677483354,
+      "effective_heat_before": 0.24998936,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196615,
+      "heat_base_before": 0.25496393,
+      "heat_base_after": 0.25500055553965645,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196620,
+      "heat_base_before": 0.26488605,
+      "heat_base_after": 0.26492409253233523,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196623,
+      "heat_base_before": 0.25526717,
+      "heat_base_after": 0.2553038487485343,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196624,
+      "heat_base_before": 0.2745718,
+      "heat_base_after": 0.27461123495327583,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196625,
+      "heat_base_before": 0.25497022,
+      "heat_base_after": 0.2550068651183246,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196627,
+      "heat_base_before": 0.52101505,
+      "heat_base_after": 0.521097601096113,
+      "effective_heat_before": 0.2499854,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196628,
+      "heat_base_before": 0.25477678,
+      "heat_base_after": 0.2548129610188401,
+      "effective_heat_before": 0.24998948,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4196629,
+      "heat_base_before": 0.26002777,
+      "heat_base_after": 0.260063395035699,
+      "effective_heat_before": 0.24999075,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197485,
+      "heat_base_before": 0.5042069,
+      "heat_base_after": 0.5042767976905626,
+      "effective_heat_before": 0.24999034,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197486,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197487,
+      "heat_base_before": 0.49173066,
+      "heat_base_after": 0.49179682308988887,
+      "effective_heat_before": 0.24999137,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197488,
+      "heat_base_before": 0.5024981,
+      "heat_base_after": 0.5025667234838591,
+      "effective_heat_before": 0.24999087,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197489,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197490,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197491,
+      "heat_base_before": 0.5055855,
+      "heat_base_after": 0.505656455841008,
+      "effective_heat_before": 0.24998991,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197492,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197493,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197494,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197521,
+      "heat_base_before": 0.2614807,
+      "heat_base_after": 0.2615162598211763,
+      "effective_heat_before": 0.24999098,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197537,
+      "heat_base_before": 0.25346005,
+      "heat_base_after": 0.2534931282096308,
+      "effective_heat_before": 0.24999237,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197553,
+      "heat_base_before": 0.2549639,
+      "heat_base_after": 0.255000519129144,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197556,
+      "heat_base_before": 0.25497025,
+      "heat_base_after": 0.2550068651183246,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197557,
+      "heat_base_before": 0.2546339,
+      "heat_base_after": 0.25466971723691023,
+      "effective_heat_before": 0.24998984,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197559,
+      "heat_base_before": 0.2627857,
+      "heat_base_after": 0.2628218759884399,
+      "effective_heat_before": 0.24999058,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197560,
+      "heat_base_before": 0.26242378,
+      "heat_base_after": 0.2624614634874298,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197561,
+      "heat_base_before": 0.32086864,
+      "heat_base_after": 0.3209147054214145,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197562,
+      "heat_base_before": 0.69671863,
+      "heat_base_after": 0.6968612272182609,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197563,
+      "heat_base_before": 0.356721,
+      "effective_heat_before": 0.06670541,
+      "effective_heat_at_max": 0.18699603,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4197564,
+      "heat_base_before": 0.25850332,
+      "heat_base_after": 0.25854720718863095,
+      "effective_heat_before": 0.24998255,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197565,
+      "heat_base_before": 0.27561986,
+      "heat_base_after": 0.2756594548133487,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197566,
+      "heat_base_before": 0.33783472,
+      "effective_heat_before": 0.06317376,
+      "effective_heat_at_max": 0.18699606,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4197567,
+      "heat_base_before": 0.25294557,
+      "heat_base_after": 0.25298012663404523,
+      "effective_heat_before": 0.24999085,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197568,
+      "heat_base_before": 0.29348257,
+      "effective_heat_before": 0.05488009,
+      "effective_heat_at_max": 0.18699609,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4197569,
+      "heat_base_before": 0.2537374,
+      "heat_base_after": 0.25377111849702944,
+      "effective_heat_before": 0.24999176,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197573,
+      "heat_base_before": 0.26186138,
+      "heat_base_after": 0.26189898399325573,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197575,
+      "heat_base_before": 0.25517616,
+      "heat_base_after": 0.2552127868828028,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197576,
+      "heat_base_before": 0.25418004,
+      "heat_base_after": 0.25421481606956897,
+      "effective_heat_before": 0.2499908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197577,
+      "heat_base_before": 0.2617102,
+      "heat_base_after": 0.26174613592719453,
+      "effective_heat_before": 0.24999067,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197578,
+      "heat_base_before": 0.25495747,
+      "heat_base_after": 0.25499406943100195,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197579,
+      "heat_base_before": 0.25495744,
+      "heat_base_after": 0.254994043424815,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197580,
+      "heat_base_before": 0.29036227,
+      "heat_base_after": 0.2904039568112606,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197581,
+      "heat_base_before": 0.25495744,
+      "heat_base_after": 0.25499405902852657,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197582,
+      "heat_base_before": 0.25517616,
+      "heat_base_after": 0.2552127868828028,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197727,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197752,
+      "heat_base_before": 0.5024981,
+      "heat_base_after": 0.5025667234838591,
+      "effective_heat_before": 0.24999087,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197755,
+      "heat_base_before": 0.5055855,
+      "heat_base_after": 0.505656455841008,
+      "effective_heat_before": 0.24998991,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197780,
+      "heat_base_before": 0.4831149,
+      "heat_base_after": 0.4831836064851444,
+      "effective_heat_before": 0.24998944,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197805,
+      "heat_base_before": 0.5040822,
+      "heat_base_after": 0.5041520431823944,
+      "effective_heat_before": 0.24999037,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197811,
+      "heat_base_before": 0.5044531,
+      "heat_base_after": 0.5045232341701938,
+      "effective_heat_before": 0.24999025,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197834,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197857,
+      "heat_base_before": 0.5023497,
+      "heat_base_after": 0.5024181378443667,
+      "effective_heat_before": 0.24999093,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197863,
+      "heat_base_before": 0.50316614,
+      "heat_base_after": 0.5032352780157284,
+      "effective_heat_before": 0.24999066,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197865,
+      "heat_base_before": 0.4809162,
+      "heat_base_after": 0.480981451862399,
+      "effective_heat_before": 0.24999109,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197880,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197896,
+      "heat_base_before": 0.5018509,
+      "heat_base_after": 0.5019190461440312,
+      "effective_heat_before": 0.24999106,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197901,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197904,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197905,
+      "heat_base_before": 0.49125618,
+      "heat_base_after": 0.4913203188389336,
+      "effective_heat_before": 0.24999236,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197913,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197914,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197927,
+      "heat_base_before": 0.49937096,
+      "heat_base_after": 0.499437190567174,
+      "effective_heat_before": 0.24999185,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197935,
+      "heat_base_before": 0.4998903,
+      "heat_base_after": 0.499956908023726,
+      "effective_heat_before": 0.2499917,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197989,
+      "heat_base_before": 0.48340172,
+      "heat_base_after": 0.4834710991505875,
+      "effective_heat_before": 0.24998912,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197991,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4197998,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198018,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198355,
+      "heat_base_before": 0.4827332,
+      "heat_base_after": 0.4828003451175238,
+      "effective_heat_before": 0.24999022,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198383,
+      "heat_base_before": 0.49460518,
+      "heat_base_after": 0.49467443230507263,
+      "effective_heat_before": 0.24999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198412,
+      "heat_base_before": 0.4948975,
+      "heat_base_after": 0.4949671820079602,
+      "effective_heat_before": 0.24998982,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198422,
+      "heat_base_before": 0.52839786,
+      "heat_base_after": 0.5284865729850896,
+      "effective_heat_before": 0.24998303,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198442,
+      "heat_base_before": 0.50687975,
+      "heat_base_after": 0.5069516704587252,
+      "effective_heat_before": 0.24998952,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198485,
+      "heat_base_before": 0.49584654,
+      "heat_base_after": 0.4959154536795826,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198575,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198578,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198759,
+      "heat_base_before": 0.49258313,
+      "heat_base_after": 0.4926509056077318,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198825,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198830,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198833,
+      "heat_base_before": 0.48208994,
+      "heat_base_after": 0.48215627421026164,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198857,
+      "heat_base_before": 0.50197315,
+      "heat_base_after": 0.5020452281456966,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198932,
+      "heat_base_before": 0.50367147,
+      "heat_base_after": 0.5037409806892474,
+      "effective_heat_before": 0.24999051,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198953,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4198992,
+      "heat_base_before": 0.55036545,
+      "heat_base_after": 0.5504718811631549,
+      "effective_heat_before": 0.24997666,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199103,
+      "heat_base_before": 0.5073039,
+      "heat_base_after": 0.5073767228283302,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199109,
+      "heat_base_before": 0.4999577,
+      "heat_base_after": 0.5000278987668745,
+      "effective_heat_before": 0.24998991,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199171,
+      "heat_base_before": 0.48856962,
+      "heat_base_after": 0.48865123269492544,
+      "effective_heat_before": 0.24998324,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199224,
+      "heat_base_before": 0.5034267,
+      "heat_base_after": 0.503495976814919,
+      "effective_heat_before": 0.24999058,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199249,
+      "heat_base_before": 0.49873465,
+      "heat_base_after": 0.4988054803265852,
+      "effective_heat_before": 0.24998951,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199307,
+      "heat_base_before": 0.48282304,
+      "heat_base_after": 0.482891111429444,
+      "effective_heat_before": 0.24998976,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199310,
+      "heat_base_before": 0.49692184,
+      "heat_base_after": 0.49699092148010565,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199311,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199332,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199371,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199377,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199403,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199429,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199459,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199480,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199486,
+      "heat_base_before": 0.49814183,
+      "heat_base_after": 0.4982071318194001,
+      "effective_heat_before": 0.24999222,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199495,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199522,
+      "heat_base_before": 0.501453,
+      "heat_base_after": 0.5015249648606566,
+      "effective_heat_before": 0.24998912,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199527,
+      "heat_base_before": 0.50687975,
+      "heat_base_after": 0.5069516704587252,
+      "effective_heat_before": 0.24998952,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199575,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199589,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199590,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199609,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199654,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199661,
+      "heat_base_before": 0.5055855,
+      "heat_base_after": 0.505656455841008,
+      "effective_heat_before": 0.24998991,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199662,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199671,
+      "heat_base_before": 0.4916149,
+      "heat_base_after": 0.49168164720008517,
+      "effective_heat_before": 0.24999106,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199677,
+      "heat_base_before": 0.5031651,
+      "heat_base_after": 0.5032342144921994,
+      "effective_heat_before": 0.24999067,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199694,
+      "heat_base_before": 0.49058917,
+      "heat_base_after": 0.4906548429364836,
+      "effective_heat_before": 0.24999155,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199729,
+      "heat_base_before": 0.5067799,
+      "heat_base_after": 0.5068517477136176,
+      "effective_heat_before": 0.24998955,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199760,
+      "heat_base_before": 0.48104435,
+      "heat_base_after": 0.48110739694853705,
+      "effective_heat_before": 0.24999224,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199770,
+      "heat_base_before": 0.5035026,
+      "heat_base_after": 0.5035719824452218,
+      "effective_heat_before": 0.24999055,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199824,
+      "heat_base_before": 0.50569993,
+      "heat_base_after": 0.5057709778387249,
+      "effective_heat_before": 0.24998988,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199827,
+      "heat_base_before": 0.50687975,
+      "heat_base_after": 0.5069516704587252,
+      "effective_heat_before": 0.24998952,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199828,
+      "heat_base_before": 0.5049682,
+      "heat_base_after": 0.5050387015888768,
+      "effective_heat_before": 0.24999012,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199867,
+      "heat_base_before": 0.49458805,
+      "heat_base_after": 0.49465728584232976,
+      "effective_heat_before": 0.24999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199914,
+      "heat_base_before": 0.285295,
+      "heat_base_after": 0.28533451898893947,
+      "effective_heat_before": 0.24999037,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4199919,
+      "heat_base_before": 0.36597157,
+      "heat_base_after": 0.3660212045039412,
+      "effective_heat_before": 0.24999109,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200006,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200093,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200097,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200107,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200108,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200121,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200150,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200169,
+      "heat_base_before": 0.5044531,
+      "heat_base_after": 0.5045232341701938,
+      "effective_heat_before": 0.24999025,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200240,
+      "heat_base_before": 0.50391114,
+      "heat_base_after": 0.5039807982358404,
+      "effective_heat_before": 0.24999043,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200265,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200266,
+      "heat_base_before": 0.4964909,
+      "heat_base_after": 0.4965622460958718,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200273,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200280,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200283,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200284,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200289,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200290,
+      "heat_base_before": 0.50690204,
+      "heat_base_after": 0.5069740076489456,
+      "effective_heat_before": 0.24998951,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200295,
+      "heat_base_before": 0.5204451,
+      "heat_base_after": 0.5205275539733101,
+      "effective_heat_before": 0.2499854,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200297,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200305,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200312,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200319,
+      "heat_base_before": 0.50316614,
+      "heat_base_after": 0.5032352780157284,
+      "effective_heat_before": 0.24999066,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200322,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200348,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200354,
+      "heat_base_before": 0.5026582,
+      "heat_base_after": 0.5027269203052414,
+      "effective_heat_before": 0.24999082,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200358,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200371,
+      "heat_base_before": 0.5236149,
+      "heat_base_after": 0.523699845096697,
+      "effective_heat_before": 0.24998444,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200372,
+      "heat_base_before": 0.50687975,
+      "heat_base_after": 0.5069516704587252,
+      "effective_heat_before": 0.24998952,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200375,
+      "heat_base_before": 0.50569993,
+      "heat_base_after": 0.5057709778387249,
+      "effective_heat_before": 0.24998988,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200378,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200380,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200393,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200402,
+      "heat_base_before": 0.5029722,
+      "heat_base_after": 0.5030411632432303,
+      "effective_heat_before": 0.24999072,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200418,
+      "heat_base_before": 0.49874455,
+      "heat_base_after": 0.49881025698728376,
+      "effective_heat_before": 0.24999206,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200446,
+      "heat_base_before": 0.50316614,
+      "heat_base_after": 0.5032352780157284,
+      "effective_heat_before": 0.24999066,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200461,
+      "heat_base_before": 0.50687975,
+      "heat_base_after": 0.5069516704587252,
+      "effective_heat_before": 0.24998952,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200462,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200590,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200591,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200629,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200630,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200694,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200696,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200727,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200728,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200729,
+      "heat_base_before": 0.50717723,
+      "heat_base_after": 0.5072493906007971,
+      "effective_heat_before": 0.24998944,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200740,
+      "heat_base_before": 0.50316614,
+      "heat_base_after": 0.5032352780157284,
+      "effective_heat_before": 0.24999066,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200773,
+      "heat_base_before": 0.4823687,
+      "heat_base_after": 0.4824356938931291,
+      "effective_heat_before": 0.24999028,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200784,
+      "heat_base_before": 0.4834018,
+      "heat_base_after": 0.4834712861274051,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200795,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200847,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200854,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4200878,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201027,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201057,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201102,
+      "heat_base_before": 0.5236149,
+      "heat_base_after": 0.523699845096697,
+      "effective_heat_before": 0.24998444,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201111,
+      "heat_base_before": 0.5204451,
+      "heat_base_after": 0.5205275539733101,
+      "effective_heat_before": 0.2499854,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201112,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201123,
+      "heat_base_before": 0.50569993,
+      "heat_base_after": 0.5057709778387249,
+      "effective_heat_before": 0.24998988,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201147,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201148,
+      "heat_base_before": 0.49770153,
+      "heat_base_after": 0.49776647637895255,
+      "effective_heat_before": 0.24999237,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201159,
+      "heat_base_before": 0.50113106,
+      "heat_base_after": 0.5011986169183364,
+      "effective_heat_before": 0.2499913,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201164,
+      "heat_base_before": 0.50813144,
+      "heat_base_after": 0.5082043729377985,
+      "effective_heat_before": 0.24998912,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201167,
+      "heat_base_before": 0.50114995,
+      "heat_base_after": 0.5012175361286582,
+      "effective_heat_before": 0.24999128,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201181,
+      "heat_base_before": 0.503903,
+      "heat_base_after": 0.5039729557257465,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201183,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201193,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201205,
+      "heat_base_before": 0.5055855,
+      "heat_base_after": 0.505656455841008,
+      "effective_heat_before": 0.24998991,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201231,
+      "heat_base_before": 0.5024981,
+      "heat_base_after": 0.5025667234838591,
+      "effective_heat_before": 0.24999087,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201232,
+      "heat_base_before": 0.50246227,
+      "heat_base_after": 0.5025308743191036,
+      "effective_heat_before": 0.24999087,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201251,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201254,
+      "heat_base_before": 0.5055855,
+      "heat_base_after": 0.505656455841008,
+      "effective_heat_before": 0.24998991,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201306,
+      "heat_base_before": 0.48106635,
+      "heat_base_after": 0.48113031997547634,
+      "effective_heat_before": 0.24999176,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201310,
+      "heat_base_before": 0.5018509,
+      "heat_base_after": 0.5019190461440312,
+      "effective_heat_before": 0.24999106,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201327,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201393,
+      "heat_base_before": 0.50316614,
+      "heat_base_after": 0.5032352780157284,
+      "effective_heat_before": 0.24999066,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201429,
+      "heat_base_before": 0.50569993,
+      "heat_base_after": 0.5057709778387249,
+      "effective_heat_before": 0.24998988,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201533,
+      "heat_base_before": 0.5035026,
+      "heat_base_after": 0.5035719824452218,
+      "effective_heat_before": 0.24999055,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201547,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201553,
+      "heat_base_before": 0.5040822,
+      "heat_base_after": 0.5041520431823944,
+      "effective_heat_before": 0.24999037,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201557,
+      "heat_base_before": 0.48282966,
+      "heat_base_after": 0.48289772395203995,
+      "effective_heat_before": 0.24998976,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201569,
+      "heat_base_before": 0.5055855,
+      "heat_base_after": 0.505656455841008,
+      "effective_heat_before": 0.24998991,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201591,
+      "heat_base_before": 0.50607204,
+      "heat_base_after": 0.506143358666312,
+      "effective_heat_before": 0.24998976,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201596,
+      "heat_base_before": 0.50391114,
+      "heat_base_after": 0.5039807982358404,
+      "effective_heat_before": 0.24999043,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201624,
+      "heat_base_before": 0.49562404,
+      "heat_base_after": 0.495695218367597,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201635,
+      "heat_base_before": 0.5044531,
+      "heat_base_after": 0.5045232341701938,
+      "effective_heat_before": 0.24999025,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201641,
+      "heat_base_before": 0.49886474,
+      "heat_base_after": 0.4989363740132025,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201644,
+      "heat_base_before": 0.49276683,
+      "heat_base_after": 0.4928348485339777,
+      "effective_heat_before": 0.2499905,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201645,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201690,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201716,
+      "heat_base_before": 0.4984739,
+      "heat_base_after": 0.49853942554061187,
+      "effective_heat_before": 0.24999213,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4201721,
+      "heat_base_before": 0.4827497,
+      "heat_base_after": 0.4828176304200926,
+      "effective_heat_before": 0.24998984,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202242,
+      "heat_base_before": 0.49738413,
+      "heat_base_after": 0.49744923590484236,
+      "effective_heat_before": 0.24999228,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202271,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202320,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202347,
+      "heat_base_before": 0.5003063,
+      "heat_base_after": 0.5003732711555627,
+      "effective_heat_before": 0.24999155,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202348,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202390,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202423,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202425,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202438,
+      "heat_base_before": 0.49906132,
+      "heat_base_after": 0.4991273132487284,
+      "effective_heat_before": 0.24999195,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202441,
+      "heat_base_before": 0.52109116,
+      "heat_base_after": 0.521174103688935,
+      "effective_heat_before": 0.2499852,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202470,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202471,
+      "heat_base_before": 0.5257611,
+      "heat_base_after": 0.5258477764015964,
+      "effective_heat_before": 0.2499838,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202472,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202542,
+      "heat_base_before": 0.52190423,
+      "heat_base_after": 0.5219877896298913,
+      "effective_heat_before": 0.24998496,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202733,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202734,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202750,
+      "heat_base_before": 0.5547312,
+      "heat_base_after": 0.5548411518797459,
+      "effective_heat_before": 0.24997544,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202751,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202769,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202770,
+      "heat_base_before": 0.52190423,
+      "heat_base_after": 0.5219877896298913,
+      "effective_heat_before": 0.24998496,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202790,
+      "heat_base_before": 0.52482945,
+      "heat_base_after": 0.5249153448695391,
+      "effective_heat_before": 0.24998409,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202805,
+      "heat_base_before": 0.48340172,
+      "heat_base_after": 0.4834710991505875,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202823,
+      "heat_base_before": 0.49898303,
+      "heat_base_after": 0.4990546853355667,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202846,
+      "heat_base_before": 0.5009169,
+      "heat_base_after": 0.5009842655173927,
+      "effective_heat_before": 0.24999137,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202847,
+      "heat_base_before": 0.48208985,
+      "heat_base_after": 0.4821561626336022,
+      "effective_heat_before": 0.24999061,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202954,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202955,
+      "heat_base_before": 0.5255708,
+      "heat_base_after": 0.5256572676350997,
+      "effective_heat_before": 0.24998388,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202981,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202982,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4202985,
+      "heat_base_before": 0.49584678,
+      "heat_base_after": 0.49591530613509854,
+      "effective_heat_before": 0.24999043,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4203006,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4203041,
+      "heat_base_before": 0.5201572,
+      "heat_base_after": 0.5202394743293525,
+      "effective_heat_before": 0.24998546,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4203055,
+      "heat_base_before": 0.52478194,
+      "heat_base_after": 0.5248677853797624,
+      "effective_heat_before": 0.24998412,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4203056,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4203063,
+      "heat_base_before": 0.4982542,
+      "heat_base_after": 0.49832286278985666,
+      "effective_heat_before": 0.24999055,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253160,
+      "heat_base_before": 0.4818517,
+      "heat_base_after": 0.4819174696697017,
+      "effective_heat_before": 0.24999088,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253176,
+      "heat_base_before": 0.49332607,
+      "heat_base_after": 0.49339395762556465,
+      "effective_heat_before": 0.24999061,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253177,
+      "heat_base_before": 0.48129278,
+      "heat_base_after": 0.48135732581376917,
+      "effective_heat_before": 0.24999148,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253179,
+      "heat_base_before": 0.4810156,
+      "heat_base_after": 0.4810794034519191,
+      "effective_heat_before": 0.24999183,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253182,
+      "heat_base_before": 0.5152726,
+      "heat_base_after": 0.5153510616159728,
+      "effective_heat_before": 0.24998695,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253183,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253184,
+      "heat_base_before": 0.481097,
+      "heat_base_after": 0.4811626899724214,
+      "effective_heat_before": 0.24999085,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253186,
+      "heat_base_before": 0.5091004,
+      "heat_base_after": 0.5091854800035159,
+      "effective_heat_before": 0.24998322,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253187,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253188,
+      "heat_base_before": 0.51853955,
+      "heat_base_after": 0.5186205252009541,
+      "effective_heat_before": 0.24998595,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253189,
+      "heat_base_before": 0.5100422,
+      "heat_base_after": 0.5101287879064557,
+      "effective_heat_before": 0.24998257,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253190,
+      "heat_base_before": 0.54056656,
+      "heat_base_after": 0.5406650271738103,
+      "effective_heat_before": 0.24997947,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253191,
+      "heat_base_before": 0.50320095,
+      "heat_base_after": 0.5032700830377017,
+      "effective_heat_before": 0.24999064,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253194,
+      "heat_base_before": 0.49131015,
+      "heat_base_after": 0.49137655518395046,
+      "effective_heat_before": 0.24999121,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253195,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253196,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253197,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253200,
+      "heat_base_before": 0.47890303,
+      "heat_base_after": 0.47897096672538264,
+      "effective_heat_before": 0.24998952,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253201,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253202,
+      "heat_base_before": 0.55036545,
+      "heat_base_after": 0.5504718811631549,
+      "effective_heat_before": 0.24997666,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253203,
+      "heat_base_before": 0.55685836,
+      "heat_base_after": 0.5569701181995179,
+      "effective_heat_before": 0.24997483,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253204,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253209,
+      "heat_base_before": 0.48138553,
+      "heat_base_after": 0.48145032227950485,
+      "effective_heat_before": 0.24999137,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253210,
+      "heat_base_before": 0.48340172,
+      "heat_base_after": 0.4834710991505875,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253211,
+      "heat_base_before": 0.5009389,
+      "heat_base_after": 0.5010063409438472,
+      "effective_heat_before": 0.24999134,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253212,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253213,
+      "heat_base_before": 0.5440851,
+      "heat_base_after": 0.544186365803196,
+      "effective_heat_before": 0.24997847,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253214,
+      "heat_base_before": 0.52190423,
+      "heat_base_after": 0.5219877896298913,
+      "effective_heat_before": 0.24998496,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253216,
+      "heat_base_before": 0.4999827,
+      "heat_base_after": 0.5000545304940462,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253217,
+      "heat_base_before": 0.48208985,
+      "heat_base_after": 0.4821561626336022,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253218,
+      "heat_base_before": 0.48340172,
+      "heat_base_after": 0.4834710991505875,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253246,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253247,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253248,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253249,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253250,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253267,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253268,
+      "heat_base_before": 0.5236149,
+      "heat_base_after": 0.523699845096697,
+      "effective_heat_before": 0.24998444,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253269,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253280,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253281,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253282,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253286,
+      "heat_base_before": 0.5044087,
+      "heat_base_after": 0.5044787788411441,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253287,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253298,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253318,
+      "heat_base_before": 0.5024981,
+      "heat_base_after": 0.5025667234838591,
+      "effective_heat_before": 0.24999087,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253339,
+      "heat_base_before": 0.5246148,
+      "heat_base_after": 0.5247005361273711,
+      "effective_heat_before": 0.24998416,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253355,
+      "heat_base_before": 0.55036545,
+      "heat_base_after": 0.5504718811631549,
+      "effective_heat_before": 0.24997666,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253362,
+      "heat_base_before": 0.5453754,
+      "heat_base_after": 0.5454777943685835,
+      "effective_heat_before": 0.24997808,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253424,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253453,
+      "heat_base_before": 0.5363258,
+      "heat_base_after": 0.5364208575790984,
+      "effective_heat_before": 0.24998069,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253489,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253490,
+      "heat_base_before": 0.49898255,
+      "heat_base_after": 0.49905422711954384,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253491,
+      "heat_base_before": 0.48334977,
+      "heat_base_after": 0.48341918128425215,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253492,
+      "heat_base_before": 0.4989831,
+      "heat_base_after": 0.499054784947857,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253539,
+      "heat_base_before": 0.48334974,
+      "heat_base_after": 0.48341918128425215,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253545,
+      "heat_base_before": 0.25445738,
+      "heat_base_after": 0.25449240031389414,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253548,
+      "heat_base_before": 0.49366432,
+      "heat_base_after": 0.4937344452174456,
+      "effective_heat_before": 0.2499895,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253562,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253563,
+      "heat_base_before": 0.5022623,
+      "heat_base_after": 0.5023307120386405,
+      "effective_heat_before": 0.24999094,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253639,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253695,
+      "heat_base_before": 0.3684752,
+      "heat_base_after": 0.36855062207335576,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253716,
+      "heat_base_before": 0.5236149,
+      "heat_base_after": 0.523699845096697,
+      "effective_heat_before": 0.24998444,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253720,
+      "heat_base_before": 0.489098,
+      "heat_base_after": 0.489181033373778,
+      "effective_heat_before": 0.24998257,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253857,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253858,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253859,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253885,
+      "heat_base_before": 0.49014407,
+      "heat_base_after": 0.4902087264740985,
+      "effective_heat_before": 0.24999203,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253886,
+      "heat_base_before": 0.52190423,
+      "heat_base_after": 0.5219877896298913,
+      "effective_heat_before": 0.24998496,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4253974,
+      "heat_base_before": 0.25458238,
+      "heat_base_after": 0.25461808102542577,
+      "effective_heat_before": 0.24998993,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254036,
+      "heat_base_before": 0.4806281,
+      "heat_base_after": 0.4806970964414976,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254049,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254065,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254072,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254206,
+      "heat_base_before": 0.52633786,
+      "heat_base_after": 0.5264249757189704,
+      "effective_heat_before": 0.24998362,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254230,
+      "heat_base_before": 0.49487203,
+      "heat_base_after": 0.49494180462284854,
+      "effective_heat_before": 0.24998975,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254241,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254305,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254318,
+      "heat_base_before": 0.48087993,
+      "heat_base_after": 0.4809561375312374,
+      "effective_heat_before": 0.24998538,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254341,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254361,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254365,
+      "heat_base_before": 0.54767054,
+      "heat_base_after": 0.5477747430196486,
+      "effective_heat_before": 0.24997742,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254393,
+      "heat_base_before": 0.50337815,
+      "heat_base_after": 0.503447424322504,
+      "effective_heat_before": 0.2499906,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254394,
+      "heat_base_before": 0.48156232,
+      "heat_base_after": 0.4816291863068252,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254409,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254456,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254494,
+      "heat_base_before": 0.49770153,
+      "heat_base_after": 0.49776647637895255,
+      "effective_heat_before": 0.24999237,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254762,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254944,
+      "heat_base_before": 0.4833618,
+      "heat_base_after": 0.483431182911295,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4254959,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255039,
+      "heat_base_before": 0.26320377,
+      "heat_base_after": 0.26324155839255253,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255064,
+      "heat_base_before": 0.483315,
+      "heat_base_after": 0.4833837500506294,
+      "effective_heat_before": 0.24998942,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255078,
+      "heat_base_before": 0.26320377,
+      "heat_base_after": 0.26324155839255253,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255086,
+      "heat_base_before": 0.26320377,
+      "heat_base_after": 0.26324155839255253,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255127,
+      "heat_base_before": 0.4823224,
+      "heat_base_after": 0.48238937756692307,
+      "effective_heat_before": 0.24999028,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255171,
+      "heat_base_before": 0.26320377,
+      "heat_base_after": 0.26324156947882327,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255182,
+      "heat_base_before": 0.2632038,
+      "heat_base_after": 0.2632415971945042,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255206,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255364,
+      "heat_base_before": 0.4818514,
+      "heat_base_after": 0.48191719100439234,
+      "effective_heat_before": 0.24999085,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255397,
+      "heat_base_before": 0.5299948,
+      "heat_base_after": 0.5300847279033378,
+      "effective_heat_before": 0.24998258,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255465,
+      "heat_base_before": 0.2632038,
+      "heat_base_after": 0.2632415971945042,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255566,
+      "heat_base_before": 0.48376432,
+      "heat_base_after": 0.48383382550439463,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255567,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255613,
+      "heat_base_before": 0.26538205,
+      "heat_base_after": 0.2654201658816323,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255627,
+      "heat_base_before": 0.5082411,
+      "heat_base_after": 0.5083141408023156,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255654,
+      "heat_base_before": 0.27098766,
+      "heat_base_after": 0.2710265785448629,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255663,
+      "heat_base_before": 0.26369944,
+      "heat_base_after": 0.2637373093066649,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255745,
+      "heat_base_before": 0.4820421,
+      "heat_base_after": 0.4821083381941063,
+      "effective_heat_before": 0.24999066,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255801,
+      "heat_base_before": 0.48115504,
+      "heat_base_after": 0.4812188478039656,
+      "effective_heat_before": 0.24999185,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255809,
+      "heat_base_before": 0.49411798,
+      "heat_base_after": 0.494186575123475,
+      "effective_heat_before": 0.24999027,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255909,
+      "heat_base_before": 0.48131245,
+      "heat_base_after": 0.48137870635130703,
+      "effective_heat_before": 0.24999058,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255917,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255923,
+      "heat_base_before": 0.50045794,
+      "heat_base_after": 0.5005298078738278,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255943,
+      "heat_base_before": 0.49886474,
+      "heat_base_after": 0.4989363740132025,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255958,
+      "heat_base_before": 0.49898297,
+      "heat_base_after": 0.4990545857233163,
+      "effective_heat_before": 0.24998912,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255964,
+      "heat_base_before": 0.5133249,
+      "heat_base_after": 0.5134071706035858,
+      "effective_heat_before": 0.24998495,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255985,
+      "heat_base_before": 0.49898255,
+      "heat_base_after": 0.49905422711954384,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255986,
+      "heat_base_before": 0.49973944,
+      "heat_base_after": 0.49981119021331605,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4255996,
+      "heat_base_before": 0.49973944,
+      "heat_base_after": 0.49981119021331605,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4256004,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4256347,
+      "heat_base_before": 0.5382172,
+      "heat_base_after": 0.5383273808172999,
+      "effective_heat_before": 0.24997382,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4256376,
+      "heat_base_before": 0.54737306,
+      "heat_base_after": 0.5474772297426637,
+      "effective_heat_before": 0.24997742,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4256386,
+      "heat_base_before": 0.5601017,
+      "heat_base_after": 0.5602163760550984,
+      "effective_heat_before": 0.24997382,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4256390,
+      "heat_base_before": 0.5604547,
+      "heat_base_after": 0.5605694349630492,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4256400,
+      "heat_base_before": 0.5534521,
+      "heat_base_after": 0.553561016339133,
+      "effective_heat_before": 0.2499758,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4256627,
+      "heat_base_before": 0.5170683,
+      "heat_base_after": 0.517156128406128,
+      "effective_heat_before": 0.24998255,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4256728,
+      "heat_base_before": 0.49898303,
+      "heat_base_after": 0.4990546355294366,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4258742,
+      "heat_base_before": 0.5595023,
+      "heat_base_after": 0.5596168234615904,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261278,
+      "heat_base_before": 0.26320377,
+      "heat_base_after": 0.26324155839255253,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261599,
+      "heat_base_before": 0.557965,
+      "heat_base_after": 0.5580792102174175,
+      "effective_heat_before": 0.24997383,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261603,
+      "heat_base_before": 0.49886474,
+      "heat_base_after": 0.4989363740132025,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261639,
+      "heat_base_before": 0.49898303,
+      "heat_base_after": 0.4990546355294366,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261647,
+      "heat_base_before": 0.4966096,
+      "heat_base_after": 0.49667894069372354,
+      "effective_heat_before": 0.24999008,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261658,
+      "heat_base_before": 0.5146322,
+      "heat_base_after": 0.5147196118825758,
+      "effective_heat_before": 0.24998255,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261673,
+      "heat_base_before": 0.5351969,
+      "heat_base_after": 0.535298725163686,
+      "effective_heat_before": 0.24997744,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261681,
+      "heat_base_before": 0.4991295,
+      "heat_base_after": 0.49920115835034107,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261708,
+      "heat_base_before": 0.51911,
+      "heat_base_after": 0.519198163252266,
+      "effective_heat_before": 0.24998255,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261719,
+      "heat_base_before": 0.582294,
+      "heat_base_after": 0.5824538189425327,
+      "effective_heat_before": 0.24995638,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261720,
+      "heat_base_before": 0.2634272,
+      "heat_base_after": 0.2634650365220866,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261760,
+      "heat_base_before": 0.58229387,
+      "heat_base_after": 0.582453764667573,
+      "effective_heat_before": 0.24995637,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261765,
+      "heat_base_before": 0.26349705,
+      "heat_base_after": 0.2635349061350905,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261782,
+      "heat_base_before": 0.5137731,
+      "heat_base_after": 0.5139141075583739,
+      "effective_heat_before": 0.24995638,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261816,
+      "heat_base_before": 0.25444,
+      "heat_base_after": 0.2544753411078972,
+      "effective_heat_before": 0.24999028,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261818,
+      "heat_base_before": 0.26443493,
+      "heat_base_after": 0.2644729314427243,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261841,
+      "heat_base_before": 0.5694475,
+      "heat_base_after": 0.5695931028716696,
+      "effective_heat_before": 0.2499611,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261842,
+      "heat_base_before": 0.5098903,
+      "heat_base_after": 0.5100206382673956,
+      "effective_heat_before": 0.24996111,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261851,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261872,
+      "heat_base_before": 0.48290396,
+      "heat_base_after": 0.48297111739030973,
+      "effective_heat_before": 0.24999024,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261875,
+      "heat_base_before": 0.49794787,
+      "heat_base_after": 0.4980178183714227,
+      "effective_heat_before": 0.24998988,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261883,
+      "heat_base_before": 0.49863046,
+      "heat_base_after": 0.4987005164026145,
+      "effective_heat_before": 0.2499899,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261892,
+      "heat_base_before": 0.5083327,
+      "heat_base_after": 0.5084626673704442,
+      "effective_heat_before": 0.24996111,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261910,
+      "heat_base_before": 0.50348955,
+      "heat_base_after": 0.5035712724799433,
+      "effective_heat_before": 0.24998443,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261929,
+      "heat_base_before": 0.50883216,
+      "heat_base_after": 0.5089136679281171,
+      "effective_heat_before": 0.24998495,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4261933,
+      "heat_base_before": 0.50087416,
+      "heat_base_after": 0.5009460923700315,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262033,
+      "heat_base_before": 0.5103933,
+      "heat_base_after": 0.5104761486310542,
+      "effective_heat_before": 0.24998443,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262034,
+      "heat_base_before": 0.4905721,
+      "heat_base_after": 0.4906375118452582,
+      "effective_heat_before": 0.24999169,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262062,
+      "heat_base_before": 0.48769993,
+      "heat_base_after": 0.4877827515805019,
+      "effective_heat_before": 0.24998255,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262064,
+      "heat_base_before": 0.48270366,
+      "heat_base_after": 0.4827707653217568,
+      "effective_heat_before": 0.24999024,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262066,
+      "heat_base_before": 0.5113175,
+      "heat_base_after": 0.5114017377943424,
+      "effective_heat_before": 0.24998382,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262077,
+      "heat_base_before": 0.496187,
+      "heat_base_after": 0.49625828891769547,
+      "effective_heat_before": 0.24998908,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262091,
+      "heat_base_before": 0.48916218,
+      "heat_base_after": 0.4892452151221142,
+      "effective_heat_before": 0.24998255,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262103,
+      "heat_base_before": 0.4796632,
+      "heat_base_after": 0.4797290607690708,
+      "effective_heat_before": 0.24999067,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262123,
+      "heat_base_before": 0.526193,
+      "heat_base_after": 0.5262947951807584,
+      "effective_heat_before": 0.24997666,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262131,
+      "heat_base_before": 0.48119202,
+      "heat_base_after": 0.4812562689391497,
+      "effective_heat_before": 0.24999161,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262139,
+      "heat_base_before": 0.48268643,
+      "heat_base_after": 0.48275417313733926,
+      "effective_heat_before": 0.24998991,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262154,
+      "heat_base_before": 0.48334977,
+      "heat_base_after": 0.48341918128425215,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262167,
+      "heat_base_before": 0.26225656,
+      "heat_base_after": 0.2622942131292676,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262197,
+      "heat_base_before": 0.4806281,
+      "heat_base_after": 0.4806970964414976,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262227,
+      "heat_base_before": 0.48338807,
+      "heat_base_after": 0.4834574502335156,
+      "effective_heat_before": 0.2499891,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262233,
+      "heat_base_before": 0.48340172,
+      "heat_base_after": 0.4834710991505875,
+      "effective_heat_before": 0.24998912,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262237,
+      "heat_base_before": 0.56622076,
+      "heat_base_after": 0.5663761598507091,
+      "effective_heat_before": 0.2499564,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262238,
+      "heat_base_before": 0.48974943,
+      "heat_base_after": 0.4898326397474252,
+      "effective_heat_before": 0.24998254,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262239,
+      "heat_base_before": 0.49807146,
+      "heat_base_after": 0.4981430089332019,
+      "effective_heat_before": 0.24998909,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262240,
+      "heat_base_before": 0.4900723,
+      "heat_base_after": 0.4901555245198328,
+      "effective_heat_before": 0.24998255,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262242,
+      "heat_base_before": 0.49007225,
+      "heat_base_after": 0.4901555245198328,
+      "effective_heat_before": 0.24998254,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262283,
+      "heat_base_before": 0.47395116,
+      "heat_base_after": 0.47399856487585795,
+      "effective_heat_before": 0.24999999,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262292,
+      "heat_base_before": 0.5151738,
+      "heat_base_after": 0.5153152347299281,
+      "effective_heat_before": 0.24995637,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262305,
+      "heat_base_before": 0.5071651,
+      "heat_base_after": 0.5072921020488493,
+      "effective_heat_before": 0.24996237,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262307,
+      "heat_base_before": 0.5083337,
+      "heat_base_after": 0.5084636186832585,
+      "effective_heat_before": 0.24996111,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262312,
+      "heat_base_before": 0.5612719,
+      "heat_base_after": 0.5614259493824517,
+      "effective_heat_before": 0.2499564,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262318,
+      "heat_base_before": 0.5427971,
+      "heat_base_after": 0.5429461088663138,
+      "effective_heat_before": 0.24995637,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262319,
+      "heat_base_before": 0.5150882,
+      "heat_base_after": 0.5152295911691059,
+      "effective_heat_before": 0.24995638,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262320,
+      "heat_base_before": 0.50730467,
+      "heat_base_after": 0.5074317105801516,
+      "effective_heat_before": 0.24996239,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262322,
+      "heat_base_before": 0.5127298,
+      "heat_base_after": 0.5128705639824414,
+      "effective_heat_before": 0.24995638,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262348,
+      "heat_base_before": 0.47803903,
+      "heat_base_after": 0.4781600253055233,
+      "effective_heat_before": 0.24996173,
+      "outcome": "reheated"
+    },
+    {
+      "id": 4262352,
+      "heat_base_before": 0.47546473,
+      "heat_base_after": 0.47559527161002957,
+      "effective_heat_before": 0.24995638,
+      "outcome": "reheated"
+    }
+  ]
+}

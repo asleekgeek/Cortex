@@ -1,0 +1,63 @@
+{
+  "mode": "APPLY",
+  "timestamp_utc": "20260710T151329Z",
+  "target": 0.25,
+  "limit": 5000,
+  "status": "ok",
+  "scanned_rows": 7,
+  "reheated": 0,
+  "unreachable": 7,
+  "already_above_target": 0,
+  "skipped_race": 0,
+  "journal": [
+    {
+      "id": 4196187,
+      "heat_base_before": 0.41743782,
+      "effective_heat_before": 0.071166605,
+      "effective_heat_at_max": 0.17048432,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4196210,
+      "heat_base_before": 0.2975066,
+      "effective_heat_before": 0.061285228,
+      "effective_heat_at_max": 0.20599619,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4196226,
+      "heat_base_before": 0.36204597,
+      "effective_heat_before": 0.06155132,
+      "effective_heat_at_max": 0.17000969,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4196229,
+      "heat_base_before": 0.4504463,
+      "effective_heat_before": 0.07658025,
+      "effective_heat_at_max": 0.1700097,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4197563,
+      "heat_base_before": 0.356721,
+      "effective_heat_before": 0.06670432,
+      "effective_heat_at_max": 0.18699296,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4197566,
+      "heat_base_before": 0.33783472,
+      "effective_heat_before": 0.06317273,
+      "effective_heat_at_max": 0.186993,
+      "outcome": "unreachable"
+    },
+    {
+      "id": 4197568,
+      "heat_base_before": 0.29348257,
+      "effective_heat_before": 0.054879192,
+      "effective_heat_at_max": 0.18699302,
+      "outcome": "unreachable"
+    }
+  ]
+}
