@@ -6,6 +6,27 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.7.0] - 2026-07-10
+
+### Added
+- **memify now actually extracts derivable facts.** `identify_derivable_facts` (defined, tested, never called since inception) is wired into the memify cycle: strong entity relationships become append-only derived memories with tag provenance (`derived`, `derived-rel:<key>` idempotence key, `derived-src:<id>` pointers). The write gate is never bypassed — gate rejections are valid outcomes. Bounded per run (measured).
+- **Memory domain backfill (internal evidence only).** Domainless memories are reattached from their own `directory_context` (24) — and, after the linked-worktree fix below, 296 more; the remainder is explicitly tagged `domain-orphan` rather than guessed. Idempotent, never overwrites, campaign artifacts committed.
+- **Linked git worktrees resolve to their parent project's domain.** Pure-Python `gitdir:` dereference at the single resolve choke point — no subprocess, fail-safe, no duplicate domains.
+
+### Fixed
+- **Memory-to-memory links were never written.** Both link sites (CLS semantic→episodic provenance, near-duplicate "link" curation) passed memory ids into entity-FK columns and swallowed the FK violation with `except: pass` — since their introduction. Links are now written as provenance tags (same mechanism as memify derivation); no silent exception swallowing survives on this path.
+- **Checkpoint/session-log writers use the canonical transcript-stem session identity** (event `session_id` diverges on resume/clear); explicit caller-provided ids are preserved.
+- **Tool descriptions/annotations aligned with what the code does** — detect_gaps (4 real axes), assess_coverage (no file coverage), validate_memory (file paths only), backfill_memories (file-level idempotence only), and READ_ONLY corrected to non-idempotent-write on navigate_memory, recall, recall_hierarchical and drill_down (they mutate replay counters on every call). A table-driven anti-drift guard test now fails on reintroduced false promises.
+- **Dead code removed with per-item proof chains**: the scanner's never-consumed `session_id` output field (and its `fallback_id` helper), and the entire `shared/types.py` scaffolding module (14 Pydantic models, zero references since their initial commit).
+
+### Changed
+- **Recall receipt path: 6.8 ms → 0.07 ms.** The parent-process start signature is memoized for the server's lifetime (correctness proof: POSIX orphan reparenting makes `getppid()` change at most once); the session id itself is never cached.
+- Unsourced heat constants now say so at their sites (§8 honesty): the wiki citation bump, the reconsolidation bump (its previous label pointed at a calibration document that does not calibrate it), the Hebbian entity bump, and the wiki lifecycle thresholds. Values unchanged; a pre-registered calibration sweep is the documented exit path.
+
+### Note
+- The `readOnlyHint` corrections on high-volume recall tools may affect MCP client auto-approval behaviour; if confirmation friction appears, the revert lever is commit `efe5dedf` — the underlying writes existed all along.
+- Non-regression guard: LongMemEval-S MRR 0.9166 / R@10 0.982 (manifests `20260710T082114Z`, `20260710T102406Z` committed) — identical to the pre-campaign reference.
+
 ## [4.6.0] - 2026-07-10
 
 ### Added
