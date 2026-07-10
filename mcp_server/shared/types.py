@@ -13,27 +13,6 @@ from pydantic import BaseModel, ConfigDict, Field
 # --- Conversation / Memory Metadata ---
 
 
-class ConversationMeta(BaseModel):
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
-
-    session_id: str = Field(alias="sessionId")
-    slug: str | None = None
-    project: str = ""
-    cwd: str | None = None
-    first_message: str | None = Field(default=None, alias="firstMessage")
-    all_text: str | None = Field(default=None, alias="allText")
-    keywords: list[str] = Field(default_factory=list)
-    started_at: str | None = Field(default=None, alias="startedAt")
-    ended_at: str | None = Field(default=None, alias="endedAt")
-    message_count: int = Field(default=0, alias="messageCount")
-    user_count: int = Field(default=0, alias="userCount")
-    assistant_count: int = Field(default=0, alias="assistantCount")
-    turn_count: int = Field(default=0, alias="turnCount")
-    tools_used: list[str] = Field(default_factory=list, alias="toolsUsed")
-    duration: float | None = None
-    file_size: int | None = Field(default=None, alias="fileSize")
-
-
 class MemoryMeta(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
