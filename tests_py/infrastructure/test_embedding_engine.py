@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from mcp_server.infrastructure.embedding_engine import (
+    DEFAULT_MODEL_REVISION,
     EmbeddingEngine,
     get_embedding_engine,
     reset_embedding_engine,
@@ -38,6 +39,31 @@ class TestEmbeddingEngineInit:
     def test_cache_is_ordered_dict(self):
         engine = EmbeddingEngine()
         assert isinstance(engine._cache, OrderedDict)
+
+
+# ── Model revision pin (i7d3 reproducibility-gap fix, 2026-07-11) ──────
+
+
+class TestModelRevisionPin:
+    def test_default_pins_to_documented_revision(self):
+        engine = EmbeddingEngine()
+        assert engine.revision == DEFAULT_MODEL_REVISION
+
+    def test_explicit_none_disables_pin(self):
+        engine = EmbeddingEngine(revision=None)
+        assert engine.revision is None
+
+    def test_explicit_revision_overrides_default(self):
+        engine = EmbeddingEngine(revision="deadbeef")
+        assert engine.revision == "deadbeef"
+
+    def test_load_passes_revision_to_sentence_transformer(self):
+        engine = EmbeddingEngine(revision="pinned-sha")
+        with patch("sentence_transformers.SentenceTransformer") as mock_st:
+            mock_st.return_value = MagicMock(get_embedding_dimension=lambda: 384)
+            engine._ensure_model()
+        _, kwargs = mock_st.call_args
+        assert kwargs.get("revision") == "pinned-sha"
 
 
 # ── Fallback encoding ────────────────────────────────────────────────

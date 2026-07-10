@@ -15,6 +15,11 @@ from mcp_server.core import (
     write_post_store,
 )
 from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
+from mcp_server.core.capture_template_normalize import (
+    capture_template_normalize,
+    is_auto_capture_template,
+    is_derived_fact_template,
+)
 from mcp_server.shared.vader import vader_compound
 from mcp_server.core.dual_store_cls import classify_memory
 from mcp_server.core.predictive_coding_flat import (
@@ -50,6 +55,65 @@ def compute_similarities(
             if mem and mem.get("embedding"):
                 sims.append(emb_engine.similarity(embedding, mem["embedding"]))
     return sims, vec_hits
+
+
+def compute_template_normalized_similarities(
+    content: str,
+    vec_hits: list[tuple],
+    store: MemoryStore,
+    emb_engine: EmbeddingEngine,
+) -> list[float] | None:
+    """Re-score embedding-novelty candidates on template-normalized text.
+
+    Pivot (i7d3, 2026-07-11 — narrowed from M-D1's original 3-point scope
+    after a benchmark regression whose root cause was NOT this code but a
+    shared bench-container concurrency hole; the pivot is kept anyway
+    because it is strictly safer and now provably bench-neutral by
+    construction — see module docstring and the incident note in
+    core/capture_template_normalize.py). NEVER touches the ``embedding``
+    column or any stored vector: this recomputes similarity purely to
+    feed the write gate's ``emb_nov`` signal, using content re-fetched
+    from ``store`` (already fetched by ``compute_similarities`` above,
+    re-fetched here to keep this function pure of the caller's
+    embedding-fetch loop) and encoded on the fly. The extra ``encode()``
+    calls (up to 5, one per top-5 neighbor) are skipped entirely unless
+    ``content`` actually matches the auto-capture or derived-fact
+    template — for the ~92%/8% traffic split documented in the design
+    (auto-capture / deliberate), this keeps the added latency scoped to
+    exactly the class where template collision was measured (i6d2:
+    0.95-0.99 cosine on DISTINCT auto-captured facts).
+
+    Contract:
+      pre:  ``content`` is the new memory's raw content; ``vec_hits`` is
+            the (id, distance) list ``compute_similarities`` already
+            retrieved via HNSW against the RAW stored embedding space
+            (unaffected by this function — candidate retrieval stays on
+            the untouched vector space).
+      post: returns None when ``content`` does not match either template
+            (the caller falls back to the raw ``sims`` from
+            ``compute_similarities`` — normalization would be a no-op,
+            so skipping it saves the extra encode() calls entirely).
+            Otherwise returns one normalized-space cosine similarity per
+            neighbor whose content could be fetched and encoded
+            (silently drops a neighbor on fetch/encode failure — a
+            missing signal degrades gracefully to fewer samples, never
+            raises).
+    """
+    if not (is_auto_capture_template(content) or is_derived_fact_template(content)):
+        return None
+    new_norm = capture_template_normalize(content)
+    new_emb = emb_engine.encode(new_norm)
+    if not new_emb:
+        return None
+    norm_sims: list[float] = []
+    for mid, _d in vec_hits:
+        mem = store.get_memory(mid)
+        if not mem or not mem.get("content"):
+            continue
+        neighbor_emb = emb_engine.encode(capture_template_normalize(mem["content"]))
+        if neighbor_emb:
+            norm_sims.append(emb_engine.similarity(new_emb, neighbor_emb))
+    return norm_sims
 
 
 def compute_entity_info(
@@ -153,14 +217,27 @@ def evaluate_gate(
     """
     importance = thermodynamics.compute_importance(content, tags)
     sims, vec_hits = compute_similarities(embedding, store, emb_engine)
-    emb_nov = compute_embedding_novelty(sims)
+    # i7d3 pivot: template-normalized re-scoring feeds ONLY this novelty
+    # signal — `sims`/`vec_hits` above (and the `embedding` written to
+    # storage by the caller) are untouched raw-content vectors. See
+    # compute_template_normalized_similarities's docstring.
+    norm_sims = compute_template_normalized_similarities(
+        content, vec_hits, store, emb_engine
+    )
+    emb_nov = compute_embedding_novelty(norm_sims if norm_sims is not None else sims)
     extracted, ent_names, known, ent_nov = compute_entity_info(content, store)
     temp_nov = write_gate.compute_temporal_novelty(sims, vec_hits, store.get_memory)
     # heads_only: structural novelty against current knowledge (same
     # rationale as compute_similarities above).
+    # M-D1 §7.3: shape features are compared on the template-normalized
+    # text — a corpus at 92% auto-captures of near-identical structural
+    # shape (same header, same reference-line kind, same fence pattern)
+    # was flooring structural novelty for the whole traffic class. The
+    # stored `recent` contents are read-only here; nothing is mutated.
     recent = store.get_hot_memories(min_heat=0.0, limit=10, heads_only=True)
     struct_nov = compute_structural_novelty(
-        content, [m["content"] for m in recent if m.get("content")]
+        capture_template_normalize(content),
+        [capture_template_normalize(m["content"]) for m in recent if m.get("content")],
     )
     score = compute_novelty_score(emb_nov, ent_nov, temp_nov, struct_nov)
     if get_memory_settings().WRITE_GATE_HIERARCHICAL:
@@ -412,6 +489,9 @@ def _do_merge(
 ) -> None:
     """Merge new content into an existing memory."""
     merged = curation.merge_contents(cand["content"], content)
+    # i7d3 pivot: the stored embedding stays raw content, same as
+    # remember.py's write path — see that module's comment for the
+    # incident/decision this reverted.
     new_emb = emb_engine.encode(merged)
     store.update_memory_compression(
         cand_id, merged, new_emb, cand.get("compression_level", 0)

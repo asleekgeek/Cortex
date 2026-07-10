@@ -18,6 +18,27 @@ Device selection:
   If GPU inference fails at runtime (OOM, MPS reset after sleep), the engine
   automatically falls back to CPU. If CPU also fails, it degrades to hash-based
   fallback encoding. The engine never crashes on encode().
+
+Model revision pin (reproducibility gap closed 2026-07-11, incident i7d3):
+  ``huggingface_hub`` resolves an unpinned model name against the repo's
+  moving ``refs/main`` pointer. Root-cause investigation of a benchmark
+  regression found TWO snapshots cached locally for
+  ``sentence-transformers/all-MiniLM-L6-v2`` (``c9745ed1...`` from
+  2026-04-04 and ``1110a243...`` from 2026-06-09) — ``refs/main`` had moved
+  between them. In that specific incident the underlying
+  ``model.safetensors``/``config.json``/``tokenizer.json`` blobs were
+  confirmed BYTE-IDENTICAL across both snapshots (same SHA256 content
+  hash) by direct cache inspection, so it was not the cause of THAT
+  regression — but the gap itself is real and unbounded: nothing stops a
+  future upstream repo change (a genuine weight update, not just a
+  metadata/README commit) from silently altering embeddings for every
+  caller that resolves ``main`` at load time, with no signal in
+  ``uv.lock`` (which pins the Python package, not the HF model weights).
+  ``DEFAULT_MODEL_REVISION`` below pins the exact snapshot verified during
+  that investigation; ``EmbeddingEngine`` uses it whenever the caller does
+  not supply an explicit ``revision``. source: measured on 2026-07-11 via
+  ``~/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/refs/main``
+  and blob-hash comparison of the two cached snapshots.
 """
 
 from __future__ import annotations
@@ -28,6 +49,12 @@ from collections import OrderedDict
 from typing import Any
 
 import numpy as np
+
+# source: measured 2026-07-11 (incident i7d3) — see module docstring
+# "Model revision pin" section for the full derivation and the blob-hash
+# verification that this snapshot's weights are byte-identical to the
+# immediately-prior cached snapshot.
+DEFAULT_MODEL_REVISION = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
 
 logger = logging.getLogger(__name__)
 
@@ -73,11 +100,17 @@ class EmbeddingEngine:
         model_name: str = "all-MiniLM-L6-v2",
         dim: int = 384,
         device: str = "cpu",
+        revision: str | None = DEFAULT_MODEL_REVISION,
     ) -> None:
         self._model_name = model_name
         self._dim = dim
         self._device_requested = device
         self._device: str | None = None  # resolved once, cached
+        # revision=None means "resolve refs/main at load time" (the
+        # pre-i7d3 unpinned behavior) — an explicit opt-out for callers
+        # that pass a different model_name this pin was never verified
+        # against. See module docstring "Model revision pin".
+        self._revision = revision
         self._model: Any = None
         self._unavailable = False
         # Cache keyed by sha256(text)[:16] — see class docstring / ADR-0045 R5.
@@ -104,6 +137,11 @@ class EmbeddingEngine:
     @property
     def model_name(self) -> str:
         return self._model_name
+
+    @property
+    def revision(self) -> str | None:
+        """The pinned HF revision this engine loads (None = unpinned refs/main)."""
+        return self._revision
 
     @property
     def dimensions(self) -> int:
@@ -202,12 +240,22 @@ class EmbeddingEngine:
             # raised to match).
             try:
                 self._model = SentenceTransformer(
-                    self._model_name, device=device, local_files_only=True
+                    self._model_name,
+                    device=device,
+                    local_files_only=True,
+                    revision=self._revision,
                 )
             except _cache_miss:
-                # Model not in local cache — download it once.
-                logger.info("Downloading embedding model: %s", self._model_name)
-                self._model = SentenceTransformer(self._model_name, device=device)
+                # Model not in local cache (at all, or not at the pinned
+                # revision) — download it once.
+                logger.info(
+                    "Downloading embedding model: %s (revision=%s)",
+                    self._model_name,
+                    self._revision or "refs/main",
+                )
+                self._model = SentenceTransformer(
+                    self._model_name, device=device, revision=self._revision
+                )
 
             # sentence-transformers 5.x renamed get_sentence_embedding_dimension
             # → get_embedding_dimension. Prefer the new name; fall back for <5.
