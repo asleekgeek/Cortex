@@ -495,22 +495,36 @@ def _build_insert_record(
     return record
 
 
-def _link_if_needed(
-    action: str, merged_id: int | None, mem_id: int, store: MemoryStore
-) -> None:
-    """Insert a derived_from relationship for link actions."""
-    if action == "link" and merged_id:
-        try:
-            store.insert_relationship(
-                {
-                    "source_entity_id": mem_id,
-                    "target_entity_id": merged_id,
-                    "relationship_type": "derived_from",
-                    "weight": 1.0,
-                }
-            )
-        except Exception:
-            pass
+def _with_link_provenance(
+    action: str, merged_id: int | None, tags: list[str]
+) -> list[str]:
+    """Append link provenance to a to-be-created memory's tags.
+
+    Precondition: `tags` is about to be written on a NEW row (this is called
+    before `store.insert_memory`/`store.supersede_atomic`, so no memory id
+    exists yet for the row being built); `action`/`merged_id` come from
+    `try_curation`'s "link" decision (near-duplicate, not merged/superseded).
+    Postcondition: when `action == "link"` and `merged_id` is set, returns
+    `tags` plus a `link-derived` category tag and a `derived-src:<merged_id>`
+    pointer to the memory this row is a near-duplicate/derivative of;
+    otherwise returns `tags` unchanged.
+
+    Tags, not a `relationships` row: `relationships.source_entity_id` /
+    `target_entity_id` are `NOT NULL REFERENCES entities(id)` and cannot
+    address a memory id. The prior implementation (`_link_if_needed`,
+    replaced here) called `store.insert_relationship({"source_entity_id":
+    mem_id, "target_entity_id": merged_id, ...})` inside a bare
+    `except Exception: pass` — every "link" write raised the FK violation and
+    was silently swallowed, so no link was ever persisted since this code's
+    introduction. Fixed at the source: provenance is now embedded in the
+    row's own tags at insert time (before the row exists, so no post-hoc
+    update is needed either), reusing the `derived-src:<memory_id>`
+    convention already established and live-proven by
+    `handlers/consolidation/memify_derive.py` (INC6.1b).
+    """
+    if action != "link" or not merged_id:
+        return tags
+    return [*tags, "link-derived", f"derived-src:{merged_id}"]
 
 
 def _run_post_store(
@@ -568,6 +582,11 @@ def insert_and_post_process(
         store,
         emb_engine,
     )
+    # Link provenance is appended AFTER classify_memory so the link marker
+    # tags never influence store_type classification, and BEFORE the record
+    # is built so the pointer is written atomically with the row (no memory
+    # id exists yet to update post-hoc).
+    tags = _with_link_provenance(action, merged_id, tags)
     record = _build_insert_record(
         content,
         embedding,
@@ -598,7 +617,6 @@ def insert_and_post_process(
             return _build_supersede_conflict(merged_id, superseded_head)
     else:
         mem_id = store.insert_memory(record)
-    _link_if_needed(action, merged_id, mem_id, store)
     tids, tagged, slot = _run_post_store(
         mem_id,
         content,

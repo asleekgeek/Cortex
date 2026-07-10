@@ -18,14 +18,17 @@ Contract:
     - ``derived-src:<memory_id>`` for up to `_PROVENANCE_SRC_CAP` memories
       that mention either endpoint entity (highest-heat first). This is a
       tag, not a `relationships` row: the `relationships` table's FK is
-      `REFERENCES entities(id)`, so it cannot address a memory id (see
-      the pre-existing, silently-failing precedent in
+      `REFERENCES entities(id)`, so it cannot address a memory id (this was
+      the pre-existing, silently-failing bug in
       `handlers/consolidation/cls.py::_link_source_memories` and
-      `handlers/remember_helpers.py::_link_if_needed`, both of which pass
-      memory ids into `insert_relationship` and swallow the resulting FK
-      violation). `supersedes_id` is also wrong here: nothing is being
-      replaced. Tags are the only mechanism in this schema that can carry
-      a memory-id-shaped, SQL-queryable pointer without a FK.
+      `handlers/remember_helpers.py::_link_if_needed` -- both passed memory
+      ids into `insert_relationship` and swallowed the resulting FK
+      violation in a bare `except Exception: pass`, so no such link was ever
+      persisted; both were fixed to reuse this module's `derived-src:`
+      convention instead, see fix/memory-link-fk-violation).
+      `supersedes_id` is also wrong here: nothing is being replaced. Tags
+      are the only mechanism in this schema that can carry a memory-id-
+      shaped, SQL-queryable pointer without a FK.
   * Idempotent on STORED derivations. A relationship whose marker tag
     already exists on some memory is skipped before any gate call --
     verified by SQL, not by re-deriving and letting the gate dedupe.
