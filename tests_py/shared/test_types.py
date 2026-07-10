@@ -1,4 +1,4 @@
-"""Tests for mcp_server.shared.types — Pydantic model validation."""
+"""Tests for mcp_server.shared.types_profiles — Pydantic model validation."""
 
 import json
 

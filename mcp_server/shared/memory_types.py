@@ -1,7 +1,7 @@
 """Pydantic data models for the memory subsystem.
 
-Extends shared/types.py with memory-specific models. These define the
-schema for SQLite storage and handler I/O — the memory system's contract.
+These define the schema for SQLite storage and handler I/O — the memory
+system's contract.
 """
 
 from __future__ import annotations
