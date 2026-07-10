@@ -32,6 +32,27 @@ class RepoInfo:
     canonical: str = ""
 
 
+def _to_posix(path: Path) -> str:
+    """Canonical forward-slash string form of a filesystem path.
+
+    precondition: none — accepts any ``Path``, resolved or not.
+    postcondition: returns ``str(path)`` with backslashes normalized to
+    forward slashes. On POSIX this is a no-op (paths never contain
+    backslashes); on Windows it matches the form ``git`` itself prints
+    (and that ``_git_root`` already normalizes to).
+
+    Single choke point for path-string construction in this module: every
+    producer of a path string that will later be compared against
+    ``_git_root``'s output (``RepoInfo.fs_path`` — the sole source of
+    ``DomainRegistry.path_to_repo`` keys, the slug index, and the prefix
+    match in ``resolve_domain``) must go through here, so the fast-path
+    lookup ``root in registry.path_to_repo`` (``resolve_domain`` /
+    ``resolve_cwd``) actually hits on Windows instead of silently falling
+    through to the slower prefix/fragment matching. source: cdeust/Cortex#93.
+    """
+    return str(path).replace("\\", "/")
+
+
 # ── Step 1: Discover git repos ────────────────────────────────────────
 
 
@@ -112,7 +133,7 @@ def _discover_repos(dev_root: Path) -> list[RepoInfo]:
             remote = _get_remote_url(item)
             repos.append(
                 RepoInfo(
-                    fs_path=str(item),
+                    fs_path=_to_posix(item),
                     dir_name=item.name.lower(),
                     remote_name=_extract_repo_name(remote) or item.name.lower(),
                 )
@@ -124,7 +145,7 @@ def _discover_repos(dev_root: Path) -> list[RepoInfo]:
                     remote = _get_remote_url(sub)
                     repos.append(
                         RepoInfo(
-                            fs_path=str(sub),
+                            fs_path=_to_posix(sub),
                             dir_name=sub.name.lower(),
                             remote_name=_extract_repo_name(remote) or sub.name.lower(),
                         )
@@ -286,18 +307,10 @@ def _git_root(path: str) -> str | None:
     Deliberately does zero subprocess I/O — see ``_get_remote_url`` for
     the Windows pipe-handle-inheritance deadlock (cdeust/Cortex#91) this
     avoids. Forward-slash normalization matches what ``git`` itself
-    prints on Windows.
-
-    Known limitation (pre-existing, not introduced by this change):
-    ``registry.path_to_repo`` (``_build_registry`` / ``_discover_repos``)
-    keys repos by ``str(item)``, which is backslash-separated on Windows.
-    A forward-slash-normalized root from this function will not match
-    those keys there, so the ``root in registry.path_to_repo`` fast path
-    in ``resolve_domain``/``resolve_cwd`` silently misses on Windows and
-    falls through to the prefix-match / fragment-match paths below it.
-    The subprocess-based implementation had the identical mismatch (git
-    itself prints forward slashes on Windows) — this is not a regression,
-    but it is a real bug worth its own issue.
+    prints on Windows, and matches ``registry.path_to_repo``'s keys
+    (``RepoInfo.fs_path``, normalized via ``_to_posix`` at construction —
+    see cdeust/Cortex#93), so the ``root in registry.path_to_repo`` fast
+    path in ``resolve_domain``/``resolve_cwd`` hits on every platform.
     """
     try:
         candidate = Path(path).resolve()
