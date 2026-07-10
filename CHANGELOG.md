@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.8.0] - 2026-07-10
+
+### Added
+- **`explore_features` attribution mode traces real sessions.** It had returned an empty graph in production since inception (`trace_attribution` was only ever called with no conversations). It now feeds on project-scoped conversation discovery (`discover_conversations_for_projects`, bounded to 20 samples — measured ~12 ms vs ~270 ms for an unscoped scan), producing a real decision-attribution graph from the machine's own session history.
+
+### Fixed
+- **Cross-process test-DB contention eliminated.** The shared `cortex_test` database plus each process's unconditional cleanup fixture meant two concurrent pytest runs (trivial with many worktrees) corrupted each other — the true root cause behind every "flaky" `test_store_consolidate_recall` / `test_validate_memory` report (order-dependence and embeddings-backend hypotheses refuted by deterministic reproduction). Each local pytest process now creates its own throwaway PG database, dropped at session end, with opportunistic sweeping of databases leaked by SIGTERM'd runs. CI and explicit `CORTEX_TEST_DATABASE_URL` overrides unchanged.
+- **`AttributionNode.activation` no longer mixes floats and strings.** Three classifier nodes copied categorical `CognitiveStyle` values verbatim into a numeric field; classification now lives in a dedicated `categoricalValue` field and `activation` is always a float (0.0 when no legitimate magnitude exists — no fabricated numbers).
+
+### Changed
+- **Interpretability boundary typed.** `explore_features` and its core modules (persona vector, attribution tracer, behavioral crosscoder, sparse dictionary) exchange Pydantic models (`shared/types_features.py`) instead of untyped dicts, with validation regimes matching each type's real provenance (JS-compatible round-trip vs in-memory). Serialized responses proven byte-identical before the attribution fixes above.
+
+### Note
+- Pre-tag non-regression guard (first full application of the bench-before-release procedure): LongMemEval-S MRR 0.9166 / R@10 0.982 on the frozen release tree (manifest `20260710T132409Z`) — identical to the campaign reference.
+
 ## [4.7.0] - 2026-07-10
 
 ### Added
