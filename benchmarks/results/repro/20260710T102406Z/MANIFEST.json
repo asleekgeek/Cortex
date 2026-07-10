@@ -1,0 +1,15 @@
+{
+  "git_sha": "e4ff0b70397cedbf7168600aaed063b45be8ed87",
+  "longmemeval_dataset_sha256": "08d8dad4be43ee2049a22ff5674eb86725d0ce5ff434cde2627e5e8e7e117894",
+  "pg_image": "pgvector/pgvector:pg16",
+  "python": "3.12.11",
+  "packages": {
+    "datasets": "4.8.4",
+    "sentence-transformers": "5.4.1",
+    "psycopg": "3.3.3",
+    "psycopg-pool": "3.3.0"
+  },
+  "results_files": [
+    "longmemeval-s.json"
+  ]
+}
