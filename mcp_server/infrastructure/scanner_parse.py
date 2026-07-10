@@ -29,15 +29,12 @@ def extract_user_text(content: Any) -> str:
 
 def extract_metadata_fields(raw_records: list[dict]) -> dict[str, Any]:
     """Extract session-level metadata from raw JSONL records."""
-    session_id = None
     slug = None
     cwd = None
     first_timestamp = None
     last_timestamp = None
 
     for rec in raw_records:
-        if rec.get("sessionId") and not session_id:
-            session_id = rec["sessionId"]
         if rec.get("slug") and not slug:
             slug = rec["slug"]
         if rec.get("cwd") and not cwd:
@@ -51,7 +48,6 @@ def extract_metadata_fields(raw_records: list[dict]) -> dict[str, Any]:
                 last_timestamp = ts
 
     return {
-        "session_id": session_id,
         "slug": slug,
         "cwd": cwd,
         "first_timestamp": first_timestamp,
@@ -127,15 +123,12 @@ def build_conversation_record(
     stats: dict,
     file_path: Path,
     project_name: str,
-    fallback_id: str,
 ) -> dict[str, Any]:
     """Assemble a conversation record from extracted metadata and stats."""
-    session_id = meta["session_id"] or fallback_id
     all_text = stats["all_text"]
     st = stat_file(file_path)
 
     return {
-        "sessionId": session_id,
         "slug": meta["slug"],
         "project": project_name,
         "cwd": meta["cwd"],
