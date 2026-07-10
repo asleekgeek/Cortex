@@ -165,12 +165,27 @@ class PgQueryMixin:
         return results
 
     def get_all_memories_for_validation(
-        self, limit: int = 1000
+        self,
+        limit: int = 1000,
+        *,
+        after_id: int = 0,
+        include_stale: bool = False,
     ) -> list[dict[str, Any]]:
+        """Page through memories for validation, ``id`` order (I6-D6).
+
+        ``after_id`` is a cursor: pass the max ``id`` seen in the previous
+        page to continue. Ordering is by ``id ASC`` (not ``last_accessed``)
+        specifically so the cursor is stable across calls — last_accessed
+        can change between pages if a validation pass itself touches rows.
+        ``include_stale`` defaults False (unchanged behavior for existing
+        callers — assess_coverage, change_impact); validate_memory passes
+        True so a provenance re-check can rehabilitate (de-stale) a
+        memory whose references all resolve again.
+        """
         rows = self._execute(
-            "SELECT * FROM memories WHERE NOT is_stale "
-            "ORDER BY last_accessed ASC LIMIT %s",
-            (limit,),
+            "SELECT * FROM memories WHERE id > %s AND (NOT is_stale OR %s) "
+            "ORDER BY id ASC LIMIT %s",
+            (after_id, include_stale, limit),
         ).fetchall()
         return [self._normalize_memory_row(r) for r in rows]
 

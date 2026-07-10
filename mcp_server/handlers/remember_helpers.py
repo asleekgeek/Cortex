@@ -464,6 +464,21 @@ def _build_insert_record(
     # self-generated inference is not stored indistinguishably from a file-
     # grounded observation (Johnson, Hashtroudi & Lindsay 1993). Best-effort —
     # a classification failure must never block a write.
+    #
+    # I6-D6 note (kept, not neutralized — écriture initiale != grade): this
+    # write is an EPISTEMIC-ORIGIN classification (perceived/told/inferred/
+    # unknown, Johnson 1993), not a verifiability GRADE (verified/verifiable/
+    # unverifiable, core/provenance.py). validate_memory.py is the sole writer
+    # of the GRADE vocabulary and OVERWRITES whatever value is here the next
+    # time it verifies this memory — so this column transiently holds C1's
+    # epistemic tag for a freshly-written, not-yet-verified memory, and the
+    # verifier's grade for a memory that has been through a validate_memory
+    # pass. Neutralizing this write outright would silently disable the
+    # confabulation gate (recall_helpers.annotate_source_attribution,
+    # consolidation_engine promotion gate) — a live, tested, academically-
+    # sourced feature (Johnson & Raye 1981) the I6-D6 design did not account
+    # for (it landed on this column after the design's audit commit). See
+    # /memories/engineer/inc6.5-provenance-verifier.md for the full rationale.
     try:
         from mcp_server.core import source_monitoring
 

@@ -75,9 +75,21 @@ REQUIRED_PHRASES: list[tuple[str, str, str]] = [
     (
         "mcp_server.handlers.validate_memory",
         "FILE PATHS ONLY",
-        "validate_memory checks file-path existence only — URLs, "
-        "commits, and papers are not verified; the description must not "
-        "let a reader assume broader provenance checking.",
+        "I6-D6 (increment 6.5) extended validate_memory into a graded "
+        "provenance verifier that DOES check commits/URLs/artifact "
+        "digests — but the STALENESS SCORE (is_stale) still derives from "
+        "file-path references only (a dead URL must not invalidate a "
+        "historical fact). The phrase now scopes specifically to the "
+        "staleness score, not the tool's overall checking surface; it "
+        "must stay present and correctly scoped, not be dropped.",
+    ),
+    (
+        "mcp_server.handlers.validate_memory",
+        "sole writer of that grade",
+        "I6-D6 arbitrage (user Q3): validate_memory is the sole writer "
+        "of memories.source_attribution's verified/verifiable/"
+        "unverifiable grade vocabulary; the description must say so or "
+        "a future edit could silently reintroduce a second writer.",
     ),
     (
         "mcp_server.handlers.recall",

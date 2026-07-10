@@ -5,7 +5,7 @@ source: RAPPORT_INSTALLATION_CORTEX_WINDOWS.md §5.6
 
 from __future__ import annotations
 
-from mcp_server.core.staleness import extract_file_references
+from mcp_server.core.staleness import assess_staleness, extract_file_references
 
 
 def test_extracts_unix_relative_path():
@@ -39,3 +39,29 @@ def test_excludes_urls():
     # sanitization — py/incomplete-url-substring-sanitization).
     refs = extract_file_references("docs at https://example.com/page.html")
     assert refs == []
+
+
+def test_zero_score_never_stale_at_threshold_zero():
+    # Regression (I6-D6): threshold=0.0 ("flag anything with one missing
+    # reference") must not flag a memory whose refs ALL resolve. The naive
+    # `score >= threshold` boundary made 0.0 >= 0.0 true, permanently
+    # blocking de-stale rehabilitation at this threshold.
+    report = assess_staleness(
+        memory_id=1,
+        content="See real.py",
+        existing_paths={"real.py"},
+        threshold=0.0,
+    )
+    assert report.staleness_score == 0.0
+    assert report.is_stale is False
+
+
+def test_any_missing_ref_still_stale_at_threshold_zero():
+    report = assess_staleness(
+        memory_id=1,
+        content="See src/missing.py",
+        existing_paths=set(),
+        threshold=0.0,
+    )
+    assert report.staleness_score > 0.0
+    assert report.is_stale is True
