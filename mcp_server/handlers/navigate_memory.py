@@ -20,7 +20,7 @@ from mcp_server.core.cognitive_map import (
 )
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
-from mcp_server.handlers._tool_meta import READ_ONLY
+from mcp_server.handlers._tool_meta import NON_IDEMPOTENT_WRITE
 from mcp_server.handlers._telemetry_wrap import instrument
 from mcp_server.handlers.replay_tracking import track_replay_event
 
@@ -28,7 +28,7 @@ from mcp_server.handlers.replay_tracking import track_replay_event
 
 schema = {
     "title": "Navigate memory",
-    "annotations": READ_ONLY,
+    "annotations": NON_IDEMPOTENT_WRITE,
     "description": (
         "Traverse the memory space via a Successor Representation graph "
         "(Dayan 1993) built from temporal co-access — pairs of memories "
@@ -40,9 +40,14 @@ schema = {
         "know about. Distinct from `recall` (semantic vector + lexical "
         "search, no temporal-proximity edges), `get_causal_chain` (entity "
         "knowledge-graph BFS, not memory-level co-access), and `drill_down` "
-        "(fractal cluster tree, not graph). Read-only. Latency ~100-300ms "
-        "depending on depth + 2D-map flag. Returns {seed, neighbors: "
-        "[{memory_id, distance, content_preview}], map_2d?: [{x, y, id}]}."
+        "(fractal cluster tree, not graph). Not read-only: every returned "
+        "memory (the seed plus each traversed neighbor) is recorded as a "
+        "hippocampal replay event — access_count/replay_count increment "
+        "and hippocampal_dependency decays (CLS-B, Ketz et al. 2023) — so "
+        "repeat calls are not idempotent (`track_replay_event`, "
+        "`replay_tracking.py`). Latency ~100-300ms depending on depth + "
+        "2D-map flag. Returns {seed, neighbors: [{memory_id, distance, "
+        "content_preview}], map_2d?: [{x, y, id}]}."
     ),
     "inputSchema": {
         "type": "object",

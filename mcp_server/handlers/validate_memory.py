@@ -1,8 +1,12 @@
 """Handler: validate_memory — assess and flag stale memories.
 
-Scans memories for file references that no longer exist on disk.
-Updates is_stale flag in-place. Can target a single memory, a domain,
-a directory, or all memories.
+Checks the existence of FILE PATHS ONLY (regex-extracted, see
+core/staleness.py). URLs are explicitly excluded from extraction
+(_EXCLUDE_RE); commits, papers, benchmarks, and other reference types
+are not checked — this tool verifies path presence, not general
+provenance. Updates is_stale flag in-place (never clears it back to
+false — see is_stale semantics below). Can target a single memory, a
+domain, a directory, or all memories (limit 1000 per call).
 """
 
 from __future__ import annotations
@@ -23,14 +27,19 @@ schema = {
     "title": "Validate memory",
     "annotations": IDEMPOTENT_WRITE,
     "description": (
-        "Reconcile memory content against the current filesystem state: "
-        "extract file/path references from each memory (sandboxed under "
-        "base_dir), check whether they still exist, compute a staleness "
-        "score (fraction of refs missing), and mark memories above the "
-        "threshold as is_stale=true. Use this after large refactors, file "
-        "moves, or before a recall that must not return dead links. Scope "
-        "to one memory, a domain, a directory, or all memories. Distinct "
-        "from `forget` (deletes memories outright), `rate_memory` (user "
+        "Reconcile memory content against the current filesystem state — "
+        "FILE PATHS ONLY (URLs, commits, papers, and other reference "
+        "types are not extracted or checked): extract file/path "
+        "references from each memory (sandboxed under base_dir), check "
+        "whether they still exist, compute a staleness score (fraction "
+        "of refs missing), and mark memories above the threshold as "
+        "is_stale=true. One-directional: never clears is_stale back to "
+        "false, even when all refs resolve again. All-memories scope is "
+        "capped at 1000 per call (below the full active-store size on "
+        "large corpora). Use this after large refactors, file moves, or "
+        "before a recall that must not return dead links. Scope to one "
+        "memory, a domain, a directory, or all memories. Distinct from "
+        "`forget` (deletes memories outright), `rate_memory` (user "
         "verdict on usefulness, not filesystem reality), and `wiki_"
         "consolidate` (wiki pages, not memories). Mutates is_stale unless "
         "dry_run=true. Latency varies (~100ms-30s depending on scope and "
