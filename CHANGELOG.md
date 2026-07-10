@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.9.1] - 2026-07-10
+
+### Fixed
+- **Homeostatic cycle labels the real dominant domain again (Phase-4 regression).** Since the streaming optimization (`84cfdedf`), the scalar path computed its health factor from an always-empty domain list and wrote it to `domain=''` on every consolidate cycle — the mechanism was effectively inert in production. Domain counts are now accumulated in the same cursor pass as the Welford moments (no extra I/O), the selection rule is shared between streaming and materializing paths, and the polluted `''` row is purged (absence falls back to the documented neutral factor). Known honest limit, deliberately unchanged: the cycle corrects the most *populated* domain, not the least *healthy* one.
+- **CI back to green.** The near-dup member-stats test no longer predicts the homeostatic factor (it probes it), `homeostatic_state` joined the test-isolation cleanup list — the leak that made two suites flaky across processes — and the I6-D5 re-heat writer is whitelisted in the I2 heat-writer invariant with a formal justification (ADR-0053: routing through the canonical writer would have broken the CAS guard and the decay clock needed by the J+30 re-measure).
+
+### Changed
+- Marketplace manifest versions realigned (cortex 4.9.0→current, cortex-viz 2.4.0→2.5.0) — the cross-plugin interdependency file had drifted.
+
+### Note
+- Pre-tag guard: LongMemEval-S MRR 0.9163 / R@10 0.982 (manifest `20260710T185055Z`) — within the equivalence band `[0.9163, 0.9166]` proven by the v4.9.0 twin-run + control arbitration.
+
 ## [4.9.0] - 2026-07-10
 
 ### Added
