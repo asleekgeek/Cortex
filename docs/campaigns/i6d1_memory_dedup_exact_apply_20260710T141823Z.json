@@ -1,0 +1,658 @@
+{
+  "mode": "APPLY",
+  "timestamp_utc": "20260710T141823Z",
+  "limit": 5000,
+  "status": "ok",
+  "scanned_rows": 146,
+  "groups": 55,
+  "superseded_total": 91,
+  "skipped_race": 0,
+  "journal": [
+    {
+      "dup_key": "083030a126d79aceec563791b9d97b26",
+      "survivor_id": 4196214,
+      "superseded_ids": [
+        4196213
+      ],
+      "group_size": 2,
+      "domains": [
+        "zetetic-team-subagents"
+      ]
+    },
+    {
+      "dup_key": "0ecf54c364cfc92e4eaa4d4dc5b532fd",
+      "survivor_id": 4202064,
+      "superseded_ids": [
+        4202021
+      ],
+      "group_size": 2,
+      "domains": [
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "0f407b8df5aa47d600b55cde9ad34f9c",
+      "survivor_id": 4196585,
+      "superseded_ids": [
+        4196151,
+        4197536
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "164b64ac13f75d731c2dbe368118dc6d",
+      "survivor_id": 4196587,
+      "superseded_ids": [
+        4196153
+      ],
+      "group_size": 2,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "16ddff7c979c0de65417229b15ae385c",
+      "survivor_id": 4201469,
+      "superseded_ids": [
+        4201522
+      ],
+      "group_size": 2,
+      "domains": [
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "19b9fcd332d74e03cb76048bc1c073d7",
+      "survivor_id": 4196132,
+      "superseded_ids": [
+        4196566,
+        4197517
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "24bd586d678da9d1273e65ef7e660919",
+      "survivor_id": 4197521,
+      "superseded_ids": [
+        4196136,
+        4196570
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "26506693eeadc4ee9c81fc002be7057d",
+      "survivor_id": 4202058,
+      "superseded_ids": [
+        4202032
+      ],
+      "group_size": 2,
+      "domains": [
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "343ad62fec28a6113f82fbf4eb3c8787",
+      "survivor_id": 4196134,
+      "superseded_ids": [
+        4196568,
+        4197519
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "387af9cd1a492aefa0297788c17b890f",
+      "survivor_id": 4196154,
+      "superseded_ids": [
+        4196588,
+        4197539
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "391c67995a0f9d8675d26f06305a3190",
+      "survivor_id": 4201866,
+      "superseded_ids": [
+        4202122
+      ],
+      "group_size": 2,
+      "domains": [
+        "",
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "40e1da1b55cb0a597de65902dbdb0199",
+      "survivor_id": 4196081,
+      "superseded_ids": [
+        4196156,
+        4196270,
+        4196590
+      ],
+      "group_size": 4,
+      "domains": [
+        "cortex-ingest"
+      ]
+    },
+    {
+      "dup_key": "44f1c962e29eb8f4b38e84d9d27a0985",
+      "survivor_id": 4196150,
+      "superseded_ids": [
+        4196584,
+        4197535
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "47a4acbb63d97ae319d95dfc71b34f24",
+      "survivor_id": 4196141,
+      "superseded_ids": [
+        4196575,
+        4197526
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "48dbefff3a022c14d7c3766f2b76fd7a",
+      "survivor_id": 4253701,
+      "superseded_ids": [
+        4253702
+      ],
+      "group_size": 2,
+      "domains": [
+        "automatised-pipeline",
+        "developments"
+      ]
+    },
+    {
+      "dup_key": "4b1ccc6d04d4d7a3b04c9b7bd7b72eef",
+      "survivor_id": 4196144,
+      "superseded_ids": [
+        4196578,
+        4197529
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "53612b39f62000255cdfef3fa96e1c87",
+      "survivor_id": 4197532,
+      "superseded_ids": [
+        4196147,
+        4196581
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "585b92c019a14ebbe7abac2a92e4c9ca",
+      "survivor_id": 4196149,
+      "superseded_ids": [
+        4196583,
+        4197534
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "5cd5ca5becedb11ca8275ae8d761323b",
+      "survivor_id": 4196217,
+      "superseded_ids": [
+        4196219
+      ],
+      "group_size": 2,
+      "domains": [
+        "zetetic-team-subagents"
+      ]
+    },
+    {
+      "dup_key": "631fc59f3221f5fc1581a0679ccef8b5",
+      "survivor_id": 4201990,
+      "superseded_ids": [
+        4202071
+      ],
+      "group_size": 2,
+      "domains": [
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "675e462647f187a242d66eed4903460b",
+      "survivor_id": 4196562,
+      "superseded_ids": [
+        4197513
+      ],
+      "group_size": 2,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "695a0e61b3d6065cbff3d07d41015224",
+      "survivor_id": 4196145,
+      "superseded_ids": [
+        4196579,
+        4197530
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "6fbb42afd8616e06c2a5fba166e07cd3",
+      "survivor_id": 4197531,
+      "superseded_ids": [
+        4196146,
+        4196580
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "71d76dae5f3a52c65bcb078198e103e0",
+      "survivor_id": 4196582,
+      "superseded_ids": [
+        4196148,
+        4197533
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "74dfac3fd92854509c44f7a2b3c56245",
+      "survivor_id": 4197512,
+      "superseded_ids": [
+        4196127,
+        4196561
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "77859d1666edf2779be15bf528977f0a",
+      "survivor_id": 4196143,
+      "superseded_ids": [
+        4196577,
+        4197528
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "7a6b631af195507733335b6701a61db2",
+      "survivor_id": 4201470,
+      "superseded_ids": [
+        4201521
+      ],
+      "group_size": 2,
+      "domains": [
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "7b0836ff149d0e29b08431135095d0f0",
+      "survivor_id": 4196576,
+      "superseded_ids": [
+        4196142,
+        4197527
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "7df9a9c39c929b976f470987636d0a65",
+      "survivor_id": 4196573,
+      "superseded_ids": [
+        4196139,
+        4197524
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "83e30ed2c348742ca1aeb1d3e1e3b494",
+      "survivor_id": 4202061,
+      "superseded_ids": [
+        4201962,
+        4201975
+      ],
+      "group_size": 3,
+      "domains": [
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "8b8d6bf24d259d15da93eb503bbed1e8",
+      "survivor_id": 4196344,
+      "superseded_ids": [
+        4196393
+      ],
+      "group_size": 2,
+      "domains": [
+        ""
+      ]
+    },
+    {
+      "dup_key": "9f30840cbacfa5970e2771df89b006af",
+      "survivor_id": 4196155,
+      "superseded_ids": [
+        4196589,
+        4197540
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "a16d8081544a328595f4655f2e332fdb",
+      "survivor_id": 4196140,
+      "superseded_ids": [
+        4196574,
+        4197525
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "a6cdbe8edd02a51fa48f3460d3b308b3",
+      "survivor_id": 4262245,
+      "superseded_ids": [
+        4261660
+      ],
+      "group_size": 2,
+      "domains": [
+        ""
+      ]
+    },
+    {
+      "dup_key": "a9b2f110aa233f9004b960f2f52f5dbf",
+      "survivor_id": 4262243,
+      "superseded_ids": [
+        4261657
+      ],
+      "group_size": 2,
+      "domains": [
+        ""
+      ]
+    },
+    {
+      "dup_key": "aaaab460f3d0281e40a2a69b61af6b33",
+      "survivor_id": 4196137,
+      "superseded_ids": [
+        4196571,
+        4197522
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "ab224e052a92a91ffcf03e73f3948cba",
+      "survivor_id": 4262244,
+      "superseded_ids": [
+        4261484,
+        4261588,
+        4261659
+      ],
+      "group_size": 4,
+      "domains": [
+        ""
+      ]
+    },
+    {
+      "dup_key": "b386011b5bced2974e3e3b0b2ac2fb9f",
+      "survivor_id": 4201953,
+      "superseded_ids": [
+        4201927
+      ],
+      "group_size": 2,
+      "domains": [
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "b5c3f663099a5f953cfec3213b8677e1",
+      "survivor_id": 4196178,
+      "superseded_ids": [
+        4196158,
+        4196591,
+        4196619,
+        4196626
+      ],
+      "group_size": 5,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "bbf79f4069b0bc72307cc8956d9b407b",
+      "survivor_id": 4201196,
+      "superseded_ids": [
+        4201179
+      ],
+      "group_size": 2,
+      "domains": [
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "c3813332f444020d6d6087a6ae8d42aa",
+      "survivor_id": 4261661,
+      "superseded_ids": [
+        4261485,
+        4261589
+      ],
+      "group_size": 3,
+      "domains": [
+        ""
+      ]
+    },
+    {
+      "dup_key": "c81828fd1b39eacfafa3585264221289",
+      "survivor_id": 4201508,
+      "superseded_ids": [
+        4201520
+      ],
+      "group_size": 2,
+      "domains": [
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "d40e372e69960da337f0f6c1c88e5e8b",
+      "survivor_id": 4196138,
+      "superseded_ids": [
+        4196572,
+        4197523
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "e0350ad11089cfd886ef1fc338364350",
+      "survivor_id": 4201826,
+      "superseded_ids": [
+        4202150
+      ],
+      "group_size": 2,
+      "domains": [
+        "",
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "e085ddce9590be1eea5968d4d04a0887",
+      "survivor_id": 4196131,
+      "superseded_ids": [
+        4196565,
+        4197516
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "e26d2007c2236d62bc1eae626976e8a4",
+      "survivor_id": 4199382,
+      "superseded_ids": [
+        4199383
+      ],
+      "group_size": 2,
+      "domains": [
+        ""
+      ]
+    },
+    {
+      "dup_key": "e57b2f3e8cbedf9dc6a7334067ac8379",
+      "survivor_id": 4253387,
+      "superseded_ids": [
+        4253382
+      ],
+      "group_size": 2,
+      "domains": [
+        "zetetic-team-subagents"
+      ]
+    },
+    {
+      "dup_key": "e8888b41532b039abe7a5461376be504",
+      "survivor_id": 4261658,
+      "superseded_ids": [
+        4261483,
+        4261587
+      ],
+      "group_size": 3,
+      "domains": [
+        ""
+      ]
+    },
+    {
+      "dup_key": "e8914de4d637d8f387cf503b323e0271",
+      "survivor_id": 4201812,
+      "superseded_ids": [
+        4202180
+      ],
+      "group_size": 2,
+      "domains": [
+        "",
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "ea04c863575f7ab35311b379f87d238d",
+      "survivor_id": 4196135,
+      "superseded_ids": [
+        4196569,
+        4197520
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "ee528a5a1bdb3b2036bd59a640e19128",
+      "survivor_id": 4201677,
+      "superseded_ids": [
+        4201840
+      ],
+      "group_size": 2,
+      "domains": [
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "f094763032485d07bd2fc281dd115570",
+      "survivor_id": 4196130,
+      "superseded_ids": [
+        4196564,
+        4197515
+      ],
+      "group_size": 3,
+      "domains": [
+        "cortex"
+      ]
+    },
+    {
+      "dup_key": "f7c9703367a10939c5dc4f1cbe0ad429",
+      "survivor_id": 4196220,
+      "superseded_ids": [
+        4196218
+      ],
+      "group_size": 2,
+      "domains": [
+        "zetetic-team-subagents"
+      ]
+    },
+    {
+      "dup_key": "fa840a03915f49d5799326de454ef074",
+      "survivor_id": 4201949,
+      "superseded_ids": [
+        4202194
+      ],
+      "group_size": 2,
+      "domains": [
+        "",
+        "agentic-ai"
+      ]
+    },
+    {
+      "dup_key": "ff3349fbb3c0852b4fd4dea9a64a4ce6",
+      "survivor_id": 4262242,
+      "superseded_ids": [
+        4261482,
+        4261586,
+        4261656
+      ],
+      "group_size": 4,
+      "domains": [
+        ""
+      ]
+    }
+  ]
+}
