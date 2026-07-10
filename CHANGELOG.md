@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.6.0] - 2026-07-10
+
+### Added
+- **Session identity channel — T2 completion (blame path, decision 4255039).** A per-window session registry (`~/.cache/cortex/session-registry/<claude_pid>.json`) is written by the hooks (SessionStart writes + purges dead entries, each prompt refreshes, SessionEnd tombstones) and read by MCP handlers through validated pid lineage (opaque start-time token defeats pid reuse). `recall`'s T1 injection receipts now carry the canonical session id (transcript stem); every uncertain case — headless, legacy hooks, dead window, tombstone — degrades to NULL, never a stale value.
+- **Wiki citations write-path (unblocks CITED_IN edges).** A successful `wiki_read` now records one deduplicated citation per (page, session) — partial unique index on `wiki.citations(page_id, session_id)` + `ON CONFLICT DO NOTHING` — so the heat bump cannot repeat within a session, and `wiki.citations.session_id` finally feeds the CITED_IN wiki→discussion edges in the cortex-viz brain graph. No resolved session → no citation.
+
+### Changed
+- `wiki_read` is no longer strictly read-only: the page read stays filesystem-only, but a successful read records a citation as an explicit, best-effort observability side effect (a citation failure never fails the read). Docstring and MCP annotations updated accordingly.
+
+### Fixed
+- **Windows: profile domain detection defeated by casing (#95).** `cwd_to_project_id` lowercases ids while profiles keep original casing; comparisons are now case-folded through a single `normalize_project_id` at all four affected sites — including `record_session_end._resolve_domain`, the site that silently stored memories with `domain: ""`. Reported with a validated patch by @mbe14.
+
 ## [4.5.0] - 2026-07-10
 
 ### Added
