@@ -22,6 +22,7 @@ from mcp_server.shared.categorizer import categorize
 from mcp_server.shared.project_ids import (
     cwd_to_project_id,
     domain_id_from_label,
+    normalize_project_id,
     project_id_to_label,
 )
 
@@ -225,9 +226,12 @@ def _resolve_domain(
         return "unknown"
 
     proj_id = project or cwd_to_project_id(cwd)
-    for d_id, d in (profiles.get("domains") or {}).items():
-        if d.get("projects") and proj_id in d["projects"]:
-            return d_id
+    normalized = normalize_project_id(proj_id)
+    if normalized is not None:
+        for d_id, d in (profiles.get("domains") or {}).items():
+            projects = {normalize_project_id(p) for p in (d.get("projects") or [])}
+            if normalized in projects:
+                return d_id
 
     if proj_id:
         label = project_id_to_label(proj_id)

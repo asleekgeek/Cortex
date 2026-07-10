@@ -139,6 +139,45 @@ class TestRecordSessionEndHandler:
         assert result["domain"] == "my-domain"
         assert result["profileUpdated"] is True
 
+    def test_detects_domain_despite_windows_casing_mismatch(self):
+        # issue #95: profile keeps original filesystem casing
+        # ('C--Work-MyRepo') while cwd_to_project_id derives a lowercase
+        # slug for Windows-style paths ('c--work-myrepo'). Before the fix,
+        # remember(directory=...) -> detect_domain -> this resolver stored
+        # domain "" (fell through to the label-derived fallback, which for
+        # an unrelated cwd is not "unknown" but also not "my-domain").
+        profiles = {
+            "domains": {
+                "my-domain": {
+                    "projects": ["C--Work-MyRepo"],
+                    "confidence": 0.5,
+                }
+            }
+        }
+        with (
+            patch(
+                "mcp_server.handlers.record_session_end.load_profiles",
+                return_value=profiles,
+            ),
+            patch(
+                "mcp_server.handlers.record_session_end.load_session_log",
+                return_value={"sessions": []},
+            ),
+            patch("mcp_server.handlers.record_session_end.save_session_log"),
+            patch("mcp_server.handlers.record_session_end.apply_session_update"),
+            patch("mcp_server.handlers.record_session_end.save_profile"),
+        ):
+            result = asyncio.run(
+                handler(
+                    {
+                        "session_id": "test-windows-casing",
+                        "cwd": "C:\\Work\\MyRepo",
+                    }
+                )
+            )
+        assert result["domain"] == "my-domain"
+        assert result["profileUpdated"] is True
+
     def test_categorizes_keywords(self):
         with (
             patch(

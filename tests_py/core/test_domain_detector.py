@@ -165,6 +165,27 @@ class TestDetectDomain:
         assert result["coldStart"] is False
         assert result["confidence"] <= 0.3
 
+    # ── issue #95: Windows casing mismatch (mbe14's live repro) ─────────
+
+    def test_windows_project_match_despite_casing_mismatch(self):
+        # Profile stores original filesystem casing ('C--Work-MyRepo');
+        # cwd_to_project_id derives the lowercase slug for a Windows path.
+        # Before the fix: confidence 0, hollow profile. After: confident
+        # match, same as mbe14's live A/B (project=None vs project=exact).
+        profiles = _make_profiles(
+            {
+                "c--work-myrepo": _make_domain(
+                    projects=["C--Work-MyRepo"],
+                    topKeywords=[],
+                    categoryDistribution={},
+                ),
+            }
+        )
+        result = detect_domain({"cwd": "C:\\Work\\MyRepo"}, profiles)
+        assert result["coldStart"] is False
+        assert result["domain"] == "c--work-myrepo"
+        assert result["confidence"] >= 0.3
+
 
 # ---------------------------------------------------------------------------
 # map_project_to_domain
@@ -200,3 +221,29 @@ class TestMapProjectToDomain:
 
     def test_no_domains_key(self):
         assert map_project_to_domain("-foo", {}) is None
+
+    # ── issue #95: Windows casing mismatch ───────────────────────────────
+
+    def test_windows_casing_mismatch_matches(self):
+        profiles = _make_profiles(
+            {
+                "cortex": _make_domain(projects=["C--Work-MyRepo"]),
+            }
+        )
+        assert map_project_to_domain("c--work-myrepo", profiles) == "cortex"
+
+    def test_already_matching_case_still_matches(self):
+        profiles = _make_profiles(
+            {
+                "cortex": _make_domain(projects=["-Users-dev-cortex"]),
+            }
+        )
+        assert map_project_to_domain("-Users-dev-cortex", profiles) == "cortex"
+
+    def test_empty_projects_list_no_match(self):
+        profiles = _make_profiles(
+            {
+                "cortex": _make_domain(projects=[]),
+            }
+        )
+        assert map_project_to_domain("c--work-myrepo", profiles) is None

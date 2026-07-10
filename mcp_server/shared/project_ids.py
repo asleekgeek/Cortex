@@ -88,6 +88,47 @@ def cwd_to_project_id(cwd: str | None) -> str | None:
     return cwd.replace("\\", "/").replace("/", "-")
 
 
+def normalize_project_id(project_id: str | None) -> str | None:
+    """Case-fold a project ID for equality/membership comparisons.
+
+    Preconditions:
+        - project_id is None, empty, or a string either produced by
+          cwd_to_project_id or read verbatim from profiles.json's
+          ``projects`` list (which is populated at profile-write time from
+          on-disk Claude project directory names, not from this module).
+    Postconditions:
+        - Returns None when project_id is None or empty.
+        - Otherwise returns the lowercased string.
+
+    Rationale (issue #95): cwd_to_project_id lowercases Windows- and
+    Git-Bash-derived path IDs but preserves source casing for POSIX-derived
+    ones (see its docstring above). A profile's ``projects`` list is
+    populated from on-disk directory names, which on Windows retain their
+    original filesystem casing. Comparing a freshly-derived ID (lowercase
+    on Windows) against a stored one (original casing) with a raw
+    `==`/`in` therefore never matches on Windows — the mismatch is the
+    norm, not an edge case, because Windows paths are themselves
+    case-insensitive. Folding case at every comparison site closes that
+    gap without a profiles.json migration and without a platform check
+    (case-folding is itself syntax-driven, not host-driven — consistent
+    with cwd_to_project_id's own design principle stated above).
+
+    Two project directories differing only by case (e.g. `Foo` and `foo`)
+    could in principle collide under this fold on a case-sensitive
+    filesystem (Linux, most macOS). This is accepted: (a) it requires two
+    sibling directories named identically but for case, which is
+    vanishingly rare in practice; (b) the failure mode is a session
+    misattributed to the sibling domain, recoverable via
+    ``rebuild_profiles``, not data loss; (c) it is far smaller in impact
+    than the status quo, where every Windows user with any uppercase
+    character anywhere in their project path gets zero profile-based
+    domain detection.
+    """
+    if not project_id:
+        return None
+    return project_id.lower()
+
+
 def project_id_to_label(project_id: str | None) -> str:
     """Convert a Claude project ID to a human-readable label.
 
