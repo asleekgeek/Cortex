@@ -267,13 +267,29 @@ def ver(pkg):
         return m.version(pkg)
     except Exception:
         return "absent"
+# i7d3 reproducibility-gap fix (2026-07-11): uv.lock pins the Python
+# package version but NOT the HF model weights an unpinned model name
+# resolves against (refs/main can move independently of any pyproject/
+# uv.lock change, with zero signal in this manifest before this fix).
+# Record the exact revision this run's EmbeddingEngine loaded, and torch
+# (previously absent from "packages" entirely, so a torch upgrade
+# affecting CPU/MPS float32 parity had no manifest signal either). See
+# mcp_server/infrastructure/embedding_engine.py's "Model revision pin"
+# docstring for the incident this closes.
+def embedding_revision():
+    try:
+        from mcp_server.infrastructure.embedding_engine import get_embedding_engine
+        return get_embedding_engine().revision
+    except Exception:
+        return "unresolved"
 manifest = {
     "git_sha": git_sha,
     "longmemeval_dataset_sha256": ds_sha,
     "pg_image": pg_image,
     "python": platform.python_version(),
     "packages": {p: ver(p) for p in
-                 ("datasets", "sentence-transformers", "psycopg", "psycopg-pool")},
+                 ("datasets", "sentence-transformers", "torch", "psycopg", "psycopg-pool")},
+    "embedding_model_revision": embedding_revision(),
     "results_files": sorted(p.name for p in Path(results_dir).glob("*.json")),
 }
 out = Path(results_dir) / "MANIFEST.json"
