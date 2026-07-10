@@ -132,6 +132,79 @@ class TestScalarPath:
         assert args[1] == pytest.approx(1.0)
 
 
+class _StreamingStore:
+    """Fake store exposing only the streaming (Phase 4) cursor API.
+
+    Mirrors real PG stores: ``run_homeostatic_cycle(store, None)`` (as
+    called unconditionally by ``consolidate.py::_run_always_cycles``)
+    must take the ``iter_memories_for_decay`` branch, not the
+    materializing ``get_all_memories_for_decay`` fallback — that's the
+    only way to exercise the streaming scalar-update path this
+    regression lives in.
+    """
+
+    def __init__(self, memories: list[dict], factor_return: float = 1.0):
+        self._memories = memories
+        self.factor_writes: list[tuple[str, float]] = []
+        self._factor_return = factor_return
+
+    def iter_memories_for_decay(self, chunk_size: int = 1000):
+        # Two chunks, to prove the domain count merges across chunks.
+        mid = len(self._memories) // 2 or 1
+        yield self._memories[:mid]
+        if self._memories[mid:]:
+            yield self._memories[mid:]
+
+    def get_homeostatic_factor(self, domain: str) -> float:
+        return self._factor_return
+
+    def set_homeostatic_factor(self, domain: str, factor: float) -> None:
+        self.factor_writes.append((domain, factor))
+
+
+class TestStreamingScalarDominantDomain:
+    """Regression: streaming scalar path must label the real domain.
+
+    Root cause (fixed 2026-07-10): ``_dominant_domain([])`` — the
+    streaming branch materialized ``memories = []`` for the scalar/no-op
+    paths (only the cohort branch materialized rows), so every real
+    streaming-path scalar write went to ``domain=''`` regardless of
+    which domain's memories actually triggered the scaling. Introduced
+    by commit 84cfdedf (Phase 4 chunked consolidate); the consolidate
+    handler calls ``run_homeostatic_cycle(store, None)`` unconditionally
+    on every cycle, so this fired on every production consolidation run.
+    """
+
+    def test_streaming_scalar_write_labels_real_dominant_domain(self):
+        memories = [_memory(i, 0.15 + 0.001 * i, domain="acme-corp") for i in range(40)]
+        store = _StreamingStore(memories, factor_return=1.0)
+
+        result = run_homeostatic_cycle(store, memories=None)
+
+        assert result["scaling_kind"] == "scalar_update"
+        assert result["scaling_applied"] is True
+        assert store.factor_writes, "expected exactly one set_homeostatic_factor call"
+        written_domain, _ = store.factor_writes[0]
+        assert written_domain == "acme-corp"
+        assert written_domain != ""
+
+    def test_streaming_scalar_picks_majority_domain_across_chunks(self):
+        # 25 "acme-corp" + 15 "beta-inc", split across the two streamed
+        # chunks by _StreamingStore — dominant-by-count must still win
+        # even though no single chunk sees the full picture.
+        memories = [_memory(i, 0.15 + 0.001 * i, domain="acme-corp") for i in range(25)]
+        memories += [
+            _memory(i, 0.15 + 0.001 * i, domain="beta-inc") for i in range(25, 40)
+        ]
+        store = _StreamingStore(memories, factor_return=1.0)
+
+        result = run_homeostatic_cycle(store, memories=None)
+
+        assert result["scaling_kind"] == "scalar_update"
+        written_domain, _ = store.factor_writes[0]
+        assert written_domain == "acme-corp"
+
+
 class TestApplyScalarUnit:
     def test_mean_below_safety_floor_noop(self):
         store = _stub_store()
