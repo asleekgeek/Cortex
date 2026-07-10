@@ -19,7 +19,7 @@ from mcp_server.infrastructure.embedding_engine import (
 )
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
-from mcp_server.handlers._tool_meta import READ_ONLY
+from mcp_server.handlers._tool_meta import NON_IDEMPOTENT_WRITE
 from mcp_server.handlers._telemetry_wrap import instrument
 from mcp_server.handlers.replay_tracking import track_replay_event
 
@@ -27,7 +27,7 @@ from mcp_server.handlers.replay_tracking import track_replay_event
 
 schema = {
     "title": "Recall (hierarchical)",
-    "annotations": READ_ONLY,
+    "annotations": NON_IDEMPOTENT_WRITE,
     "description": (
         "Retrieve memories via the fractal three-level hierarchy (L0=individual "
         "memories, L1=topic clusters, L2=root clusters), with adaptive level "
@@ -41,10 +41,13 @@ schema = {
         "flat ranked list. Distinct from `recall` (flat WRRF result, no "
         "hierarchy), `drill_down` (consumer of this tool's output, navigates "
         "one level deeper into a returned cluster), and `navigate_memory` "
-        "(graph traversal, not cluster tree). Mutates access_count on "
-        "surfaced memories. Latency ~150-300ms on domain-scoped calls. "
-        "Returns {hierarchy: [{cluster_id, level, label, score, members?}], "
-        "total_clusters}."
+        "(graph traversal, not cluster tree). Not read-only: every surfaced "
+        "memory is recorded as a hippocampal replay event — access_count/"
+        "replay_count increment and hippocampal_dependency decays (CLS-B, "
+        "Ketz et al. 2023) — so repeat calls are not idempotent "
+        "(`track_replay_event`, `replay_tracking.py`). Latency ~150-300ms "
+        "on domain-scoped calls. Returns {hierarchy: [{cluster_id, level, "
+        "label, score, members?}], total_clusters}."
     ),
     "inputSchema": {
         "type": "object",
