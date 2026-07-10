@@ -88,11 +88,15 @@ class PersonaDrift(BaseModel):
 class AttributionNode(BaseModel):
     """One node in the pipeline attribution graph.
 
-    activation is float | str, not just float: 3 of the 6 classifier nodes
-    (problemDecomposition, explorationStyle, verificationBehavior) copy a
-    categorical CognitiveStyle value straight from the metacognitive profile
-    (see types_profiles.CognitiveStyle) and are never numerically normalized.
-    This is the real, pre-existing observed shape — not a typing bug.
+    activation is always numeric. 3 of the 6 classifier nodes
+    (problemDecomposition, explorationStyle, verificationBehavior) classify
+    a *categorical* CognitiveStyle value (see types_profiles.CognitiveStyle,
+    e.g. "top-down"/"bottom-up") that has no legitimate scalar magnitude --
+    fabricating a number for it would be a silent, unsourced cast. Those
+    three nodes carry activation=0.0 (no measured magnitude) and expose the
+    classification separately via categoricalValue. The other three
+    classifier nodes and all non-classifier nodes leave categoricalValue
+    unset and carry a real float in activation.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -100,7 +104,8 @@ class AttributionNode(BaseModel):
     id: str
     label: str
     layer: str
-    activation: float | str
+    activation: float
+    categoricalValue: str | None = None
 
 
 class AttributionEdge(BaseModel):

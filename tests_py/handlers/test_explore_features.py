@@ -1,6 +1,7 @@
 """Tests for mcp_server.handlers.explore_features — ported from explore-features.test.js."""
 
 import asyncio
+import json
 from unittest.mock import patch
 
 from mcp_server.handlers.explore_features import handler, schema
@@ -168,6 +169,155 @@ class TestExploreAttribution:
         ):
             result = asyncio.run(handler({"mode": "attribution"}))
         assert result["domain"] == "first-dom"
+
+
+def _write_real_session(proj_dir, name):
+    """Write a real-shaped JSONL session (used to prove the attribution
+    mode is wired to a genuine on-disk source, not a fabricated graph)."""
+    proj_dir.mkdir(parents=True, exist_ok=True)
+    lines = [
+        json.dumps(
+            {
+                "type": "user",
+                "slug": "s",
+                "cwd": str(proj_dir),
+                "timestamp": "2026-01-01T00:00:00Z",
+                "message": {"content": "fix the bug in the auth module"},
+            }
+        ),
+        json.dumps(
+            {
+                "type": "assistant",
+                "timestamp": "2026-01-01T00:05:00Z",
+                "message": {
+                    "content": [{"type": "tool_use", "name": "Edit", "input": {}}]
+                },
+            }
+        ),
+    ]
+    (proj_dir / name).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+class TestExploreAttributionRealSource:
+    """mode=attribution must trace real on-disk sessions when the domain
+    has indexed projects, and stay honestly empty when it does not --
+    the hollow-mode bug (trace_attribution always called with []) fixed
+    by wiring discover_conversations_for_projects()."""
+
+    def test_produces_non_empty_graph_from_real_sessions(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("mcp_server.infrastructure.scanner.CLAUDE_DIR", tmp_path)
+        projects_dir = tmp_path / "projects"
+        _write_real_session(projects_dir / "proj-a", "s1.jsonl")
+
+        profiles = {
+            "domains": {
+                "d1": {
+                    "label": "D1",
+                    "confidence": 0.7,
+                    "projects": ["proj-a"],
+                    "metacognitive": {
+                        "activeReflective": 0.3,
+                        "sensingIntuitive": -0.2,
+                        "sequentialGlobal": 0.5,
+                        "problemDecomposition": "top-down",
+                        "explorationStyle": "depth-first",
+                        "verificationBehavior": "test-after",
+                    },
+                }
+            },
+            "featureDictionary": None,
+        }
+        with patch(
+            "mcp_server.handlers.explore_features.load_profiles",
+            return_value=profiles,
+        ):
+            result = asyncio.run(handler({"mode": "attribution", "domain": "d1"}))
+
+        assert result["status"] == "ok"
+        assert len(result["graph"]["nodes"]) > 0
+        assert len(result["graph"]["edges"]) > 0
+        edit_node = next(
+            n for n in result["graph"]["nodes"] if n["id"] == "input:tool:Edit"
+        )
+        assert edit_node["activation"] > 0
+
+    def test_empty_graph_when_domain_has_no_indexed_projects(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr("mcp_server.infrastructure.scanner.CLAUDE_DIR", tmp_path)
+        profiles = {
+            "domains": {
+                "d1": {
+                    "label": "D1",
+                    "confidence": 0.7,
+                    "metacognitive": {},
+                    # no "projects" key -- nothing indexed for this domain
+                }
+            },
+            "featureDictionary": None,
+        }
+        with patch(
+            "mcp_server.handlers.explore_features.load_profiles",
+            return_value=profiles,
+        ):
+            result = asyncio.run(handler({"mode": "attribution", "domain": "d1"}))
+
+        assert result["status"] == "ok"
+        assert result["graph"]["nodes"] == []
+        assert result["graph"]["edges"] == []
+
+    def test_classifier_activation_is_always_numeric(self, tmp_path, monkeypatch):
+        """The 3 categorical classifiers (problemDecomposition/
+        explorationStyle/verificationBehavior) must not leak their string
+        category into the numeric `activation` field."""
+        monkeypatch.setattr("mcp_server.infrastructure.scanner.CLAUDE_DIR", tmp_path)
+        projects_dir = tmp_path / "projects"
+        _write_real_session(projects_dir / "proj-a", "s1.jsonl")
+
+        profiles = {
+            "domains": {
+                "d1": {
+                    "label": "D1",
+                    "confidence": 0.7,
+                    "projects": ["proj-a"],
+                    "metacognitive": {
+                        "activeReflective": 0.3,
+                        "sensingIntuitive": -0.2,
+                        "sequentialGlobal": 0.5,
+                        "problemDecomposition": "top-down",
+                        "explorationStyle": "depth-first",
+                        "verificationBehavior": "test-after",
+                    },
+                }
+            },
+            "featureDictionary": None,
+        }
+        with patch(
+            "mcp_server.handlers.explore_features.load_profiles",
+            return_value=profiles,
+        ):
+            result = asyncio.run(handler({"mode": "attribution", "domain": "d1"}))
+
+        nodes_by_id = {n["id"]: n for n in result["graph"]["nodes"]}
+        for cls, expected_value in [
+            ("problemDecomposition", "top-down"),
+            ("explorationStyle", "depth-first"),
+            ("verificationBehavior", "test-after"),
+        ]:
+            node = nodes_by_id[f"classifier:{cls}"]
+            assert isinstance(node["activation"], float)
+            assert node["activation"] == 0.0
+            assert node["categoricalValue"] == expected_value
+
+        for cls, expected_activation in [
+            ("activeReflective", 0.3),
+            ("sensingIntuitive", -0.2),
+            ("sequentialGlobal", 0.5),
+        ]:
+            node = nodes_by_id[f"classifier:{cls}"]
+            assert isinstance(node["activation"], float)
+            assert node["activation"] == expected_activation
+            assert node["categoricalValue"] is None
 
 
 class TestExplorePersona:

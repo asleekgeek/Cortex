@@ -204,6 +204,46 @@ def _parse_conversation_file(
     return build_conversation_record(meta, stats, file_path, project_name)
 
 
+def _scan_project_conversations(
+    proj_path: Path,
+    project_name: str,
+    out: list[dict[str, Any]],
+    limit: int | None,
+) -> bool:
+    """Scan one project directory into ``out``, honoring an optional cap.
+
+    Returns True once ``limit`` has been reached (caller should stop
+    scanning further projects), False otherwise.
+    """
+    proj_entries = list_dir(proj_path, with_file_types=True)
+    if not proj_entries:
+        return False
+
+    for entry in proj_entries:
+        if not entry.is_file() or not entry.name.endswith(".jsonl"):
+            continue
+        if "subagent" in entry.name:
+            continue
+        file_path = proj_path / entry.name
+        if "subagents" in str(file_path):
+            continue
+
+        try:
+            record = _parse_conversation_file(file_path, project_name)
+            if record:
+                out.append(record)
+        except Exception as e:
+            print(
+                f"[methodology-agent] Failed to read conversation {file_path}: {e}",
+                file=sys.stderr,
+            )
+
+        if limit is not None and len(out) >= limit:
+            return True
+
+    return False
+
+
 def discover_conversations() -> list[dict[str, Any]]:
     """Discover all conversation JSONL files across Claude project directories."""
     projects_dir = CLAUDE_DIR / "projects"
@@ -216,30 +256,44 @@ def discover_conversations() -> list[dict[str, Any]]:
     for pdir in entries:
         if not pdir.is_dir():
             continue
+        _scan_project_conversations(
+            projects_dir / pdir.name, pdir.name, conversations, limit=None
+        )
 
-        proj_path = projects_dir / pdir.name
-        proj_entries = list_dir(proj_path, with_file_types=True)
-        if not proj_entries:
+    return conversations
+
+
+def discover_conversations_for_projects(
+    project_ids: list[str],
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Scoped conversation scan bounded to specific project directories.
+
+    Precondition: project_ids names project directories as produced by
+    discover_conversations()/group_by_project() (entries under
+    CLAUDE_DIR/projects); limit > 0.
+    Postcondition: returns at most `limit` conversation records, drawn
+    only from JSONL files under the given project directories -- every
+    other project directory under CLAUDE_DIR/projects is left unscanned.
+    Stops as soon as `limit` is reached, so cost is bounded by `limit`
+    file reads rather than by the total session history size (unlike
+    discover_conversations(), which always walks every project).
+    """
+    if not project_ids or limit <= 0:
+        return []
+
+    projects_dir = CLAUDE_DIR / "projects"
+    conversations: list[dict[str, Any]] = []
+
+    for project_id in project_ids:
+        proj_path = projects_dir / project_id
+        if not proj_path.is_dir():
             continue
-
-        for entry in proj_entries:
-            if not entry.is_file() or not entry.name.endswith(".jsonl"):
-                continue
-            if "subagent" in entry.name:
-                continue
-            file_path = proj_path / entry.name
-            if "subagents" in str(file_path):
-                continue
-
-            try:
-                record = _parse_conversation_file(file_path, pdir.name)
-                if record:
-                    conversations.append(record)
-            except Exception as e:
-                print(
-                    f"[methodology-agent] Failed to read conversation {file_path}: {e}",
-                    file=sys.stderr,
-                )
+        reached_limit = _scan_project_conversations(
+            proj_path, project_id, conversations, limit=limit
+        )
+        if reached_limit:
+            break
 
     return conversations
 
