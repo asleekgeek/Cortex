@@ -16,7 +16,9 @@ schema = {
         "every Function/Method/Struct + every call edge + every File→"
         "symbol containment edge via Cypher, then materialises them as "
         "memories + KG entities + edges, plus a wiki reference page "
-        "per detected process entry point. Use this to seed the Wiki / "
+        "per detected process entry point, plus one memory per "
+        "Markdown-family document with its content (INC5.3/D6, toggle "
+        "via ingest_docs). Use this to seed the Wiki / "
         "Board / Knowledge / Graph views from a freshly-indexed or re-"
         "indexed codebase. Distinct from `codebase_analyze` (Cortex's "
         "OWN tree-sitter analyzer, no upstream MCP), `seed_project` "
@@ -61,6 +63,17 @@ schema = {
                     "path exists for this project."
                 ),
                 "default": False,
+            },
+            "ingest_docs": {
+                "type": "boolean",
+                "description": (
+                    "If true (default), also index the CONTENT of every "
+                    "Markdown-family file (.md/.markdown/.mdx) the graph "
+                    "found, as memories tagged 'doc' — AP indexes these "
+                    "files as nodes but never their content or searches "
+                    "them (INC5.3/D6). Set false to skip this pass."
+                ),
+                "default": True,
             },
         },
     },
