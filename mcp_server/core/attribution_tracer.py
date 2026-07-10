@@ -36,26 +36,47 @@ def _build_layer_nodes(
     ]
 
 
+# Classifiers whose CognitiveStyle field is a continuous float score
+# (types_profiles.CognitiveStyle.active_reflective/sensing_intuitive/
+# sequential_global). These map directly onto AttributionNode.activation.
+_NUMERIC_CLASSIFIERS = ["activeReflective", "sensingIntuitive", "sequentialGlobal"]
+
+# Classifiers whose CognitiveStyle field is a categorical Literal[str]
+# (types_profiles.CognitiveStyle.problem_decomposition/exploration_style/
+# verification_behavior, e.g. "top-down"/"bottom-up"). These have no
+# legitimate scalar magnitude, so activation stays 0.0 and the
+# classification is carried in categoricalValue instead.
+_CATEGORICAL_CLASSIFIERS = [
+    "problemDecomposition",
+    "explorationStyle",
+    "verificationBehavior",
+]
+
+
 def _build_classifier_nodes(profile: dict) -> list[AttributionNode]:
     """Build classifier nodes with activation from metacognitive profile."""
-    classifiers = [
-        "activeReflective",
-        "sensingIntuitive",
-        "sequentialGlobal",
-        "problemDecomposition",
-        "explorationStyle",
-        "verificationBehavior",
-    ]
     mc = profile.get("metacognitive") or {}
-    return [
+
+    nodes = [
         AttributionNode(
             id=f"classifier:{cls}",
             label=cls,
             layer="classifier",
             activation=mc.get(cls) or 0,
         )
-        for cls in classifiers
+        for cls in _NUMERIC_CLASSIFIERS
     ]
+    nodes.extend(
+        AttributionNode(
+            id=f"classifier:{cls}",
+            label=cls,
+            layer="classifier",
+            activation=0.0,
+            categoricalValue=mc.get(cls),
+        )
+        for cls in _CATEGORICAL_CLASSIFIERS
+    )
+    return nodes
 
 
 def _build_feature_nodes(dictionary: FeatureDictionary | None) -> list[AttributionNode]:

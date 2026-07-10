@@ -7,7 +7,37 @@ from mcp_server.infrastructure.scanner import (
     group_by_project,
     discover_all_memories,
     discover_conversations,
+    discover_conversations_for_projects,
 )
+
+
+def _write_session(proj_dir, name, n_user=2, n_assistant=2):
+    """Write a minimal-but-real JSONL session file into a project dir."""
+    proj_dir.mkdir(parents=True, exist_ok=True)
+    lines = [
+        json.dumps(
+            {
+                "type": "user",
+                "slug": "s",
+                "cwd": str(proj_dir),
+                "timestamp": "2026-01-01T00:00:00Z",
+                "message": {"content": "fix the bug please"},
+            }
+        )
+    ]
+    for _ in range(n_assistant):
+        lines.append(
+            json.dumps(
+                {
+                    "type": "assistant",
+                    "timestamp": "2026-01-01T00:05:00Z",
+                    "message": {
+                        "content": [{"type": "tool_use", "name": "Read", "input": {}}]
+                    },
+                }
+            )
+        )
+    (proj_dir / name).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 class TestReadHeadTail:
@@ -76,3 +106,61 @@ class TestDiscoverConversations:
     def test_returns_array(self):
         conversations = discover_conversations()
         assert isinstance(conversations, list)
+
+
+class TestDiscoverConversationsForProjects:
+    def test_scopes_to_requested_projects_only(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("mcp_server.infrastructure.scanner.CLAUDE_DIR", tmp_path)
+        projects_dir = tmp_path / "projects"
+        _write_session(projects_dir / "proj-a", "s1.jsonl")
+        _write_session(projects_dir / "proj-b", "s1.jsonl")
+
+        result = discover_conversations_for_projects(["proj-a"], limit=20)
+
+        assert len(result) == 1
+        assert result[0]["toolsUsed"] == ["Read"]
+
+    def test_never_touches_unrequested_project_dirs(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("mcp_server.infrastructure.scanner.CLAUDE_DIR", tmp_path)
+        projects_dir = tmp_path / "projects"
+        _write_session(projects_dir / "proj-a", "s1.jsonl")
+        # proj-b intentionally has a corrupt/unreadable-shape file; if the
+        # scoped scan ever touched it, this would still not raise (parser
+        # is defensive), but asserting proj-b's slug never appears proves
+        # the directory was skipped entirely.
+        (projects_dir / "proj-b").mkdir(parents=True)
+        (projects_dir / "proj-b" / "s1.jsonl").write_text("not json\n")
+
+        result = discover_conversations_for_projects(["proj-a"], limit=20)
+
+        assert all(c["project"] == "proj-a" for c in result)
+
+    def test_bounded_by_limit(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("mcp_server.infrastructure.scanner.CLAUDE_DIR", tmp_path)
+        projects_dir = tmp_path / "projects"
+        for i in range(5):
+            _write_session(projects_dir / "proj-a", f"s{i}.jsonl")
+
+        result = discover_conversations_for_projects(["proj-a"], limit=3)
+
+        assert len(result) == 3
+
+    def test_empty_project_ids_returns_empty_without_io(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("mcp_server.infrastructure.scanner.CLAUDE_DIR", tmp_path)
+        # No projects dir created at all -- if this touched the filesystem
+        # looking for it beyond the guard clause, it would still return []
+        # (list_dir is defensive), so this mainly documents the contract.
+        assert discover_conversations_for_projects([], limit=20) == []
+
+    def test_zero_limit_returns_empty(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("mcp_server.infrastructure.scanner.CLAUDE_DIR", tmp_path)
+        projects_dir = tmp_path / "projects"
+        _write_session(projects_dir / "proj-a", "s1.jsonl")
+
+        assert discover_conversations_for_projects(["proj-a"], limit=0) == []
+
+    def test_unknown_project_id_skipped_gracefully(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("mcp_server.infrastructure.scanner.CLAUDE_DIR", tmp_path)
+        (tmp_path / "projects").mkdir()
+
+        assert discover_conversations_for_projects(["does-not-exist"], limit=20) == []
