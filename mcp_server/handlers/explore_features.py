@@ -18,6 +18,7 @@ from mcp_server.core.persona_vector import (
 from mcp_server.core.sparse_dictionary import build_seed_dictionary
 from mcp_server.handlers._tool_meta import READ_ONLY
 from mcp_server.infrastructure.profile_store import load_profiles
+from mcp_server.shared.types_features import FeatureDictionary, PersistentFeature
 
 schema = {
     "title": "Explore features (interpretability lens)",
@@ -132,24 +133,38 @@ async def handler(args: dict) -> dict:
         return {"status": "error", "message": f"Unknown mode: {mode}"}
 
 
+def _resolve_feature_dictionary(profiles: dict) -> FeatureDictionary:
+    """Validate the disk-persisted featureDictionary, or fall back to the seed.
+
+    profiles.get("featureDictionary") is JSON loaded from profiles.json
+    (written by profile_assembler.py) — an untyped dict at this exact
+    boundary. Validate it into FeatureDictionary here, once, so every
+    downstream consumer in this handler works with the typed model.
+    """
+    raw = profiles.get("featureDictionary")
+    if raw:
+        return FeatureDictionary.model_validate(raw)
+    return build_seed_dictionary()
+
+
 def _handle_features(profiles: dict) -> dict:
-    d = profiles.get("featureDictionary") or build_seed_dictionary()
+    d = _resolve_feature_dictionary(profiles)
 
     return {
         "status": "ok",
         "dictionary": {
-            "K": d.get("K"),
-            "D": d.get("D"),
-            "sparsity": d.get("sparsity"),
-            "learnedFromSessions": d.get("learnedFromSessions", 0),
+            "K": d.K,
+            "D": d.D,
+            "sparsity": d.sparsity,
+            "learnedFromSessions": d.learnedFromSessions,
             "features": [
                 {
-                    "index": f.get("index"),
-                    "label": f.get("label"),
-                    "description": f.get("description"),
-                    "topSignals": f.get("topSignals"),
+                    "index": f.index,
+                    "label": f.label,
+                    "description": f.description,
+                    "topSignals": [ts.model_dump() for ts in f.topSignals],
                 }
-                for f in (d.get("features") or [])
+                for f in d.features
             ],
         },
         "persistentFeatures": profiles.get("persistentFeatures", []),
@@ -163,22 +178,19 @@ def _handle_attribution(profiles: dict, domain: str | None) -> dict:
     if not dp:
         return {"status": "error", "message": f"Domain not found: {domain_id}"}
 
-    d = profiles.get("featureDictionary") or build_seed_dictionary()
+    d = _resolve_feature_dictionary(profiles)
     graph = trace_attribution([], d, dp)
 
     # Enrich with stored activations
     if dp.get("featureActivations"):
-        for node in graph.get("nodes", []):
-            if (
-                node.get("layer") == "feature"
-                and node.get("label") in dp["featureActivations"]
-            ):
-                node["activation"] = dp["featureActivations"][node["label"]]
+        for node in graph.nodes:
+            if node.layer == "feature" and node.label in dp["featureActivations"]:
+                node.activation = dp["featureActivations"][node.label]
 
     return {
         "status": "ok",
         "domain": domain_id,
-        "graph": graph,
+        "graph": graph.model_dump(),
     }
 
 
@@ -218,10 +230,25 @@ def _handle_persona(profiles: dict, domain: str | None) -> dict:
     }
 
 
+def _resolve_persistent_features(
+    profiles: dict, d: FeatureDictionary
+) -> list[PersistentFeature]:
+    """Validate the disk-persisted persistentFeatures, or compute them fresh.
+
+    Same boundary-validation pattern as _resolve_feature_dictionary: the
+    disk-loaded list is untyped JSON; validate once here so the caller
+    always holds list[PersistentFeature].
+    """
+    raw = profiles.get("persistentFeatures")
+    if raw:
+        return [PersistentFeature.model_validate(pf) for pf in raw]
+    return detect_persistent_features(profiles.get("domains", {}), d)
+
+
 def _handle_crosscoder(
     profiles: dict, domain: str | None, compare_domain: str | None
 ) -> dict:
-    d = profiles.get("featureDictionary") or build_seed_dictionary()
+    d = _resolve_feature_dictionary(profiles)
 
     if domain and compare_domain:
         dp_a = profiles.get("domains", {}).get(domain)
@@ -248,12 +275,10 @@ def _handle_crosscoder(
         }
 
     # All persistent features
-    persistent = profiles.get("persistentFeatures") or detect_persistent_features(
-        profiles.get("domains", {}), d
-    )
+    persistent = _resolve_persistent_features(profiles, d)
 
     return {
         "status": "ok",
-        "persistentFeatures": persistent,
+        "persistentFeatures": [pf.model_dump() for pf in persistent],
         "domainCount": len(profiles.get("domains", {})),
     }

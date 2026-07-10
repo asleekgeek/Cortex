@@ -77,24 +77,24 @@ class TestExtractSessionActivation:
 class TestBuildSeedDictionary:
     def test_valid_structure(self):
         d = build_seed_dictionary()
-        assert d["K"] == 8
-        assert d["D"] == 27
-        assert d["sparsity"] == 3
-        assert d["learnedFromSessions"] == 0
-        assert len(d["features"]) == 8
+        assert d.K == 8
+        assert d.D == 27
+        assert d.sparsity == 3
+        assert d.learnedFromSessions == 0
+        assert len(d.features) == 8
 
     def test_all_atoms_unit_vectors(self):
         d = build_seed_dictionary()
-        for f in d["features"]:
-            n = norm(f["direction"])
-            assert abs(n - 1) < 0.01, f"Norm of {f['label']}: {n}"
+        for f in d.features:
+            n = norm(f.direction)
+            assert abs(n - 1) < 0.01, f"Norm of {f.label}: {n}"
 
     def test_features_have_labels_and_descriptions(self):
         d = build_seed_dictionary()
-        for f in d["features"]:
-            assert len(f["label"]) > 0
-            assert len(f["description"]) > 0
-            assert len(f["topSignals"]) > 0
+        for f in d.features:
+            assert len(f.label) > 0
+            assert len(f.description) > 0
+            assert len(f.topSignals) > 0
 
 
 class TestOmp:
@@ -131,12 +131,12 @@ class TestLearnDictionary:
     def test_returns_seed_for_few_sessions(self):
         convs = _make_conversations(5)
         d = learn_dictionary(convs)
-        assert d["learnedFromSessions"] == 0
-        assert d["K"] == 8
+        assert d.learnedFromSessions == 0
+        assert d.K == 8
 
     def test_returns_seed_for_null(self):
         d = learn_dictionary(None)
-        assert d["learnedFromSessions"] == 0
+        assert d.learnedFromSessions == 0
 
     def test_learns_for_10_plus_sessions(self):
         convs = _make_conversations(
@@ -147,38 +147,38 @@ class TestLearnDictionary:
             turnCount=15,
         )
         d = learn_dictionary(convs, {"K": 5, "sparsity": 2, "iterations": 2})
-        assert d["learnedFromSessions"] == 15
-        assert d["K"] <= 5
-        assert d["D"] == 27
-        assert d["sparsity"] == 2
+        assert d.learnedFromSessions == 15
+        assert d.K <= 5
+        assert d.D == 27
+        assert d.sparsity == 2
 
     def test_all_learned_atoms_unit_vectors(self):
         convs = _make_conversations(12)
         d = learn_dictionary(convs, {"K": 4, "sparsity": 2, "iterations": 2})
-        for f in d["features"]:
-            n = norm(f["direction"])
+        for f in d.features:
+            n = norm(f.direction)
             assert abs(n - 1) < 0.01, f"Norm: {n}"
 
     def test_features_have_auto_generated_labels(self):
         convs = _make_conversations(12)
         d = learn_dictionary(convs, {"K": 4, "sparsity": 2, "iterations": 2})
-        for f in d["features"]:
-            assert len(f["label"]) > 0
-            assert len(f["description"]) > 0
+        for f in d.features:
+            assert len(f.label) > 0
+            assert len(f.description) > 0
 
 
 class TestEncodeSession:
     def test_returns_sparse_activation(self):
         d = build_seed_dictionary()
         result = encode_session(_make_conv(), d)
-        assert isinstance(result["weights"], dict)
-        assert isinstance(result["reconstructionError"], (int, float))
-        assert result["reconstructionError"] >= 0
+        assert isinstance(result.weights, dict)
+        assert isinstance(result.reconstructionError, (int, float))
+        assert result.reconstructionError >= 0
 
     def test_respects_sparsity(self):
         d = build_seed_dictionary()
         result = encode_session(_make_conv(), d)
-        assert len(result["weights"]) <= d["sparsity"]
+        assert len(result.weights) <= d.sparsity
 
     def test_weights_are_nonzero(self):
         d = build_seed_dictionary()
@@ -190,7 +190,7 @@ class TestEncodeSession:
             ),
             d,
         )
-        for w in result["weights"].values():
+        for w in result.weights.values():
             assert abs(w) > 1e-10
 
 
@@ -200,9 +200,9 @@ class TestLabelFeature:
         direction[1] = 0.8  # tool:Edit
         direction[13] = 0.5  # tmp:burst
         result = label_feature(normalize(direction), 0)
-        assert len(result["label"]) > 0
-        assert len(result["topSignals"]) > 0
+        assert len(result.label) > 0
+        assert len(result.topSignals) > 0
 
     def test_handles_zero_direction(self):
         result = label_feature([0.0] * 27, 5)
-        assert result["label"] == "feature-5"
+        assert result.label == "feature-5"

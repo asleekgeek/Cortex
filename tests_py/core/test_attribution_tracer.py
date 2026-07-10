@@ -55,7 +55,7 @@ class TestBuildAttributionNodes:
     def test_creates_nodes_for_all_layers(self):
         d = build_seed_dictionary()
         nodes = build_attribution_nodes(_make_profile(), d)
-        layers = {n["layer"] for n in nodes}
+        layers = {n.layer for n in nodes}
         assert "input" in layers
         assert "extractor" in layers
         assert "classifier" in layers
@@ -66,36 +66,36 @@ class TestBuildAttributionNodes:
     def test_has_27_input_nodes(self):
         d = build_seed_dictionary()
         nodes = build_attribution_nodes(_make_profile(), d)
-        inputs = [n for n in nodes if n["layer"] == "input"]
+        inputs = [n for n in nodes if n.layer == "input"]
         assert len(inputs) == 27
 
     def test_has_4_extractor_nodes(self):
         d = build_seed_dictionary()
         nodes = build_attribution_nodes(_make_profile(), d)
-        extractors = [n for n in nodes if n["layer"] == "extractor"]
+        extractors = [n for n in nodes if n.layer == "extractor"]
         assert len(extractors) == 4
 
     def test_has_6_classifier_nodes(self):
         d = build_seed_dictionary()
         nodes = build_attribution_nodes(_make_profile(), d)
-        classifiers = [n for n in nodes if n["layer"] == "classifier"]
+        classifiers = [n for n in nodes if n.layer == "classifier"]
         assert len(classifiers) == 6
 
     def test_classifier_activation_from_profile(self):
         d = build_seed_dictionary()
         nodes = build_attribution_nodes(_make_profile(), d)
-        ar = next(n for n in nodes if n["id"] == "classifier:activeReflective")
-        assert ar["activation"] == 0.3
+        ar = next(n for n in nodes if n.id == "classifier:activeReflective")
+        assert ar.activation == 0.3
 
     def test_feature_nodes_match_dictionary(self):
         d = build_seed_dictionary()
         nodes = build_attribution_nodes(_make_profile(), d)
-        features = [n for n in nodes if n["layer"] == "feature"]
-        assert len(features) == len(d["features"])
+        features = [n for n in nodes if n.layer == "feature"]
+        assert len(features) == len(d.features)
 
     def test_handles_null_dictionary(self):
         nodes = build_attribution_nodes(_make_profile(), None)
-        features = [n for n in nodes if n["layer"] == "feature"]
+        features = [n for n in nodes if n.layer == "feature"]
         assert len(features) == 0
 
 
@@ -109,9 +109,7 @@ class TestComputeEdgeWeights:
         d = build_seed_dictionary()
         edges = compute_edge_weights([_make_conv()], _make_profile(), d)
         for e in edges:
-            assert e["weight"] >= 0, (
-                f"Edge {e['source']} -> {e['target']}: {e['weight']}"
-            )
+            assert e.weight >= 0, f"Edge {e.source} -> {e.target}: {e.weight}"
 
     def test_includes_aggregator_to_output(self):
         d = build_seed_dictionary()
@@ -120,8 +118,7 @@ class TestComputeEdgeWeights:
             (
                 e
                 for e in edges
-                if e["source"] == "aggregator:profile"
-                and e["target"] == "output:context"
+                if e.source == "aggregator:profile" and e.target == "output:context"
             ),
             None,
         )
@@ -137,19 +134,19 @@ class TestTraceAttribution:
     def test_returns_nodes_and_edges(self):
         d = build_seed_dictionary()
         graph = trace_attribution([_make_conv()], d, _make_profile())
-        assert len(graph["nodes"]) > 0
-        assert len(graph["edges"]) > 0
+        assert len(graph.nodes) > 0
+        assert len(graph.edges) > 0
 
     def test_empty_for_no_conversations(self):
         d = build_seed_dictionary()
         graph = trace_attribution([], d, _make_profile())
-        assert len(graph["nodes"]) == 0
-        assert len(graph["edges"]) == 0
+        assert len(graph.nodes) == 0
+        assert len(graph.edges) == 0
 
     def test_empty_for_null_profile(self):
         d = build_seed_dictionary()
         graph = trace_attribution([_make_conv()], d, None)
-        assert len(graph["nodes"]) == 0
+        assert len(graph.nodes) == 0
 
     def test_updates_input_activations(self):
         d = build_seed_dictionary()
@@ -158,14 +155,12 @@ class TestTraceAttribution:
             d,
             _make_profile(),
         )
-        read_node = next(
-            (n for n in graph["nodes"] if n["id"] == "input:tool:Read"), None
-        )
+        read_node = next((n for n in graph.nodes if n.id == "input:tool:Read"), None)
         assert read_node is not None
-        assert read_node["activation"] > 0
+        assert read_node.activation > 0
 
     def test_samples_at_most_20(self):
         d = build_seed_dictionary()
         convs = [_make_conv(sessionId=f"s-{i}") for i in range(50)]
         graph = trace_attribution(convs, d, _make_profile())
-        assert len(graph["nodes"]) > 0
+        assert len(graph.nodes) > 0
