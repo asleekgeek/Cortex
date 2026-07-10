@@ -26,8 +26,14 @@ schema = {
         "(consumes existing .md docs, not analysis). Mutates wiki/, "
         "memories, entities, relationships. Latency varies (10s-5min "
         "depending on cache hit). Cortex only consumes upstream "
-        "analysis — it does not drive the pipeline. Returns counts and "
-        "the wiki paths written."
+        "analysis — it does not drive the pipeline. This is the PRIMARY "
+        "ingestion path per ADR-0052 sec 2; the graph-path memo it writes "
+        "carries a src:ap provenance tag plus the AP binary version "
+        "(when resolvable), and every call checks version parity between "
+        "the two Cortex->AP client paths (APBridge vs mcp_client_pool), "
+        "surfacing a mismatch under analyze.ap_client_parity in the "
+        "response (never silently). Returns counts, the wiki paths "
+        "written, and ap_client_parity."
     ),
     "inputSchema": {
         "type": "object",
