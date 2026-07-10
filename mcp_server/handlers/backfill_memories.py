@@ -1,8 +1,13 @@
 """Handler: backfill_memories -- auto-import prior conversations into memory.
 
 Scans ~/.claude/projects/ JSONL conversation files, extracts memorable
-items, and stores them with backfill tags. Idempotent via file-hash
-tracking in a backfill_log table.
+items, and stores them with backfill tags. Skips a file whose hash is
+already in the backfill_log table (unless force_reprocess=True), but
+each stored item goes through remember(force=True), which bypasses the
+predictive-coding write gate — so a re-run with force_reprocess=True,
+or two files that yield overlapping content, can create duplicate
+memory rows. The tool is NON_IDEMPOTENT_WRITE overall; only the
+file-hash skip is idempotent.
 
 See backfill_helpers.py for discovery, hashing, and concept-linking logic.
 """
@@ -37,11 +42,16 @@ schema = {
         "Import prior Claude Code conversations from ~/.claude/projects/ "
         "into the memory store. Walks JSONL session transcripts, extracts "
         "memorable items (decisions, lessons, errors-and-fixes) via the "
-        "session_extractor, stores them with `backfill` tags through the "
-        "standard write gate, and links each to the auto-discovered core "
-        "concepts of the originating project. Idempotent — file hashes "
-        "tracked in backfill_log so re-runs only process new sessions. "
-        "Use this on first install, after long absences, or when migrating "
+        "session_extractor, stores them with `backfill` tags via "
+        "`remember(force=True)` — which BYPASSES the predictive-coding "
+        "write gate, not the standard write path — and links each to the "
+        "auto-discovered core concepts of the originating project. "
+        "Idempotent only at the file level: hashes tracked in "
+        "backfill_log so a plain re-run skips already-processed files. "
+        "NOT idempotent overall — `force_reprocess=true` re-imports a "
+        "file's items with the gate still bypassed, which can create "
+        "duplicate memory rows. Use this on first install, after long "
+        "absences, or when migrating "
         "to a new machine. Distinct from `import_sessions` (more granular "
         "control, manual file selection), `seed_project` (codebase "
         "structure, not conversation history), and `codebase_analyze` "

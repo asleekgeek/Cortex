@@ -1,13 +1,13 @@
 """Handler: detect_gaps — identify missing connections and knowledge gaps.
 
-Surfaces blind spots in the memory store:
+Surfaces blind spots in the memory store, across four axes:
   1. Isolated entities (referenced in memories but have no relationships)
-  2. Domains with sparse memory coverage vs. the global average
-  3. Tool/category gaps (work patterns present in some domains but missing in others)
-  4. Temporal gaps (domains with very old memories — possibly stale)
-  5. Low-heat clusters (topics that haven't been accessed recently)
+  2. Domains with sparse entity coverage vs. the global average
+  3. Temporal drift (domains whose most-recently-accessed memory is old)
+  4. Cognitive blind spots (per-domain category/tool/pattern gaps from
+     the profile-based blindspot_detector)
 
-Combines gap detection with blindspot analysis.
+Combines structural gap detection with cognitive blindspot analysis.
 """
 
 from __future__ import annotations
@@ -27,19 +27,22 @@ schema = {
     "title": "Detect gaps",
     "annotations": READ_ONLY,
     "description": (
-        "Surface knowledge gaps across four structural axes by walking the "
-        "memories+entities+relationships tables and the per-domain "
-        "blindspot detector: isolated entities (referenced but unconnected), "
-        "sparse domains (under-represented vs global average), temporal "
-        "drift (domains whose newest memory is old), and low-heat topic "
-        "clusters. Combines structural gap detection with cognitive "
-        "blindspot analysis to surface WHAT to investigate next. Use this "
+        "Surface knowledge gaps across four axes: isolated entities "
+        "(referenced in memories but with zero relationships, cap 10), "
+        "sparse domains (entity count under 50% of the cross-domain "
+        "average, cap 5), temporal drift (domains whose most-recently-"
+        "accessed memory — sampled from up to 10 per domain — exceeds "
+        "`stale_threshold_days`, cap 5), and cognitive blind spots (per-"
+        "domain category/tool/pattern gaps from the profile-based "
+        "blindspot detector, capped to the first 5 domains and 3 spots "
+        "each). Does not detect duplicates, contradictions, or "
+        "domainless/sourceless memories. Use this "
         "when planning research priorities or auditing coverage. Distinct "
         "from `assess_coverage` (numeric coverage SCORE 0-100 per axis, no "
         "specific gap list), and `memory_stats` (population counts only, "
         "no gap interpretation). Read-only. Latency ~500ms-2s depending on "
-        "store size. Returns {isolated_entities, sparse_domains, "
-        "temporal_drift, low_heat_clusters, blindspots, recommendations}."
+        "store size. Returns {total_gaps, gaps: [{gap_type, ...}], "
+        "by_type: {gap_type: count}, domain_filter}."
     ),
     "inputSchema": {
         "type": "object",

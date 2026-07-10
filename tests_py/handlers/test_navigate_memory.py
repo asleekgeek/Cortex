@@ -393,3 +393,46 @@ class TestNavigateStoreSingleton:
 
         store = _get_store()
         assert store is not None
+
+
+# ── Annotation truthfulness (I6-D8) ────────────────────────────────────────
+#
+# navigate_memory calls track_replay_event() on the seed + every traversed
+# neighbor (replay_tracking.py), which mutates access_count, replay_count,
+# and hippocampal_dependency on existing rows. That is a write, and repeat
+# calls keep incrementing the counters — not idempotent. The schema
+# annotation must say so; these tests prove the write happens and pin the
+# annotation to match, so a future revert of either side is caught.
+
+
+class TestNavigateAnnotationMatchesBehavior:
+    def test_annotation_is_not_read_only(self):
+        from mcp_server.handlers.navigate_memory import schema
+
+        assert schema["annotations"]["readOnlyHint"] is False
+
+    def test_annotation_is_not_idempotent(self):
+        from mcp_server.handlers.navigate_memory import schema
+
+        assert schema["annotations"]["idempotentHint"] is False
+
+    def test_navigate_call_writes_replay_state_for_seed_and_neighbors(self):
+        """A navigate_memory call must bump access_count on the seed AND on
+        every returned neighbor — the concrete write the annotation now
+        claims. Fails if replay tracking is ever removed or bypassed."""
+        store = _get_store()
+        mid_a, mid_b = _store_coaccessed_pair(
+            "replay-proof seed memory qres001",
+            "replay-proof neighbor memory qres002",
+        )
+        before_a = store.get_memory(mid_a)["access_count"]
+        before_b = store.get_memory(mid_b)["access_count"]
+
+        result = asyncio.run(navigate_handler({"memory_id": mid_a}))
+        assert result["total"] >= 1, "expected at least one co-access neighbor"
+
+        after_a = store.get_memory(mid_a)["access_count"]
+        after_b = store.get_memory(mid_b)["access_count"]
+        assert after_a > before_a, "seed access_count must increase (replay write)"
+        assert after_b > before_b, "neighbor access_count must increase (replay write)"
+        assert store is not None
