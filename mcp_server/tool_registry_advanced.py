@@ -11,6 +11,7 @@ from mcp_server.handlers import (
     add_rule,
     assess_coverage,
     create_trigger,
+    curate_distill,
     curate_wiki,
     get_project_story,
     get_rules,
@@ -27,6 +28,7 @@ SCHEMAS: dict[str, dict] = {
     "add_rule": add_rule.schema,
     "assess_coverage": assess_coverage.schema,
     "create_trigger": create_trigger.schema,
+    "curate_distill": curate_distill.schema,
     "curate_wiki": curate_wiki.schema,
     "get_project_story": get_project_story.schema,
     "get_rules": get_rules.schema,
@@ -45,6 +47,7 @@ def register(mcp: FastMCP) -> None:
     _register_assess_coverage(mcp)
     _register_curate_wiki(mcp)
     _register_lesson_promotion(mcp)
+    _register_curate_distill(mcp)
 
 
 def _register_curate_wiki(mcp: FastMCP) -> None:
@@ -75,6 +78,7 @@ def _register_curate_wiki(mcp: FastMCP) -> None:
         )
 
 
+<<<<<<< HEAD
 def _register_lesson_promotion(mcp: FastMCP) -> None:
     @mcp.tool(
         name="lesson_promotion",
@@ -86,6 +90,39 @@ def _register_lesson_promotion(mcp: FastMCP) -> None:
             lesson_promotion.handler,
             {"limit": limit},
             tool_name="lesson_promotion",
+=======
+def _register_curate_distill(mcp: FastMCP) -> None:
+    @mcp.tool(
+        name="curate_distill",
+        **tool_kwargs(curate_distill.schema),
+    )
+    async def tool_curate_distill(
+        domain: str | None = None,
+        limit: int = 5,
+        window_hours: float = 168.0,
+        include_error_success: bool = True,
+        include_co_access: bool = True,
+        include_entity_family: bool = True,
+        min_memories: int = 4,
+        min_avg_heat: float = 0.3,
+        memory_pool_size: int = 500,
+    ) -> dict:
+        """Return distillation dossiers for the in-session LLM to author lessons from."""
+        return await safe_handler(
+            curate_distill.handler,
+            {
+                "domain": domain,
+                "limit": limit,
+                "window_hours": window_hours,
+                "include_error_success": include_error_success,
+                "include_co_access": include_co_access,
+                "include_entity_family": include_entity_family,
+                "min_memories": min_memories,
+                "min_avg_heat": min_avg_heat,
+                "memory_pool_size": memory_pool_size,
+            },
+            tool_name="curate_distill",
+>>>>>>> feat/distillation
         )
 
 

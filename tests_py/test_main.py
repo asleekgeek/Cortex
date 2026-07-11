@@ -46,13 +46,14 @@ class TestMain:
             # Should call mcp.run with stdio transport
             mock_run.assert_called_once_with(transport="stdio")
 
-    def test_standalone_baseline_is_47_tools(self):
-        """With no upstream available, exactly the 47 standalone tools register.
+    def test_standalone_baseline_is_48_tools(self):
+        """With no upstream available, exactly the 48 standalone tools register.
 
-        47 = the 44 pre-blame-path tools + `why` (blame path T3, decision
+        48 = the 44 pre-blame-path tools + `why` (blame path T3, decision
         4255039) + `ingest_findings` (INC5.1, ADR-0052 — reads AP artifacts
         from disk, no upstream connection needed) + `lesson_promotion`
-        (M-D6, 7.6 — reads PG only, no upstream connection needed). The 3
+        (M-D6, 7.6 — reads PG only) + `curate_distill` (INC7.8/M-D8 —
+        understanding-level distillation jobs, read-only). The 3
         upstream-integration tools (ingest_codebase, change_impact,
         ingest_prd) MUST NOT be advertised — every advertised tool then
         works out of the box.
@@ -89,15 +90,17 @@ class TestMain:
         assert "ingest_findings" in names
         # M-D6 (7.6): lesson_promotion is PG-only, no upstream needed.
         assert "lesson_promotion" in names
+        # INC7.8/M-D8: distillation dossiers, disk/DB only, no upstream.
+        assert "curate_distill" in names
         # The upstream-integration tools are gated OFF.
         assert names.isdisjoint(_UPSTREAM_TOOLS)
-        assert len(names) == 47
+        assert len(names) == 48
 
-    def test_with_upstreams_registers_50_tools(self):
+    def test_with_upstreams_registers_51_tools(self):
         """When both upstreams are available, the 3 integration tools register."""
         names = _tool_names(codebase=True, prd=True)
         assert _UPSTREAM_TOOLS <= names
-        assert len(names) == 50
+        assert len(names) == 51
 
     def test_codebase_only_adds_two_tools(self):
         """codebase upstream gates ingest_codebase + change_impact together."""

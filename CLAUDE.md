@@ -208,7 +208,7 @@ Handlers are the **composition roots**: they wire infrastructure (I/O) to core (
 - `artifact_store.py` — Content-addressed raw-output artifacts (`~/.claude/methodology/artifacts/<yyyy-mm>/<sha256[:16]>.md`) backing gist+pointer memories
 - `agent_config.py` — Agent configuration and topic scoping
 
-**handlers/** — Composition roots (45 standalone tools + 3 upstream-integration tools conditionally registered = 48 total + helpers, one per tool)
+**handlers/** — Composition roots (47 standalone tools + 3 upstream-integration tools conditionally registered = 50 total + helpers, one per tool)
 
 **validation/** — `schemas.py` — Per-tool argument validation
 
@@ -264,7 +264,7 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `recall_skills` | Recall learned procedural skills by situation | <200ms |
 | `why` | Resolve ⟦rcpt:id⟧ injection receipts into presence-in-context evidence (blame path, decision 4255039) | <100ms |
 
-### Tier 3 — Automation & Intelligence (8 tools)
+### Tier 3 — Automation & Intelligence (9 tools)
 
 | Tool | Purpose | Target Latency |
 |---|---|---|
@@ -276,6 +276,7 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `assess_coverage` | Knowledge coverage score (0-100) + recommendations | <500ms |
 | `codebase_analyze` | Native AST codebase analysis (tree-sitter, 7 languages) | varies |
 | `curate_wiki` | Auto-curate wiki pages from memory clusters | varies |
+| `curate_distill` | Return understanding-level distillation dossiers (error->success, co-access, entity family) for the LLM to author `lesson` memories from (M-D8) | ~200-500ms |
 
 ### Tier 4 — Wiki (9 tools)
 
@@ -292,12 +293,15 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `wiki_purge` | Permanently delete a wiki page | <50ms |
 
 **Upstream-integration tools (3, conditionally registered)** — these register
-only when their upstream MCP server is configured, bringing the total to 48:
+only when their upstream MCP server is configured, bringing the total to 50:
 `ingest_codebase` + `change_impact` (automatised-pipeline) and `ingest_prd`
-(prd-spec-generator). With no upstream present, exactly the **45 standalone
-tools** above register. Driving the ai-architect pipeline end-to-end
-(formerly `run_pipeline`) is **not** part of this server — it lives in the
-automatised-pipeline MCP.
+(prd-spec-generator). With no upstream present, exactly the **47 standalone
+tools** above register (ground truth: `tests_py/test_main.py::test_standalone_baseline_is_47_tools`
+— this file's per-tier counts below that line drifted out of sync with the
+test before INC7.8 as well, e.g. `__main__.py`'s docstring said 43; not
+re-audited end-to-end here, only the delta this increment introduces).
+Driving the ai-architect pipeline end-to-end (formerly `run_pipeline`) is
+**not** part of this server — it lives in the automatised-pipeline MCP.
 
 ## Slash Commands
 

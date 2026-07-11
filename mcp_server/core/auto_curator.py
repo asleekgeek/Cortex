@@ -173,7 +173,7 @@ _CAMEL_RE = re.compile(r"\b[A-Z][a-zA-Z]+(?:[A-Z][a-z]+)+\b")
 _SNAKE_RE = re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
 
 
-def _extract_entities_from_content(content: str) -> list[str]:
+def extract_entities_from_content(content: str) -> list[str]:
     """Crude entity extraction — proper nouns, file paths, function names.
 
     Canonicalisation:
@@ -185,6 +185,12 @@ def _extract_entities_from_content(content: str) -> list[str]:
 
     Mirrors mcp_server/core/knowledge_graph.py's heuristic NER but kept
     local to avoid coupling auto-curator to the knowledge-graph subsystem.
+
+    Public (promoted from ``_extract_entities_from_content``, INC7.8/M-D8,
+    2026-07-11): reused as-is by ``core/distillation.py`` for
+    error->success dossier pairing — a second cross-module call site for
+    the same lexical-entity heuristic, same rationale as this docstring's
+    original one (avoid a heavier coupling to knowledge_graph.py).
     """
     entities: list[str] = []
     # File-path-like tokens — canonicalise to the basename without extension
@@ -250,7 +256,7 @@ def build_clusters(
         if domain and mem.get("domain") != domain:
             continue
         content = mem.get("content") or ""
-        entities = _extract_entities_from_content(content)
+        entities = extract_entities_from_content(content)
         if not entities:
             continue
         # Dominant entity = most frequent
@@ -273,7 +279,7 @@ def build_clusters(
         # Aggregate all entities across cluster memories for richer context
         all_entities: list[str] = []
         for m in mems:
-            all_entities.extend(_extract_entities_from_content(m.get("content") or ""))
+            all_entities.extend(extract_entities_from_content(m.get("content") or ""))
         top_entities = [e for e, _ in Counter(all_entities).most_common(8)]
         topic = entity
         slug = _slugify(topic)
@@ -354,7 +360,7 @@ def count_pending_clusters_streamed(
         for mem in chunk:
             if domain and mem.get("domain") != domain:
                 continue
-            entities = _extract_entities_from_content(mem.get("content") or "")
+            entities = extract_entities_from_content(mem.get("content") or "")
             if not entities:
                 continue
             top_entity = Counter(entities).most_common(1)[0][0]
