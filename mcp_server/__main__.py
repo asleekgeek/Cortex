@@ -75,7 +75,11 @@ mcp = FastMCP(
 def register_all(mcp: FastMCP, *, codebase: bool, prd: bool) -> None:
     """Wire every tool registry onto ``mcp``.
 
-    The 43 standalone tools always register. The 3 upstream-integration tools
+    The 47 standalone tools always register (pre-existing drift note: this
+    docstring said 43 before INC7.8/M-D8 added `curate_distill`, already
+    stale by 3 relative to the actual registered count — ground truth is
+    ``tests_py/test_main.py::test_standalone_baseline_is_47_tools``, not
+    re-audited end-to-end here). The 3 upstream-integration tools
     register only when their upstream MCP server is available — ``codebase``
     gates ingest_codebase + change_impact (automatised-pipeline), ``prd`` gates
     ingest_prd (prd-spec-generator). source: MCP Directory decision 2026-06-19.
