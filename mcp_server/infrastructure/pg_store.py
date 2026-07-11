@@ -40,6 +40,7 @@ from mcp_server.infrastructure.pg_store_receipts import PgReceiptsMixin
 from mcp_server.infrastructure.pg_store_relationships import PgRelationshipMixin
 from mcp_server.infrastructure.pg_store_rules import PgRuleMixin
 from mcp_server.infrastructure.pg_store_stats import PgStatsMixin
+from mcp_server.observability import silent_failure
 
 logger = logging.getLogger(__name__)
 
@@ -868,15 +869,20 @@ class PgMemoryStore(
     def update_memory_value(self, memory_id: int, value: float) -> None:
         """Persist a memory's learned RL value (B2). Defensive on stores whose
         `value` column predates this migration — a failed UPDATE is swallowed so
-        rating/credit never breaks on an un-migrated store."""
+        rating/credit never breaks on an un-migrated store.
+
+        The pre-migration case is now rare (the migration is current-schema
+        baseline); an UPDATE failing today is more likely a real regression
+        than a stale column, so the first such failure is logged rather than
+        silently absorbed forever (see silent_failure module docstring)."""
         try:
             self._execute(
                 "UPDATE memories SET value = %s WHERE id = %s",
                 (value, memory_id),
             )
             self._conn.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            silent_failure.note("pg_store.update_memory_value", exc)
 
     def update_memory_extinction(
         self, memory_id: int, extinction_strength: float
@@ -889,7 +895,10 @@ class PgMemoryStore(
         (spontaneous recovery) or clearing (reinstatement) the tag restores the
         original association (Bouton 2004). Defensive on stores whose
         ``extinction_strength`` column predates this migration — a failed UPDATE
-        is swallowed so deprecation never breaks on an un-migrated store."""
+        is swallowed so deprecation never breaks on an un-migrated store.
+
+        See ``update_memory_value`` docstring: the same rare-pre-migration
+        reasoning applies, so the first failure is logged, not just swallowed."""
         try:
             e = max(0.0, min(1.0, float(extinction_strength)))
             self._execute(
@@ -897,8 +906,8 @@ class PgMemoryStore(
                 (e, memory_id),
             )
             self._conn.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            silent_failure.note("pg_store.update_memory_extinction", exc)
 
     # ── User mood (Bower 1981 mood-congruent recall) ──────────────────
     # The pg_recall._get_user_mood(store) bridge duck-types against

@@ -33,6 +33,7 @@ from mcp_server.handlers.remember_response import build_response
 from mcp_server.infrastructure.embedding_engine import EmbeddingEngine
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore
+from mcp_server.observability import silent_failure
 
 
 def compute_similarities(
@@ -388,7 +389,12 @@ def try_block_replica_upsert(
             "LIMIT 1",
             (vpath_json,),
         ).fetchall()
-    except Exception:
+    except Exception as exc:
+        # Same shape as the spread_activation incident: a broken SELECT
+        # here is indistinguishable from "no existing block row", so the
+        # caller silently falls through to inserting a DUPLICATE row
+        # instead of superseding — must be observable, not just absorbed.
+        silent_failure.note("remember_helpers.block_supersede_select", exc)
         return False, None
 
     if not rows:
@@ -425,7 +431,8 @@ def try_block_replica_upsert(
                 "WHERE id = %s",
                 (content, _json.dumps(tags), source, existing_id),
             )
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("remember_helpers.block_supersede_update", exc)
         return False, None
 
     return True, existing_id

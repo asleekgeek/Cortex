@@ -14,6 +14,7 @@ from mcp_server.core import hopfield
 from mcp_server.core.cognitive_map import compute_sr_scores
 from mcp_server.core.hdc_encoder import compute_hdc_scores
 from mcp_server.core.query_decomposition import extract_query_entities
+from mcp_server.observability import silent_failure
 
 
 def compute_hopfield_hdc(
@@ -47,8 +48,8 @@ def compute_hopfield_hdc(
                     hop = hopfield.retrieve(
                         q_emb, mat, ids, beta=settings.HOPFIELD_BETA, top_k=pool
                     )
-        except Exception:
-            pass
+        except Exception as exc:
+            silent_failure.note("retrieval_signals.hopfield", exc)
     try:
         if hot_mems:
             raw = compute_hdc_scores(
@@ -57,8 +58,8 @@ def compute_hopfield_hdc(
                 threshold=0.05,
             )
             hdc = [(mid, (s + 1.0) / 2.0) for mid, s in raw]
-    except Exception:
-        pass
+    except Exception as exc:
+        silent_failure.note("retrieval_signals.hdc", exc)
     return hop, hdc
 
 
@@ -100,7 +101,8 @@ def _compute_sr(
             g.setdefault(mem_b, {})[mem_a] = proximity * 0.45  # back-link weaker
         seeds = [m for m, _ in vec_results[:3]]
         return compute_sr_scores(seeds, g, top_k=pool)
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("retrieval_signals.successor_representation", exc)
         return []
 
 

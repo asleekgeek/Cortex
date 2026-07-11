@@ -81,6 +81,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp_server.core import platt_calibration, reranker_calibration
+from mcp_server.observability import silent_failure
 from mcp_server.shared.platform import cache_dir as _base_cache_dir
 
 logger = logging.getLogger(__name__)
@@ -381,7 +382,13 @@ def rerank_results(
         return _blend_scores(
             candidates, ce_scores, alpha, adaptive=adaptive, apply_platt=apply_platt
         )
-    except Exception:
+    except Exception as exc:
+        # Distinct failure point from _ensure_reranker's load failure (see
+        # module docstring, bb1c581f): the model loaded fine but THIS
+        # inference call raised (malformed passage, ONNX runtime error,
+        # OOM, ...). Same silent-skip shape, different trigger — must be
+        # equally observable.
+        silent_failure.note("reranker.rerank_call", exc)
         return candidates
 
 
@@ -412,5 +419,6 @@ def get_raw_ce_score(
         if not results:
             return None
         return float(results[0].get("score", 0.0))
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("reranker.raw_ce_score", exc)
         return None

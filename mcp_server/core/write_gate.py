@@ -41,6 +41,7 @@ from mcp_server.core.separation_core import (
     detect_interference_risk,
     orthogonalize_embedding,
 )
+from mcp_server.observability import silent_failure
 
 _SUCCESS_KW = re.compile(
     r"\b(fixed|resolved|succeeded|passed|completed|done)\b", re.IGNORECASE
@@ -178,8 +179,8 @@ def apply_oscillatory_context(
         store.save_oscillatory_state(
             _json.dumps(oscillatory_clock.state_to_dict(osc_state)),
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        silent_failure.note("write_gate.oscillatory_context", exc)
     return heat, theta_phase, encoding_mod, osc_state
 
 
@@ -213,7 +214,8 @@ def apply_neuromodulation(
         heat = min(1.0, max(0.0, heat * composite["heat_modulation"]))
         importance = min(1.0, max(0.0, importance * composite["importance_modulation"]))
         return heat, importance, composite
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("write_gate.neuromodulation", exc)
         return heat, importance, None
 
 
@@ -231,7 +233,8 @@ def apply_emotional_tagging(
             heat = min(1.0, heat * tag.get("decay_resistance", 1.0))
             valence = tag["valence"]
         return importance, heat, valence, tag
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("write_gate.emotional_tagging", exc)
         return importance, heat, valence, None
 
 
@@ -279,8 +282,8 @@ def apply_pattern_separation(
             if sep_index > 0.01:
                 embedding = embeddings.from_list(separated)
         interference = compute_interference_score(new_emb_list, existing_embs)
-    except Exception:
-        pass
+    except Exception as exc:
+        silent_failure.note("write_gate.pattern_separation", exc)
     return embedding, sep_index, interference
 
 
@@ -302,8 +305,8 @@ def match_schema(
             )
             if best:
                 return score, best.schema_id
-    except Exception:
-        pass
+    except Exception as exc:
+        silent_failure.note("write_gate.schema_match", exc)
     return 0.0, None
 
 
@@ -328,11 +331,13 @@ def read_active_goal(store: Any) -> Any:
         return goal_maintenance.EMPTY_GOAL
     try:
         triggers = reader()
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("write_gate.active_goal_read", exc)
         return goal_maintenance.EMPTY_GOAL
     try:
         return goal_maintenance.build_goal_from_triggers(triggers)
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("write_gate.active_goal_build", exc)
         return goal_maintenance.EMPTY_GOAL
 
 
@@ -390,7 +395,8 @@ def apply_goal_maintenance(
             "gain": round(gain, 4),
             "modulated_novelty": round(modulated, 4),
         }
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("write_gate.goal_maintenance", exc)
         return novelty_score, None
 
 
@@ -439,5 +445,6 @@ def apply_habituation(
             hours_since_salient=hours_since_salient,
         )
         return outcome.modulated_novelty, outcome.as_dict()
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("write_gate.habituation", exc)
         return novelty_score, None

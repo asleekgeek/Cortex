@@ -38,39 +38,35 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # commits on its own connection, so routing through it would break
     # supersession atomicity). GREATEST(heat_base, old) never lowers heat.
     # Source: docs/program/pr2-read-path-supersession-audit.json.
-    # Shifted 685->694 when M-D2 (7.4) added the write_class column to
-    # _INSERT_MEMORY_SQL/_build_insert_params above it.
-    ("infrastructure/pg_store.py", 694),
+    # Shifted 685->686 by the silent-except-sweep audit (2026-07-11) adding
+    # one `from mcp_server.observability import silent_failure` import line
+    # above this site.
+    ("infrastructure/pg_store.py", 686),
     # Canonical single-row writer (all callers route through this).
     # bump_heat_raw — the one canonical single-row site (re-pinned after
     # rebasing the read-path PR onto blame-path injection-receipts).
-    # Shifted 727->736 for the same reason as the entry above.
-    ("infrastructure/pg_store.py", 736),
+    # Shifted 727->728 by the same import-line addition above.
+    ("infrastructure/pg_store.py", 728),
     # A3 batched writer (homeostatic cohort branch + any other batch consumer).
     # update_memories_heat_batch. Shifted 787->825 when M-D3 (7.1) added
     # get_homeostatic_factor/set_homeostatic_factor's write_class parameter
-    # and the new log_homeostatic_fold method above it; 825->834 when M-D2
-    # (7.4) added the write_class column above it.
-    ("infrastructure/pg_store.py", 834),
+    # and the new log_homeostatic_fold method above it; 825->826 by the same
+    # silent-except-sweep import-line addition.
+    ("infrastructure/pg_store.py", 826),
     # SQLite parity of the anchor transfer (same transactional rationale).
     # Shifted 389->440 when M-D3 (7.1) added
-    # _migrate_homeostatic_state_write_class above it; 440->441 when M-D2
-    # (7.4) added the write_class column to the INSERT above it.
-    ("infrastructure/sqlite_store.py", 441),
+    # _migrate_homeostatic_state_write_class above it.
+    ("infrastructure/sqlite_store.py", 440),
     # SQLite parity: canonical bump_heat_raw / update_memories_heat_batch.
-    # Shifted 419->470, 463->534 for M-D3 (7.1); 470->471, 534->535 for
-    # M-D2 (7.4) (write_class column addition above each).
-    ("infrastructure/sqlite_store.py", 471),
-    ("infrastructure/sqlite_store.py", 535),
+    # Shifted 419->470, 463->534 for the same reason.
+    ("infrastructure/sqlite_store.py", 470),
+    ("infrastructure/sqlite_store.py", 534),
     # Homeostatic fold (amortized ~once/month per (domain, write_class)).
     # M-D3 (7.1, 2026-07-10): split out of homeostatic.py into
     # homeostatic_apply.py (§4.1 500-line file cap — stratification by
     # write class grew homeostatic.py past the limit). Same rare
     # amortized fold UPDATE, now scoped to a class's own source values.
-    # Shifted 228->220 when M-D2 (7.4) switched the fold's SQL predicate
-    # from a source-value IN-list (_FOLD_SOURCE_VALUES, deleted) to
-    # ``write_class = %s`` directly — net line reduction above this site.
-    ("handlers/consolidation/homeostatic_apply.py", 220),
+    ("handlers/consolidation/homeostatic_apply.py", 228),
     # Anchor pin: heat_base=1.0 + no_decay=TRUE preserves resist-decay.
     ("handlers/anchor.py", 143),
     # Preemptive boost: heat_base += 0.1 on Read/Edit/Write hook.
@@ -87,11 +83,8 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # (2026-08-09) depends on staying untouched. Source: ADR-0053
     # (docs/adr/ADR-0053-deliberate-reheat-cas-writer-i2-exception.md).
     # Shifted 157->160 when M-D3 (7.1) added a write_class='auto' filter
-    # comment to the homeostatic_state join above it; 160->177 when INC7.2
-    # fixed the module's source-taxonomy filter (root-cause: reused
-    # mcp_server.core.write_class instead of a second hardcoded, silently
-    # stale exact-match tuple), adding docstring/import lines above it.
-    ("infrastructure/pg_store_memory_reheat.py", 177),
+    # comment to the homeostatic_state join above it.
+    ("infrastructure/pg_store_memory_reheat.py", 160),
 }
 
 

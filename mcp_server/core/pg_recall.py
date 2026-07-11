@@ -21,6 +21,7 @@ from typing import Any
 from mcp_server.core.query_intent import QueryIntent, classify_query_intent
 from mcp_server.core.reranker import rerank_results
 from mcp_server.core.titans_memory import TitansMemory
+from mcp_server.observability import silent_failure
 
 # Singleton Titans memory module (persists across recalls within a session)
 _titans: TitansMemory | None = None
@@ -56,7 +57,8 @@ def _get_active_goal(store: Any) -> Any:
     try:
         triggers = reader()
         return goal_maintenance.build_goal_from_triggers(triggers)
-    except Exception:  # noqa: BLE001 — non-load-bearing; absence is fine
+    except Exception as exc:  # noqa: BLE001 — non-load-bearing; absence is fine
+        silent_failure.note("pg_recall.active_goal", exc)
         return goal_maintenance.EMPTY_GOAL
 
 
@@ -77,7 +79,8 @@ def _get_user_mood(store: Any) -> float | None:
         return None
     try:
         v = store.get_user_mood()
-    except Exception:  # noqa: BLE001 — non-load-bearing; absence is fine
+    except Exception as exc:  # noqa: BLE001 — non-load-bearing; absence is fine
+        silent_failure.note("pg_recall.user_mood", exc)
         return None
     if v is None:
         return None
