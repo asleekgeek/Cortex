@@ -5,10 +5,12 @@ Extracted to keep remember.py under 300 lines with all methods under 40 lines.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from mcp_server.core import (
     curation,
+    provenance,
     thermodynamics,
     write_gate,
     write_gate_calibration,
@@ -29,6 +31,7 @@ from mcp_server.core.predictive_coding_flat import (
     compute_structural_novelty,
 )
 from mcp_server.core.predictive_coding_gate import gate_decision
+from mcp_server.handlers import validate_memory
 from mcp_server.handlers.remember_response import build_response
 from mcp_server.infrastructure.embedding_engine import EmbeddingEngine
 from mcp_server.infrastructure.memory_config import get_memory_settings
@@ -697,6 +700,24 @@ def insert_and_post_process(
     # is built so the pointer is written atomically with the row (no memory
     # id exists yet to update post-hoc).
     tags = _with_link_provenance(action, merged_id, tags)
+    # M-D5 (7.5): grade this not-yet-inserted content's provenance with the
+    # SAME local-only checks validate_memory's batch pass uses (no network
+    # -- see validate_memory.grade_from_content). Persisted as an ADDITIVE
+    # TAG (same no-post-hoc-update pattern as _with_link_provenance above),
+    # never into `source_attribution` -- that column's grade vocabulary has
+    # exactly one writer, validate_memory.py (I6-D6). A second writer there
+    # would silently defeat the C1 confabulation gate
+    # (core/source_monitoring.py::recall_confabulation_risk), which fires
+    # only on the PERCEIVED epistemic tag C1's classify_source writes to
+    # that same column below, in _build_insert_record -- see
+    # /memories/engineer/inc6.5-provenance-verifier.md. Runs strictly AFTER
+    # evaluate_gate() (called by remember.py before this function), so the
+    # tag can never influence the novelty/gate decision -- bench-neutral by
+    # construction, no G-bench required for this increment.
+    grade_report = validate_memory.grade_from_content(
+        content, directory_context=directory, base_dir=directory or os.getcwd()
+    )
+    tags = [*tags, f"prov:{grade_report.grade}"]
     record = _build_insert_record(
         content,
         embedding,
@@ -757,6 +778,16 @@ def insert_and_post_process(
     # confirm what was actually persisted (explicit arg or the
     # source-fallback default).
     response["write_class"] = write_class
+    # M-D5 (7.5): surface the write-time provenance grade (transient
+    # feedback, never persisted into source_attribution -- see the tag
+    # comment above) so the writer sees, in the SAME response, whether
+    # their claim carries a checkable reference and can complete it by
+    # superseding this memory if not.
+    response["provenance"] = {
+        "grade": grade_report.grade,
+        "checkable_refs": grade_report.ref_counts,
+        "hint": provenance.write_time_hint(grade_report, write_class),
+    }
     # C1 source / reality monitoring: surface the stored epistemic attribution
     # so the caller can see whether this memory was perceived / told / inferred.
     # Flag the confabulation risk — an inferred memory carries no external

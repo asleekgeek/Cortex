@@ -70,6 +70,37 @@ schema = {
                     "action=stored|superseded."
                 ),
             },
+            "provenance": {
+                "type": "object",
+                "description": (
+                    "Write-time provenance feedback (M-D5): grade in "
+                    "{verified, verifiable, unverifiable} computed from "
+                    "LOCAL-ONLY checks (file existence, git commit lookup, "
+                    "artifact digest — no network) on this content's "
+                    "checkable references. Never a blocking gate — a "
+                    "testimony-only write is still stored. Present when "
+                    "action=stored|superseded; persisted as an additive "
+                    "`prov:<grade>` tag on the row (never into "
+                    "source_attribution — validate_memory.py's grade "
+                    "vocabulary there, I6-D6, has exactly one writer). "
+                    "Re-graded with network-verified checks (URLs included) "
+                    "by the periodic `validate_memory` sweep."
+                ),
+                "properties": {
+                    "grade": {
+                        "type": "string",
+                        "enum": ["verified", "verifiable", "unverifiable"],
+                    },
+                    "checkable_refs": {
+                        "type": "object",
+                        "description": "Count per reference type: file, commit, url, artifact, citation.",
+                    },
+                    "hint": {
+                        "type": "string",
+                        "description": "Human-readable nudge — what to add for a higher grade.",
+                    },
+                },
+            },
         },
     },
     "description": (
@@ -80,14 +111,22 @@ schema = {
         "redundant content is rejected or merged with the most-similar "
         "existing memory via active curation. After write: thermodynamic "
         "tagging, knowledge-graph entity extraction, neuromodulation "
-        "(DA/NE/ACh/5-HT), engram allocation. Use this after any "
-        "non-trivial discovery, fix, decision, or lesson — if it would "
-        "surprise a future session, store it. Distinct from `anchor` "
-        "(pins an EXISTING memory, doesn't create), `wiki_write` "
-        "(creates an .md page, not a memory row), and `add_rule` "
-        "(recall-time filter, not stored content). Mutates memories + "
-        "entities + relationships tables. Latency ~50-100ms. Returns "
-        "{stored, memory_id, action: stored|merged|rejected, reason}."
+        "(DA/NE/ACh/5-HT), engram allocation. FOR A DURABLE CLAIM (a "
+        "fact, decision, or lesson meant to outlive this session), include "
+        "a checkable reference in `content` — a file path, a git commit "
+        "SHA, a URL, or a content-addressed artifact digest — so it can "
+        "grade above 'unverifiable' (see the `provenance` response field "
+        "and coding-standards.md §8, 'no source, no implementation'); "
+        "testimony without one is still stored, just graded accordingly. "
+        "Use this after any non-trivial discovery, fix, decision, or "
+        "lesson — if it would surprise a future session, store it. "
+        "Distinct from `anchor` (pins an EXISTING memory, doesn't create), "
+        "`wiki_write` (creates an .md page, not a memory row), "
+        "`validate_memory` (re-grades EXISTING memories with network-"
+        "verified checks, not a write path), and `add_rule` (recall-time "
+        "filter, not stored content). Mutates memories + entities + "
+        "relationships tables. Latency ~50-100ms. Returns {stored, "
+        "memory_id, action: stored|merged|rejected, reason, provenance}."
     ),
     "inputSchema": {
         "type": "object",

@@ -308,6 +308,70 @@ def _check_artifact_refs(
     return verdicts
 
 
+# ── Write-time grading (M-D5, 7.5) ────────────────────────────────────────
+
+
+def grade_from_content(
+    content: str,
+    *,
+    directory_context: str = "",
+    base_dir: str = "",
+) -> provenance.ProvenanceReport:
+    """Grade NOT-YET-INSERTED content's provenance from LOCAL-ONLY checks
+    (no network) -- the write-path-safe subset of a full validate_memory
+    pass (M-D5, 7.5). Called by ``handlers/remember_helpers.py`` before a
+    memory is inserted.
+
+    Reuses the exact extraction + local-verification logic this handler
+    runs in its batch sweep (``_resolve_existing_paths``,
+    ``_git_commit_exists``, ``_check_artifact_refs``, ``core.provenance``)
+    -- zero new grading logic (coding-standards.md §9: no parallel
+    classification path). The only difference from a full pass: URL refs
+    are never HEAD-checked here -- a write-time network call has unbounded
+    latency, out of ``remember()``'s budget (design doc M-D5: "reste dans
+    la passe batch"). A URL ref here is graded exactly as "not sampled
+    this pass" grades it in the batch handler (ceiling VERIFIABLE, never
+    penalized as dead).
+
+    precondition: ``content`` is the memory's raw (already-hardened)
+        content; ``base_dir`` defaults to the current working directory
+        when empty (matches ``_handler_impl``'s own default).
+    postcondition: same grade semantics as one row of ``_grade_memories``
+        -- the worst outcome among file/commit/artifact/citation
+        references. The returned report's ``memory_id`` is always 0 (no
+        row exists yet); callers must not persist anything keyed by it,
+        and must NOT write the grade into ``memories.source_attribution``
+        -- this handler is that column's sole writer (module docstring);
+        callers persist the grade, if at all, through a different
+        mechanism (e.g. an additive tag).
+    """
+    base = base_dir or os.getcwd()
+    file_refs = collect_all_refs([{"content": content}])
+    existing_paths = _resolve_existing_paths(file_refs, base)
+    commit_refs = provenance.extract_commit_refs(content)
+    commit_verdicts = {
+        sha: _git_commit_exists(directory_context, sha, timeout=_GIT_CHECK_TIMEOUT_S)
+        for sha in commit_refs
+    }
+    url_refs = provenance.extract_url_refs(content)
+    url_verdicts: dict[str, bool | None] = dict.fromkeys(url_refs)  # None = not sampled
+    artifact_refs = provenance.extract_artifact_refs(content)
+    artifact_verdicts = _check_artifact_refs(artifact_refs, base)
+    has_citation = provenance.has_citation_ref(content)
+    return provenance.grade_provenance(
+        0,
+        file_refs=file_refs,
+        existing_paths=existing_paths,
+        commit_refs=commit_refs,
+        commit_verdicts=commit_verdicts,
+        url_refs=url_refs,
+        url_verdicts=url_verdicts,
+        artifact_refs=artifact_refs,
+        artifact_verdicts=artifact_verdicts,
+        has_citation=has_citation,
+    )
+
+
 # ── Memory selection ─────────────────────────────────────────────────────
 
 

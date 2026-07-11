@@ -19,6 +19,7 @@ from mcp_server.core.provenance import (
     extract_url_refs,
     grade_provenance,
     has_citation_ref,
+    write_time_hint,
 )
 
 
@@ -237,3 +238,39 @@ class TestGradeCombination:
             "artifact": 0,
             "citation": 1,
         }
+
+
+# ── write_time_hint (M-D5, 7.5) ─────────────────────────────────────────────
+
+
+def _report(grade: str) -> ProvenanceReport:
+    return ProvenanceReport(memory_id=0, grade=grade, ref_counts={})
+
+
+class TestWriteTimeHint:
+    def test_verified_hint(self):
+        assert "verified locally" in write_time_hint(_report(VERIFIED))
+
+    def test_verifiable_hint(self):
+        hint = write_time_hint(_report(VERIFIABLE))
+        assert "not conclusively checked" in hint
+
+    def test_unverifiable_hint_non_deliberate_is_plain(self):
+        hint = write_time_hint(_report(UNVERIFIABLE), write_class="auto")
+        assert "No checkable reference" in hint
+        assert "durable claim" not in hint
+
+    def test_unverifiable_hint_deliberate_gets_call_to_action(self):
+        hint = write_time_hint(_report(UNVERIFIABLE), write_class="deliberate")
+        assert "No checkable reference" in hint
+        assert "durable claim" in hint
+
+    def test_unverifiable_hint_no_write_class_is_plain(self):
+        hint = write_time_hint(_report(UNVERIFIABLE))
+        assert "durable claim" not in hint
+
+    def test_hint_never_persisted_is_a_pure_function(self):
+        # Same report + write_class always yields the same string -- no
+        # hidden state, no I/O (contract: deterministic lookup only).
+        r = _report(UNVERIFIABLE)
+        assert write_time_hint(r, "deliberate") == write_time_hint(r, "deliberate")

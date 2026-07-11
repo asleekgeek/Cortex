@@ -18,6 +18,7 @@ from mcp_server.handlers.validate_memory import (
     _assess_memories,
     _path_exists,
     _resolve_existing_paths,
+    grade_from_content,
     handler,
 )
 from mcp_server.handlers.remember import handler as remember_handler
@@ -652,3 +653,70 @@ class TestUrlAndCommitRefsGrading:
         result = await handler({"memory_id": mid, "base_dir": str(tmp_path)})
         report = result["reports"][0]
         assert report["provenance_grade"] in ("verifiable",)
+
+
+# ── grade_from_content (M-D5, 7.5 — write-path grading, no memory_id yet) ────
+
+
+class TestGradeFromContentPure:
+    """grade_from_content: same grading logic as the batch pass, applied to
+    content that has not been inserted yet. LOCAL-ONLY -- no network."""
+
+    def test_no_refs_is_unverifiable(self, tmp_path):
+        report = grade_from_content(
+            "just a plain testimony sentence", base_dir=str(tmp_path)
+        )
+        assert report.grade == "unverifiable"
+        assert report.reason == "no_extractable_reference"
+
+    def test_existing_file_ref_grades_verified(self, tmp_path):
+        f = tmp_path / "a.py"
+        f.write_text("x = 1")
+        report = grade_from_content(f"see {f}", base_dir=str(tmp_path))
+        assert report.grade == "verified"
+
+    def test_missing_file_ref_grades_unverifiable(self, tmp_path):
+        report = grade_from_content(
+            f"see {tmp_path}/does-not-exist.py", base_dir=str(tmp_path)
+        )
+        assert report.grade == "unverifiable"
+        assert report.dead_refs
+
+    def test_url_ref_never_sampled_grades_verifiable_ceiling(self, tmp_path):
+        # No network call is ever made from the write path -- a URL ref
+        # always lands as "not sampled this pass" (verifiable ceiling),
+        # exactly like validate_memory's url_check_limit=0 case.
+        report = grade_from_content(
+            "see https://example.com/docs for details", base_dir=str(tmp_path)
+        )
+        assert report.grade == "verifiable"
+        assert "https://example.com/docs" in report.uncheckable_refs
+
+    def test_never_hits_network(self, tmp_path, monkeypatch):
+        def _boom(*_a, **_k):
+            raise AssertionError("grade_from_content must never touch the network")
+
+        monkeypatch.setattr("urllib.request.urlopen", _boom)
+        report = grade_from_content(
+            "see https://example.com/docs and https://other.example/y",
+            base_dir=str(tmp_path),
+        )
+        assert report.grade == "verifiable"  # proves it returned, never raised
+
+    def test_memory_id_placeholder_is_zero(self, tmp_path):
+        report = grade_from_content("no refs here", base_dir=str(tmp_path))
+        assert report.memory_id == 0
+
+    def test_unresolvable_commit_grades_verifiable(self, tmp_path):
+        report = grade_from_content(
+            "fixed in deadbeefcafebabe1234567890abcdef12345678",
+            directory_context=str(tmp_path),  # not a git repo
+            base_dir=str(tmp_path),
+        )
+        assert report.grade == "verifiable"
+
+    def test_empty_base_dir_defaults_to_cwd(self):
+        # postcondition: base_dir="" falls back to os.getcwd(), matching
+        # _handler_impl's own default -- must not raise.
+        report = grade_from_content("no refs", base_dir="")
+        assert report.grade == "unverifiable"

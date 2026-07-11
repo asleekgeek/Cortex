@@ -251,3 +251,58 @@ def _ref_counts(
         "artifact": len(artifact_refs),
         "citation": 1 if has_citation else 0,
     }
+
+
+# ── Write-time feedback (M-D5, 7.5) ─────────────────────────────────────────
+#
+# NOT a grade write path: this is a lookup table over the existing grade
+# vocabulary (no new inference), used to hand the WRITER of a memory an
+# immediate, human-readable nudge in the `remember()` response. Never
+# persisted — `handlers/validate_memory.py` remains the sole writer of the
+# grade vocabulary to `memories.source_attribution` (I6-D6); see that
+# module's docstring and `handlers/remember_helpers.py::insert_and_post_process`
+# for why a second writer to that column would silently defeat the C1
+# confabulation gate (`core/source_monitoring.py::recall_confabulation_risk`).
+
+_WRITE_TIME_HINTS: dict[str, str] = {
+    VERIFIED: "All checkable references verified locally.",
+    VERIFIABLE: (
+        "References present but not conclusively checked at write time "
+        "(e.g. a commit whose repo isn't locally available, or a "
+        "citation -- DOI/arXiv are never auto-verified)."
+    ),
+    UNVERIFIABLE: (
+        "No checkable reference found (file path, commit SHA, URL, or "
+        "content-addressed artifact digest)."
+    ),
+}
+
+# M-D2 (7.4) named the 'deliberate' write class as the one meant to carry
+# durable, considered testimony -- an unverifiable deliberate write gets a
+# stronger call-to-action than an unverifiable auto/derived/mechanical one
+# (those are machine-authored by construction; asking them for a citation
+# is meaningless).
+_DELIBERATE_UNVERIFIABLE_SUFFIX = (
+    " For a durable claim, add one -- testimony without a reference "
+    "degrades under recall competition and stays 'unverifiable' through "
+    "the next validate_memory pass."
+)
+
+
+def write_time_hint(report: ProvenanceReport, write_class: str = "") -> str:
+    """Deterministic, templated feedback for the write-time caller (M-D5).
+
+    precondition: ``report`` came from ``grade_from_content``
+        (``handlers/validate_memory.py``, write-path) or ``grade_provenance``
+        generally; ``write_class`` is the resolved write class of the
+        memory being written (M-D2, 7.4), or "" when not applicable.
+    postcondition: returns one of three fixed hint strings keyed only by
+        ``report.grade`` -- a pure lookup, no new inference -- with a
+        stronger call-to-action appended for UNVERIFIABLE writes whose
+        ``write_class == "deliberate"``. Never persisted; callers surface
+        this in the write response only.
+    """
+    hint = _WRITE_TIME_HINTS[report.grade]
+    if report.grade == UNVERIFIABLE and write_class == "deliberate":
+        hint += _DELIBERATE_UNVERIFIABLE_SUFFIX
+    return hint

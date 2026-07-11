@@ -1,0 +1,2507 @@
+{
+  "mode": "DRY-RUN",
+  "timestamp_utc": "20260711T111735Z",
+  "url_check_limit": 0,
+  "page_limit": 1000,
+  "max_pages": 50,
+  "before_distribution": {
+    "perceived": 3261,
+    "verifiable": 38,
+    "verified": 12,
+    "unknown": 7644,
+    "unverifiable": 57
+  },
+  "projected_grade_distribution": {
+    "verified": 1997,
+    "verifiable": 3064,
+    "unverifiable": 5951
+  },
+  "pages": 13,
+  "validated_total": 11012,
+  "stale_found_total": 3042,
+  "stale_updated_total": 0,
+  "destaled_total": 0,
+  "graded_total": 0,
+  "per_page": [
+    {
+      "page": 1,
+      "after_id_start": 0,
+      "validated": 1000,
+      "next_after_id": 4196798
+    },
+    {
+      "page": 2,
+      "after_id_start": 4196798,
+      "validated": 1000,
+      "next_after_id": 4197804
+    },
+    {
+      "page": 3,
+      "after_id_start": 4197804,
+      "validated": 1000,
+      "next_after_id": 4198816
+    },
+    {
+      "page": 4,
+      "after_id_start": 4198816,
+      "validated": 1000,
+      "next_after_id": 4199821
+    },
+    {
+      "page": 5,
+      "after_id_start": 4199821,
+      "validated": 1000,
+      "next_after_id": 4200832
+    },
+    {
+      "page": 6,
+      "after_id_start": 4200832,
+      "validated": 1000,
+      "next_after_id": 4201832
+    },
+    {
+      "page": 7,
+      "after_id_start": 4201832,
+      "validated": 1000,
+      "next_after_id": 4202833
+    },
+    {
+      "page": 8,
+      "after_id_start": 4202833,
+      "validated": 1000,
+      "next_after_id": 4253924
+    },
+    {
+      "page": 9,
+      "after_id_start": 4253924,
+      "validated": 1000,
+      "next_after_id": 4254945
+    },
+    {
+      "page": 10,
+      "after_id_start": 4254945,
+      "validated": 1000,
+      "next_after_id": 4255950
+    },
+    {
+      "page": 11,
+      "after_id_start": 4255950,
+      "validated": 1000,
+      "next_after_id": 4262392
+    },
+    {
+      "page": 12,
+      "after_id_start": 4262392,
+      "validated": 12,
+      "next_after_id": 4262404
+    },
+    {
+      "page": 13,
+      "after_id_start": 4262404,
+      "validated": 0,
+      "next_after_id": null
+    }
+  ],
+  "sample_reports": [
+    {
+      "memory_id": 4195796,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195797,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: http://127.0.0.1:60177"
+    },
+    {
+      "memory_id": 4195798,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 1,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: ed4efd4f"
+    },
+    {
+      "memory_id": 4195799,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 2,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /private/tmp/claude-501/-Users-cdeust-Developments-Cortex/673967ff-1ff9-4536-8fc3-83b98d720e5b/tasks/bo9sy19th.output"
+    },
+    {
+      "memory_id": 4195800,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 1,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: c1f0758a"
+    },
+    {
+      "memory_id": 4195801,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195802,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 5,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/Developments/Cortex/mcp_server/server/http_standalone.py, /Users/cdeust/Developments/Cortex/mcp_server/server/http_standalone_endpoints.py, /Users/cdeust/Developments/Cortex/mcp_server/server/http_standalone_response.py"
+    },
+    {
+      "memory_id": 4195803,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/Developments/Cortex/mcp_server/infrastructure/workflow_graph_source_pg.py"
+    },
+    {
+      "memory_id": 4195804,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195805,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/Developments/Cortex/mcp_server/server/http_standalone_graph.py"
+    },
+    {
+      "memory_id": 4195806,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 20,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195807,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 1,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 60b62a4dd74e7e93, https://api.github.com/repos/letta-ai/letta-code/git/trees/main?recursive=1"
+    },
+    {
+      "memory_id": 4195808,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: https://raw.githubusercontent.com/letta-ai/letta-code/main/src/agent/memory.ts"
+    },
+    {
+      "memory_id": 4195809,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 10,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195810,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 22,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195811,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: info/nmessages.jsonl, record/nmanifest.json, transcript/nsystem-prompt.json"
+    },
+    {
+      "memory_id": 4195812,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: https://raw.githubusercontent.com/letta-ai/letta-code/main/src/agent/context.ts"
+    },
+    {
+      "memory_id": 4195813,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195814,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195815,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 9,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: ea425f853b21ceb9, https://docs.letta.com/guides/agents/architectures/sleeptime/, https://blog.smeuse.org/posts/sleep-time-compute-agents"
+    },
+    {
+      "memory_id": 4195816,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195817,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: https://raw.githubusercontent.com/letta-ai/letta-code/main/src/backend/local/local-backend.ts"
+    },
+    {
+      "memory_id": 4195818,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 8,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: a732ad4d00ef563b, https://docs.letta.com/guides/ade/core-memory/, https://docs.letta.com/concepts/memory-management/"
+    },
+    {
+      "memory_id": 4195819,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: .git/memory-repository-push.log"
+    },
+    {
+      "memory_id": 4195820,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: genius/INDEX.md, src/agent/memory-filesystem.ts, src/backend/local/compaction.ts"
+    },
+    {
+      "memory_id": 4195821,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/contract.md, memory/scope-registry.json"
+    },
+    {
+      "memory_id": 4195822,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /memories/research/checkpoint.md, tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195823,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195824,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: agents/orchestrator.md, hooks/stop-context-guard.py"
+    },
+    {
+      "memory_id": 4195825,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 2,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 827319188b9e4e35, https://ai-architect.tools, https://github.com/cdeust/zetetic-team-subagents"
+    },
+    {
+      "memory_id": 4195826,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: f415eef9ad89d54d"
+    },
+    {
+      "memory_id": 4195827,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 25,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: efe4ee24, 33a5e4a8, 46acbe56"
+    },
+    {
+      "memory_id": 4195828,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 5,
+        "commit": 1,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /memories/architect/checkpoint.md, /memories/architect/notes.md, /memories/engineer/checkpoint.md"
+    },
+    {
+      "memory_id": 4195829,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195830,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195831,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 230c4498da00df6e"
+    },
+    {
+      "memory_id": 4195832,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195833,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 7c25777"
+    },
+    {
+      "memory_id": 4195834,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195835,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 8ef73f7173512991"
+    },
+    {
+      "memory_id": 4195836,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195837,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195838,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 1,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: a0d66352d4e02acab"
+    },
+    {
+      "memory_id": 4195839,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 2,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 0426a3d, 8ed223e, https://github.com/cdeust/Cortex.git"
+    },
+    {
+      "memory_id": 4195840,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: https://github.com/cdeust/cortex.git"
+    },
+    {
+      "memory_id": 4195841,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 5,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/.claude/plugins/cache/agentic-ai/codebase/0.1.0, /Users/cdeust/.claude/plugins/cache/agentic-ai/memory/0.3.2, /Users/cdeust/.claude/plugins/cache/agentic-ai/prd/0.0.6"
+    },
+    {
+      "memory_id": 4195842,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195843,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 1,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 2332fe98"
+    },
+    {
+      "memory_id": 4195844,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 4,
+        "url": 4,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 7532cf7, e833686, 753afb7"
+    },
+    {
+      "memory_id": 4195845,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 1,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: aae79df2288810ab5"
+    },
+    {
+      "memory_id": 4195846,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 8,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 7532cf7, a544e73, 82d37a2"
+    },
+    {
+      "memory_id": 4195847,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195848,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 3e6718bd7585a101"
+    },
+    {
+      "memory_id": 4195849,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /memories/engineer/notes.md"
+    },
+    {
+      "memory_id": 4195850,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 5,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 682185f, 967545d, 6c99eb1"
+    },
+    {
+      "memory_id": 4195851,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195852,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 1,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: a7ad6edf02f1ca2ae"
+    },
+    {
+      "memory_id": 4195853,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195854,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 1,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 7532cf7"
+    },
+    {
+      "memory_id": 4195855,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 1,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: src/main.rs"
+    },
+    {
+      "memory_id": 4195856,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: /memories/engineer/checkpoint.md, /memories/engineer/notes.md, tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195857,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: reviews/neurips-2025-review.md"
+    },
+    {
+      "memory_id": 4195858,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 6,
+        "commit": 2,
+        "url": 0,
+        "artifact": 2,
+        "citation": 0
+      },
+      "reason": "dead_refs: /tmp/finalize_scan.py, /tmp/probe_a2_atomic.py, /tmp/rollout.py"
+    },
+    {
+      "memory_id": 4195859,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195860,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/scope-registry.json, tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195861,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195862,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: @prd-gen/mcp-server@0.1.0, mcp-server/index.js, packages/mcp-server/dist/index.js"
+    },
+    {
+      "memory_id": 4195863,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195864,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195865,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 2,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 65e578f2, b4f4ff0f1df7"
+    },
+    {
+      "memory_id": 4195866,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 2,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: agents/engineer.md"
+    },
+    {
+      "memory_id": 4195867,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 2,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: /memories/research/checkpoint.md, /tmp/rollout.py"
+    },
+    {
+      "memory_id": 4195868,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195869,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195870,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 5,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: /tmp/engineer-head.md, /tmp/rollout.py, memory/scope-registry.json"
+    },
+    {
+      "memory_id": 4195871,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: agents/genius/feynman.md, tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195872,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/scope-registry.json, tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195873,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: agents/genius/coase.md, agents/genius/feynman.md"
+    },
+    {
+      "memory_id": 4195874,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195875,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: agents/genius/INDEX.md, agents/orchestrator.md"
+    },
+    {
+      "memory_id": 4195876,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: agents/genius/INDEX.md, commands/genius/route.md, tools/genius-invoker.sh"
+    },
+    {
+      "memory_id": 4195877,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195878,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195879,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195880,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 4,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 8174a71, 8ed223e, d55fafa"
+    },
+    {
+      "memory_id": 4195881,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 3,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: mcp-server/index.js"
+    },
+    {
+      "memory_id": 4195882,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195883,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 5,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: docs/arxiv-context-assembly/main.aux, docs/arxiv-context-assembly/main.log, docs/arxiv-context-assembly/main.out"
+    },
+    {
+      "memory_id": 4195884,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195885,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195886,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195887,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195888,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: tools/memory-mcp-server.py"
+    },
+    {
+      "memory_id": 4195889,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195890,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195891,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195892,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /memories/engineer/data.json, /memories/engineer/nope.md, /memories/engineer/x.md"
+    },
+    {
+      "memory_id": 4195893,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: agents/ux-designer.md"
+    },
+    {
+      "memory_id": 4195894,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195895,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 8,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: agents/architect.md, agents/code-reviewer.md, agents/data-scientist.md"
+    },
+    {
+      "memory_id": 4195896,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: agents/memory-writer.md, rules/agent-routing-table.md, scripts/generate-routing-table.py"
+    },
+    {
+      "memory_id": 4195897,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 2,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: b25e5c5, 22cbac7"
+    },
+    {
+      "memory_id": 4195898,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: Cortex/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195899,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195900,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195901,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: hooks/stop-context-guard.py"
+    },
+    {
+      "memory_id": 4195902,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195903,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 7,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 8f20b8cc652c38e7, 259c275, 262c288"
+    },
+    {
+      "memory_id": 4195904,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195905,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 10,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/.claude/plugins/cache/zetetic-marketplace/zetetic-team-subagents/2.16.1/hooks/ctxguard-thresholds.json, /Users/cdeust/.claude/plugins/cache/zetetic-marketplace/zetetic-team-subagents/2.16.1/hooks/hooks.json, /Users/cdeust/.claude/plugins/cache/zetetic-marketplace/zetetic-team-subagents/2.16.1/hooks/session-start.sh"
+    },
+    {
+      "memory_id": 4195906,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 85e1af1c94c37dad"
+    },
+    {
+      "memory_id": 4195907,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 8,
+        "commit": 4,
+        "url": 0,
+        "artifact": 4,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: d52ee54f64a5a801, a148f033c633fc2b, 9165218be6e5354d"
+    },
+    {
+      "memory_id": 4195908,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/.claude/memories/checkpoints/sotest1.md"
+    },
+    {
+      "memory_id": 4195909,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: https://github.com/cdeust/session-optimizer"
+    },
+    {
+      "memory_id": 4195910,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/.claude/plugins/cache/zetetic-marketplace/zetetic-team-subagents/2.18.0/agents/memory-writer.md"
+    },
+    {
+      "memory_id": 4195911,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 2,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: agents/memory-writer.md"
+    },
+    {
+      "memory_id": 4195912,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195913,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 20,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /tmp/letta-re/letta/alembic/versions/1c6b6a38b713_add_pip_requirements_to_tools.py, /tmp/letta-re/letta/alembic/versions/39577145c45d_add_project_constraint_on_tools.py, /tmp/letta-re/letta/alembic/versions/5987401b40ae_refactor_agent_memory.py"
+    },
+    {
+      "memory_id": 4195914,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 8ac89799950f7c64"
+    },
+    {
+      "memory_id": 4195915,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195916,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195917,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /tmp/letta-re/letta-code/src/agent/memory-constants.ts"
+    },
+    {
+      "memory_id": 4195918,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 5,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /tmp/letta-re/letta/letta/orm/__init__.py, /tmp/letta-re/letta/letta/orm/archive.py, /tmp/letta-re/letta/letta/orm/organization.py"
+    },
+    {
+      "memory_id": 4195919,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: /tmp/letta-re/letta/letta/agents/voice_sleeptime_agent.py"
+    },
+    {
+      "memory_id": 4195920,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /tmp/letta-re/letta/letta/prompts/gpt_system.py, /tmp/letta-re/letta/letta/prompts/prompt_generator.py, /tmp/letta-re/letta/letta/prompts/system_prompts/__init__.py"
+    },
+    {
+      "memory_id": 4195921,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 15,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /tmp/letta-re/letta-code/src/constants.ts, /tmp/letta-re/letta-code/src/headless-extension-adapter.ts, /tmp/letta-re/letta-code/src/headless-reminder.test.ts"
+    },
+    {
+      "memory_id": 4195922,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195923,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: /tmp/letta-re/letta-code/src/agent/create.ts, /tmp/letta-re/letta-code/src/cli/app/use-submit-handler.ts, /tmp/letta-re/letta-code/src/headless.ts"
+    },
+    {
+      "memory_id": 4195924,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195925,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: commands/session/memory-sync.md, memory/contract.md, tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195926,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/contract.md"
+    },
+    {
+      "memory_id": 4195927,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/letta-memory-split.md"
+    },
+    {
+      "memory_id": 4195928,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195929,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 20,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/Developments/Cortex/tasks/smoke_recall_pipeline.py, /Users/cdeust/Developments/Cortex/tests_py/handlers/test_backfill_heat.py, /Users/cdeust/Developments/Cortex/tests_py/handlers/test_query_workflow_graph.py"
+    },
+    {
+      "memory_id": 4195930,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 8,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/contract.md, tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195931,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195932,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195933,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195934,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 8,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: tools/research-session-manager.sh"
+    },
+    {
+      "memory_id": 4195935,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195936,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: commands/research/session.md, tools/research-session-manager.sh"
+    },
+    {
+      "memory_id": 4195937,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/contract.md, tools/memory-tool.sh, tools/session-store.sh"
+    },
+    {
+      "memory_id": 4195938,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /memories/research/checkpoint.md, memory/contract.md, tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195939,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/contract.md"
+    },
+    {
+      "memory_id": 4195940,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 2,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: commands/research/session.md, commands/session/save.md, memory/contract.md"
+    },
+    {
+      "memory_id": 4195941,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195942,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 703a443b9afd7c81"
+    },
+    {
+      "memory_id": 4195943,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195944,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195945,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195946,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195947,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195948,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195949,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/contract.md"
+    },
+    {
+      "memory_id": 4195950,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/contract.md"
+    },
+    {
+      "memory_id": 4195951,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195952,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: src/clustering/impact.rs, src/clustering/process.rs"
+    },
+    {
+      "memory_id": 4195953,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 9e399163c6081b71"
+    },
+    {
+      "memory_id": 4195954,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: src/graph_store.rs"
+    },
+    {
+      "memory_id": 4195955,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: src/search/mod.rs, src/search/rrf.rs, src/search/vector.rs"
+    },
+    {
+      "memory_id": 4195956,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/.claude/methodology/bin/automatised-pipeline.prebuilt"
+    },
+    {
+      "memory_id": 4195957,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 2,
+        "url": 0,
+        "artifact": 2,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 7b5d1acc3e7a2468, 1a7f867db2f826a6"
+    },
+    {
+      "memory_id": 4195958,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: memory/contract.md"
+    },
+    {
+      "memory_id": 4195959,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 9ed057e39fad2b65"
+    },
+    {
+      "memory_id": 4195960,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/.claude/methodology/bin/automatised-pipeline-0.3.0"
+    },
+    {
+      "memory_id": 4195961,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 6,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/Developments/cortex-viz/cortex_viz/infrastructure/memory_read.py, /Users/cdeust/Developments/cortex-viz/tests/test_memory_read.py"
+    },
+    {
+      "memory_id": 4195962,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: mcp_server/server/http_standalone.py"
+    },
+    {
+      "memory_id": 4195963,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195964,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195965,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/Developments/Cortex/.venv/bin/python3.13"
+    },
+    {
+      "memory_id": 4195966,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: /home/runner/work/zetetic-team-subagents/zetetic-team-subagents/memory/scope-registry.json, /home/runner/work/zetetic-team-subagents/zetetic-team-subagents/tools/memory-tool.sh"
+    },
+    {
+      "memory_id": 4195967,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195968,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 10,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /memories/engineer/decision-1.md, /memories/engineer/sneaky.md, /memories/engineer/sync-test.md"
+    },
+    {
+      "memory_id": 4195969,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /memories/engineer/sync-test.md, /memories/session/new.md, /memories/session/old.md"
+    },
+    {
+      "memory_id": 4195970,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195971,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195972,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: scripts/test-memory-e2e.sh"
+    },
+    {
+      "memory_id": 4195973,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195974,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195975,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195976,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195977,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 8,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: scripts/test-agent-id-propagation.sh, scripts/test-memory-concurrency.sh, scripts/test-memory-e2e.sh"
+    },
+    {
+      "memory_id": 4195978,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: /memories/smoke/attributed.md, /memories/smoke/hello.md"
+    },
+    {
+      "memory_id": 4195979,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: d7ad6db8d6ff5bca"
+    },
+    {
+      "memory_id": 4195980,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195981,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 4,
+        "commit": 3,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: crates/zera/src/grammar.rs, src/main.rs, tests/multilang_integration.rs"
+    },
+    {
+      "memory_id": 4195982,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 3,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: scripts/test-memory-concurrency.sh, scripts/test-memory-mcp.sh, scripts/test-memory-stale-lock.sh"
+    },
+    {
+      "memory_id": 4195983,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: tests/stage3c_integration.rs"
+    },
+    {
+      "memory_id": 4195984,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195985,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 3,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 0b1dca6e, 8f9883ea2c13"
+    },
+    {
+      "memory_id": 4195986,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195987,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: .claude/hooks/hooks.json"
+    },
+    {
+      "memory_id": 4195988,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: 1b59be683fc5c71b"
+    },
+    {
+      "memory_id": 4195989,
+      "grade": "verified",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "all_refs_verified"
+    },
+    {
+      "memory_id": 4195990,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: https://github.com/cdeust/automatised-pipeline"
+    },
+    {
+      "memory_id": 4195991,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195992,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 2,
+        "commit": 1,
+        "url": 0,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "dead_refs: /Users/cdeust/Developments/Cortex/mcp_server/hooks/claude_dir_doctor.py"
+    },
+    {
+      "memory_id": 4195993,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 0,
+        "commit": 0,
+        "url": 0,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "no_extractable_reference"
+    },
+    {
+      "memory_id": 4195994,
+      "grade": "verifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 1,
+        "url": 2,
+        "artifact": 1,
+        "citation": 0
+      },
+      "reason": "uncheckable_refs: d497cd14a6c2484b, https://sh.rustup.rs, https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation[0m"
+    },
+    {
+      "memory_id": 4195995,
+      "grade": "unverifiable",
+      "ref_counts": {
+        "file": 1,
+        "commit": 0,
+        "url": 1,
+        "artifact": 0,
+        "citation": 0
+      },
+      "reason": "dead_refs: /home/runner/actions-runner/cached/2.334.0/_diag/Worker_20260610-141434-utc.log"
+    }
+  ]
+}
