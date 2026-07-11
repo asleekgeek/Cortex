@@ -209,7 +209,7 @@ sweep_orphaned_containers() {
             continue  # owning process still alive — not an orphan
         fi
         echo "==> Reclaiming orphaned container ${name} (owning pid ${pid} is dead)."
-        docker rm -f "$name" >/dev/null 2>&1 || true
+        docker rm -f -v "$name" >/dev/null 2>&1 || true
     done <<< "$names"
 }
 
@@ -297,7 +297,10 @@ acquire_lock() {
 teardown() {
     if [ "$started_container" = "1" ] && [ "$KEEP_DB" != "1" ]; then
         echo "==> Removing ephemeral container ${CONTAINER} (--keep-db to keep)."
-        docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+        # -v: also remove the anonymous PGDATA volume — without it every run
+        # leaks one volume (measured 2026-07-11: 46 orphans / 31.5 GB filled
+        # the Docker VM until postgres could no longer init a datadir).
+        docker rm -f -v "$CONTAINER" >/dev/null 2>&1 || true
     fi
     rm -rf "$LOCK_DIR"
 }
