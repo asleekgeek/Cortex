@@ -1,0 +1,152 @@
+{
+  "mode": "DRY-RUN",
+  "timestamp_utc": "20260711T110849Z",
+  "limit": null,
+  "status": "ok",
+  "scanned_rows": 20,
+  "seeded": 20,
+  "already_cited": 0,
+  "skipped_race": 0,
+  "journal": [
+    {
+      "page_id": 867,
+      "memory_id": 4196226,
+      "domain": "zetetic-team-subagents",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 868,
+      "memory_id": 4196214,
+      "domain": "zetetic-team-subagents",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 869,
+      "memory_id": 4196213,
+      "domain": "zetetic-team-subagents",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 870,
+      "memory_id": 4196209,
+      "domain": "zetetic-team-subagents",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 871,
+      "memory_id": 4196205,
+      "domain": "zetetic-team-subagents",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 872,
+      "memory_id": 4196203,
+      "domain": "zetetic-team-subagents",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 873,
+      "memory_id": 4196192,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 874,
+      "memory_id": 4196144,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 875,
+      "memory_id": 4196131,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 876,
+      "memory_id": 4196130,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 877,
+      "memory_id": 4195894,
+      "domain": "zetetic-team-subagents",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 878,
+      "memory_id": 4196622,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 879,
+      "memory_id": 4196613,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 880,
+      "memory_id": 4196601,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 881,
+      "memory_id": 4196578,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 882,
+      "memory_id": 4196565,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 883,
+      "memory_id": 4196564,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 884,
+      "memory_id": 4196560,
+      "domain": "_general",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 885,
+      "memory_id": 4196403,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    },
+    {
+      "page_id": 886,
+      "memory_id": 4196801,
+      "domain": "cortex",
+      "reliability": "high_direct_memory_id",
+      "outcome": "would_seed"
+    }
+  ]
+}
