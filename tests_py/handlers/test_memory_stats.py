@@ -44,5 +44,32 @@ class TestMemoryStatsHandler:
             "active_triggers",
             "last_consolidation",
             "has_vector_search",
+            "grooming_staleness",
+            "grooming_staleness_threshold_days",
         }
         assert set(result.keys()) == expected_keys
+
+    def test_grooming_staleness_shape(self):
+        """G-4: staleness is a per-kind dict, ages-only (no backlog
+        counts -- those live behind get_grooming_health, not this ~75ms
+        health-check tool)."""
+        result = asyncio.run(handler())
+        staleness = result["grooming_staleness"]
+        assert set(staleness.keys()) == {"wiki", "distillation", "promotion"}
+        for kind_stats in staleness.values():
+            assert set(kind_stats.keys()) == {
+                "last_run_at",
+                "days_since_last_run",
+                "stale",
+            }
+            assert isinstance(kind_stats["stale"], bool)
+        assert result["grooming_staleness_threshold_days"] > 0
+
+    def test_grooming_staleness_never_run_is_stale(self):
+        """A kind with no last_run_at (never executed) must be flagged
+        stale unconditionally -- undefined age exceeds any threshold."""
+        result = asyncio.run(handler())
+        for kind_stats in result["grooming_staleness"].values():
+            if kind_stats["last_run_at"] is None:
+                assert kind_stats["stale"] is True
+                assert kind_stats["days_since_last_run"] is None

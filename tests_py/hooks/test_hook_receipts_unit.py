@@ -71,3 +71,41 @@ def test_banner_renders_marker_only_with_receipt() -> None:
     without = _build_context(anchors, [], None, receipt_id=None)
     assert "⟦rcpt:" not in without
     assert "a fact" in without
+
+
+def test_stale_grooming_renders_one_line_not_a_section() -> None:
+    """G-4: the staleness reminder is ONE line, never a header + block --
+    the 76-day-silent-wiki lesson is that a full section (like the
+    existing "Pending Wiki Curation" one) becomes just another ignored
+    nudge once it's permanently present."""
+    anchors = [{"id": 1, "content": "a fact", "domain": "", "is_global": False}]
+
+    ctx = _build_context(
+        anchors, [], None, stale_grooming=["distillation", "promotion"]
+    )
+    lines = ctx.splitlines()
+    reminder_lines = [
+        line
+        for line in lines
+        if "Grooming overdue" in line or "get_grooming_health" in line
+    ]
+    assert len(reminder_lines) == 1
+    assert "distillation/promotion" in reminder_lines[0]
+    # No new markdown header was introduced for this reminder.
+    assert not any(line.startswith("###") and "Grooming" in line for line in lines)
+
+
+def test_no_stale_grooming_omits_reminder() -> None:
+    anchors = [{"id": 1, "content": "a fact", "domain": "", "is_global": False}]
+    ctx = _build_context(anchors, [], None, stale_grooming=[])
+    assert "Grooming overdue" not in ctx
+    assert "get_grooming_health" not in ctx
+
+
+def test_stale_grooming_alone_triggers_context_build() -> None:
+    """Even with no anchors/hot/checkpoint/pending_curations, a stale
+    grooming signal alone must not degrade to an empty banner (the
+    guard clause explicitly checks it)."""
+    ctx = _build_context([], [], None, stale_grooming=["wiki"])
+    assert ctx != ""
+    assert "Grooming overdue (wiki)" in ctx

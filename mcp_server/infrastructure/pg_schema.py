@@ -799,6 +799,16 @@ CREATE INDEX IF NOT EXISTS idx_memories_created_at
     ON memories (created_at);
 CREATE INDEX IF NOT EXISTS idx_memories_stage
     ON memories (consolidation_stage);
+-- Grooming telemetry (get_grooming_health): candidate/backlog counts filter
+-- on tags @> '["lesson"]'::jsonb / tag-prefix scans ('promoted:%',
+-- 'distill-of:%'). Without this index the same query the promotion
+-- planner already runs (pg_store_lesson_promotion.list_lesson_promotion_
+-- candidates) is a full Seq Scan over `memories` (measured: 81ms at
+-- 11,012 rows, EXPLAIN ANALYZE 2026-07-11 -- grows linearly with table
+-- size). Mirrors the existing idx_wiki_pages_tags_gin index already
+-- proven on wiki.pages.tags (pg_schema.py:431).
+CREATE INDEX IF NOT EXISTS idx_memories_tags_gin
+    ON memories USING gin (tags);
 CREATE INDEX IF NOT EXISTS idx_entities_name
     ON entities (name);
 CREATE INDEX IF NOT EXISTS idx_entities_heat
