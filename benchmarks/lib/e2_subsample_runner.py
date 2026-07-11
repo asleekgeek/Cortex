@@ -153,7 +153,11 @@ def _load_subsample_into_db(
     os.environ["DATABASE_URL"] = db_url
     tracemalloc.start()
     try:
-        with BenchmarkDB(database_url=db_url) as db:
+        # require_reranker=True: this is the claim-bearing E2 retrieval
+        # runner (module docstring) -- a silently-degraded first-stage-only
+        # pipeline would corrupt the falsifiable cortex_full vs cortex_flat
+        # MRR gap this module exists to measure (INC7.2 audit).
+        with BenchmarkDB(database_url=db_url, require_reranker=True) as db:
             heat = heat_for(condition)
             payload = [{**it.memory, "heat": heat} for it in sub_items]
             _, source_map = db.load_memories(payload, domain=benchmark)

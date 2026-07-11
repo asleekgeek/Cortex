@@ -231,7 +231,10 @@ def _execute_trial(
     os.environ["DATABASE_URL"] = db_url
     tracemalloc.start()
     try:
-        with BenchmarkDB(database_url=db_url) as db:
+        # require_reranker=True: this extends the claim-bearing E2
+        # falsifiability protocol past N=1M (module docstring) -- same
+        # rigor requirement as e2_subsample_runner (INC7.2 audit).
+        with BenchmarkDB(database_url=db_url, require_reranker=True) as db:
             heat = heat_for(condition)
             payload = [{**it.memory, "heat": heat} for it in items]
             _, source_map = db.load_memories(payload, domain="e2_zipf")

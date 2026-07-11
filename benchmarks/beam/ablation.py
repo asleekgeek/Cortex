@@ -287,7 +287,11 @@ if __name__ == "__main__":
 
     ds = load_beam_dataset("100K")
 
-    with BenchmarkDB() as db:
+    # require_reranker=True: this study sweeps rerank_alpha (the CE vs
+    # first-stage blend weight, module docstring) -- the sweep is
+    # degenerate/meaningless without a genuinely loaded cross-encoder
+    # (INC7.2 audit).
+    with BenchmarkDB(require_reranker=True) as db:
         all_results = {}
 
         # Load existing results

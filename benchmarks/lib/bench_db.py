@@ -42,6 +42,43 @@ class BenchmarkDB:
     reproduce.sh gates against published floors) must set this True.
     Harnesses that intentionally test a mechanism in isolation (e.g.
     gate_precision) leave it False.
+
+    INC7.2 audit (2026-07-11) of every ``BenchmarkDB(...)`` call site under
+    ``benchmarks/`` — which ones claim production parity and therefore need
+    ``require_reranker=True``:
+
+    Enabled by this audit (each claims a falsifiable/production-fidelity
+    result that a silently-degraded first-stage-only pipeline would
+    corrupt — see the inline comment at each call site for the specific
+    claim):
+      - benchmarks/lib/e2_subsample_runner.py  (E2 claim-bearing retrieval)
+      - benchmarks/lib/e2_zipf_runner.py        (E2 claim-bearing retrieval)
+      - benchmarks/lib/latency_runner.py        (production wall-time claim)
+      - benchmarks/beam/ablation.py             (sweeps rerank_alpha itself)
+      - benchmarks/lib/_xb_drivers.py           (sweeps FlashRank top-K)
+
+    Reviewed and left False (documented, not an oversight):
+      - benchmarks/gate_precision/run_benchmark.py — measures the write
+        gate's novelty score (evaluate_gate), never calls recall/rerank;
+        the reranker is not in this harness's dependency graph at all.
+      - benchmarks/locomo/run_benchmark_agents.py — self-declared "NOT an
+        official benchmark" (module docstring); compares scoped vs
+        unscoped retrieval against EACH OTHER, so the reranker's
+        load-state is a constant nuisance factor across both arms, not a
+        differential bias.
+      - benchmarks/lib/longitudinal_runner.py — diagnostic decay-pipeline
+        harness, not falsifiability-registered or reproduce.sh-gated;
+        borderline case, flagged for a future increment to reconsider.
+      - benchmarks/llm_head_to_head/pilot.py — Stage-1 dry-run stress test
+        (module docstring: "not load-bearing for the GO/NO-GO gate"); its
+        live-mode B condition calls the real
+        ``mcp_server.handlers.recall.handler`` (production entrypoint,
+        already reranker-aware), not a bare ``BenchmarkDB.recall`` — the
+        ``BenchmarkDB()`` instance at this call site is only used for
+        memory seeding, not scored retrieval.
+      - benchmarks/spell_alteration/run_benchmark.py — standalone
+        user-invoked script (requires a ``--pdf`` path arg), not part of
+        any automated gate; recall-quality claims are informal.
     """
 
     def __init__(

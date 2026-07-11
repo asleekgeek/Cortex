@@ -284,7 +284,12 @@ def run_trial(
     tracemalloc.start()
     t0 = time.monotonic()
     try:
-        with BenchmarkDB(database_url=db_url) as db:
+        # require_reranker=True: this module's claim-bearing output is
+        # per-query WALL TIME (module docstring), and production latency
+        # includes the cross-encoder reranking pass -- a silently-skipped
+        # reranker would understate production latency, not just corrupt
+        # the (already non-claim-bearing) retrieval scores (INC7.2 audit).
+        with BenchmarkDB(database_url=db_url, require_reranker=True) as db:
             memories = _build_memories(corpus, heat_for(condition))
             print(f"  [n={n} cond={condition}] inserting {len(memories)} memories ...")
             _, source_map = db.load_memories(memories, domain="n_scan")

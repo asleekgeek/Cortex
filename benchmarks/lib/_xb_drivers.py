@@ -45,7 +45,12 @@ def _drive_locomo(data_path: str, limit: int) -> dict:
 
     agg: dict[str, list[dict]] = defaultdict(list)
     t0 = time.time()
-    with BenchmarkDB() as db:
+    # require_reranker=True: this driver backs cross_benchmark_runner's
+    # Popper C5 generalization claim, which explicitly sweeps FlashRank
+    # top-K as one of its load-bearing knobs (cross_benchmark_runner.py
+    # docstring) -- the claim is meaningless without a genuinely loaded
+    # cross-encoder (INC7.2 audit).
+    with BenchmarkDB(require_reranker=True) as db:
         for conv in data:
             sessions = extract_sessions(conv["conversation"])
             db.clear()
