@@ -29,6 +29,7 @@ from mcp_server.core.recall_pipeline import (
     mood_congruent_rerank,
     reconsolidation_apply,
     spreading_activation_expand,
+    spreading_activation_tail_fill,
 )
 
 
@@ -284,6 +285,127 @@ def test_sa_failure_logs_only_once(caplog):
     assert second_count == first_count  # no repeat log on subsequent failures
     rp._sa_failed = False
     rp._sa_last_error = None
+
+
+# ── SPREADING_ACTIVATION tail-fill mode (ADR-0054 addendum) ────────────
+# Default mode since the 2026-07-11 garde x3 bench incident: augment mode
+# (pre-fusion, can reorder) measured a LongMemEval MRR regression
+# (0.9166->0.9009) even with domain scoping. tail-fill only appends when
+# the pipeline returned fewer than top_k candidates, and never touches an
+# existing candidate.
+
+
+class _RaisingIfCalledStore:
+    """Fails the test if spread_activation_memories or get_memory is ever
+    called -- used to prove the len(candidates) >= top_k branch makes
+    ZERO store calls (the benchmark-neutrality argument)."""
+
+    def spread_activation_memories(self, **kwargs):
+        raise AssertionError(
+            "spread_activation_memories must not be called when the "
+            "candidate list already meets top_k"
+        )
+
+    def get_memory(self, mid: int):
+        raise AssertionError("get_memory must not be called in this branch")
+
+
+def test_tail_fill_noop_when_already_at_top_k():
+    cands = _make_candidates(5)
+    store = _RaisingIfCalledStore()
+    out = spreading_activation_tail_fill(cands, "query terms", store, top_k=5)
+    assert out == cands
+    assert out is cands  # identity, not just equality -- zero work done
+
+
+def test_tail_fill_noop_when_over_top_k():
+    cands = _make_candidates(7)
+    store = _RaisingIfCalledStore()
+    out = spreading_activation_tail_fill(cands, "query terms", store, top_k=5)
+    assert out is cands
+
+
+def test_tail_fill_completes_short_list_without_reordering():
+    cands = _make_candidates(3)
+    new_mems = {
+        i: {
+            "id": i,
+            "content": f"tail-fill memory {i}",
+            "heat": 0.6,
+            "domain": "test",
+            "tags": [],
+            "created_at": "2026-04-30T00:00:00Z",
+        }
+        for i in (97, 98, 99)
+    }
+    store = _FakeStore(
+        {**{c["memory_id"]: c for c in cands}, **new_mems},
+        sa_response=[(97, 0.9), (98, 0.8), (99, 0.7)],
+    )
+    out = spreading_activation_tail_fill(
+        cands, "query expand entity terms", store, top_k=5
+    )
+    # The first 3 entries are the ORIGINAL candidates, untouched, in order.
+    assert out[:3] == cands
+    assert len(out) == 5  # needed = 5 - 3 = 2, so exactly 2 appended
+    tail_ids = [c["memory_id"] for c in out[3:]]
+    assert tail_ids == [97, 98]  # SA rank order, capped at `needed`
+
+
+def test_tail_fill_appended_candidates_match_wrrf_field_contract():
+    cands = _make_candidates(1)
+    new_mem = {
+        "id": 99,
+        "content": "tail-fill memory",
+        "heat": 0.6,
+        "domain": "test",
+        "tags": [],
+        "created_at": "2026-04-30T00:00:00Z",
+        "source": "post_tool_capture",
+        "store_type": "episodic",
+        "importance": 0.4,
+        "surprise_score": 0.1,
+        "emotional_valence": 0.0,
+        "value": 0.5,
+        "source_attribution": None,
+    }
+    store = _FakeStore(
+        {**{c["memory_id"]: c for c in cands}, 99: new_mem},
+        sa_response=[(99, 0.9)],
+    )
+    out = spreading_activation_tail_fill(
+        cands, "query expand entity terms", store, top_k=2
+    )
+    appended = out[1]
+    assert appended["memory_id"] == 99
+    assert appended["source"] == "post_tool_capture"
+    assert appended.get("_sa_injected") is True
+
+
+def test_tail_fill_disabled_returns_input_unchanged():
+    cands = _make_candidates(2)  # below top_k -- would otherwise call the store
+    store = _FakeStore({c["memory_id"]: c for c in cands}, sa_response=[(99, 0.9)])
+    with _ablate("CORTEX_ABLATE_SPREADING_ACTIVATION"):
+        out = spreading_activation_tail_fill(cands, "query terms", store, top_k=5)
+    assert out == cands
+
+
+def test_tail_fill_threads_domain_and_cross_domain():
+    cands = _make_candidates(2)
+    store = _CapturingStore()
+    spreading_activation_tail_fill(
+        cands, "query expand entity terms", store, top_k=5, domain="acme"
+    )
+    assert store.last_kwargs["domain"] == "acme"
+    spreading_activation_tail_fill(
+        cands,
+        "query expand entity terms",
+        store,
+        top_k=5,
+        domain="acme",
+        cross_domain=True,
+    )
+    assert store.last_kwargs["domain"] is None
 
 
 # ── DENDRITIC_CLUSTERS ──────────────────────────────────────────────────

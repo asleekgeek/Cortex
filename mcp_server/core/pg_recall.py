@@ -254,6 +254,7 @@ def recall(
     include_globals: bool = True,
     familiarity_shortcut: bool = False,
     cross_domain: bool = False,
+    sa_mode: str = "tail",
 ) -> list[dict[str, Any]]:
     """Full PG-path retrieval: intent → weights → recall_memories → rerank.
 
@@ -277,7 +278,26 @@ def recall(
             default" shape as ``include_globals``. Defaults to False:
             measured 52.8% cross-domain injection rate when this stage
             runs unscoped (scratchpad/spread-activation-scoping-design.md
-            §2.3).
+            §2.3). Orthogonal to ``sa_mode``.
+        sa_mode: ADR-0054 addendum (2026-07-11, garde x3 bench incident).
+            One of ``"tail"`` (default), ``"augment"``, ``"off"``.
+            ``"tail"`` calls ``spreading_activation_tail_fill`` LAST, after
+            every reranking stage — it only appends SA-reachable memories
+            when the pipeline returned fewer than ``top_k`` candidates,
+            never reordering or rescoring an existing one. Benchmark-
+            neutral by construction: a corpus dense enough to already
+            fill ``top_k`` (LongMemEval, LoCoMo, BEAM) triggers zero store
+            calls. ``"augment"`` runs the PRE-fusion
+            ``spreading_activation_expand`` at its original position
+            (between HDC and DENDRITIC_CLUSTERS) — this was the default
+            when the channel first went live and the garde x3 bench's
+            first live measurement showed it moves already-correct
+            top-ranked documents even with domain scoping applied
+            (LongMemEval MRR 0.9166->0.9009, floor 0.914 breach, against
+            +0.002 R@10) because LongMemEval's own ingestion creates
+            entities inside the query's domain. Kept available for a
+            future dedicated tuning campaign (e.g. unified_search), never
+            the default. ``"off"`` disables the channel entirely.
         familiarity_shortcut: C2 dual-process opt-in. When True, an
             overwhelmingly-familiar query (a single dominant candidate whose
             query↔candidate cosine similarity clears the familiarity threshold)
@@ -365,6 +385,7 @@ def recall(
         mood_congruent_rerank,
         reconsolidation_apply,
         spreading_activation_expand,
+        spreading_activation_tail_fill,
         value_priority_rerank,
     )
 
@@ -375,14 +396,19 @@ def recall(
         embedding_dim=embeddings.dimensions if embeddings else 0,
     )
     candidates = hdc_rerank(candidates, query)
-    candidates = spreading_activation_expand(
-        candidates,
-        query,
-        store,
-        domain=domain,
-        include_globals=include_globals,
-        cross_domain=cross_domain,
-    )
+    # AUGMENT mode only (opt-in, ADR-0054 addendum) — the pre-fusion
+    # injection that can reorder/outrank existing candidates. Default
+    # sa_mode="tail" skips this entirely; see spreading_activation_tail_fill
+    # below, which runs LAST instead.
+    if sa_mode == "augment":
+        candidates = spreading_activation_expand(
+            candidates,
+            query,
+            store,
+            domain=domain,
+            include_globals=include_globals,
+            cross_domain=cross_domain,
+        )
     candidates = dendritic_modulate(candidates, query, store)
 
     # 4e. EMOTIONAL_RETRIEVAL — Bower 1981 mood-congruent recall using
@@ -516,6 +542,26 @@ def recall(
                 result_embs.append(mem["embedding"])
         surprise = titans.update(q_emb, result_embs)
         momentum_state["momentum"] = surprise  # Track for diagnostics
+
+    # 11. TAIL mode SA fill (default, ADR-0054 addendum) — MUST be the
+    # final stage, after every reranking step above (FlashRank,
+    # VALUE_PRIORITY, CONFLICT_MONITOR, GOAL_MAINTENANCE,
+    # ATTENTIONAL_CONTROL, the EVENT_ORDER chronological rerank, and
+    # Titans) so an appended candidate can never be picked up and moved
+    # by a later stage. Only runs when the pipeline returned fewer than
+    # top_k candidates -- see spreading_activation_tail_fill's docstring
+    # for the benchmark-neutrality argument (zero store calls once
+    # len(candidates) >= top_k).
+    if sa_mode == "tail":
+        candidates = spreading_activation_tail_fill(
+            candidates,
+            query,
+            store,
+            top_k,
+            domain=domain,
+            include_globals=include_globals,
+            cross_domain=cross_domain,
+        )
 
     return candidates[:top_k]
 
