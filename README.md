@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/tests-3000+_passing-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/references-97_papers-orange.svg" alt="References">
-  <img src="https://img.shields.io/badge/version-4.12.0-brightgreen.svg" alt="Version 4.12.0">
+  <img src="https://img.shields.io/badge/version-4.13.0-brightgreen.svg" alt="Version 4.13.0">
 </p>
 
 <p align="center">
@@ -41,7 +41,7 @@ Cortex is a persistent memory engine for Claude built on computational neuroscie
 
 It runs **entirely on your machine** — a local SQLite database by default (zero setup, no services to install), or PostgreSQL + pgvector when you want it. A 22 MB embedding model, no LLM in the retrieval loop, no data leaving localhost.
 
-> **36 neuroscience mechanisms · 44 memory tools · 9 lifecycle hooks · a self-curating per-project wiki — all local, all open-source.**
+> **36 neuroscience mechanisms · 49 memory tools · 9 lifecycle hooks · a self-curating, continuously-groomed per-project wiki — all local, all open-source.**
 
 ---
 
@@ -111,13 +111,13 @@ Cortex needs **no configuration** to run — the SQLite backend is the default a
 
 \* The single-click bundle pins the backend to `sqlite` through the manifest. If you run the server directly (clone / Docker) without setting the variable, the underlying code default is `auto` — it tries PostgreSQL and falls back to SQLite.
 
-That's the entire surface most users touch. Both backends expose the **same 44 memory tools** (47 with the optional automatised-pipeline + prd-spec-generator integrations) and the same retrieval contract; PostgreSQL adds server-side PL/pgSQL fusion and HNSW indexing that pays off at very large scale. Every other knob uses the `CORTEX_MEMORY_` prefix — see `mcp_server/infrastructure/memory_config.py`.
+That's the entire surface most users touch. Both backends expose the **same 49 memory tools** (52 with the optional automatised-pipeline + prd-spec-generator integrations) and the same retrieval contract; PostgreSQL adds server-side PL/pgSQL fusion and HNSW indexing that pays off at very large scale. Every other knob uses the `CORTEX_MEMORY_` prefix — see `mcp_server/infrastructure/memory_config.py`.
 
 ---
 
 ## Examples
 
-A live, end-to-end run on the **SQLite backend** (44 tools registered) — store three memories, recall them by meaning, then check the store. The output is taken from the in-process FastMCP client (recall lists trimmed to the top hit). The harness writes with `force: true` for determinism, and the demo store already held a few earlier memories — so `memory_stats` totals exceed the three inserted here.
+A live, end-to-end run on the **SQLite backend** (49 tools registered) — store three memories, recall them by meaning, then check the store. The output is taken from the in-process FastMCP client (recall lists trimmed to the top hit). The harness writes with `force: true` for determinism, and the demo store already held a few earlier memories — so `memory_stats` totals exceed the three inserted here.
 
 **1 — Store a memory.** It is stored with a heat score (`force: true` skips the dedup write-gate to keep the demo deterministic; omit it and a near-duplicate would be gated).
 
@@ -163,6 +163,8 @@ You rarely call these by hand: the lifecycle hooks (plugin install) inject the r
 ---
 
 ## What's new
+
+**v4.13.0 — grooming becomes continuous instead of session-bound.** A measured 76-day wiki-citation and lesson-promotion silence (invisible until this release could measure it) is closed by wiring a recurring citation-reconciliation pass and a lesson-promotion backlog count into every consolidation cycle, a new READ_ONLY `get_grooming_health` tool (backlog + staleness per grooming type, on demand), a one-line `session_start` nudge past a sourced staleness threshold, and an opt-in scheduled `scripts/groomer.py` entry point (dry-run by default) for anyone who wants the maintenance pass on its own cron/launchd cadence. Also fixed: headless wiki writes now go through the same governed path as interactive writes, and — found on the way — a CRITICAL latent bug where the anchor-page frontmatter template's `status: living` violated the `wiki.pages` CHECK constraint since its origin, silently failing the database sync of every interactively-authored `curate_wiki` page in production. **49 memory tools** (52 with upstream integrations). See [CHANGELOG.md](CHANGELOG.md) for the full write-up.
 
 **v4.0.0 — the neuroscience model complete (13 new mechanisms).** Cortex fills the remaining cognitive-science gaps so memory spans encoding → consolidation → retrieval → forgetting with a grounded mechanism at every stage: source/reality monitoring (C1) with a confabulation gate, recollection-vs-familiarity dual-process retrieval (C2), claim-conflict monitoring (A2), goal maintenance (A1), attentional-salience gating, habituation (E1), fear-extinction inhibitory learning (E2), stress/arousal encoding-gain modulation, a predictive-coding forward model, value/reward-weighted retention, procedural (skill) memory (B1), two-phase NREM/REM sleep consolidation (F1), and cued targeted reactivation (F2). One new MCP tool (`recall_skills`); each mechanism is cited to published work and exposed as a live system vital. **44 memory tools** (47 with upstream integrations).
 
@@ -320,7 +322,7 @@ cortex:anchor({ content: "We're using event-sourcing. All state changes go throu
 
 Anchored memories get maximum protection — they always survive compaction, no matter what.
 
-> The compaction checkpoint, session-start injection, and the autonomous wiki cycle are **lifecycle hooks** registered by the Claude Code plugin install. The single-click `.mcpb` bundle is a Directory connector — it delivers the 44 memory tools but **no hooks** (the MCPB format carries none). For the automatic session-lifecycle memory (session-start injection, auto-capture, compaction checkpointing, the autonomous wiki cycle), install the Claude Code plugin (see [More options](#getting-started)); the plugin also auto-registers the 3 upstream-integration tools when automatised-pipeline / prd-spec-generator are present (47 total).
+> The compaction checkpoint, session-start injection, and the autonomous wiki cycle are **lifecycle hooks** registered by the Claude Code plugin install. The single-click `.mcpb` bundle is a Directory connector — it delivers the 49 memory tools but **no hooks** (the MCPB format carries none). For the automatic session-lifecycle memory (session-start injection, auto-capture, compaction checkpointing, the autonomous wiki cycle), install the Claude Code plugin (see [More options](#getting-started)); the plugin also auto-registers the 3 upstream-integration tools when automatised-pipeline / prd-spec-generator are present (52 total).
 
 ---
 
@@ -336,8 +338,9 @@ What makes it autonomous — no cron, no daemon, no manual invocation:
 - **Drift detection.** Pages whose cited source moved, whose mtime is stale (>60 days), or whose body is off-template are flagged and re-authored in place. Deletion is never the policy; **visibility** is — a yellow banner shows `⚠ Page N% curated — M sections still missing` and exactly what belongs in each.
 - **ADRs as task-records.** Every completed task (≥1 commit at session end) auto-drafts an ADR with five mandatory sections (Entry / Mandatory / How / Result / Serves) from commit subjects + the session's memories; the worker refines it next cycle.
 - **Per-project dashboards** at `wiki/_dashboards/<project>.md` show slot-fill rate, file coverage %, open gaps, and the queue for the next cycle.
+- **Continuous mechanical grooming.** A recurring citation-reconciliation pass and a lesson-promotion backlog count run inside every consolidation cycle, not just when a session author happens to be active — closing a gap that let a 76-day, multi-thousand-item wiki-citation and lesson-promotion backlog go entirely unnoticed. `get_grooming_health` (a READ_ONLY MCP tool) reports exact backlog + last-run age per grooming type on demand; `session_start` prints one line when any type exceeds a sourced staleness threshold (3× the measured p90 gap between consolidation cycles). A `scripts/groomer.py` scheduled entry point (dry-run by default, opt-in `--apply`) is shipped for anyone who wants the maintenance pass to also run on its own cron/launchd schedule, independent of live sessions.
 
-This isn't documentation you write — it's documentation Cortex authors and verifies for you, every 6 hours, until every project reaches full scope coverage and every source file has all 13 sections filled.
+This isn't documentation you write — it's documentation Cortex authors, grooms, and verifies for you, every 6 hours, until every project reaches full scope coverage and every source file has all 13 sections filled.
 
 ### Write papers in Cortex
 
@@ -384,12 +387,12 @@ Clean Architecture with strict dependency rules — inner layers never import ou
 | **core/** | Neuroscience + retrieval + wiki-curation logic | 177 |
 | **core/context_assembly/** | Structured context assembler + stage detector | 10 |
 | **infrastructure/** | SQLite + PostgreSQL stores, embeddings, file I/O, MCP client | 59 |
-| **handlers/** | MCP tools + consolidation cycles (44 MCP-exposed; 47 with upstream integrations) | 105 |
+| **handlers/** | MCP tools + consolidation cycles (49 MCP-exposed; 52 with upstream integrations) | 105 |
 | **hooks/** | Lifecycle automation (incl. autonomous consolidate spawn) | 9 registered |
 | **server/** | MCP tool registration + composition roots | — |
 | **observability/** | Prometheus text-format metrics | 2 |
 
-**Storage:** SQLite by default (a single local file, zero setup) or PostgreSQL 15+ with pgvector (HNSW) and pg_trgm. Both back the same 44 tools and the same WRRF fusion of five signals — vector search, FTS, trigram, heat, recency. On PostgreSQL it runs server-side in PL/pgSQL stored procedures; on SQLite the equivalent fusion runs in-process (vector search included, as the live `memory_stats` `has_vector_search` flag confirms).
+**Storage:** SQLite by default (a single local file, zero setup) or PostgreSQL 15+ with pgvector (HNSW) and pg_trgm. Both back the same 49 tools and the same WRRF fusion of five signals — vector search, FTS, trigram, heat, recency. On PostgreSQL it runs server-side in PL/pgSQL stored procedures; on SQLite the equivalent fusion runs in-process (vector search included, as the live `memory_stats` `has_vector_search` flag confirms).
 
 **Concurrency (PostgreSQL):** `psycopg_pool.ConnectionPool` with two latency classes — `interactive_pool` (min=2, max=8) for recall/remember/anchor, `batch_pool` (min=1, max=2) for consolidate/ingest. Tool handlers run on worker threads via `asyncio.to_thread`; per-tool admission semaphores bound fan-out. Heat is computed at read time by `effective_heat()`, so homeostatic maintenance writes one scalar per domain per run instead of N rows.
 
