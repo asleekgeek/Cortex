@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.cortex.scheduled-groomer</string>
+
+    <!--
+      NOT installed by this repo. This template is a reference artifact
+      only -- see docs/groomer-scheduling.md for the installation
+      procedure (an explicit, documented user action).
+
+      Cadence: weekly, Sunday 03:00 local time. Justification (design doc
+      grooming-continu-design.md has no literal cadence recommendation;
+      this is the documented fallback): mcp_server/core/grooming_health.py
+      sources GROOMING_STALENESS_THRESHOLD_DAYS=6.0 from measured session
+      cadence (3x the p90 inter-session gap, 2 days -> 6 days). A weekly
+      cron guarantees any leg that goes stale is caught and drained within
+      threshold_days + run_period = 6 + 7 = 13 days worst case -- almost
+      6x tighter than the 76-day silence the design doc measured before
+      G-4 existed, and the shortest period that avoids running MORE often
+      than the staleness signal itself can usefully change (a leg cannot
+      be MORE stale than 6 days ago on day 7 of a 7-day cycle unless the
+      previous run's drain failed to consume it, which the journal
+      artifact makes auditable).
+
+      Runs Sunday 03:00 (low interactive-session probability) rather than
+      a weekday to minimize collision with the active-session guard rail
+      (scripts/groomer.py checks session_registry.has_active_session_window()
+      and skips the run entirely -- rather than queuing or blocking -- if
+      an interactive window is live; a low-traffic slot just makes that
+      skip less likely to fire).
+    -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>0</integer>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>cd /path/to/Cortex &amp;&amp; CORTEX_HEADLESS_AUTHORING=1 uv run python scripts/groomer.py --apply</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/REPLACE_ME/Library/Logs/cortex-groomer/launchd.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/REPLACE_ME/Library/Logs/cortex-groomer/launchd.err.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/path/to/Cortex</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/REPLACE_ME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/REPLACE_ME</string>
+    </dict>
+</dict>
+</plist>

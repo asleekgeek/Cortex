@@ -18,6 +18,7 @@ module is the pure decision logic; the DB-backed age lookup lives in
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 
 # Alert threshold -- sourced from the measured cadence of real working
 # sessions, not invented (Zetetic §8: no source, no constant).
@@ -87,3 +88,36 @@ def is_stale(
     """
     d = days_since(last_iso, now=now)
     return d is None or d > threshold_days
+
+
+def legs_due(
+    kinds: dict[str, dict[str, Any]], *, force: bool = False
+) -> dict[str, bool]:
+    """Which judgment-level grooming legs are due for a scheduled run
+    (G-3), given ``get_grooming_health``'s ``kinds`` output.
+
+    Precondition: ``kinds`` has ``'wiki'``/``'distillation'`` keys, each a
+    dict carrying ``'stale'`` (bool) and ``'backlog_count'`` (int) --
+    ``get_grooming_health``'s exact output shape. A ``'promotion'`` key
+    may also be present but is never read here.
+    Postcondition: a leg is due iff ``force`` is True, OR the leg is both
+    stale AND has a non-zero backlog -- a stale kind with an empty
+    backlog has nothing to do; a fresh kind with backlog is still being
+    worked through at its natural pace and does not need a scheduled
+    nudge. ``force=True`` marks every leg due unconditionally (used by
+    an operator-invoked forced run, never by the unattended cron path).
+    Invariant: the returned dict has EXACTLY the keys ``'wiki'`` and
+    ``'distillation'`` -- ``'promotion'`` is never a key of this
+    function's return value, by construction, enforcing at the type
+    level that a caller iterating this dict's keys can never reach a
+    promotion leg (the design doc's "no auto-promotion, ever" contract,
+    see ``lesson_promotion.py``'s own docstring).
+    """
+
+    def _due(kind: str) -> bool:
+        if force:
+            return True
+        k = kinds.get(kind) or {}
+        return bool(k.get("stale")) and int(k.get("backlog_count") or 0) > 0
+
+    return {"wiki": _due("wiki"), "distillation": _due("distillation")}

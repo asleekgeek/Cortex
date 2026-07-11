@@ -11,6 +11,7 @@ from mcp_server.core.grooming_health import (
     GROOMING_STALENESS_THRESHOLD_DAYS,
     days_since,
     is_stale,
+    legs_due,
 )
 
 
@@ -72,3 +73,61 @@ class TestIsStale:
         # regression to 0 or negative would make every kind permanently
         # stale.
         assert GROOMING_STALENESS_THRESHOLD_DAYS > 0
+
+
+class TestLegsDue:
+    """G-3 scheduled groomer: decides which legs a headless run should
+    execute, from get_grooming_health's exact kinds shape."""
+
+    def _kinds(self, *, wiki_stale, wiki_backlog, distill_stale, distill_backlog):
+        return {
+            "wiki": {"stale": wiki_stale, "backlog_count": wiki_backlog},
+            "distillation": {"stale": distill_stale, "backlog_count": distill_backlog},
+            "promotion": {"stale": True, "backlog_count": 133},
+        }
+
+    def test_stale_with_backlog_is_due(self):
+        kinds = self._kinds(
+            wiki_stale=True, wiki_backlog=12, distill_stale=True, distill_backlog=25
+        )
+        assert legs_due(kinds) == {"wiki": True, "distillation": True}
+
+    def test_stale_with_empty_backlog_is_not_due(self):
+        """Nothing to drain even though the age alarm fired."""
+        kinds = self._kinds(
+            wiki_stale=True, wiki_backlog=0, distill_stale=True, distill_backlog=0
+        )
+        assert legs_due(kinds) == {"wiki": False, "distillation": False}
+
+    def test_fresh_with_backlog_is_not_due(self):
+        """Recently groomed; still catching up at its own pace."""
+        kinds = self._kinds(
+            wiki_stale=False, wiki_backlog=12, distill_stale=False, distill_backlog=25
+        )
+        assert legs_due(kinds) == {"wiki": False, "distillation": False}
+
+    def test_mixed_legs_independent(self):
+        kinds = self._kinds(
+            wiki_stale=True, wiki_backlog=12, distill_stale=False, distill_backlog=25
+        )
+        assert legs_due(kinds) == {"wiki": True, "distillation": False}
+
+    def test_force_marks_both_due_regardless_of_health(self):
+        kinds = self._kinds(
+            wiki_stale=False, wiki_backlog=0, distill_stale=False, distill_backlog=0
+        )
+        assert legs_due(kinds, force=True) == {"wiki": True, "distillation": True}
+
+    def test_promotion_never_a_key_of_the_result(self):
+        """Type-level enforcement of the no-auto-promotion invariant: a
+        caller iterating legs_due()'s keys can never reach a promotion
+        leg, even if 'promotion' is present (and stale) in the input."""
+        kinds = self._kinds(
+            wiki_stale=False, wiki_backlog=0, distill_stale=False, distill_backlog=0
+        )
+        result = legs_due(kinds, force=True)
+        assert "promotion" not in result
+        assert set(result.keys()) == {"wiki", "distillation"}
+
+    def test_missing_kind_degrades_to_not_due(self):
+        assert legs_due({}) == {"wiki": False, "distillation": False}
