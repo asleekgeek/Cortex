@@ -62,6 +62,16 @@ schema = {
                 "default": DEFAULT_K,
                 "description": "RRF constant (default 60).",
             },
+            "cross_domain": {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "Forwarded verbatim to cortex.recall's ADR-0054 "
+                    "spreading-activation opt-out (see recall's schema "
+                    "for detail). Defaults to false: cross-domain "
+                    "candidates the entity graph could reach stay excluded."
+                ),
+            },
         },
     },
 }

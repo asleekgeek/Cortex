@@ -1078,7 +1078,11 @@ class PgMemoryStore(
                 include_globals,
             ),
         ).fetchall()
-        return [dict(r) for r in rows]
+        # created_at must be ISO text, not a raw psycopg datetime -- see
+        # _isoformat_datetime_fields's docstring for the incident this
+        # closes (mixed-type candidate lists once spreading_activation_expand
+        # appends store.get_memory() rows onto this method's output).
+        return [self._isoformat_datetime_fields(dict(r)) for r in rows]
 
     def search_fts(self, query: str, limit: int = 20) -> list[tuple[int, float]]:
         """Full-text search via tsvector. Returns (memory_id, score) pairs.
@@ -1182,6 +1186,47 @@ class PgMemoryStore(
 
     # ── Row normalization ─────────────────────────────────────────────
 
+    # source: incident 2026-07-11 (garde x3 bench, LongMemEval), RCA in
+    # ADR-0054's addendum -- recall_memories() (the WRRF path) returned
+    # raw `dict(r)` rows with created_at still a psycopg
+    # `datetime.datetime` object, while every other memory-row reader in
+    # this class went through _normalize_memory_row and got an ISO
+    # string. Both are candidate dicts that can sit in the SAME list
+    # (recall_pipeline.spreading_activation_expand appends store.get_memory()
+    # rows onto recall_memories()'s output for RRF blending) and reach
+    # pg_recall.py::_chronological_rerank's `sorted(..., key=lambda c:
+    # c.get("created_at"))` together -- `str < datetime` raises
+    # unconditionally. The response schema for `recall`
+    # (handlers/recall.py, "created_at": {"type": "string", "format":
+    # "date-time"}) has always mandated the string form; recall_memories()
+    # was the one path never honoring it. Fixed at the source (both
+    # readers now share one normalizer) rather than patched at the sort.
+    _DATETIME_FIELDS: tuple[str, ...] = (
+        "created_at",
+        "ingested_at",
+        "last_accessed",
+        "last_reconsolidated",
+    )
+
+    @staticmethod
+    def _isoformat_datetime_fields(
+        d: dict[str, Any], fields: tuple[str, ...] = _DATETIME_FIELDS
+    ) -> dict[str, Any]:
+        """Convert any `datetime.datetime` value in ``fields`` to ISO-8601 text, in place.
+
+        Precondition: none. Postcondition: for every ``f`` in ``fields``,
+        ``d[f]`` is never a ``datetime.datetime`` instance -- either it was
+        already something else (str, None, absent), or it is now its
+        ``.isoformat()`` string. Every reader of a memory-row dict
+        (WRRF candidates, direct get_memory() rows, SA-injected
+        candidates) must go through this so a caller can compare/sort
+        mixed-origin candidate lists without a type mismatch.
+        """
+        for field in fields:
+            if isinstance(d.get(field), datetime):
+                d[field] = d[field].isoformat()
+        return d
+
     def _normalize_memory_row(self, row: dict[str, Any]) -> dict[str, Any]:
         """Normalize a memory row for consistent API output.
 
@@ -1206,16 +1251,7 @@ class PgMemoryStore(
                 d["tags"] = json.loads(d["tags"])
             except (json.JSONDecodeError, TypeError):
                 d["tags"] = []
-        # Convert datetime to ISO string for compatibility
-        for field in (
-            "created_at",
-            "ingested_at",
-            "last_accessed",
-            "last_reconsolidated",
-        ):
-            if isinstance(d.get(field), datetime):
-                d[field] = d[field].isoformat()
-        return d
+        return self._isoformat_datetime_fields(d)
 
     # ── Advanced server-side signals ──────────────────────────────────
 
@@ -1227,16 +1263,36 @@ class PgMemoryStore(
         max_depth: int = 3,
         max_results: int = 50,
         min_heat: float = 0.05,
+        domain: str | None = None,
+        include_globals: bool = True,
     ) -> list[tuple[int, float]]:
         """Run spread_activation_memories PL/pgSQL: query→entities→memories.
 
         Single server-side call replacing 4 Python round trips.
+
+        domain/include_globals scope the final entity->memory mapping to
+        one cognitive domain (plus is_global rows when include_globals is
+        True) -- mirrors recall_memories()'s p_domain/p_include_globals.
+        domain=None (default) disables the filter -- see the PL/pgSQL
+        function's docstring in pg_schema.py for why callers must pass
+        an explicit domain (ADR-0054: measured 52.8% cross-domain
+        injection when unscoped).
         """
         rows = self._execute(
             "SELECT * FROM spread_activation_memories("
-            "  %s::TEXT[], %s::REAL, %s::REAL, %s::INT, %s::INT, %s::REAL"
+            "  %s::TEXT[], %s::REAL, %s::REAL, %s::INT, %s::INT, %s::REAL,"
+            "  %s::TEXT, %s::BOOLEAN"
             ")",
-            (query_terms, decay, threshold, max_depth, max_results, min_heat),
+            (
+                query_terms,
+                decay,
+                threshold,
+                max_depth,
+                max_results,
+                min_heat,
+                domain,
+                include_globals,
+            ),
         ).fetchall()
         return [(r["memory_id"], r["activation"]) for r in rows]
 

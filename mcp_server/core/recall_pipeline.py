@@ -27,10 +27,13 @@ abstractions used by ``pg_recall.recall``.
 
 from __future__ import annotations
 
+import logging
 import os as _os
 from typing import Any
 
 from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
+
+logger = logging.getLogger(__name__)
 
 # RRF constant from Cormack et al. (SIGIR 2009). The paper recommends k=60
 # as a robust default across heterogeneous rankers; the same constant is
@@ -390,11 +393,37 @@ def hdc_rerank(
 # entity graph with exponential decay by depth and convergent summation.
 
 
+# Non-silent failure state for the SA channel (mirrors reranker.py's
+# _flashrank_failed pattern, commit bb1c581f, 2026-07-11 incident: a bare
+# `except Exception: return candidates` here swallowed the SA channel's
+# missing-WITH-RECURSIVE bug for the channel's entire lifetime with zero
+# log signal — see pg_schema.py::SPREAD_ACTIVATION_MEMORIES_FN docstring
+# and ADR-0054). Logged once per process on first failure to avoid log
+# spam; state stays introspectable via ``spreading_activation_status()``
+# for preflight/bench-harness checks, same contract as reranker_status().
+_sa_failed: bool = False
+_sa_last_error: str | None = None
+
+
+def spreading_activation_status() -> dict[str, str | None]:
+    """Report the SA channel's last-known failure state without retrying.
+
+    Precondition: none. Postcondition: ``failed`` is True iff a prior
+    ``spreading_activation_expand`` call caught an exception from
+    ``store.spread_activation_memories``; ``error`` carries that
+    exception's text, else None. Never triggers a call itself.
+    """
+    return {"failed": str(_sa_failed), "error": _sa_last_error}
+
+
 def spreading_activation_expand(
     candidates: list[dict[str, Any]],
     query: str,
     store: Any,
     *,
+    domain: str | None = None,
+    include_globals: bool = True,
+    cross_domain: bool = False,
     decay: float = 0.65,
     threshold: float = 0.1,
     max_depth: int = 3,
@@ -409,6 +438,15 @@ def spreading_activation_expand(
     ``candidates`` get an SA rank; new ones are appended at the bottom
     of the candidate list before RRF blending — so a strongly SA-active
     memory absent from the WRRF top-K can still surface.
+
+    Domain scoping (ADR-0054, decision 2026-07-11): the entity graph is
+    shared across domains by design (see pg_schema.py module comment),
+    but the final entity->memory mapping is scoped to ``domain`` by
+    default — measured 52.8% cross-domain injection rate when unscoped
+    (scratchpad/spread-activation-scoping-design.md §2.3). Set
+    ``cross_domain=True`` to opt out explicitly and search the full
+    graph regardless of domain (mirrors the existing
+    ``include_globals`` opt-in pattern on ``recall_memories()``).
 
     Disabled when ``CORTEX_ABLATE_SPREADING_ACTIVATION=1`` — returns
     input unchanged. The store-side ``spread_activation_memories`` PL/pgSQL
@@ -429,6 +467,7 @@ def spreading_activation_expand(
     if not terms:
         return candidates
 
+    global _sa_failed, _sa_last_error
     try:
         sa = store.spread_activation_memories(
             query_terms=terms,
@@ -437,8 +476,32 @@ def spreading_activation_expand(
             max_depth=max_depth,
             max_results=max_results,
             min_heat=min_heat,
+            domain=None if cross_domain else domain,
+            include_globals=include_globals,
         )
-    except Exception:
+    except Exception as exc:
+        # First-failure-only logging (reranker.py precedent, bb1c581f):
+        # a per-query stage like this one can be called on every recall,
+        # so logging every occurrence would spam at the same rate as the
+        # calls themselves without adding information beyond "still
+        # broken" -- state stays introspectable via
+        # spreading_activation_status() for callers (bench preflight,
+        # health checks) that need to distinguish never-attempted from
+        # broken-and-suppressed.
+        if not _sa_failed:
+            logger.warning(
+                "spreading_activation_expand: store.spread_activation_memories "
+                "failed (domain=%s, cross_domain=%s): %s -- SA channel "
+                "DISABLED for this and subsequent calls in this process; "
+                "recall falls back to the WRRF-ranked candidates unchanged. "
+                "Further failures are suppressed from the log but remain "
+                "visible via spreading_activation_status().",
+                domain,
+                cross_domain,
+                exc,
+            )
+        _sa_failed = True
+        _sa_last_error = str(exc)
         return candidates
     if not sa:
         return candidates
@@ -447,6 +510,31 @@ def spreading_activation_expand(
     expanded = list(candidates)
 
     # Append SA-discovered memories not already in the candidate pool.
+    #
+    # Contract (incident 2026-07-11, garde x3 bench, LongMemEval crash at
+    # pg_recall.py::_chronological_rerank -- ADR-0054 addendum): an
+    # injected candidate MUST carry the same field set, with the same
+    # Python types, as a WRRF candidate from store.recall_memories() --
+    # its RETURNS TABLE columns are memory_id/content/score/heat/domain/
+    # created_at/store_type/tags/importance/surprise_score/
+    # emotional_valence/source/value/source_attribution. Two prior bugs,
+    # both from building this dict as a curated 6-field subset of `mem`
+    # instead of the full common contract:
+    #   1. created_at came from store.get_memory() (normalized to an ISO
+    #      string by _normalize_memory_row) while WRRF candidates carried
+    #      a raw psycopg datetime.datetime -- sorted() on a mixed list
+    #      raised TypeError. Fixed at the true source: pg_store.py's
+    #      recall_memories() now normalizes too (see
+    #      _isoformat_datetime_fields) -- both sides are str.
+    #   2. store_type/source/source_attribution/importance/surprise_score/
+    #      emotional_valence/value were silently ABSENT from injected
+    #      candidates even though store.get_memory() (SELECT * FROM
+    #      memories) already returns them -- a downstream consumer keyed
+    #      on `mem.get("source")` (recall_helpers.py's low-signal filter)
+    #      would silently misclassify every SA-injected candidate as
+    #      non-auto-capture regardless of its real source. `mem` already
+    #      carries every field WRRF candidates do; take it wholesale and
+    #      only override what SA itself determines (memory_id, score).
     for mid, _act in sa:
         if mid in existing_ids:
             continue
@@ -455,18 +543,32 @@ def spreading_activation_expand(
         mem = store.get_memory(mid)
         if not mem:
             continue
-        expanded.append(
-            {
-                "memory_id": mid,
-                "content": mem.get("content", ""),
-                "score": 0.0,  # will be set by RRF blend
-                "heat": mem.get("heat", 0.0),
-                "domain": mem.get("domain", ""),
-                "tags": mem.get("tags", []),
-                "created_at": mem.get("created_at", ""),
-                "_sa_injected": True,
-            }
-        )
+        # Whitelist, not `dict(mem)`: get_memory() is `SELECT * FROM
+        # memories` (every column, including internal state --
+        # is_stale, compression_level, write_class, forgetting_pressure_accum,
+        # embedding, superseded_by_id, ...) while a WRRF candidate is
+        # exactly recall_memories()'s RETURNS TABLE (14 columns). Copying
+        # the full row would swap the missing-fields bug for a
+        # leaked-internal-fields one -- this dict's KEY SET, not just
+        # each value's type, must match the WRRF contract.
+        injected = {
+            "memory_id": mid,
+            "content": mem.get("content", ""),
+            "score": 0.0,  # will be set by RRF blend below
+            "heat": mem.get("heat", 0.0),
+            "domain": mem.get("domain", ""),
+            "created_at": mem.get("created_at", ""),
+            "store_type": mem.get("store_type", "episodic"),
+            "tags": mem.get("tags", []),
+            "importance": mem.get("importance", 0.5),
+            "surprise_score": mem.get("surprise_score", 0.0),
+            "emotional_valence": mem.get("emotional_valence", 0.0),
+            "source": mem.get("source", ""),
+            "value": mem.get("value", 0.5),
+            "source_attribution": mem.get("source_attribution"),
+            "_sa_injected": True,
+        }
+        expanded.append(injected)
         existing_ids.add(mid)
 
     mech_ranks = {mid: rank for rank, (mid, _act) in enumerate(sa)}
