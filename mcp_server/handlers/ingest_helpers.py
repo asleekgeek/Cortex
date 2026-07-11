@@ -240,6 +240,8 @@ def memoise_graph_path(
         "is_protected": True,
         "importance": 1.0,
         "heat": 1.0,
+        # M-D2 (7.4): bulk codebase-graph ingestion bookkeeping.
+        "write_class": "mechanical",
     }
     try:
         return store.insert_memory(record)

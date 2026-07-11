@@ -209,6 +209,9 @@ def _store_session_memory(
             "directory": cwd or "",
             "domain": domain_id,
             "source": "session",
+            # M-D2 (7.4): a single considered synthesis per session, not
+            # noise — deliberate, never fold-prone.
+            "write_class": "deliberate",
             "force": False,
         }
     except Exception as e:

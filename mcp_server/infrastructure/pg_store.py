@@ -486,7 +486,8 @@ class PgMemoryStore(
                 hippocampal_dependency, is_benchmark, agent_context,
                 is_global, stage_entered_at,
                 arousal, dominant_emotion, supersedes_id,
-                source_attribution, stimulus_signature, extinction_strength
+                source_attribution, stimulus_signature, extinction_strength,
+                write_class
             ) VALUES (
                 %(content)s, %(embedding)s, %(tags)s::jsonb, %(source)s, %(domain)s,
                 %(directory_context)s, %(created_at)s, %(last_accessed)s, %(heat_base_set_at)s,
@@ -499,7 +500,8 @@ class PgMemoryStore(
                 %(hippocampal_dependency)s, %(is_benchmark)s, %(agent_context)s,
                 %(is_global)s, %(stage_entered_at)s,
                 %(arousal)s, %(dominant_emotion)s, %(supersedes_id)s,
-                %(source_attribution)s, %(stimulus_signature)s, %(extinction_strength)s
+                %(source_attribution)s, %(stimulus_signature)s, %(extinction_strength)s,
+                %(write_class)s
             ) RETURNING id"""
 
     def _build_insert_params(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -558,6 +560,13 @@ class PgMemoryStore(
             "source_attribution": data.get("source_attribution", "unknown"),
             "stimulus_signature": data.get("stimulus_signature", ""),
             "extinction_strength": data.get("extinction_strength", 0.0),
+            # M-D2 (7.4): every writer resolves this explicitly BEFORE
+            # calling insert_memory (mcp_server.core.write_class is the
+            # single classification choke point; infrastructure/ must not
+            # import core/, so this layer trusts the caller and relies on
+            # the memories.write_class CHECK constraint as the DB-level
+            # backstop against a value outside the four known classes).
+            "write_class": data.get("write_class") or "deliberate",
         }
 
     def _insert_memory_on(self, conn: psycopg.Connection, data: dict[str, Any]) -> int:

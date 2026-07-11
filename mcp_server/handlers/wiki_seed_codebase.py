@@ -249,6 +249,8 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
                     ],
                     "domain": domain,
                     "source": f"seed:{rel}",
+                    # M-D2 (7.4): a one-shot bulk codebase-to-wiki seed pass.
+                    "write_class": "mechanical",
                     "force": True,
                 }
             )

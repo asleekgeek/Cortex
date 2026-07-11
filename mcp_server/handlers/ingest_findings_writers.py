@@ -115,6 +115,10 @@ def write_finding_memory(
         "heat": heat,
         "confidence": confidence,
         "is_protected": protected,
+        # M-D2 (7.4): bulk ingestion from the AP pipeline — bypasses the
+        # `remember` gate entirely (direct insert_memory), same rationale
+        # as ingest_codebase/seed_project.
+        "write_class": "mechanical",
     }
     return store.insert_memory(record), True
 

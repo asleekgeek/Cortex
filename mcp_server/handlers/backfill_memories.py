@@ -158,6 +158,8 @@ async def _import_single_item(
         "directory": cwd,
         "domain": domain,
         "source": f"backfill:{project_slug[:40]}",
+        # M-D2 (7.4): a one-shot bulk import pass over prior conversations.
+        "write_class": "mechanical",
         "force": True,
     }
     # Preserve the original session timestamp. insert_memory anchors

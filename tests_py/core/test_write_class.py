@@ -10,13 +10,13 @@ from __future__ import annotations
 from mcp_server.core.write_class import (
     ALL_WRITE_CLASSES,
     AUTO,
-    AUTO_SOURCE_VALUES,
     DELIBERATE,
     DERIVED,
     MECHANICAL,
     NON_DELIBERATE_EXACT_SOURCES,
     NON_DELIBERATE_SOURCE_PREFIXES,
     classify_write_class,
+    validate_write_class,
 )
 
 
@@ -41,6 +41,11 @@ class TestDerivedClass:
     def test_cls_prefix_family_is_derived(self):
         assert classify_write_class({"source": "cls-anything-else"}) == DERIVED
 
+    def test_sleep_compute_is_derived(self):
+        # handlers/consolidation/sleep.py::_store_narration — dream-replay
+        # auto-narration, added 7.4 direct-writer inventory.
+        assert classify_write_class({"source": "sleep-compute"}) == DERIVED
+
 
 class TestMechanicalClass:
     def test_codebase_analyze_is_mechanical(self):
@@ -59,6 +64,20 @@ class TestMechanicalClass:
             classify_write_class({"source": "backfill:-Users-x-Developments-Cortex"})
             == MECHANICAL
         )
+
+    def test_wiki_seed_codebase_prefix_is_mechanical(self):
+        # handlers/wiki_seed_codebase.py — one memory per seeded file.
+        assert classify_write_class({"source": "seed:src/main.py"}) == MECHANICAL
+
+    def test_ingest_codebase_docs_variant_is_mechanical(self):
+        # handlers/ingest_docs_content_writers.py
+        assert classify_write_class({"source": "ingest_codebase:docs"}) == MECHANICAL
+
+    def test_wiki_pointer_memory_is_mechanical(self):
+        # handlers/wiki_write.py / wiki_adr.py::_store_pointer_memory —
+        # protected pointer memories are structural indexing, not
+        # user-authored content.
+        assert classify_write_class({"source": "wiki://reference/foo.md"}) == MECHANICAL
 
 
 class TestDeliberateClass:
@@ -160,10 +179,6 @@ class TestTaxonomyInvariants:
     def test_all_classes_enumerated(self):
         assert set(ALL_WRITE_CLASSES) == {AUTO, DELIBERATE, DERIVED, MECHANICAL}
 
-    def test_auto_source_values_nonempty_and_sorted(self):
-        assert AUTO_SOURCE_VALUES == tuple(sorted(AUTO_SOURCE_VALUES))
-        assert "post_tool_capture" in AUTO_SOURCE_VALUES
-
     def test_every_class_reachable(self):
         """Sanity: at least one real source value maps to each class."""
         seen = {
@@ -176,3 +191,37 @@ class TestTaxonomyInvariants:
             )
         }
         assert seen == {AUTO, DELIBERATE, DERIVED, MECHANICAL}
+
+
+class TestValidateWriteClass:
+    """7.4: the strict write-time contract — distinct from the permissive
+    ``classify_write_class`` fallback tested above."""
+
+    def test_none_is_accepted_no_raise(self):
+        validate_write_class(None) is None  # no exception
+
+    def test_each_known_class_is_accepted(self):
+        for cls in ALL_WRITE_CLASSES:
+            validate_write_class(cls)  # no exception
+
+    def test_unknown_value_raises_value_error(self):
+        import pytest
+
+        with pytest.raises(ValueError, match="not-a-real-class"):
+            validate_write_class("not-a-real-class")
+
+    def test_error_message_names_all_valid_classes(self):
+        import pytest
+
+        with pytest.raises(ValueError) as exc_info:
+            validate_write_class("bogus")
+        message = str(exc_info.value)
+        for cls in ALL_WRITE_CLASSES:
+            assert cls in message
+
+    def test_empty_string_is_invalid(self):
+        """Empty string is not None — it's an explicit (wrong) value."""
+        import pytest
+
+        with pytest.raises(ValueError):
+            validate_write_class("")

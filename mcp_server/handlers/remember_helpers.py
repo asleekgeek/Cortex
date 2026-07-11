@@ -666,8 +666,16 @@ def insert_and_post_process(
     agent_context: str = "",
     is_global: bool = False,
     created_at: str | None = None,
+    write_class: str = "deliberate",
 ) -> dict[str, Any]:
-    """Separate, store, and run post-storage operations."""
+    """Separate, store, and run post-storage operations.
+
+    ``write_class`` (M-D2, 7.4): already resolved and validated by the
+    caller (``handlers/remember.py``, the single choke point —
+    ``mcp_server.core.write_class.validate_write_class`` +
+    ``classify_write_class``) — this function trusts it and threads it
+    straight into the insert record.
+    """
     is_dec = thermodynamics.is_decision_content(content)
     stype = classify_memory(content, tags, directory)
     embedding, sep, interf = write_gate.apply_pattern_separation(
@@ -700,6 +708,7 @@ def insert_and_post_process(
     )
     record["agent_context"] = agent_context
     record["is_global"] = is_global
+    record["write_class"] = write_class
     superseded_head: int | None = None
     if action == "supersede" and merged_id is not None:
         # Atomic insert + supersession edge (biomimetic reconsolidation): the
@@ -737,6 +746,10 @@ def insert_and_post_process(
         sep,
         interf,
     )
+    # M-D2 (7.4): surface the resolved write class so the caller can
+    # confirm what was actually persisted (explicit arg or the
+    # source-fallback default).
+    response["write_class"] = write_class
     # C1 source / reality monitoring: surface the stored epistemic attribution
     # so the caller can see whether this memory was perceived / told / inferred.
     # Flag the confabulation risk — an inferred memory carries no external

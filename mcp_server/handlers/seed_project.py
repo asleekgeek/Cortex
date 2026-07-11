@@ -144,6 +144,8 @@ async def _store_discoveries(
                 "directory": str(root),
                 "domain": domain,
                 "source": "seed_project",
+                # M-D2 (7.4): a one-shot codebase-bootstrap discovery pass.
+                "write_class": "mechanical",
                 "force": True,
             }
         )

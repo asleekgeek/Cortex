@@ -377,6 +377,9 @@ def _create_semantic_memories(
                     "confidence": 0.8,
                     "heat": 0.6,
                     "store_type": "semantic",
+                    # M-D2 (7.4): CLS semantic promotion — machine-synthesized
+                    # from the consolidation pipeline, not user intent.
+                    "write_class": "derived",
                 }
             )
             created += 1

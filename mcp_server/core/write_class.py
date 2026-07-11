@@ -5,34 +5,63 @@ table) + §M-D3 (homeostatic stratification, this module's first consumer).
 
 **Why this module exists.** Two independent M-series decisions need to know
 "what kind of write is this memory" without disagreeing with each other:
-M-D3 (this increment, 7.1) stratifies homeostatic regulation by class;
-M-D2/7.4 will gate the write path itself by class. Both MUST resolve the
-same memory to the same class, or the write gate and the homeostat argue
-about the population they're each regulating. ``classify_write_class`` is
-therefore THE single contract — every future writer classifies through
-this function, never a parallel predicate.
+M-D3 (7.1) stratifies homeostatic regulation by class; M-D2/7.4 gates the
+write path itself by class. Both MUST resolve the same memory to the same
+class, or the write gate and the homeostat argue about the population
+they're each regulating. ``classify_write_class`` is therefore THE single
+contract — every writer classifies through this function, never a
+parallel predicate.
 
-**Today** (pre-7.4): classification is derived from ``memory["source"]``
-(the only signal that exists in the schema today). **After 7.4** lands an
-explicit ``write_class`` column, this function's FIRST check becomes that
-column — see the ``explicit column`` branch below, already wired so 7.4 is
-a data migration, not a second classification path. No double path is ever
-introduced: this is the one function both increments call.
+**7.4 (this increment): the explicit column is real.** ``memories.write_class``
+now exists (migration in ``infrastructure/pg_schema.py``). Every internal
+writer (hooks, consolidation passes, ingestion pipelines) sets it
+explicitly at write time — the writer KNOWS what it is; inference from
+``source`` text is no longer the primary path for live writes. Two things
+remain true by design, not by accident:
 
-Taxonomy (M-D2 table, verbatim):
+1. ``classify_write_class``'s explicit-column-wins check (below) is now
+   the *live* fast path for every writer that sets ``write_class``, not
+   just a forward-compat stub.
+2. Source-string inference is demoted to a FALLBACK, used only when a
+   caller genuinely omits ``write_class`` (e.g. an external MCP caller
+   that didn't ask for a specific class — the safe default is
+   ``deliberate``) and by the one-shot historical backfill
+   (``handlers/consolidation/write_class_backfill.py``) that classifies
+   pre-7.4 rows which never had an explicit column at all. This is ONE
+   function serving both roles — never two classification paths.
+
+**Strict validation is a separate, stricter function** — ``validate_write_class``.
+``classify_write_class`` stays permissive (silently ignores a garbage
+explicit value and falls back to source-inference) because it is also
+called by read-time/maintenance code (``homeostatic.py``) against
+arbitrary historical rows, where crashing on unexpected data would be a
+regression. ``validate_write_class`` is for the write-time contract (the
+``remember`` MCP tool and any direct writer): it raises a plain
+``ValueError`` — translated to ``mcp_server.errors.ValidationError`` by
+the composition-root handler, per the Clean Architecture dependency rule
+that core/ must not import errors/ — on any non-``None`` value outside
+``ALL_WRITE_CLASSES``, so a caller's typo is reported, never silently
+reclassified.
+
+Taxonomy (M-D2 table, extended 7.4 with the writers this increment wires
+explicitly — see module-level source-set comments below for the measured
+DB source values each class covers):
 
 | Class       | Determination (source)                                    |
 |-------------|------------------------------------------------------------|
 | auto        | ``post_tool_capture``                                      |
 | deliberate  | NOT IN (post_tool_capture, codebase_analyze, seed, ingest,  |
-|             | cls, consolidation) — i.e. everything not otherwise listed |
+|             | cls, consolidation, sleep-compute, wiki://) — i.e.          |
+|             | everything not otherwise listed; also the explicit default  |
+|             | for a `remember` MCP call that omits `write_class`          |
 | derived     | ``consolidation`` (memify_derive) + ``cls*`` (CLS semantic  |
-|             | promotion — same rationale: machine-synthesized from the   |
-|             | consolidation pipeline, not user intent, measured DB       |
-|             | source distinct from ``consolidation`` but sharing the     |
-|             | policy: idempotence markers judge duplication, not novelty)|
-| mechanical  | backfill/ingest/seed/codebase_analyze — one-shot bulk       |
-|             | import passes, not an ongoing population                   |
+|             | promotion) + ``sleep-compute`` (dream-replay auto-narration)|
+|             | — same rationale: machine-synthesized from the              |
+|             | consolidation/replay pipeline, not user intent; idempotence |
+|             | markers judge duplication, not novelty                      |
+| mechanical  | backfill/ingest/seed/codebase_analyze/wiki-pointer-sync —    |
+|             | one-shot bulk import or structural-indexing passes, not an  |
+|             | ongoing population                                          |
 
 Pure logic. No I/O, no DB access — a classification is a projection of
 data already in hand.
@@ -62,7 +91,12 @@ _AUTO_SOURCES: frozenset[str] = frozenset({"post_tool_capture"})
 # promotion — a second machine-synthesis pathway out of the consolidation
 # pipeline, sharing derived's rationale (idempotence-judged, not
 # novelty-judged; see M-D2's "derived" row justification).
-_DERIVED_SOURCES: frozenset[str] = frozenset({"consolidation"})
+# "sleep-compute" (handlers/consolidation/sleep.py::_store_narration) is a
+# third: dream-replay auto-narration, same machine-synthesis rationale —
+# added 7.4 (inventory of every direct `store.insert_memory` writer that
+# bypasses the `remember` gate found this pathway had no explicit class,
+# silently falling to DELIBERATE under the old source-only inference).
+_DERIVED_SOURCES: frozenset[str] = frozenset({"consolidation", "sleep-compute"})
 _DERIVED_SOURCE_PREFIXES: tuple[str, ...] = ("cls",)
 
 # Bulk/one-shot ingestion pathways (audit, core/source_monitoring.py::
@@ -83,16 +117,20 @@ _MECHANICAL_SOURCES: frozenset[str] = frozenset(
         "import_sessions",
     }
 )
-_MECHANICAL_SOURCE_PREFIXES: tuple[str, ...] = ("backfill:",)
-
-# SQL-side mirror of _AUTO_SOURCES, exported for the one call site
-# (homeostatic._apply_fold) that must restrict a raw UPDATE to the auto
-# class before the explicit write_class column exists (7.4). This is NOT
-# a second classification path: it is the same frozenset, sorted for a
-# stable parameter list. When 7.4 lands, that call site switches to
-# ``WHERE write_class = 'auto'`` and this export is deleted in the same
-# migration — documented in homeostatic.py::_apply_fold.
-AUTO_SOURCE_VALUES: tuple[str, ...] = tuple(sorted(_AUTO_SOURCES))
+# "backfill:<slug>" (per-directory backfill), "seed:<rel>"
+# (wiki_seed_codebase.py, one memory per seeded file — a bulk pass
+# distinct from seed_project's stage source), "ingest_codebase:docs"
+# (ingest_docs_content_writers.py, docs-specific variant of
+# ingest_codebase), and "wiki://<rel_path>" (the protected pointer
+# memories wiki_write.py/wiki_adr.py register for recall — structural
+# indexing bookkeeping, not user-authored content) — all added 7.4 from
+# the same direct-writer inventory as _DERIVED_SOURCES above.
+_MECHANICAL_SOURCE_PREFIXES: tuple[str, ...] = (
+    "backfill:",
+    "seed:",
+    "ingest_codebase:",
+    "wiki://",
+)
 
 # SQL-side mirror of "everything NOT deliberate" (auto | derived |
 # mechanical), exported for pg_store_memory_reheat.py::
@@ -127,11 +165,17 @@ def classify_write_class(memory: Mapping[str, Any] | str | None) -> str:
         is never subject to fold-style regulation (matches the doctrine
         this module exists to enforce — see module docstring).
 
-    7.4 forward-compatibility: if ``memory`` carries an explicit
+    Explicit-column-wins (7.4, live): if ``memory`` carries an explicit
     ``write_class`` value in ``ALL_WRITE_CLASSES``, it wins outright —
-    this is the future explicit-column fast path, active today for any
-    caller that already sets it (defensive; the column does not exist
-    in the schema yet).
+    this is the primary path for every writer that sets it (see module
+    docstring). An explicit value OUTSIDE ``ALL_WRITE_CLASSES`` is
+    deliberately NOT an error here — this function stays permissive
+    because ``homeostatic.py`` and the one-shot backfill call it against
+    arbitrary/historical rows where raising would be a regression; it
+    silently falls through to source-based inference instead. Callers
+    that must reject an invalid explicit value (the ``remember`` MCP
+    tool and any direct writer) call ``validate_write_class`` FIRST, at
+    the write-time contract boundary — see that function's docstring.
     """
     if memory is None:
         source = ""
@@ -151,3 +195,36 @@ def classify_write_class(memory: Mapping[str, Any] | str | None) -> str:
     if s in _MECHANICAL_SOURCES or s.startswith(_MECHANICAL_SOURCE_PREFIXES):
         return MECHANICAL
     return DELIBERATE
+
+
+def validate_write_class(value: str | None) -> None:
+    """Reject an explicit ``write_class`` argument that isn't one of the
+    four known classes — the write-time contract for every public writer.
+
+    Precondition: ``value`` is the raw ``write_class`` argument as received
+        from a caller (MCP tool argument or an internal writer's explicit
+        kwarg) — ``None`` when the caller omitted it.
+    Postcondition: returns ``None`` (no exception) when ``value`` is
+        ``None`` or a member of ``ALL_WRITE_CLASSES``. Raises
+        ``ValueError`` with a message naming the offending value and the
+        four valid classes otherwise — mandate (user, 2026-07-11): an
+        explicit parameter is VALIDATED, never silently reinterpreted.
+        Pure logic — no I/O; core/ must not import errors/ (Clean
+        Architecture dependency rule), so this raises plain ``ValueError``
+        and the composition-root handler (``handlers/remember.py``)
+        re-raises it as ``mcp_server.errors.ValidationError``.
+
+    Distinct from ``classify_write_class``: that function is a permissive
+    classifier used at read-time against arbitrary/historical data (an
+    invalid value there falls back to source-inference, never raises).
+    This function is the strict write-time gate — call it BEFORE
+    ``classify_write_class`` at every public write entry point.
+    """
+    if value is None:
+        return
+    if value not in ALL_WRITE_CLASSES:
+        raise ValueError(
+            f"Invalid write_class {value!r}: must be one of "
+            f"{', '.join(ALL_WRITE_CLASSES)} (or omitted, which defaults "
+            "to 'deliberate' via source-based fallback classification)."
+        )

@@ -166,6 +166,9 @@ def _store_narration(
                 "confidence": 0.7,
                 "heat": 0.5,
                 "store_type": "semantic",
+                # M-D2 (7.4): dream-replay auto-narration — machine-
+                # synthesized, same rationale as CLS/memify.
+                "write_class": "derived",
             }
         )
         return True
