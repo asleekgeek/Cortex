@@ -130,7 +130,7 @@ async def run_headless_authoring_cycle(
                     duration_ms=ms,
                     detail="claude returned empty",
                 )
-            written = _write_anchor_page(
+            written = await _write_anchor_page(
                 wiki_root=wiki_root,  # type: ignore[arg-type]
                 domain=cand.domain,
                 scope_name=cand.scope_name,
@@ -178,7 +178,7 @@ async def run_headless_authoring_cycle(
                 return ir
 
             return await drain_all_gaps_on_page(
-                page_path, meta, body, invoke=charging_invoke
+                page_path, meta, body, wiki_root=wiki_root, invoke=charging_invoke
             )
 
     # ── Phase 3: gather all candidates concurrently ───────────────────

@@ -43,11 +43,13 @@ async def drain_one(
     meta: dict[str, Any],
     body: str,
     *,
+    wiki_root: Path,
     invoke: Callable[..., Awaitable[Any]] = _root._claude_invoke,
 ) -> Any:
     """Drain the first curation gap on one page (legacy single-section path).
 
-    Pre-condition:  ``page_path`` is a valid wiki page; ``meta`` is parsed
+    Pre-condition:  ``page_path`` is a valid wiki page under ``wiki_root``;
+                    ``meta`` is parsed
                     frontmatter; ``body`` is the page body.
     Post-condition: the gap marker is replaced in the file on disk and the
                     result reflects the outcome (filled/failed/skipped).
@@ -111,7 +113,9 @@ async def drain_one(
             detail="gap marker not found in body",
         )
     new_gaps = [g for g in gaps if g != gap_name]
-    ok = _rewrite_page(page_path, new_body=new_body, new_curation_gaps=new_gaps)
+    ok = await _rewrite_page(
+        page_path, wiki_root, new_body=new_body, new_curation_gaps=new_gaps
+    )
     return _root.DrainResult(
         page_path=str(page_path),
         gap=gap_name,
@@ -136,6 +140,7 @@ async def drain_all_gaps_on_page(
     meta: dict[str, Any],
     body: str,
     *,
+    wiki_root: Path,
     invoke: Callable[..., Awaitable[Any]] = _root._claude_invoke,
 ) -> list[Any]:
     """Fill every curation gap on one page in a single ``claude -p`` call.
@@ -150,11 +155,14 @@ async def drain_all_gaps_on_page(
     parameters, request/response examples — get filled on pages that
     already exist.
 
-    Pre-condition:  ``page_path`` is a wiki page with curation gaps;
-                    ``invoke`` is an async callable matching
+    Pre-condition:  ``page_path`` is a wiki page with curation gaps under
+                    ``wiki_root``; ``invoke`` is an async callable matching
                     ``_claude_invoke``'s signature.
-    Post-condition: all filled sections are written to disk; returned
-                    list has one DrainResult per gap (filled/failed).
+    Post-condition: all filled sections are written to disk through the
+                    governed wiki-write path (write_class='mechanical'
+                    pointer memory + citation sync — see
+                    ``write_governed_page``); returned list has one
+                    DrainResult per gap (filled/failed).
     """
     start = time.monotonic()
     frozen = [g for g in (meta.get("curation_gaps") or []) if isinstance(g, str)]
@@ -240,7 +248,18 @@ async def drain_all_gaps_on_page(
         )
     if filled_gaps:
         remaining = [g for g in gaps if g not in filled_gaps]
-        _rewrite_page(page_path, new_body=new_body, new_curation_gaps=remaining)
+        wrote = await _rewrite_page(
+            page_path, wiki_root, new_body=new_body, new_curation_gaps=remaining
+        )
+        if not wrote:
+            # The governed write failed after content was successfully parsed
+            # out of the response — downgrade the optimistic "filled" results
+            # for this page to "failed" so the cycle summary (and any caller
+            # counting drains_filled) reflects reality, not the parse step.
+            for r in results:
+                if r.gap in filled_gaps:
+                    r.status = "failed"
+                    r.detail = "governed write failed"
     return results
 
 
@@ -335,7 +354,7 @@ async def drain_missing_anchors(
                     )
                 )
                 continue
-            written = _write_anchor_page(
+            written = await _write_anchor_page(
                 wiki_root=wiki_root,
                 domain=domain,
                 scope_name=sc.scope.name,

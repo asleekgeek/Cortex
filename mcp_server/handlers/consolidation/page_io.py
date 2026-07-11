@@ -16,7 +16,16 @@ import re
 from pathlib import Path
 from typing import Any
 
+from mcp_server.handlers.wiki_write import write_governed_page
+from mcp_server.observability import silent_failure
+
 from .authoring_prompts import _UNTRUSTED_GUARD, _wrap_untrusted
+
+# Tag attached to every pointer memory the headless worker's writes produce,
+# distinguishing them from interactively-authored wiki_write calls in
+# recall/audit without changing write_class semantics (both paths share the
+# same governed pointer-memory contract — see write_governed_page).
+_HEADLESS_TAG = "headless-authoring"
 
 # Hard cap on the project-level context handed to Claude. Bigger
 # context = better content but slower call; 16 KB is empirically
@@ -108,28 +117,27 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str, int]:
     return meta, body, end + 4
 
 
-def _rewrite_page(
-    page_path: Path,
+def _compute_rewritten_page(
+    text: str,
     *,
     new_body: str,
     new_curation_gaps: list[str],
-) -> bool:
-    """Rewrite the page on disk with updated body + frontmatter.
+) -> str | None:
+    """Pure computation of the rewritten page text — no I/O.
 
     The frontmatter ``curation_gaps`` block is replaced wholesale;
     the rest of the frontmatter is preserved byte-for-byte. The
     body replaces everything after the closing ``---\\n``.
-    """
-    try:
-        text = page_path.read_text(encoding="utf-8")
-    except OSError:
-        return False
 
+    precondition: ``text`` is the page's current on-disk content.
+    postcondition: returns the full new markdown (frontmatter + body),
+    or ``None`` when ``text`` doesn't parse as a frontmatter page.
+    """
     if not text.startswith("---"):
-        return False
+        return None
     end = text.find("\n---", 3)
     if end < 0:
-        return False
+        return None
     fm_block = text[3:end]
     # Strip any existing curation_gaps block.
     out_lines: list[str] = []
@@ -160,12 +168,60 @@ def _rewrite_page(
             count=1,
             flags=re.MULTILINE,
         )
-    new_text = "---\n" + new_fm + "\n---\n\n" + new_body.lstrip("\n")
+    return "---\n" + new_fm + "\n---\n\n" + new_body.lstrip("\n")
+
+
+async def _rewrite_page(
+    page_path: Path,
+    wiki_root: Path,
+    *,
+    new_body: str,
+    new_curation_gaps: list[str],
+) -> bool:
+    """Rewrite the page through the governed wiki-write path.
+
+    precondition: ``page_path`` is an existing page under ``wiki_root``.
+    postcondition: on success, the page is rewritten atomically AND the
+    write_class='mechanical' pointer memory + wiki.citations sync fire
+    (see ``write_governed_page``) — this worker's writes are indistinguishable
+    from an interactive ``wiki_write`` call in governance terms, only
+    distinguished by the ``headless-authoring`` tag. On any failure
+    (unparseable frontmatter, or the governed write itself failing), the
+    file on disk is left untouched, the failure is recorded via
+    ``silent_failure.note`` (so a degraded headless worker is observable
+    rather than silently dropping gaps forever), and ``False`` is returned.
+    """
     try:
-        page_path.write_text(new_text, encoding="utf-8")
-        return True
-    except OSError:
+        text = page_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        silent_failure.note("headless_authoring.rewrite_page.read", exc)
         return False
+
+    new_text = _compute_rewritten_page(
+        text, new_body=new_body, new_curation_gaps=new_curation_gaps
+    )
+    if new_text is None:
+        silent_failure.note(
+            "headless_authoring.rewrite_page.parse",
+            ValueError(f"unparseable frontmatter: {page_path}"),
+        )
+        return False
+
+    rel_path = str(page_path.relative_to(wiki_root))
+    result = await write_governed_page(
+        wiki_root,
+        rel_path,
+        new_text,
+        mode="replace",
+        tags=[_HEADLESS_TAG],
+    )
+    if "error" in result:
+        silent_failure.note(
+            "headless_authoring.rewrite_page.governed_write",
+            RuntimeError(result["error"]),
+        )
+        return False
+    return True
 
 
 def _read_first(paths: list[Path], cap: int) -> str:
@@ -338,7 +394,7 @@ def _scope_anchor_prompt(
     )
 
 
-def _write_anchor_page(
+async def _write_anchor_page(
     wiki_root: Path,
     domain: str,
     scope_name: str,
@@ -347,8 +403,18 @@ def _write_anchor_page(
     body_markdown: str,
     today: str,
 ) -> Path | None:
-    """Write the authored anchor page with proper frontmatter."""
-    page_path = wiki_root / suggested_path
+    """Write the authored anchor page through the governed wiki-write path.
+
+    precondition: ``suggested_path`` is wiki-root-relative and does not yet
+    exist (callers only reach here for ``covered=False`` scopes).
+    postcondition: on success, the page exists on disk AND the same
+    write_class='mechanical' pointer memory + wiki.citations sync as any
+    other governed write fire (see ``write_governed_page``); on failure
+    (including a create-mode race where the page now exists), the failure
+    is recorded via ``silent_failure.note`` and ``None`` is returned —
+    the previous raw ``OSError``-swallow is replaced with an observable
+    degradation.
+    """
     title_map = {
         "product-overview": "Product overview",
         "architecture": "Architecture overview",
@@ -373,7 +439,17 @@ def _write_anchor_page(
         f"kind: {suggested_kind}\n"
         f"domain: {domain}\n"
         f"scope: {scope_name}\n"
-        "status: living\n"
+        # 'seedling' — the only valid page_row_from_md/wiki.pages.status value
+        # for freshly-authored, unreviewed content (CHECK constraint:
+        # 'seedling'|'budding'|'evergreen', pg_schema.py). The template used
+        # to say 'living', a maturity value the schema has never accepted —
+        # invisible before this fix because the raw disk-write path never
+        # called page_row_from_md/upsert_page at all (see write_governed_page
+        # in wiki_write.py). Root-cause fix, not a cosmetic rename: an
+        # invalid status silently degrades the wiki.pages sync to a no-op
+        # (best-effort try/except in _sync_page_and_cite), which would have
+        # defeated this very governance fix for every anchor page.
+        "status: seedling\n"
         "authored_by: headless-authoring-worker\n"
         "provenance: auto-authored\n"
         f"created: {today}\n"
@@ -381,14 +457,24 @@ def _write_anchor_page(
         f"last_reviewed: {today}\n"
         "---\n\n"
     )
-    try:
-        page_path.parent.mkdir(parents=True, exist_ok=True)
-        page_path.write_text(
-            frontmatter + body_markdown.strip() + "\n", encoding="utf-8"
+    content = frontmatter + body_markdown.strip() + "\n"
+    result = await write_governed_page(
+        wiki_root,
+        suggested_path,
+        content,
+        mode="create",
+        tags=[_HEADLESS_TAG, "anchor"],
+    )
+    if "error" in result:
+        # Covers both the mkdir/write OSError the raw path used to swallow
+        # AND a create-mode race (page authored concurrently) — both are
+        # now observable via silent_failure instead of a bare ``except
+        # OSError: return None``. This runs under
+        # asyncio.gather(return_exceptions=False), so the caller relies on
+        # the None return (not an exception) to skip this one page.
+        silent_failure.note(
+            "headless_authoring.write_anchor_page.governed_write",
+            RuntimeError(result["error"]),
         )
-        return page_path
-    except OSError:
-        # PermissionError (an OSError subclass) on mkdir/write must not propagate:
-        # this runs under asyncio.gather(return_exceptions=False), so an escape
-        # aborts the entire anchor phase. Swallow → skip this one page.
         return None
+    return wiki_root / suggested_path

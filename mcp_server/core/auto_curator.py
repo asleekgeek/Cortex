@@ -478,7 +478,7 @@ Output **only** the wiki page body, starting with YAML frontmatter, then the bod
 title: <short specific title — not "Reference: X", just "X">
 kind: {kind}
 domain: {domain}
-status: living
+status: seedling
 authored_by: Opus 4.7
 created: {today}
 last_reviewed: {today}
@@ -541,7 +541,7 @@ Output **only** the wiki page body, starting with YAML frontmatter, then the bod
 title: <short specific title — e.g. "{scope_title}: {domain}">
 kind: {kind}
 domain: {domain}
-status: living
+status: seedling
 authored_by: Opus 4.7
 created: {today}
 last_reviewed: {today}

@@ -29,6 +29,7 @@ on disk, this is pure observability" boundary):
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from mcp_server.core.wiki_layout import page_path
@@ -228,6 +229,67 @@ def _sync_page_and_cite(rel_path: str, content: str, memory_ids: list[int]) -> i
         return 0
 
 
+async def write_governed_page(
+    root: Path | str,
+    rel_path: str,
+    content: str,
+    *,
+    mode: str = "create",
+    tags: list[str] | None = None,
+    memory_ids: list[int] | None = None,
+) -> dict[str, Any]:
+    """The single governed wiki-write path — every wiki-tree byte goes through here.
+
+    precondition: ``root`` is a wiki root (production ``WIKI_ROOT`` or, for a
+    caller operating on an alternate tree such as a test fixture, that
+    tree's own root); ``rel_path`` is root-relative; ``content`` is the full
+    markdown (frontmatter + body) to persist.
+    postcondition: on success, the page is written atomically (tmp+rename,
+    ``write_page``'s existing guarantee) AND a protected
+    ``write_class='mechanical'`` pointer memory is stored via ``remember``
+    (best-effort — never blocks or fails the write; mechanical is correct
+    per remember_schema.py's own vocabulary: "structural indexing — ...
+    wiki pointer sync — bypasses the gate entirely, force=true semantics";
+    this call stores a 500-char pointer, not the full authored content, so
+    the class describes the pointer-write, not who authored the page body)
+    AND ``wiki.pages``/``wiki.citations`` are synced best-effort (same
+    degrade-to-no-op discipline as ``_sync_page_and_cite``'s own contract).
+    Write-time provenance grading (``INC7.5`` — ``grade_from_content``,
+    triggered inside ``remember()``'s insert path) fires automatically as a
+    consequence of routing through here; no separate grading call is needed.
+    Returns ``{path, mode, created, bytes_written, root, citations_written}``
+    or ``{error}``.
+
+    This is deliberately the ONLY function in the codebase that may call
+    ``write_page`` — the interactive ``wiki_write`` MCP tool (``handler``,
+    below) and the headless authoring worker
+    (``consolidation/page_io.py``) both route through here so no caller can
+    write wiki-tree bytes while skipping write_class/citation/pointer-memory
+    bookkeeping (Move 1: one governed path, no shadow I/O).
+    """
+    try:
+        result = write_page(root, rel_path, content, mode=mode)
+    except WikiExists:
+        return {"error": f"page already exists: {rel_path}"}
+    except WikiMissing:
+        return {"error": f"page does not exist: {rel_path}"}
+    except (ValueError, OSError) as exc:
+        return {"error": f"write failed: {exc}"}
+
+    await _store_pointer_memory(rel_path, content, tags or [])
+
+    citations_written = _sync_page_and_cite(rel_path, content, memory_ids or [])
+
+    return {
+        "path": result.path,
+        "mode": result.mode,
+        "created": result.created,
+        "bytes_written": result.bytes_written,
+        "root": str(root),
+        "citations_written": citations_written,
+    }
+
+
 async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     args = args or {}
     rel_path = str(args.get("path") or "").strip()
@@ -244,29 +306,17 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
             )
         }
 
-    try:
-        result = write_page(WIKI_ROOT, rel_path, str(content), mode=mode)
-    except WikiExists:
-        return {"error": f"page already exists: {rel_path}"}
-    except WikiMissing:
-        return {"error": f"page does not exist: {rel_path}"}
-    except (ValueError, OSError) as exc:
-        return {"error": f"write failed: {exc}"}
-
     tags = [str(t) for t in (args.get("tags") or [])]
-    await _store_pointer_memory(rel_path, str(content), tags)
-
     memory_ids = [int(m) for m in (args.get("memory_ids") or [])]
-    citations_written = _sync_page_and_cite(rel_path, str(content), memory_ids)
 
-    return {
-        "path": result.path,
-        "mode": result.mode,
-        "created": result.created,
-        "bytes_written": result.bytes_written,
-        "root": str(WIKI_ROOT),
-        "citations_written": citations_written,
-    }
+    return await write_governed_page(
+        WIKI_ROOT,
+        rel_path,
+        str(content),
+        mode=mode,
+        tags=tags,
+        memory_ids=memory_ids,
+    )
 
 
 __all__ = [
@@ -277,4 +327,5 @@ __all__ = [
     "build_spec",
     "build_file_doc",
     "build_note",
+    "write_governed_page",
 ]
