@@ -322,15 +322,28 @@ class SqliteSearchMixin:
         max_depth: int = 3,
         max_results: int = 50,
         min_heat: float = 0.05,
+        domain: str | None = None,
+        include_globals: bool = True,
     ) -> list[tuple[int, float]]:
-        """Client-side spread activation: query terms -> entities -> memories."""
+        """Client-side spread activation: query terms -> entities -> memories.
+
+        domain/include_globals mirror PgMemoryStore.spread_activation_memories
+        (ADR-0054, same substitutability contract): the entity graph stays
+        unscoped, but the final entity->memory mapping is filtered to
+        ``domain`` (plus is_global rows when include_globals) so the
+        SQLite fallback (memory_store.py's inspection-mode path, which
+        can serve real traffic) does not reopen the cross-domain
+        injection the PostgreSQL fix closes.
+        """
         seed_entities = self._resolve_seed_entities(query_terms, min_heat)
         if not seed_entities:
             return []
         activated = self._propagate_activation(
             seed_entities, decay, threshold, max_depth
         )
-        return self._map_entities_to_memories(activated, min_heat, max_results)
+        return self._map_entities_to_memories(
+            activated, min_heat, max_results, domain, include_globals
+        )
 
     def _resolve_seed_entities(
         self, query_terms: list[str], min_heat: float
@@ -385,7 +398,16 @@ class SqliteSearchMixin:
         activated: dict[int, float],
         min_heat: float,
         max_results: int,
+        domain: str | None = None,
+        include_globals: bool = True,
     ) -> list[tuple[int, float]]:
+        """Map activated entities to memory rows, domain-scoped (ADR-0054).
+
+        Precondition: none. Postcondition: every returned memory_id either
+        belongs to ``domain`` or, when ``include_globals`` is True, carries
+        ``is_global = 1`` -- unless ``domain`` is None, in which case no
+        filter is applied (mirrors the PL/pgSQL p_domain IS NULL branch).
+        """
         memory_acts: dict[int, float] = {}
         for eid, act in activated.items():
             entity = self._conn.execute(
@@ -396,11 +418,16 @@ class SqliteSearchMixin:
                 continue
             name = entity["name"]
             mem_rows = self._conn.execute(
-                "SELECT id FROM current_memories WHERE content LIKE ? "
-                "AND heat_base >= ? AND NOT is_stale LIMIT 20",
+                "SELECT id, domain, is_global FROM current_memories "
+                "WHERE content LIKE ? AND heat_base >= ? AND NOT is_stale LIMIT 20",
                 (f"%{name}%", min_heat),
             ).fetchall()
             for mr in mem_rows:
+                if domain is not None:
+                    same_domain = mr["domain"] == domain
+                    is_global_row = include_globals and bool(mr["is_global"])
+                    if not (same_domain or is_global_row):
+                        continue
                 mid = mr["id"]
                 if mid not in memory_acts or act > memory_acts[mid]:
                     memory_acts[mid] = act

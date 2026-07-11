@@ -198,6 +198,94 @@ def test_sa_no_terms_returns_input_unchanged():
     assert out == cands
 
 
+# ── SPREADING_ACTIVATION domain scoping (ADR-0054) ─────────────────────
+
+
+class _CapturingStore:
+    """Fake store that records the kwargs spread_activation_memories was
+    called with, so the domain/cross_domain threading from
+    spreading_activation_expand -> store can be asserted without a real
+    PL/pgSQL function (see tests_py/infrastructure/
+    test_pg_spread_activation_scoping.py for the real-PG counterpart)."""
+
+    def __init__(self) -> None:
+        self.last_kwargs: dict | None = None
+
+    def get_memory(self, mid: int):
+        return None
+
+    def spread_activation_memories(self, **kwargs):
+        self.last_kwargs = kwargs
+        return []
+
+
+def test_sa_threads_domain_by_default():
+    cands = _make_candidates(2)
+    store = _CapturingStore()
+    spreading_activation_expand(
+        cands, "query expand entity terms", store, domain="acme"
+    )
+    assert store.last_kwargs["domain"] == "acme"
+    assert store.last_kwargs["include_globals"] is True
+
+
+def test_sa_cross_domain_true_disables_domain_filter():
+    cands = _make_candidates(2)
+    store = _CapturingStore()
+    spreading_activation_expand(
+        cands, "query expand entity terms", store, domain="acme", cross_domain=True
+    )
+    # cross_domain=True is the explicit opt-out -- the store call must
+    # receive domain=None regardless of the domain= argument passed in.
+    assert store.last_kwargs["domain"] is None
+
+
+class _RaisingStore:
+    def get_memory(self, mid: int):
+        return None
+
+    def spread_activation_memories(self, **kwargs):
+        raise RuntimeError('relation "spread" does not exist')
+
+
+def test_sa_failure_is_logged_not_silently_swallowed(caplog):
+    """2026-07-11 incident precedent (bb1c581f): a bare `except Exception:
+    return candidates` here previously hid the WITH-RECURSIVE bug for the
+    channel's entire lifetime. The failure must now be observable."""
+    import mcp_server.core.recall_pipeline as rp
+
+    rp._sa_failed = False
+    rp._sa_last_error = None
+    cands = _make_candidates(2)
+    store = _RaisingStore()
+    with caplog.at_level("WARNING", logger="mcp_server.core.recall_pipeline"):
+        out = spreading_activation_expand(cands, "query expand entity terms", store)
+    assert out == cands  # still degrades gracefully -- WRRF candidates unchanged
+    assert any("spread_activation_memories" in r.message for r in caplog.records)
+    status = rp.spreading_activation_status()
+    assert status["failed"] == "True"
+    assert "does not exist" in status["error"]
+    rp._sa_failed = False
+    rp._sa_last_error = None
+
+
+def test_sa_failure_logs_only_once(caplog):
+    import mcp_server.core.recall_pipeline as rp
+
+    rp._sa_failed = False
+    rp._sa_last_error = None
+    cands = _make_candidates(2)
+    store = _RaisingStore()
+    with caplog.at_level("WARNING", logger="mcp_server.core.recall_pipeline"):
+        spreading_activation_expand(cands, "query expand entity terms", store)
+        first_count = len(caplog.records)
+        spreading_activation_expand(cands, "query expand entity terms", store)
+        second_count = len(caplog.records)
+    assert second_count == first_count  # no repeat log on subsequent failures
+    rp._sa_failed = False
+    rp._sa_last_error = None
+
+
 # ── DENDRITIC_CLUSTERS ──────────────────────────────────────────────────
 
 

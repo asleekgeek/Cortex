@@ -1209,16 +1209,36 @@ class PgMemoryStore(
         max_depth: int = 3,
         max_results: int = 50,
         min_heat: float = 0.05,
+        domain: str | None = None,
+        include_globals: bool = True,
     ) -> list[tuple[int, float]]:
         """Run spread_activation_memories PL/pgSQL: query→entities→memories.
 
         Single server-side call replacing 4 Python round trips.
+
+        domain/include_globals scope the final entity->memory mapping to
+        one cognitive domain (plus is_global rows when include_globals is
+        True) -- mirrors recall_memories()'s p_domain/p_include_globals.
+        domain=None (default) disables the filter -- see the PL/pgSQL
+        function's docstring in pg_schema.py for why callers must pass
+        an explicit domain (ADR-0054: measured 52.8% cross-domain
+        injection when unscoped).
         """
         rows = self._execute(
             "SELECT * FROM spread_activation_memories("
-            "  %s::TEXT[], %s::REAL, %s::REAL, %s::INT, %s::INT, %s::REAL"
+            "  %s::TEXT[], %s::REAL, %s::REAL, %s::INT, %s::INT, %s::REAL,"
+            "  %s::TEXT, %s::BOOLEAN"
             ")",
-            (query_terms, decay, threshold, max_depth, max_results, min_heat),
+            (
+                query_terms,
+                decay,
+                threshold,
+                max_depth,
+                max_results,
+                min_heat,
+                domain,
+                include_globals,
+            ),
         ).fetchall()
         return [(r["memory_id"], r["activation"]) for r in rows]
 

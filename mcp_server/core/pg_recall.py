@@ -250,6 +250,7 @@ def recall(
     momentum_state: dict | None = None,
     include_globals: bool = True,
     familiarity_shortcut: bool = False,
+    cross_domain: bool = False,
 ) -> list[dict[str, Any]]:
     """Full PG-path retrieval: intent → weights → recall_memories → rerank.
 
@@ -266,6 +267,14 @@ def recall(
         rerank_alpha: Blend weight for cross-encoder scores (0.70 from BEAM ablation).
         wrrf_k: WRRF fusion constant.
         momentum_state: Mutable dict with 'momentum' key for Titans surprise.
+        cross_domain: ADR-0054 opt-out for the SPREADING_ACTIVATION stage
+            only (the WRRF stage above stays scoped to ``domain``
+            regardless). When True, the entity-graph BFS search is not
+            restricted to ``domain`` — same "explicit opt-in, safe
+            default" shape as ``include_globals``. Defaults to False:
+            measured 52.8% cross-domain injection rate when this stage
+            runs unscoped (scratchpad/spread-activation-scoping-design.md
+            §2.3).
         familiarity_shortcut: C2 dual-process opt-in. When True, an
             overwhelmingly-familiar query (a single dominant candidate whose
             query↔candidate cosine similarity clears the familiarity threshold)
@@ -363,7 +372,14 @@ def recall(
         embedding_dim=embeddings.dimensions if embeddings else 0,
     )
     candidates = hdc_rerank(candidates, query)
-    candidates = spreading_activation_expand(candidates, query, store)
+    candidates = spreading_activation_expand(
+        candidates,
+        query,
+        store,
+        domain=domain,
+        include_globals=include_globals,
+        cross_domain=cross_domain,
+    )
     candidates = dendritic_modulate(candidates, query, store)
 
     # 4e. EMOTIONAL_RETRIEVAL — Bower 1981 mood-congruent recall using

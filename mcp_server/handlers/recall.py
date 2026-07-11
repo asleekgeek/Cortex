@@ -221,6 +221,21 @@ schema = {
                 ),
                 "default": False,
             },
+            "cross_domain": {
+                "type": "boolean",
+                "description": (
+                    "ADR-0054 opt-out for the spreading-activation entity-"
+                    "graph expansion stage only (the primary WRRF search "
+                    "above stays scoped to ``domain`` regardless of this "
+                    "flag). When true, that stage may inject memories from "
+                    "OTHER domains reachable through a shared entity (e.g. "
+                    "a common function name). Defaults to false: measured "
+                    "52.8% cross-domain injection rate when this stage runs "
+                    "unscoped. Mirrors the existing ``include_globals`` "
+                    "opt-in shape."
+                ),
+                "default": False,
+            },
             "tags_any": {
                 "type": "array",
                 "items": {"type": "string"},
@@ -437,6 +452,7 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     min_heat = args.get("min_heat", 0.05)
     include_low_signal = bool(args.get("include_low_signal", False))
     include_related = bool(args.get("include_related", False))
+    cross_domain = bool(args.get("cross_domain", False))
     tags_any: list[str] = list(args.get("tags_any") or [])
     tags_all: list[str] = list(args.get("tags_all") or [])
     settings = get_memory_settings()
@@ -460,6 +476,7 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
         min_heat=min_heat,
         wrrf_k=settings.WRRF_K,
         momentum_state=_momentum_state,
+        cross_domain=cross_domain,
     )
 
     # Low-signal filter (spike 2026-05-13). Tool-output captures,

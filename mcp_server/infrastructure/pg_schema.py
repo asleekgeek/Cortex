@@ -1467,22 +1467,55 @@ $$ LANGUAGE plpgsql STABLE;
 # ── PL/pgSQL: spread_activation_memories ────────────────────────────────
 # Full pipeline: query terms → entity resolution → propagation → memory IDs.
 # Replaces 4 Python-side round trips with 1 server-side call.
+#
+# Domain scoping (ADR-0054, 2026-07-11): the entity graph (entities,
+# relationships) is intentionally global -- a token shared across projects
+# (e.g. "TypeError", "src/main.rs") legitimately creates one shared entity
+# row, and relationships carry no domain column by design (see
+# RELATIONSHIPS_DDL). Filtering seed_entities or spread by domain would
+# starve that legitimate sharing. The injection point that matters is the
+# LAST step -- entity_memories, where activation is mapped onto actual
+# memory rows -- mirroring the precedent already established by
+# pg_recall.py::_memories_by_entity_fn (`if domain and m.get("domain") !=
+# domain: continue`) and by recall_memories()'s own p_domain/p_include_globals
+# gate on the same `m.domain` column (see RECALL_MEMORIES_LAZY_FN above).
+# Measured without this filter (scratchpad/spread-activation-scoping-design.md
+# §2.3): 52.8% of topologically-reachable injections are cross-domain,
+# 87.5% of queries have >=1 cross-domain hit. p_domain defaults to NULL
+# (no filter) only for the two callers that explicitly opt in via
+# cross_domain=True (recall_pipeline.py::spreading_activation_expand);
+# the default at every layer above this function is scoped.
+#
+# WITH RECURSIVE fix (bug present since the function's introduction,
+# 8228a0d2): the `spread` CTE self-references (`FROM spread s`) but the
+# original declaration used a plain `WITH`, which PostgreSQL rejects
+# ("relation \"spread\" does not exist") on every single call -- the
+# entire channel has been dead in production since inception, its
+# exception silently swallowed by recall_pipeline.py's `except Exception:
+# return candidates`. See spread_activation() above, which already used
+# WITH RECURSIVE correctly -- this was the only divergence between the
+# two twin functions.
 
 SPREAD_ACTIVATION_MEMORIES_FN = """
+DROP FUNCTION IF EXISTS spread_activation_memories(
+    TEXT[], REAL, REAL, INT, INT, REAL
+);
 CREATE OR REPLACE FUNCTION spread_activation_memories(
-    p_query_terms   TEXT[],
-    p_decay         REAL DEFAULT 0.65,
-    p_threshold     REAL DEFAULT 0.1,
-    p_max_depth     INT DEFAULT 3,
-    p_max_results   INT DEFAULT 50,
-    p_min_heat      REAL DEFAULT 0.05
+    p_query_terms      TEXT[],
+    p_decay            REAL DEFAULT 0.65,
+    p_threshold        REAL DEFAULT 0.1,
+    p_max_depth        INT DEFAULT 3,
+    p_max_results      INT DEFAULT 50,
+    p_min_heat         REAL DEFAULT 0.05,
+    p_domain           TEXT DEFAULT NULL,
+    p_include_globals  BOOLEAN DEFAULT TRUE
 ) RETURNS TABLE (
     memory_id   INT,
     activation  REAL
 ) AS $$
 BEGIN
     RETURN QUERY
-    WITH
+    WITH RECURSIVE
     -- Step 1: Resolve query terms to entity IDs (case-insensitive)
     seed_entities AS (
         SELECT DISTINCT e.id AS eid
@@ -1490,9 +1523,6 @@ BEGIN
         WHERE LOWER(e.name) = LOWER(t.term)
           AND e.heat >= p_min_heat
           AND NOT e.archived
-    ),
-    seed_ids AS (
-        SELECT ARRAY_AGG(eid) AS ids FROM seed_entities
     ),
     -- Step 2: Spread activation via recursive CTE
     spread AS (
@@ -1524,7 +1554,9 @@ BEGIN
     -- current_memories: spread activation re-injects candidates from the
     -- entity graph AFTER the WRRF ranking — a superseded version reached
     -- through its entities would bypass every ranking barrier, so chain
-    -- heads only.
+    -- heads only. Domain filter here (not on entities/relationships,
+    -- see module comment above) mirrors recall_memories()'s p_domain/
+    -- p_include_globals gate on the same m.domain column.
     entity_memories AS (
         SELECT DISTINCT m.id AS mid, ea.act
         FROM entity_acts ea
@@ -1532,6 +1564,9 @@ BEGIN
         JOIN current_memories m
             ON m.content_tsv @@ phraseto_tsquery('english', e.name)
         WHERE m.heat_base >= p_min_heat AND NOT m.is_stale
+          AND (p_domain IS NULL
+               OR m.domain = p_domain
+               OR (p_include_globals AND m.is_global = TRUE))
     )
     -- Return max activation per memory (entity with strongest path wins)
     SELECT em.mid, MAX(em.act)::REAL
