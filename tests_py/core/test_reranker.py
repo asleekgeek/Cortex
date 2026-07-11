@@ -2,10 +2,15 @@
 
 from unittest.mock import patch
 
+import mcp_server.core.reranker as reranker_mod
 from mcp_server.core.reranker import (
     _compute_retrieval_confidence,
     _blend_scores,
+    ensure_reranker_loaded,
+    model_sha256,
     rerank_results,
+    reranker_cache_dir,
+    reranker_status,
 )
 
 
@@ -76,3 +81,131 @@ class TestReranker:
         with patch("mcp_server.core.reranker._ensure_reranker", return_value=None):
             result = rerank_results("test", candidates, {})
         assert result == candidates
+
+
+class _ResetSingleton:
+    """Fixture helper: reset the process-global FlashRank singleton state.
+
+    The singleton (module-level ``_flashrank_instance`` /
+    ``_flashrank_failed`` / ``_flashrank_load_error``) persists across
+    calls by design (see reranker.py's docstring — same shape as
+    write_post_store.py's ``_global_buffer``). Tests that exercise the
+    load-failure / status transitions must reset it before and after, or
+    they leak state into unrelated tests in the same process.
+    """
+
+    def __enter__(self):
+        self._saved = (
+            reranker_mod._flashrank_instance,
+            reranker_mod._flashrank_failed,
+            reranker_mod._flashrank_load_error,
+        )
+        reranker_mod._flashrank_instance = None
+        reranker_mod._flashrank_failed = False
+        reranker_mod._flashrank_load_error = None
+        return self
+
+    def __exit__(self, *exc):
+        (
+            reranker_mod._flashrank_instance,
+            reranker_mod._flashrank_failed,
+            reranker_mod._flashrank_load_error,
+        ) = self._saved
+
+
+class TestRerankerCacheDir:
+    """The durable cache_dir fix (2026-07-10 incident)."""
+
+    def test_default_is_not_tmp(self):
+        """FlashRank's own default (/tmp) must never be what we pass it."""
+        assert str(reranker_cache_dir()) != "/tmp"
+        assert "flashrank" in str(reranker_cache_dir())
+
+    def test_honors_xdg_cache_home(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+        assert reranker_cache_dir() == tmp_path / "flashrank"
+
+    def test_falls_back_to_home_cache(self, monkeypatch):
+        monkeypatch.delenv("XDG_CACHE_HOME", raising=False)
+        monkeypatch.setenv("HOME", "/fake/home")
+        assert str(reranker_cache_dir()) == "/fake/home/.cache/flashrank"
+
+
+class TestReRankerNonSilentFailure:
+    """Load failures must be logged, not swallowed (root cause of the
+    2026-07-10 incident: a bare except made a permanently-broken reranker
+    indistinguishable from a healthy one across 6 benchmark runs)."""
+
+    def test_load_failure_logs_warning_with_path_and_exception(self, caplog):
+        with _ResetSingleton():
+            with patch("flashrank.Ranker", side_effect=OSError("NoSuchFile")):
+                with caplog.at_level("WARNING", logger="mcp_server.core.reranker"):
+                    result = reranker_mod._ensure_reranker()
+            assert result is None
+            assert any("NoSuchFile" in rec.message for rec in caplog.records)
+            # The searched cache directory must be named in the log line.
+            assert any(
+                str(reranker_cache_dir()) in rec.message for rec in caplog.records
+            )
+
+    def test_second_failure_does_not_log_again(self, caplog):
+        """Singleton flag suppresses spam after the first logged failure."""
+        with _ResetSingleton():
+            with patch("flashrank.Ranker", side_effect=OSError("NoSuchFile")):
+                with caplog.at_level("WARNING", logger="mcp_server.core.reranker"):
+                    reranker_mod._ensure_reranker()
+                    first_count = len(caplog.records)
+                    reranker_mod._ensure_reranker()
+                    second_count = len(caplog.records)
+            assert second_count == first_count
+
+
+class TestRerankerStatus:
+    def test_not_attempted_before_any_call(self):
+        with _ResetSingleton():
+            status = reranker_status()
+            assert status.state == "not_attempted"
+            assert status.error is None
+
+    def test_status_reflects_failed_load(self):
+        with _ResetSingleton():
+            with patch("flashrank.Ranker", side_effect=OSError("NoSuchFile")):
+                ensure_reranker_loaded()
+            status = reranker_status()
+            assert status.state == "failed"
+            assert status.error is not None
+            assert "NoSuchFile" in status.error
+
+    def test_status_reflects_loaded(self):
+        with _ResetSingleton():
+            fake_ranker = object()
+            with patch("flashrank.Ranker", return_value=fake_ranker):
+                status = ensure_reranker_loaded()
+            assert status.state == "loaded"
+            assert reranker_status().state == "loaded"
+
+    def test_status_does_not_trigger_a_load(self):
+        """reranker_status() must be side-effect-free (preflight-safe)."""
+        with _ResetSingleton():
+            with patch("flashrank.Ranker") as mock_ranker:
+                reranker_status()
+                mock_ranker.assert_not_called()
+
+
+class TestModelSha256:
+    def test_returns_none_when_model_absent(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+        assert model_sha256() is None
+
+    def test_returns_hex_digest_when_model_present(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+        model_path = reranker_mod._model_path()
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        model_path.write_bytes(b"fake-onnx-weights")
+        digest = model_sha256()
+        assert digest is not None
+        assert len(digest) == 64  # sha256 hex digest length
+        # Deterministic: same bytes -> same digest.
+        import hashlib
+
+        assert digest == hashlib.sha256(b"fake-onnx-weights").hexdigest()

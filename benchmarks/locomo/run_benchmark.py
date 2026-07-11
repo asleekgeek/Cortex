@@ -221,7 +221,7 @@ def run_benchmark(
         consolidation_total_wall_s = 0.0
         consolidation_call_count = 0
 
-        with BenchmarkDB() as db:
+        with BenchmarkDB(require_reranker=True) as db:
             for conv_idx, conv in enumerate(data):
                 sessions = extract_sessions(conv["conversation"])
 

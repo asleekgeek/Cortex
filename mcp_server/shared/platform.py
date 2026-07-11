@@ -42,6 +42,21 @@ def home_dir() -> Path:
     return Path(override) if override else Path.home()
 
 
+def cache_dir() -> Path:
+    """Base cache directory, honoring ``$XDG_CACHE_HOME`` when set.
+
+    Follows the freedesktop.org XDG Base Directory spec's XDG_CACHE_HOME
+    override (respected by many CLI tools including uv, pip, npm)
+    uniformly across platforms; falls back to ``~/.cache`` (via
+    ``home_dir()`` so an explicit ``$HOME`` override composes correctly)
+    otherwise.
+
+    source: https://specifications.freedesktop.org/basedir-spec/latest/
+    """
+    override = os.environ.get("XDG_CACHE_HOME")
+    return Path(override) if override else home_dir() / ".cache"
+
+
 def python_executable() -> str:
     """Absolute path to the interpreter currently executing.
 
