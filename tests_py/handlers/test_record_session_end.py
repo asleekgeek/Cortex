@@ -232,6 +232,56 @@ class TestRecordSessionEndHandler:
         saved_log = mock_save.call_args[0][0]
         assert len(saved_log["sessions"]) == 1000
 
+    def test_lesson_candidates_stored_key_present(self):
+        """M-D6 (7.6): the response always carries lessonCandidatesStored."""
+        p1, p2, p3, p4 = _mock_io()
+        with p1, p2, p3, p4:
+            result = asyncio.run(
+                handler(
+                    {
+                        "session_id": f"test-lesson-key-{int(time.time() * 1000)}",
+                    }
+                )
+            )
+        assert "lessonCandidatesStored" in result
+        assert isinstance(result["lessonCandidatesStored"], int)
+
+    def test_persists_top_suggestion_as_lesson_candidate_memory(self):
+        """M-D6 (7.6): a non-empty top_suggestion becomes its own durable
+        memory (source='self-critique', tags include 'lesson-candidate') —
+        previously it was computed and returned, never stored (design
+        §M-D6: 'top_suggestions calculées puis perdues')."""
+        p1, p2, p3, p4 = _mock_io()
+        session_id = f"test-lesson-persist-{int(time.time() * 1000)}"
+        with p1, p2, p3, p4:
+            result = asyncio.run(
+                handler(
+                    {
+                        "session_id": session_id,
+                        # No tools_used -> analyze_tool_usage guarantees a
+                        # non-empty suggestion ("No tools were used...").
+                    }
+                )
+            )
+
+        assert result["critique"]["top_suggestions"], (
+            "fixture assumption: empty tools_used always yields >=1 suggestion"
+        )
+        assert result["lessonCandidatesStored"] >= 1
+
+        from mcp_server.infrastructure.memory_store import get_shared_store
+
+        store = get_shared_store()
+        recent = store.get_recent_memories(limit=50)
+        matches = [
+            m
+            for m in recent
+            if session_id in m.get("content", "")
+            and "lesson-candidate" in (m.get("tags") or [])
+        ]
+        assert matches, "expected a lesson-candidate memory tagged with the session id"
+        assert matches[0].get("source") == "self-critique"
+
     def test_profile_not_updated_when_domain_not_in_profiles(self):
         with (
             patch(

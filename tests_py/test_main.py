@@ -46,14 +46,16 @@ class TestMain:
             # Should call mcp.run with stdio transport
             mock_run.assert_called_once_with(transport="stdio")
 
-    def test_standalone_baseline_is_46_tools(self):
-        """With no upstream available, exactly the 46 standalone tools register.
+    def test_standalone_baseline_is_47_tools(self):
+        """With no upstream available, exactly the 47 standalone tools register.
 
-        46 = the 44 pre-blame-path tools + `why` (blame path T3, decision
+        47 = the 44 pre-blame-path tools + `why` (blame path T3, decision
         4255039) + `ingest_findings` (INC5.1, ADR-0052 — reads AP artifacts
-        from disk, no upstream connection needed). The 3 upstream-integration
-        tools (ingest_codebase, change_impact, ingest_prd) MUST NOT be
-        advertised — every advertised tool then works out of the box.
+        from disk, no upstream connection needed) + `lesson_promotion`
+        (M-D6, 7.6 — reads PG only, no upstream connection needed). The 3
+        upstream-integration tools (ingest_codebase, change_impact,
+        ingest_prd) MUST NOT be advertised — every advertised tool then
+        works out of the box.
         source: MCP Directory submission decision 2026-06-19.
         """
         names = _tool_names(codebase=False, prd=False)
@@ -85,22 +87,24 @@ class TestMain:
         assert "why" in names
         # INC5.1: the AP findings consumer is disk-based, always registered.
         assert "ingest_findings" in names
+        # M-D6 (7.6): lesson_promotion is PG-only, no upstream needed.
+        assert "lesson_promotion" in names
         # The upstream-integration tools are gated OFF.
         assert names.isdisjoint(_UPSTREAM_TOOLS)
-        assert len(names) == 46
+        assert len(names) == 47
 
-    def test_with_upstreams_registers_49_tools(self):
+    def test_with_upstreams_registers_50_tools(self):
         """When both upstreams are available, the 3 integration tools register."""
         names = _tool_names(codebase=True, prd=True)
         assert _UPSTREAM_TOOLS <= names
-        assert len(names) == 49
+        assert len(names) == 50
 
     def test_codebase_only_adds_two_tools(self):
         """codebase upstream gates ingest_codebase + change_impact together."""
         names = _tool_names(codebase=True, prd=False)
         assert {"ingest_codebase", "change_impact"} <= names
         assert "ingest_prd" not in names
-        assert len(names) == 48
+        assert len(names) == 49
 
     def test_mcp_server_name_and_version(self):
         assert mcp.name == "methodology-agent"

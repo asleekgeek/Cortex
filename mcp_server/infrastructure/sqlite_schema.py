@@ -220,7 +220,10 @@ CREATE TABLE IF NOT EXISTS prospective_memories (
     created_at          TEXT NOT NULL DEFAULT (datetime('now')),
     triggered_at        TEXT,
     triggered_count     INTEGER DEFAULT 0,
-    created_by          TEXT NOT NULL DEFAULT ''
+    created_by          TEXT NOT NULL DEFAULT '',
+    -- M-D6 (7.6) — PG parity, see pg_schema.py's prospective_memories DDL
+    -- comment for the full rationale (unenforced pointer, no FK).
+    source_memory_id    INTEGER
 );
 """
 
@@ -282,7 +285,11 @@ CREATE TABLE IF NOT EXISTS memory_rules (
     action              TEXT NOT NULL,
     priority            INTEGER DEFAULT 0,
     is_active           INTEGER DEFAULT 1,
-    created_at          TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+    -- M-D6 (7.6) — PG parity, see pg_schema.py's memory_rules DDL
+    -- comment for the read-path-neutrality argument (unenforced
+    -- pointer, apply_rules() never reads this column).
+    source_memory_id    INTEGER
 );
 """
 
@@ -441,4 +448,9 @@ MIGRATIONS: list[tuple[str, str, str]] = [
     # (CLAUDE.md: "No SQLite" is the production direction), so a
     # DB-level backstop here is not load-bearing.
     ("memories", "write_class", "TEXT DEFAULT 'deliberate'"),
+    # M-D6 (7.6) — PG parity with the memory_rules.source_memory_id /
+    # prospective_memories.source_memory_id columns added in
+    # pg_schema.py MIGRATIONS_DDL. Nullable pointer, no backfill needed.
+    ("memory_rules", "source_memory_id", "INTEGER"),
+    ("prospective_memories", "source_memory_id", "INTEGER"),
 ]

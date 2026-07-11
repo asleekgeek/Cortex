@@ -27,7 +27,9 @@ schema = {
         "`get_methodology_graph` (cognitive graph, not the rules table). "
         "Read-only. Latency ~30ms. Returns {rules: [{id, scope, "
         "scope_value, rule_type, condition, action, priority, active, "
-        "created_at}]}."
+        "created_at, source_memory_id}]}. source_memory_id (M-D6) is the "
+        "lesson memory a rule was promoted from via `lesson_promotion`, "
+        "or null for directly-created rules."
     ),
     "inputSchema": {
         "type": "object",

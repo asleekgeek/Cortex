@@ -1,4 +1,4 @@
-"""Tool registration: Tier 3 advanced tools (6 tools).
+"""Tool registration: Tier 3 advanced tools (7 tools).
 
 Registers automation, rules, narrative, and coverage tools.
 """
@@ -14,6 +14,7 @@ from mcp_server.handlers import (
     curate_wiki,
     get_project_story,
     get_rules,
+    lesson_promotion,
     sync_instructions,
 )
 from mcp_server.tool_error_handler import safe_handler
@@ -29,6 +30,7 @@ SCHEMAS: dict[str, dict] = {
     "curate_wiki": curate_wiki.schema,
     "get_project_story": get_project_story.schema,
     "get_rules": get_rules.schema,
+    "lesson_promotion": lesson_promotion.schema,
     "sync_instructions": sync_instructions.schema,
 }
 
@@ -42,6 +44,7 @@ def register(mcp: FastMCP) -> None:
     _register_get_project_story(mcp)
     _register_assess_coverage(mcp)
     _register_curate_wiki(mcp)
+    _register_lesson_promotion(mcp)
 
 
 def _register_curate_wiki(mcp: FastMCP) -> None:
@@ -69,6 +72,20 @@ def _register_curate_wiki(mcp: FastMCP) -> None:
                 "memory_pool_size": memory_pool_size,
             },
             tool_name="curate_wiki",
+        )
+
+
+def _register_lesson_promotion(mcp: FastMCP) -> None:
+    @mcp.tool(
+        name="lesson_promotion",
+        **tool_kwargs(lesson_promotion.schema),
+    )
+    async def tool_lesson_promotion(limit: int = 10) -> dict:
+        """Propose promotion jobs for validated lessons — never promotes itself."""
+        return await safe_handler(
+            lesson_promotion.handler,
+            {"limit": limit},
+            tool_name="lesson_promotion",
         )
 
 
@@ -106,6 +123,7 @@ def _register_create_trigger(mcp: FastMCP) -> None:
         trigger_condition: str,
         trigger_type: str = "keyword",
         target_directory: str | None = None,
+        source_memory_id: int | None = None,
     ) -> dict:
         """Create a prospective memory trigger."""
         return await safe_handler(
@@ -115,6 +133,7 @@ def _register_create_trigger(mcp: FastMCP) -> None:
                 "trigger_condition": trigger_condition,
                 "trigger_type": trigger_type,
                 "target_directory": target_directory,
+                "source_memory_id": source_memory_id,
             },
             tool_name="create_trigger",
         )
@@ -132,6 +151,7 @@ def _register_add_rule(mcp: FastMCP) -> None:
         scope: str = "global",
         scope_value: str | None = None,
         priority: int = 0,
+        source_memory_id: int | None = None,
     ) -> dict:
         """Add a neuro-symbolic rule to the memory store."""
         return await safe_handler(
@@ -143,6 +163,7 @@ def _register_add_rule(mcp: FastMCP) -> None:
                 "scope": scope,
                 "scope_value": scope_value,
                 "priority": priority,
+                "source_memory_id": source_memory_id,
             },
             tool_name="add_rule",
         )
