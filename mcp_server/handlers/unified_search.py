@@ -72,6 +72,17 @@ schema = {
                     "candidates the entity graph could reach stay excluded."
                 ),
             },
+            "sa_mode": {
+                "type": "string",
+                "enum": ["tail", "augment", "off"],
+                "default": "tail",
+                "description": (
+                    "Forwarded verbatim to cortex.recall's ADR-0054 "
+                    "addendum spreading-activation mode (see recall's "
+                    "schema for detail). Defaults to the benchmark-neutral "
+                    "``tail`` mode."
+                ),
+            },
         },
     },
 }

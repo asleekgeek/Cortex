@@ -232,9 +232,27 @@ schema = {
                     "a common function name). Defaults to false: measured "
                     "52.8% cross-domain injection rate when this stage runs "
                     "unscoped. Mirrors the existing ``include_globals`` "
-                    "opt-in shape."
+                    "opt-in shape. Orthogonal to ``sa_mode``."
                 ),
                 "default": False,
+            },
+            "sa_mode": {
+                "type": "string",
+                "enum": ["tail", "augment", "off"],
+                "default": "tail",
+                "description": (
+                    "ADR-0054 addendum (2026-07-11 garde x3 bench incident). "
+                    "``tail`` (default) only appends spreading-activation "
+                    "candidates to fill out a short result list, never "
+                    "reordering or rescoring an existing one — benchmark-"
+                    "neutral by construction on any corpus dense enough to "
+                    "already fill ``max_results``. ``augment`` is the "
+                    "pre-fusion mode that can reorder/outrank existing "
+                    "candidates — measured to regress LongMemEval MRR "
+                    "(0.9166->0.9009) even with domain scoping; kept for "
+                    "future dedicated tuning, never the default. ``off`` "
+                    "disables the channel."
+                ),
             },
             "tags_any": {
                 "type": "array",
@@ -453,6 +471,7 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     include_low_signal = bool(args.get("include_low_signal", False))
     include_related = bool(args.get("include_related", False))
     cross_domain = bool(args.get("cross_domain", False))
+    sa_mode = str(args.get("sa_mode") or "tail")
     tags_any: list[str] = list(args.get("tags_any") or [])
     tags_all: list[str] = list(args.get("tags_all") or [])
     settings = get_memory_settings()
@@ -477,6 +496,7 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
         wrrf_k=settings.WRRF_K,
         momentum_state=_momentum_state,
         cross_domain=cross_domain,
+        sa_mode=sa_mode,
     )
 
     # Low-signal filter (spike 2026-05-13). Tool-output captures,

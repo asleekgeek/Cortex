@@ -199,3 +199,180 @@ provides an immediate escape hatch with no redeploy. Classification stays
 production `recall`/`unified_search` read path, the sole channel that was
 untested against a real PL/pgSQL function for 3+ months) independent of the
 change's own reversibility.
+
+---
+
+## Addendum A (2026-07-11, post-merge): candidate-field-contract crash
+
+The garde x3 bench's FIRST live exercise of this changeset (LongMemEval,
+PID 99074) crashed on the very first EVENT_ORDER query:
+`TypeError: '<' not supported between instances of 'str' and
+'datetime.datetime'` at `pg_recall.py::_chronological_rerank`'s
+`sorted(candidates, key=lambda c: c.get("created_at", ""))`.
+
+**Root cause, verified against real psycopg types** (empirically, not
+inferred from the log — `type(store.recall_memories(...)[0]["created_at"])`
+vs `type(store.get_memory(...)["created_at"])` on a live connection):
+`store.recall_memories()` (the WRRF path, `pg_store.py`) had NEVER
+normalized `created_at` — it returned raw `dict(r)` rows, leaving it a
+psycopg `datetime.datetime` object. This was already inconsistent with the
+`recall` tool's own response schema (`handlers/recall.py`:
+`"created_at": {"type": "string", "format": "date-time"}`), but it never
+surfaced because every candidate in a given `recall()` call came from
+exactly one source before this changeset made the SA channel alive.
+`store.get_memory()` (used to build SA-injected candidates) already
+normalized via `_normalize_memory_row`. Once SA started actually injecting
+rows, a single candidate list held both types and `sorted()` raised on the
+first type-sensitive comparison.
+
+A second, non-crashing defect was found auditing the injection site:
+`spreading_activation_expand` built its candidate dict from a curated
+6-field subset of `store.get_memory()`'s row instead of the full WRRF
+contract (`recall_memories()`'s RETURNS TABLE: memory_id, content, score,
+heat, domain, created_at, store_type, tags, importance, surprise_score,
+emotional_valence, source, value, source_attribution). `store_type`,
+`source`, `source_attribution`, `importance`, `surprise_score`,
+`emotional_valence`, `value` were silently ABSENT — e.g.
+`recall_helpers.py`'s low-signal filter keys on `mem.get("source") ==
+"post_tool_capture"`; a missing key always reads `None`, so an SA-injected
+auto-capture could never be filtered as low-signal regardless of its real
+source.
+
+**Fix**, at the source, not the sort site: `pg_store.py::_isoformat_datetime_fields()`
+(new shared static helper) is now applied by BOTH memory-row readers
+(`_normalize_memory_row` and `recall_memories()`) — `created_at` is always
+ISO text regardless of origin. `recall_pipeline.py::_sa_candidate_from_memory()`
+rebuilds the injected candidate as an explicit whitelist mirroring
+`recall_memories()`'s full RETURNS TABLE (not `dict(mem)` wholesale either —
+`get_memory()` is `SELECT * FROM memories`, a much larger superset including
+internal state like `compression_level`/`write_class`/`superseded_by_id`
+that must not leak into a candidate dict).
+
+**Test**: `tests_py/integration/test_spread_activation_candidate_contract.py`
+— real-PG contract test comparing a genuine WRRF candidate against a genuine
+SA-injected candidate (built via the actual PL/pgSQL + `recall_pipeline`
+code): key-set equality, type-for-type comparison, an explicit
+`created_at`-is-never-`datetime` assertion, and an inventory of every
+downstream consumer between SPREADING_ACTIVATION and the final response
+(`_chronological_rerank` — the crash site — `value_priority_rerank`,
+`emotional_retrieval_rerank`, `dendritic_modulate`) exercised against the
+real mixed candidate list. Verified falsifiable: reverting the two source
+files (`git stash`) reproduces the exact same `TypeError` at the exact same
+site in 5/9 tests.
+
+**Lesson for §0's blind-spot analysis**: the original mock-only test gap
+(`_FakeStore`, "No real PG is touched") hid not only the `WITH RECURSIVE`
+bug but this contract mismatch too — a mock that returns whatever shape the
+test author hand-writes cannot catch a divergence between two REAL store
+methods' output shapes. Real-PG integration tests remain mandatory for this
+channel going forward.
+
+---
+
+## Addendum B (2026-07-11, post-merge): garde x3 bench first live measurement — augment mode is NOT benchmark-neutral; default changed to tail-fill
+
+The garde x3 bench's first successful full run against this changeset
+(after Addendum A's fix) produced the first-ever live measurement of the
+SA channel:
+
+| Metric | Pre-SA baseline (v4.10.0 release) | With SA channel alive (augment mode, domain-scoped) | Floor |
+|---|---|---|---|
+| LongMemEval MRR | 0.9166 | **0.9009** | 0.914 |
+| LongMemEval R@10 | 0.982 | **0.984** (+0.002) | — |
+
+**This breached the floor.** The §2.4/§3(c) "bench-neutral by construction"
+argument in this ADR's original body was **wrong for LongMemEval specifically**,
+for a reason distinct from the cross-project contamination this ADR already
+closes: LongMemEval's OWN ingestion legitimately creates entities INSIDE the
+`longmemeval` domain (8469 counted at autopsy) — domain scoping (§3(a),
+Decision above) correctly keeps SA within-domain, but within-domain is
+exactly where LongMemEval's dense entity graph lives. The live "augment"
+mode (pre-fusion RRF blend, `spreading_activation_expand`) does not just add
+missing candidates — on a corpus this dense, it can and did reorder
+already-correct top-ranked documents, trading +0.002 R@10 for -0.016 MRR:
+a net regression under the project's evaluation metric (MRR is the primary
+LongMemEval floor gate).
+
+**Rule that resolves this** (user-graved, `bench-before-release` memory):
+*"the guard wins; we look for a benchmark-neutral-by-construction mechanism,
+we never lower the threshold."* Lowering the MRR floor to accommodate the
+regression was refused by construction — instead, the injection mechanism
+itself was redesigned to be neutral BY CONSTRUCTION rather than neutral by
+measurement-that-turned-out-wrong.
+
+### Decision (Addendum B)
+
+1. **New default mode: `sa_mode="tail"`.** `spreading_activation_tail_fill()`
+   (`recall_pipeline.py`) runs as the LAST stage of `pg_recall.py::recall()`
+   — after FlashRank, VALUE_PRIORITY, CONFLICT_MONITOR, GOAL_MAINTENANCE,
+   ATTENTIONAL_CONTROL, and the EVENT_ORDER chronological rerank — and does
+   exactly one thing: if the fully-reranked pipeline returned fewer than
+   `top_k` candidates, append SA-reachable memories (same field contract,
+   Addendum A) until `top_k` is reached or the graph is exhausted. It NEVER
+   reorders, rescores, or removes an existing candidate.
+2. **Benchmark-neutral by construction, not by measurement.** The
+   `len(candidates) >= top_k` branch returns before any store call — zero
+   I/O, zero effect, on any corpus dense enough to already fill `top_k`
+   (LongMemEval, LoCoMo, BEAM all are, by construction of a MRR/R@10
+   retrieval benchmark with a reasonable `top_k`). The guarantee no longer
+   depends on domain scoping alone, or on any property of a specific corpus'
+   entity density — it depends only on list length, which is corpus-agnostic
+   and trivially auditable per query.
+3. **The prior default (pre-fusion full injection, `spreading_activation_expand`,
+   the mode that produced 0.9009/0.984 above) becomes opt-in via
+   `sa_mode="augment"`** — same shape as the existing `include_globals`/
+   `cross_domain` opt-in pattern. Available for a future dedicated tuning
+   campaign (e.g. a `unified_search`-specific blend-weight sweep, mirroring
+   `benchmarks/lib/blend_weight_sweep.py`'s existing methodology for other
+   RRF blend constants) — NOT a default change without its own bench
+   campaign and floor-gate sign-off.
+4. **`sa_mode="off"`** disables the channel entirely (same effect as
+   `CORTEX_ABLATE_SPREADING_ACTIVATION=1`, exposed as an explicit mode for
+   callers that want it without an env var).
+5. `cross_domain` (§3(c)/Decision above) stays orthogonal — it governs
+   WHICH memories the SA channel is allowed to reach (domain-scoped vs not);
+   `sa_mode` governs WHERE/HOW those reachable memories affect the response
+   (tail-only append vs pre-fusion reorder vs disabled). The two dimensions
+   compose independently at every call site.
+
+### Consequences (Addendum B)
+
+Positive: closes the measured MRR regression by construction, with a
+falsifiable proof (`tests_py/integration/test_recall_sa_mode_wiring.py`'s
+`test_tail_and_off_are_identical_when_wrrf_fills_top_k` — `sa_mode="tail"`
+and `sa_mode="off"` produce bit-for-bit identical output, modulo the
+unrelated `reconsolidation_apply` heat bump, whenever WRRF already fills
+`top_k`); preserves the channel's actual value proposition — sparse/cold
+recalls (small domains, thin corpora) that WRRF alone cannot fill to
+`top_k` — exactly where a benchmark corpus built to have dense ground-truth
+coverage will never exercise it, and exactly where a real, thin personal
+project domain will.
+
+Negative: `augment` mode's potential value (if any exists beyond what
+`tail` captures) is now unmeasured in production — no default traffic
+exercises it. This is intentional (§ decision 3) until a dedicated campaign
+justifies re-enabling it as a default for a specific caller.
+
+**Risks (Feynman, top-3 invalidators, revised)**:
+1. `tail`'s neutrality argument depends on `top_k` being reasonable for the
+   benchmark's ground truth (`R@10`-style benchmarks use small `top_k`,
+   which WRRF alone reliably fills on a corpus with enough same-domain
+   memories per query). A future benchmark or product surface with a much
+   larger `top_k` (e.g. `top_k=100` for a coverage-style eval) could see
+   WRRF legitimately return fewer than `top_k` candidates even on a dense
+   corpus — re-verify neutrality empirically whenever `top_k` changes
+   significantly, don't assume it transfers.
+2. `sa_mode="augment"` remains reachable via the MCP tool schema
+   (`handlers/recall.py`) — if a caller sets it without understanding the
+   measured MRR regression, they reproduce today's incident. The schema
+   description names the regression explicitly; this is a documentation
+   safeguard, not a code-level guard rail (Move 3: no runtime warning is
+   emitted for `sa_mode="augment"`, matching the project's existing
+   pattern of trusting explicit opt-ins like `cross_domain`/`include_globals`
+   without redundant runtime nagging).
+3. This addendum's MRR/R@10 numbers are a single LongMemEval run
+   (post-Addendum-A-fix, pre-Addendum-B-fix) — re-measure `tail` mode's own
+   LongMemEval/LoCoMo/BEAM scores once the guard reruns on this commit,
+   and treat any non-neutral delta on `tail` (there should be none, per the
+   construction argument) as a signal the construction argument itself has
+   a bug, not as noise to wave through.
