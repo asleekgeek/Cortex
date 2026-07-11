@@ -340,7 +340,7 @@ def run_benchmark(
         all_metrics: dict[str, list[dict]] = defaultdict(list)
         total_start = time.time()
 
-        with BenchmarkDB() as db:
+        with BenchmarkDB(require_reranker=True) as db:
             for conv_idx, conversation in enumerate(ds):
                 conv_start = time.time()
 

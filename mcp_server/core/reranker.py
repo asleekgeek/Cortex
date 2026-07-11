@@ -39,33 +39,183 @@ Sufficient Context gate (Joren et al., ICLR 2025):
     - suppression=0.1: Score multiplier when gated.
 
 Pure business logic -- lazy-loaded singleton, no persistent I/O.
+
+Model cache directory (fix 2026-07-11, incident: silent reranker skip):
+    FlashRank 0.2.10's own default cache_dir is ``/tmp`` (see the
+    installed package's ``flashrank/Config.py``: ``default_cache_dir =
+    "/tmp"``). macOS periodically purges /tmp; the first process restart
+    after a purge hit ``NoSuchFile`` inside ``Ranker.__init__`` -> the
+    bare ``except Exception`` below swallowed it with no log line ->
+    every subsequent ``rerank_results`` call for the rest of that
+    process's life silently returned first-stage-only scores. This ran
+    unnoticed through 6 LongMemEval benchmark executions; measured
+    impact MRR 0.9163 -> 0.8636 (R@10 nearly unaffected — the metric a
+    quick eyeball check would have caught was the one metric this bug
+    barely touched). Fix: pass an EXPLICIT, DURABLE ``cache_dir``
+    (``~/.cache/flashrank``, honoring ``$XDG_CACHE_HOME`` — see
+    ``mcp_server.shared.platform.cache_dir``) instead of the library
+    default, and log (not swallow) any load failure. See
+    ``reranker_status()`` for the externally-consumable load state this
+    fix also introduces.
+
+    FlashRank's own download behavior (verified by reading the installed
+    0.2.10 package, not assumed): ``Ranker._prepare_model_dir`` checks
+    ``if not self.model_dir.exists()`` and, when absent, downloads +
+    unzips the model from Hugging Face
+    (``https://huggingface.co/prithivida/flashrank/resolve/main/{model}.zip``)
+    into ``cache_dir``. This means a durable ``cache_dir`` is
+    self-provisioning: first run in a fresh cache downloads once (~34MB
+    for ms-marco-MiniLM-L-12-v2), every subsequent run in the same
+    process or a new one reuses the on-disk copy. No custom download
+    logic is needed in Cortex; the failure mode this module now logs is
+    exactly the cases where that self-provisioning itself fails (no
+    network, no write permission, corrupted archive, etc.).
 """
 
 from __future__ import annotations
 
+import hashlib
+import logging
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from mcp_server.core import platt_calibration, reranker_calibration
+from mcp_server.shared.platform import cache_dir as _base_cache_dir
+
+logger = logging.getLogger(__name__)
+
+# source: flashrank==0.2.10 installed package, flashrank/Config.py
+# model_file_map["ms-marco-MiniLM-L-12-v2"] — verified by reading the
+# installed site-packages file directly (see module docstring).
+_MODEL_NAME = "ms-marco-MiniLM-L-12-v2"
+_MODEL_FILE = "flashrank-MiniLM-L-12-v2_Q.onnx"
 
 _flashrank_instance: Any = None
 _flashrank_failed: bool = False
+_flashrank_load_error: str | None = None
+
+
+@dataclass(frozen=True)
+class RerankerStatus:
+    """Snapshot of the FlashRank reranker singleton's load state.
+
+    state is one of "loaded" | "failed" | "not_attempted". model_path is
+    the ONNX file ``_ensure_reranker`` reads from (or would read from),
+    computed without touching disk — callers that need to confirm the
+    file is actually present (e.g. to sha256 it for a bench manifest)
+    must stat/hash ``model_path`` themselves.
+    """
+
+    state: str
+    model_path: str
+    error: str | None = None
+
+
+def reranker_cache_dir() -> Path:
+    """Durable on-disk cache directory for the FlashRank ONNX model.
+
+    See module docstring for why FlashRank's own ``/tmp`` default is
+    unsafe. Honors ``$XDG_CACHE_HOME`` (via
+    ``mcp_server.shared.platform.cache_dir``); falls back to
+    ``~/.cache/flashrank`` — the location already adopted de facto (a
+    manually-placed copy of the model existed there before this fix).
+    """
+    return _base_cache_dir() / "flashrank"
+
+
+def _model_path() -> Path:
+    return reranker_cache_dir() / _MODEL_NAME / _MODEL_FILE
 
 
 def _ensure_reranker() -> Any:
-    """Lazy-load FlashRank ONNX reranker (singleton)."""
-    global _flashrank_instance, _flashrank_failed
+    """Lazy-load FlashRank ONNX reranker (singleton).
+
+    Precondition: none — safe to call unconditionally, any number of
+        times, from any thread-unsafe-but-single-process context (module
+        state is process-global, matching the existing singleton
+        pattern used elsewhere in core — see write_post_store.py).
+    Postcondition: returns the cached ``Ranker`` instance once a load has
+        succeeded; returns None on any load failure. On the FIRST
+        failure only, logs a warning naming the exact cache directory
+        searched and the underlying exception — every call thereafter is
+        silent (via the ``_flashrank_failed`` flag) to avoid log spam,
+        but the state remains introspectable via ``reranker_status()``.
+    """
+    global _flashrank_instance, _flashrank_failed, _flashrank_load_error
     if _flashrank_instance is not None:
         return _flashrank_instance
     if _flashrank_failed:
         return None
+    cache = reranker_cache_dir()
     try:
         from flashrank import Ranker
 
-        _flashrank_instance = Ranker(model_name="ms-marco-MiniLM-L-12-v2")
+        _flashrank_instance = Ranker(model_name=_MODEL_NAME, cache_dir=str(cache))
         return _flashrank_instance
-    except Exception:
+    except Exception as exc:
         _flashrank_failed = True
+        _flashrank_load_error = str(exc)
+        logger.warning(
+            "FlashRank reranker failed to load (model=%s, cache_dir=%s): %s "
+            "-- production re-ranking is DISABLED for the rest of this "
+            "process; recall falls back to first-stage WRRF scores only.",
+            _MODEL_NAME,
+            cache,
+            exc,
+        )
         return None
+
+
+def ensure_reranker_loaded() -> RerankerStatus:
+    """Force a load attempt now (if not already attempted) and report status.
+
+    Public entrypoint for preflight checks — e.g. a benchmark harness
+    that must fail fast rather than silently score first-stage-only
+    results as if they were production quality (the 2026-07-10 incident
+    this module's docstring describes). Idempotent: only the first call
+    in a process pays the load (or failure) cost.
+    """
+    _ensure_reranker()
+    return reranker_status()
+
+
+def reranker_status() -> RerankerStatus:
+    """Report the FlashRank singleton's current state without triggering a load.
+
+    Precondition: none.
+    Postcondition: state == "loaded" iff a prior load succeeded and the
+        instance is cached in-process; "failed" iff a prior load raised
+        (``error`` carries the exception text); "not_attempted" iff no
+        call to ``_ensure_reranker`` / ``ensure_reranker_loaded`` has
+        happened yet in this process. Never triggers a load itself.
+    """
+    model_path = str(_model_path())
+    if _flashrank_instance is not None:
+        return RerankerStatus(state="loaded", model_path=model_path)
+    if _flashrank_failed:
+        return RerankerStatus(
+            state="failed", model_path=model_path, error=_flashrank_load_error
+        )
+    return RerankerStatus(state="not_attempted", model_path=model_path)
+
+
+def model_sha256() -> str | None:
+    """Sha256 of the on-disk ONNX weights file, or None if it is absent.
+
+    Used by bench manifests to fingerprint the exact reranker weights a
+    run used (mirrors the existing ``embedding_model_revision`` manifest
+    field — see benchmarks/reproduce.sh's ``write_manifest``). Reads the
+    file in fixed-size chunks to bound memory use regardless of file size.
+    """
+    path = _model_path()
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _compute_retrieval_confidence(

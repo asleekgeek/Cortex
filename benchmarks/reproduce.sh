@@ -238,10 +238,17 @@ start_db() {
         publish="0:5432"
     fi
     echo "==> Starting ephemeral PostgreSQL (${PG_IMAGE}), container '${CONTAINER}'..."
+    # --shm-size=1g: Docker's default 64MB /dev/shm starves PostgreSQL's
+    # parallel HNSW index builds (each parallel worker needs shared
+    # memory for its build buffer); source: pgvector README §"Indexing",
+    # https://github.com/pgvector/pgvector (L.1176 as of the vendored
+    # copy consulted 2026-07-11) — required to avoid the REINDEX
+    # DiskFull failure mode observed the night of 2026-07-10/11.
     docker run -d --name "$CONTAINER" \
         -e POSTGRES_PASSWORD=cortex_bench \
         -e POSTGRES_DB=cortex_bench \
         -p "${publish}" \
+        --shm-size=1g \
         "$PG_IMAGE" >/dev/null
     started_container=1
     if [ -z "${CORTEX_BENCH_PORT:-}" ]; then
@@ -371,6 +378,28 @@ def embedding_revision():
         return get_embedding_engine().revision
     except Exception:
         return "unresolved"
+# Reranker cache-durability fix (2026-07-11, incident: silent reranker
+# skip). Same shape of gap as embedding_revision above: a bare-except
+# swallow in mcp_server.core.reranker let 6 LongMemEval runs execute with
+# CE reranking silently disabled (MRR 0.9163 -> 0.8636), with nothing in
+# the manifest to show it. Record the exact load state + weights sha256
+# reproduce.sh's own run observed, not just whether the library is
+# importable.
+def reranker_fields():
+    try:
+        from mcp_server.core.reranker import ensure_reranker_loaded, model_sha256
+        status = ensure_reranker_loaded()
+        return {
+            "reranker_active": status.state == "loaded",
+            "reranker_state": status.state,
+            "reranker_model_sha256": model_sha256(),
+        }
+    except Exception:
+        return {
+            "reranker_active": False,
+            "reranker_state": "unresolved",
+            "reranker_model_sha256": None,
+        }
 manifest = {
     "git_sha": git_sha,
     "longmemeval_dataset_sha256": ds_sha,
@@ -388,6 +417,7 @@ manifest = {
     "packages": {p: ver(p) for p in
                  ("datasets", "sentence-transformers", "torch", "psycopg", "psycopg-pool")},
     "embedding_model_revision": embedding_revision(),
+    **reranker_fields(),
     "results_files": sorted(p.name for p in Path(results_dir).glob("*.json")),
 }
 out = Path(results_dir) / "MANIFEST.json"

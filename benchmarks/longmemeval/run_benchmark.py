@@ -223,7 +223,7 @@ def run_benchmark(
 
         t0 = time.monotonic()
 
-        with BenchmarkDB() as db:
+        with BenchmarkDB(require_reranker=True) as db:
             for qi, item in enumerate(dataset):
                 qtype = item["question_type"]
                 question = item["question"]

@@ -95,6 +95,38 @@ def _lib_version(package_name: str) -> str:
         return "not-installed"
 
 
+def _reranker_manifest_fields() -> dict[str, Any]:
+    """Capture the FlashRank reranker's load state for the manifest.
+
+    Fix for the 2026-07-10 incident (see mcp_server.core.reranker module
+    docstring): a benchmark run with reranking silently disabled produced
+    numbers indistinguishable, in the reported metrics, from a normal run.
+    Recording ``reranker_active`` + the loaded model's sha256 makes that
+    failure mode visible in every manifest going forward, mirroring the
+    existing ``embedding_model_revision`` field for the embedding model.
+
+    Best-effort: does not raise if mcp_server.core.reranker is unimportable
+    in the calling environment (e.g. a stripped-down repro checkout).
+    """
+    try:
+        from mcp_server.core.reranker import ensure_reranker_loaded, model_sha256
+
+        status = ensure_reranker_loaded()
+        return {
+            "reranker_active": status.state == "loaded",
+            "reranker_state": status.state,
+            "reranker_model_path": status.model_path,
+            "reranker_model_sha256": model_sha256(),
+        }
+    except Exception:  # noqa: BLE001 — best-effort manifest field, never blocks the run
+        return {
+            "reranker_active": False,
+            "reranker_state": "unresolved",
+            "reranker_model_path": None,
+            "reranker_model_sha256": None,
+        }
+
+
 def build_repro_manifest() -> dict[str, Any]:
     """Capture reproducibility metadata at call time.
 
@@ -102,7 +134,9 @@ def build_repro_manifest() -> dict[str, Any]:
     gracefully when git is absent).
     Postcondition: returns a dict with keys:
         git_commit, git_dirty, python_version, platform_system,
-        platform_machine, platform_node, timestamp_utc, lib_versions.
+        platform_machine, platform_node, timestamp_utc, lib_versions,
+        reranker_active, reranker_state, reranker_model_path,
+        reranker_model_sha256.
     The dict is JSON-serialisable (all values are str | bool | None | dict).
     """
     sha = _git_sha()
@@ -126,6 +160,7 @@ def build_repro_manifest() -> dict[str, Any]:
         "platform_node": platform.node(),
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "lib_versions": lib_versions,
+        **_reranker_manifest_fields(),
     }
 
 
