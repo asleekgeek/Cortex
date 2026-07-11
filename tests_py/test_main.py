@@ -107,7 +107,7 @@ class TestMain:
         names = _tool_names(codebase=True, prd=False)
         assert {"ingest_codebase", "change_impact"} <= names
         assert "ingest_prd" not in names
-        assert len(names) == 49
+        assert len(names) == 50
 
     def test_mcp_server_name_and_version(self):
         assert mcp.name == "methodology-agent"

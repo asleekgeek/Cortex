@@ -78,7 +78,6 @@ def _register_curate_wiki(mcp: FastMCP) -> None:
         )
 
 
-<<<<<<< HEAD
 def _register_lesson_promotion(mcp: FastMCP) -> None:
     @mcp.tool(
         name="lesson_promotion",
@@ -90,7 +89,9 @@ def _register_lesson_promotion(mcp: FastMCP) -> None:
             lesson_promotion.handler,
             {"limit": limit},
             tool_name="lesson_promotion",
-=======
+        )
+
+
 def _register_curate_distill(mcp: FastMCP) -> None:
     @mcp.tool(
         name="curate_distill",
@@ -122,7 +123,6 @@ def _register_curate_distill(mcp: FastMCP) -> None:
                 "memory_pool_size": memory_pool_size,
             },
             tool_name="curate_distill",
->>>>>>> feat/distillation
         )
 
 
