@@ -36,6 +36,7 @@ from mcp_server.infrastructure.memory_config import (
 )
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
 from mcp_server.infrastructure.session_registry import current_window_session
+from mcp_server.observability import silent_failure
 
 schema = {
     "title": "Recall (retrieve memories)",
@@ -346,8 +347,8 @@ def _apply_co_activation(
                     for b in list(ents_b)[:5]:
                         if a != b:
                             store.reinforce_or_create_relationship(a, b, lr)
-    except Exception:
-        pass
+    except Exception as exc:
+        silent_failure.note("recall.hebbian_co_activation", exc)
 
 
 def _apply_rules_and_order(
@@ -358,8 +359,8 @@ def _apply_rules_and_order(
         rules = store.get_all_active_rules()
         if rules:
             results = memory_rules.apply_rules(results, rules, score_field="score")
-    except Exception:
-        pass
+    except Exception as exc:
+        silent_failure.note("recall.neuro_symbolic_rules", exc)
     results = results[:max_results]
     if settings.STRATEGIC_ORDERING_ENABLED:
         results = _apply_strategic_ordering(

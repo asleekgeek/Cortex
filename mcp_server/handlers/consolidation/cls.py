@@ -19,6 +19,7 @@ from mcp_server.core.consolidation_engine import plan_cls_consolidation
 from mcp_server.core.dual_store_cls_abstraction import cluster_by_similarity
 from mcp_server.infrastructure.embedding_engine import EmbeddingEngine
 from mcp_server.infrastructure.memory_store import MemoryStore
+from mcp_server.observability import silent_failure
 
 logger = logging.getLogger(__name__)
 
@@ -519,6 +520,6 @@ def _store_causal_edges(
                 }
             )
             count += 1
-        except Exception:
-            pass
+        except Exception as exc:
+            silent_failure.note("cls.causal_edge_persist", exc)
     return count

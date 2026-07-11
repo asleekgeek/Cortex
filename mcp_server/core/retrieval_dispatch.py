@@ -15,6 +15,7 @@ from typing import Any, Callable
 from mcp_server.core.query_decomposition import decompose_query
 from mcp_server.core.query_intent import QueryIntent
 from mcp_server.core.reranker import rerank_results
+from mcp_server.observability import silent_failure
 
 # ── Tier Classification ──────────────────────────────────────────────────
 
@@ -229,13 +230,16 @@ def dispatch_retrieval(
     if tier == "mixed" and hop_fn is not None:
         try:
             fused = _run_multihop(query, fused, hop_fn)
-        except Exception:
-            pass
+        except Exception as exc:
+            silent_failure.note("retrieval_dispatch.multihop", exc)
 
     rerank_pool = fused[: max_results * 3]
     if content_lookup:
         try:
             rerank_pool = rerank_results(query, rerank_pool, content_lookup)
-        except Exception:
-            pass
+        except Exception as exc:
+            # rerank_results already catches its own inference errors
+            # (core/reranker.py) — reaching this handler means something
+            # else in the call (e.g. content_lookup shape) raised.
+            silent_failure.note("retrieval_dispatch.rerank_wrapper", exc)
     return rerank_pool, tier

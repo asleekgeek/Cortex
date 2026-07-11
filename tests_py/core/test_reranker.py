@@ -12,6 +12,7 @@ from mcp_server.core.reranker import (
     reranker_cache_dir,
     reranker_status,
 )
+from mcp_server.observability import silent_failure
 
 
 class TestRetrievalConfidence:
@@ -209,3 +210,50 @@ class TestModelSha256:
         import hashlib
 
         assert digest == hashlib.sha256(b"fake-onnx-weights").hexdigest()
+
+
+class TestRerankResultsInferenceFailureIsObservable:
+    """Audit 2026-07-11, silent-except sweep: a load failure was already
+    made observable by bb1c581f (_ensure_reranker). This covers the
+    SEPARATE failure point -- the model loads fine but the per-call
+    ``ranker.rerank(...)`` invocation itself raises -- which was still a
+    bare ``except Exception: return candidates`` with zero signal."""
+
+    def test_inference_failure_falls_back_and_is_logged(self, caplog):
+        from unittest.mock import MagicMock
+
+        silent_failure.reset()
+        fake_ranker = MagicMock()
+        fake_ranker.rerank.side_effect = RuntimeError("onnx runtime error")
+        with patch.object(reranker_mod, "_ensure_reranker", return_value=fake_ranker):
+            with caplog.at_level(
+                "WARNING", logger="mcp_server.observability.silent_failure"
+            ):
+                candidates = [(1, 0.5), (2, 0.4)]
+                result = rerank_results("q", candidates, {1: "a", 2: "b"})
+
+        # Behavior-preserving: falls back to the unblended first-stage list.
+        assert result == candidates
+        # But now observable, unlike the pre-fix bare except.
+        assert any(
+            "reranker.rerank_call" in rec.message
+            and "onnx runtime error" in rec.message
+            for rec in caplog.records
+        )
+        silent_failure.reset()
+
+    def test_get_raw_ce_score_failure_is_logged(self, caplog):
+        from unittest.mock import MagicMock
+
+        silent_failure.reset()
+        fake_ranker = MagicMock()
+        fake_ranker.rerank.side_effect = RuntimeError("bad passage")
+        with patch.object(reranker_mod, "_ensure_reranker", return_value=fake_ranker):
+            with caplog.at_level(
+                "WARNING", logger="mcp_server.observability.silent_failure"
+            ):
+                result = reranker_mod.get_raw_ce_score("q", "content")
+
+        assert result is None
+        assert any("reranker.raw_ce_score" in rec.message for rec in caplog.records)
+        silent_failure.reset()

@@ -38,16 +38,21 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # commits on its own connection, so routing through it would break
     # supersession atomicity). GREATEST(heat_base, old) never lowers heat.
     # Source: docs/program/pr2-read-path-supersession-audit.json.
-    ("infrastructure/pg_store.py", 685),
+    # Shifted 685->686 by the silent-except-sweep audit (2026-07-11) adding
+    # one `from mcp_server.observability import silent_failure` import line
+    # above this site.
+    ("infrastructure/pg_store.py", 686),
     # Canonical single-row writer (all callers route through this).
     # bump_heat_raw — the one canonical single-row site (re-pinned after
     # rebasing the read-path PR onto blame-path injection-receipts).
-    ("infrastructure/pg_store.py", 727),
+    # Shifted 727->728 by the same import-line addition above.
+    ("infrastructure/pg_store.py", 728),
     # A3 batched writer (homeostatic cohort branch + any other batch consumer).
     # update_memories_heat_batch. Shifted 787->825 when M-D3 (7.1) added
     # get_homeostatic_factor/set_homeostatic_factor's write_class parameter
-    # and the new log_homeostatic_fold method above it.
-    ("infrastructure/pg_store.py", 825),
+    # and the new log_homeostatic_fold method above it; 825->826 by the same
+    # silent-except-sweep import-line addition.
+    ("infrastructure/pg_store.py", 826),
     # SQLite parity of the anchor transfer (same transactional rationale).
     # Shifted 389->440 when M-D3 (7.1) added
     # _migrate_homeostatic_state_write_class above it.

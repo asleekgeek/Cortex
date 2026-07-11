@@ -10,6 +10,7 @@ from typing import Any
 
 from mcp_server.core import engram, knowledge_graph, prospective
 from mcp_server.core.synaptic_tagging import apply_synaptic_tags as _apply_tags
+from mcp_server.observability import silent_failure
 
 
 # Memory sources whose content is machine-generated tool output, not user
@@ -130,8 +131,8 @@ def run_synaptic_tagging(
             store.update_memory_importance(tag["memory_id"], tag["new_importance"])
             store.update_memory_heat(tag["memory_id"], tag["new_heat"])
             tagged.append(tag)
-    except Exception:
-        pass
+    except Exception as exc:
+        silent_failure.note("write_post_store.synaptic_tagging", exc)
     return tagged
 
 
@@ -199,7 +200,8 @@ def _find_shared_entities(
         for ent in store.get_all_entities(min_heat=0.0) or []:
             if ent.get("id") is not None and ent.get("name"):
                 id_to_name[int(ent["id"])] = ent["name"]
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("write_post_store.entity_id_resolution", exc)
         return set()
 
     if not id_to_name:
@@ -209,12 +211,14 @@ def _find_shared_entities(
         shared_ids = store.find_shared_entities(mem_id, list(id_to_name.keys()))
     except AttributeError:
         # SQLite stores without the JOIN method fall back to legacy scan.
+        # Expected/legitimate branch (not a failure) — no instrumentation.
         shared_ids = []
         for eid, ename in id_to_name.items():
             mentioning = store.get_memories_mentioning_entity(ename, limit=50)
             if any(m["id"] == mem_id for m in mentioning):
                 shared_ids.append(eid)
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("write_post_store.shared_entities_lookup", exc)
         return set()
 
     return {id_to_name[eid].lower() for eid in shared_ids}
@@ -313,5 +317,6 @@ def allocate_engram_slot(
             "slot_index": best_slot,
             "temporally_linked": linked_count,
         }
-    except Exception:
+    except Exception as exc:
+        silent_failure.note("write_post_store.engram_allocation", exc)
         return None

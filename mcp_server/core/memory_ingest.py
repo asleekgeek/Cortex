@@ -18,6 +18,7 @@ from mcp_server.core.memory_decomposer import (
     build_entity_summary,
     decompose_memory,
 )
+from mcp_server.observability import silent_failure
 
 
 def ingest_memory(
@@ -153,9 +154,11 @@ def ingest_memory(
 
             extracted = knowledge_graph.extract_entities(chunk_content)
             write_post_store.persist_entities(extracted, domain, chunk_content, store)
-        except Exception:
-            # Entity extraction failures must not block ingest.
-            pass
+        except Exception as exc:
+            # Entity extraction failures must not block ingest -- but a
+            # failure that repeats on every chunk (e.g. a persist_entities
+            # regression) must still be observable, not just non-fatal.
+            silent_failure.note("memory_ingest.entity_extraction", exc)
 
     return ids
 

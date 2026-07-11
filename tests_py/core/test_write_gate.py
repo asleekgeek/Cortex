@@ -29,6 +29,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import mcp_server.core.write_gate as wg
+from mcp_server.observability import silent_failure
 
 
 # ---------------------------------------------------------------------------
@@ -853,3 +854,111 @@ class TestMatchSchema:
         )
         assert score == 0.0
         assert schema_id is None
+
+
+# ---------------------------------------------------------------------------
+# Silent-except sweep (audit 2026-07-11): every write-gate enhancement
+# mechanism has a legitimate "any error returns input unchanged" fallback,
+# but the fallback used to be indistinguishable from "mechanism disabled" --
+# a permanently-broken mechanism (e.g. a schema_engine regression) would
+# silently degrade the write gate forever with zero signal, the same shape
+# as the FlashRank (bb1c581f) and spread_activation incidents. Each swallow
+# now routes through observability.silent_failure so a first failure logs
+# and stays queryable via silent_failure.status() -- fallback behavior is
+# unchanged; only observability changed.
+# ---------------------------------------------------------------------------
+
+
+class TestWriteGateFailuresAreObservable:
+    def setup_method(self):
+        silent_failure.reset()
+
+    def teardown_method(self):
+        silent_failure.reset()
+
+    def test_oscillatory_context_failure_is_logged(self, caplog):
+        broken_store = MagicMock()
+        broken_store.load_oscillatory_state.side_effect = RuntimeError("no PG")
+        with caplog.at_level(
+            "WARNING", logger="mcp_server.observability.silent_failure"
+        ):
+            wg.apply_oscillatory_context(store=broken_store, heat=0.5)
+        assert any(
+            "write_gate.oscillatory_context" in r.message for r in caplog.records
+        )
+
+    def test_neuromodulation_failure_is_logged(self, caplog):
+        with patch(
+            "mcp_server.core.write_gate.thermodynamics.is_error_content",
+            side_effect=RuntimeError("boom"),
+        ):
+            with caplog.at_level(
+                "WARNING", logger="mcp_server.observability.silent_failure"
+            ):
+                wg.apply_neuromodulation(
+                    content="x",
+                    new_entity_names=[],
+                    known_entity_names=set(),
+                    theta_phase=0.0,
+                    osc_state=MagicMock(ach_level=0.5),
+                    schema_match=0.0,
+                    importance=0.5,
+                    heat=0.5,
+                )
+        assert any("write_gate.neuromodulation" in r.message for r in caplog.records)
+
+    def test_emotional_tagging_failure_is_logged(self, caplog):
+        with patch(
+            "mcp_server.core.write_gate.tag_memory_emotions",
+            side_effect=RuntimeError("boom"),
+        ):
+            with caplog.at_level(
+                "WARNING", logger="mcp_server.observability.silent_failure"
+            ):
+                wg.apply_emotional_tagging(
+                    content="x", importance=0.5, heat=0.5, valence=0.0
+                )
+        assert any("write_gate.emotional_tagging" in r.message for r in caplog.records)
+
+    def test_schema_match_failure_is_logged(self, caplog):
+        store = MagicMock()
+        store.get_schemas_for_domain.side_effect = RuntimeError("pg down")
+        with caplog.at_level(
+            "WARNING", logger="mcp_server.observability.silent_failure"
+        ):
+            wg.match_schema(domain="d", entity_names=["X"], tags=[], store=store)
+        assert any("write_gate.schema_match" in r.message for r in caplog.records)
+
+    def test_habituation_failure_is_logged(self, caplog):
+        with patch(
+            "mcp_server.core.write_gate.habituation.stimulus_signature",
+            side_effect=RuntimeError("boom"),
+        ):
+            with caplog.at_level(
+                "WARNING", logger="mcp_server.observability.silent_failure"
+            ):
+                wg.apply_habituation(
+                    novelty_score=0.5, content="x", importance=0.5, store=MagicMock()
+                )
+        assert any("write_gate.habituation" in r.message for r in caplog.records)
+
+    def test_active_goal_read_failure_is_logged(self, caplog):
+        store = MagicMock()
+        store.get_active_prospective_memories.side_effect = RuntimeError("boom")
+        with caplog.at_level(
+            "WARNING", logger="mcp_server.observability.silent_failure"
+        ):
+            wg.read_active_goal(store)
+        assert any("write_gate.active_goal_read" in r.message for r in caplog.records)
+
+    def test_repeat_failure_does_not_spam_the_log(self, caplog):
+        broken_store = MagicMock()
+        broken_store.load_oscillatory_state.side_effect = RuntimeError("no PG")
+        with caplog.at_level(
+            "WARNING", logger="mcp_server.observability.silent_failure"
+        ):
+            wg.apply_oscillatory_context(store=broken_store, heat=0.5)
+            first = len(caplog.records)
+            wg.apply_oscillatory_context(store=broken_store, heat=0.5)
+            second = len(caplog.records)
+        assert second == first
