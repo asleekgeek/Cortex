@@ -243,6 +243,9 @@ async def _derive_one(
                 "content": fact_text,
                 "tags": tags,
                 "source": "consolidation",
+                # M-D2 (7.4): this pathway IS the memify-derive machine
+                # synthesis — explicit, no source-string re-derivation.
+                "write_class": "derived",
                 "force": False,
             }
         )

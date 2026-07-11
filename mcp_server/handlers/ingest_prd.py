@@ -246,6 +246,8 @@ def _write_bullet_memories(
             "importance": 0.7 if tag == "decision" else 0.5,
             "heat": 0.8,
             "is_protected": tag == "decision",
+            # M-D2 (7.4): bulk PRD-ingestion bullet extraction.
+            "write_class": "mechanical",
         }
         try:
             mem_id = store.insert_memory(record)
@@ -352,6 +354,8 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
         "importance": 0.8,
         "heat": 0.9,
         "is_protected": True,
+        # M-D2 (7.4): bulk PRD-ingestion summary.
+        "write_class": "mechanical",
     }
     summary_id: int | None = None
     try:

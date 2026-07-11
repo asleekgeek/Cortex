@@ -52,15 +52,6 @@ _MIN_SAFE_MEAN = 0.01
 # Matches the legacy Turrigiano α=0.05 ceiling (~3% per cycle).
 _MAX_STEP = 0.03
 
-# SQL-side source predicate per regulated class, for the fold UPDATE
-# (mcp_server/core/write_class.py is the single choke point this is
-# sourced from — no second classification path). Keys must stay in sync
-# with homeostatic.py::_REGULATED_CLASSES; today that is exactly
-# ``{write_class.AUTO}``.
-_FOLD_SOURCE_VALUES: dict[str, tuple[str, ...]] = {
-    write_class.AUTO: write_class.AUTO_SOURCE_VALUES,
-}
-
 
 def dispatch(
     store: MemoryStore,
@@ -199,26 +190,27 @@ def _apply_fold(store: MemoryStore, domain: str, factor: float, cls: str) -> int
     """Multiply heat_base by factor for class ``cls``'s own rows, reset
     homeostatic_state.factor=1.0 for ``(domain, cls)``.
 
-    Writes are bounded by the domain partition AND the class's source
-    predicate (``_FOLD_SOURCE_VALUES[cls]``, sourced from
-    ``mcp_server.core.write_class`` — the single classification choke
-    point; no explicit ``write_class`` column exists on ``memories`` yet,
-    so the SQL predicate mirrors the same source list the Python
-    classifier uses. When 7.4 lands the explicit column this predicate
-    becomes ``AND write_class = %s`` directly, in the same migration that
-    adds the column — no second classification path is ever introduced),
-    skip protected/no_decay/stale. Amortized once per month per
-    (domain, class) under normal operation. Phase 5: batched UPDATE runs
-    on the batch pool. Journals the event (M-D3 telemetry step 1 — the
+    Writes are bounded by the domain partition AND ``memories.write_class
+    = cls`` directly (7.4: the explicit column landed in the same
+    migration this predicate switch ships with — no second classification
+    path, per ``mcp_server.core.write_class``'s module doctrine). Pre-7.4
+    rows read the column's DEFAULT (``'deliberate'``, the safe default —
+    see ``infrastructure/pg_schema.py``'s MIGRATIONS_DDL comment) until
+    the one-shot backfill (``handlers/consolidation/write_class_backfill.py``)
+    reclassifies them from ``source``; until that backfill runs, true
+    ``auto`` rows written before 7.4 are conservatively EXCLUDED from
+    folding (a delayed correction, self-heals on the next fold cycle after
+    backfill — never the opposite, irreversible failure mode of folding
+    deliberate content, which is the regression this whole design fixes).
+    Skips protected/no_decay/stale. Amortized once per month per (domain,
+    class) under normal operation. Phase 5: batched UPDATE runs on the
+    batch pool. Journals the event (M-D3 telemetry step 1 — the
     2026-07-10 19:22 fold left no queryable trace anywhere but row
     timestamps; every fold from here forward is DB-queryable).
     """
-    source_values = _FOLD_SOURCE_VALUES.get(cls)
-    if source_values is None:
+    if cls not in write_class.ALL_WRITE_CLASSES:
         logger.warning(
-            "Homeostatic fold requested for non-regulated class %r — refusing "
-            "(no source predicate registered; _REGULATED_CLASSES drifted out "
-            "of sync with _FOLD_SOURCE_VALUES).",
+            "Homeostatic fold requested for unknown write class %r — refusing.",
             cls,
         )
         return 0
@@ -228,11 +220,11 @@ def _apply_fold(store: MemoryStore, domain: str, factor: float, cls: str) -> int
             "SET heat_base = LEAST(1.0, GREATEST(0.0, heat_base * %s)), "
             "    heat_base_set_at = NOW() "
             "WHERE domain = %s "
-            "  AND source = ANY(%s) "
+            "  AND write_class = %s "
             "  AND NOT is_protected "
             "  AND NOT no_decay "
             "  AND NOT is_stale",
-            (float(factor), domain or "", list(source_values)),
+            (float(factor), domain or "", cls),
         )
         rows = int(getattr(result, "rowcount", 0) or 0)
     store.set_homeostatic_factor(domain, 1.0, write_class=cls)

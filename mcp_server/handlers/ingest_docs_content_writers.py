@@ -144,6 +144,8 @@ def write_doc_memory(
         "heat": 0.6,
         "confidence": 0.9,
         "is_protected": False,
+        # M-D2 (7.4): bulk docs-content ingestion from an AP graph.
+        "write_class": "mechanical",
     }
     return store.insert_memory(record), True
 

@@ -143,6 +143,95 @@ class TestRememberHandler:
             assert isinstance(result["triggers_created"], list)
 
 
+class TestRememberWriteClass:
+    """M-D2 (7.4): explicit write_class argument — validation, resolution,
+    and persistence through the real store (no DB stub needed; force=True
+    matches the existing store-hitting test style above)."""
+
+    def test_invalid_write_class_raises_validation_error(self):
+        from mcp_server.errors import ValidationError
+
+        with pytest.raises(ValidationError, match="not-a-real-class"):
+            asyncio.run(
+                handler(
+                    {
+                        "content": "Invalid write_class should be rejected",
+                        "write_class": "not-a-real-class",
+                        "force": True,
+                    }
+                )
+            )
+
+    def test_explicit_deliberate_is_persisted(self):
+        result = asyncio.run(
+            handler(
+                {
+                    "content": "Explicit deliberate write_class round-trip test",
+                    "write_class": "deliberate",
+                    "force": True,
+                }
+            )
+        )
+        assert result["stored"] is True
+        assert result["write_class"] == "deliberate"
+
+        from mcp_server.infrastructure.memory_config import get_memory_settings
+        from mcp_server.infrastructure.memory_store import get_shared_store
+
+        s = get_memory_settings()
+        store = get_shared_store(s.DB_PATH, s.EMBEDDING_DIM)
+        mem = store.get_memory(result["memory_id"])
+        assert mem is not None
+        assert mem.get("write_class") == "deliberate"
+
+    def test_explicit_mechanical_is_persisted(self):
+        result = asyncio.run(
+            handler(
+                {
+                    "content": "Explicit mechanical write_class round-trip test",
+                    "write_class": "mechanical",
+                    "source": "ingest_codebase",
+                    "force": True,
+                }
+            )
+        )
+        assert result["stored"] is True
+        assert result["write_class"] == "mechanical"
+
+    def test_omitted_write_class_falls_back_to_source_deliberate(self):
+        result = asyncio.run(
+            handler(
+                {
+                    "content": "Omitted write_class falls back via source inference",
+                    "source": "some-future-source-kind",
+                    "force": True,
+                }
+            )
+        )
+        assert result["stored"] is True
+        assert result["write_class"] == "deliberate"
+
+    def test_omitted_write_class_falls_back_to_source_auto(self):
+        result = asyncio.run(
+            handler(
+                {
+                    "content": "Omitted write_class falls back to auto via source",
+                    "source": "post_tool_capture",
+                    "force": True,
+                }
+            )
+        )
+        assert result["stored"] is True
+        assert result["write_class"] == "auto"
+
+    def test_none_content_write_class_error_takes_precedence_is_irrelevant(self):
+        """No-content rejection happens before write_class validation —
+        pinning the existing early-return order (unaffected by 7.4)."""
+        result = asyncio.run(handler({"write_class": "not-a-real-class"}))
+        assert result["stored"] is False
+        assert result["reason"] == "no_content"
+
+
 class _MoodStoreStub:
     """Minimal duck-typed user_mood store for EMA hook tests.
 

@@ -178,6 +178,8 @@ async def _store_memory(
         "tags": item["tags"],
         "domain": domain,
         "source": "import",
+        # M-D2 (7.4): a bulk conversation-import pass.
+        "write_class": "mechanical",
         "force": False,
     }
     # Preserve the original session timestamp. insert_memory anchors

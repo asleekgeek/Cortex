@@ -159,6 +159,9 @@ async def _store_pointer_memory(rel_path: str, content: str, tags: list[str]) ->
                 "content": content[:500],
                 "tags": list({"wiki", *tags}),
                 "source": f"wiki://{rel_path}",
+                # M-D2 (7.4): structural indexing bookkeeping (a protected
+                # pointer memory for recall), not user-authored content.
+                "write_class": "mechanical",
                 "force": True,
             }
         )

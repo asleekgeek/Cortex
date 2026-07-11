@@ -314,6 +314,9 @@ def _store_memory(tool_name: str, content: str, tags: list[str], cwd: str) -> No
                 "tags": tags,
                 "directory": cwd,
                 "source": "post_tool_capture",
+                # M-D2 (7.4): this hook IS the auto-capture pathway — no
+                # need to let `remember` re-derive the class from source.
+                "write_class": "auto",
                 "force": False,
             }
         )

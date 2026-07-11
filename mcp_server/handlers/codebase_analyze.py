@@ -222,6 +222,8 @@ async def _store_file(
             "directory": str(root),
             "domain": domain,
             "source": CODEBASE_SOURCE,
+            # M-D2 (7.4): a one-shot AST codebase-analysis bulk pass.
+            "write_class": "mechanical",
             "force": True,
             "agent_topic": CODEBASE_AGENT_CONTEXT,
         }

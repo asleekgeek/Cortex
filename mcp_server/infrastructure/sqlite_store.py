@@ -289,10 +289,10 @@ class SqliteMemoryStore(
                 schema_match_score, schema_id,
                 hippocampal_dependency, is_benchmark, agent_context,
                 is_global, supersedes_id, source_attribution,
-                stimulus_signature, extinction_strength
+                stimulus_signature, extinction_strength, write_class
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )""",
             (
                 content,
@@ -325,6 +325,7 @@ class SqliteMemoryStore(
                 data.get("source_attribution", "unknown"),
                 data.get("stimulus_signature", ""),
                 data.get("extinction_strength", 0.0),
+                data.get("write_class", "deliberate"),
             ),
         )
         memory_id = cur.lastrowid

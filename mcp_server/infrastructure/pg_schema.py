@@ -71,7 +71,19 @@ CREATE TABLE IF NOT EXISTS memories (
     agent_context TEXT DEFAULT '',
     is_global BOOLEAN DEFAULT FALSE,
     supersedes_id   INTEGER REFERENCES memories(id) ON DELETE SET NULL,
-    superseded_by_id INTEGER REFERENCES memories(id) ON DELETE SET NULL
+    superseded_by_id INTEGER REFERENCES memories(id) ON DELETE SET NULL,
+    -- M-D2 (7.4, 2026-07-11): explicit write class, the single contract
+    -- mcp_server/core/write_class.py classifies against. DEFAULT
+    -- 'deliberate' is the module's documented safe default (an
+    -- unclassified write is never assumed to be flood/noise) — fresh
+    -- installs get every writer's EXPLICIT value at insert time
+    -- (handlers/remember.py, ingest_findings_writers.py, cls.py,
+    -- sleep.py, etc.; see write_class.py module docstring for the full
+    -- writer inventory), so this DEFAULT only matters for the historical
+    -- backfill window on pre-existing installs (MIGRATIONS_DDL below +
+    -- the one-shot handlers/consolidation/write_class_backfill.py pass).
+    write_class     TEXT NOT NULL DEFAULT 'deliberate'
+                    CHECK (write_class IN ('auto', 'deliberate', 'derived', 'mechanical'))
 );
 """
 
@@ -755,6 +767,12 @@ CREATE INDEX IF NOT EXISTS idx_memories_heat_base_id
     ON memories (heat_base DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_memories_domain
     ON memories (domain);
+-- M-D2 (7.4): the homeostatic fold's UPDATE (homeostatic_apply.py::
+-- _apply_fold) filters WHERE domain = %s AND write_class = %s — this
+-- composite index makes that an index range scan instead of a domain-
+-- only scan + per-row filter.
+CREATE INDEX IF NOT EXISTS idx_memories_domain_write_class
+    ON memories (domain, write_class);
 CREATE INDEX IF NOT EXISTS idx_memories_store_type
     ON memories (store_type);
 CREATE INDEX IF NOT EXISTS idx_memories_created_at
@@ -2163,6 +2181,39 @@ BEGIN
         -- unique identity (there was at most one row per domain before).
         ALTER TABLE homeostatic_state DROP CONSTRAINT homeostatic_state_pkey;
         ALTER TABLE homeostatic_state ADD PRIMARY KEY (domain, write_class);
+    END IF;
+END $$;
+
+-- Migration: explicit write_class column on memories (M-D2, 7.4,
+-- 2026-07-11). Structural migration ONLY — adds the column with the
+-- module's documented safe DEFAULT ('deliberate', see MEMORIES_DDL
+-- comment above). This DO block does NOT reclassify existing rows from
+-- their `source` value: unlike homeostatic_state (where every legacy row
+-- was provably 'auto', a single constant), `memories.source` spans the
+-- full M-D2 taxonomy (auto/deliberate/derived/mechanical source
+-- prefixes) and reclassifying it correctly requires the same predicate
+-- logic as mcp_server.core.write_class.classify_write_class — DDL is
+-- infrastructure/, which must not import core/ (Clean Architecture
+-- dependency rule), so duplicating that logic here in raw SQL would be
+-- a second classification path, exactly what the single-choke-point
+-- design forbids. The one-shot data migration is instead a Python script
+-- that imports classify_write_class directly: run
+-- `uv run python scripts/backfill_write_class.py --apply` once after
+-- this DDL applies (dry-run by default; idempotent — a second run finds
+-- zero rows to change). Until that script runs, every pre-existing row
+-- reads write_class='deliberate' (the DEFAULT) — the safe direction:
+-- true auto-capture rows are conservatively excluded from homeostatic
+-- folding (a delayed correction) rather than a deliberate row being
+-- mistaken for foldable noise (the failure this design exists to
+-- prevent — see homeostatic_apply.py::_apply_fold).
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'memories' AND column_name = 'write_class'
+    ) THEN
+        ALTER TABLE memories ADD COLUMN write_class TEXT NOT NULL DEFAULT 'deliberate'
+            CHECK (write_class IN ('auto', 'deliberate', 'derived', 'mechanical'));
     END IF;
 END $$;
 """
