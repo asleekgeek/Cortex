@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.11.0] - 2026-07-11
+
+### Added
+- **Graph channel resurrected + domain-scoped, tail-fill by default (ADR-0054).** `spread_activation_memories` had been dead since its introduction: a non-recursive `WITH` clause raised a SQL error on every call, swallowed by a bare `except Exception` — invisible because the unit tests mocked the DB layer, so the channel never once fired against real data in production. It is now repaired, scoped to the recalling memory's domain (cross-domain spread is opt-in), and defaults to **tail-fill**: the graph only completes recall slots left short after re-ranking (recalls already at `k` are never touched, never reordered). This is the channel's first empirical measurement in `augment` mode — MRR −0.016 / R@10 +0.002 — which under the project's zero-regression bench gate is why `tail` (not `augment`) ships as the default; both modes plus `off` are exposed as `sa_mode` on the MCP `recall` contract. Collateral fix: `recall_memories` returned a raw `datetime` for `created_at` in violation of its own documented schema; both readers now normalize to ISO-8601, and the candidate contract is under test.
+- **Explicit `write_class` at the `remember` contract (M-D2, 7.4).** `write_class` (`auto` / `deliberate` / `derived` / `mechanical`) is now a validated parameter on `remember`; all 17 internal writers declare their class explicitly instead of it being inferred from `source` strings. New `memories.write_class` column (additive migration + one-shot backfill, `scripts/backfill_write_class.py`); the homeostatic fold (4.10.0) reads it directly, closing the inference gap that caused the 7.2 finding below.
+
+### Fixed
+- **219 silent excepts audited, 30 critical sites repaired.** Full audit at `docs/audits/silent-except-audit-2026-07-11.md`; the 30 fixes on the recall / write-gate / consolidation paths route through a new `observability/silent_failure.py` module so degraded-but-not-crashed states are logged and queryable instead of disappearing — the same failure shape that hid the dead graph channel above. 36 `caplog`-based tests pin the new behavior.
+- **Re-heat source taxonomy was comparing the wrong strings since its origin.** The non-deliberate source list in the 6.6 re-heat campaign compared against values like `"seed"` where the real column held `"seed_project"` — the filter never excluded anything it was meant to. Centralized in `write_class.py`; a closed-world test now pins all 95 real source values. Measured impact: 91 of the 540 memories raised by the 6.6 campaign were mechanical, not deliberate (`docs/campaigns/reheat-controle-7.2-dryrun.md`, dry-run/read-only). Five bench harnesses gained `require_reranker=True`.
+
+### Note
+- Pre-tag guard: LongMemEval-S MRR 0.9166 / R@10 0.982, LoCoMo MRR 0.8014 / R@10 0.9157, BEAM-100K MRR 0.5493 (not gated) — manifest `20260711T080344Z`, `reranker_active: true`, committed at `benchmarks/results/repro/20260711T080344Z/`. LoCoMo is the first measurement taken on the repaired bench instrument (4.10.0's container-isolation + reranker-cache fixes); 0.8014 sits inside the gate's tolerance (Δ −0.0036 against the 0.805 reference, tolerance 0.005) — reported honestly as a first clean-instrument reading, not re-litigated as a regression.
+
 ## [4.10.0] - 2026-07-11
 
 ### Fixed
