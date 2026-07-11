@@ -33,6 +33,9 @@ _MCP_ROOT = _REPO_ROOT / "mcp_server"
 # either route through ``bump_heat_raw`` / ``update_memories_heat_batch``
 # OR be added here with a source-commented ADR justification.
 _ALLOWED_WRITERS: set[tuple[str, int]] = {
+    # Line pins re-computed on the 2026-07-11 merge train (7.2 + 7.4 +
+    # silent-except-sweep + spread-activation) — each branch had pinned its own
+    # pre-merge offsets; the test itself was used as the oracle.
     # Anchor transfer at supersession (read-path PR, decision 2026-07-07):
     # _transfer_anchor_on runs INSIDE the supersede transaction (bump_heat_raw
     # commits on its own connection, so routing through it would break
@@ -41,32 +44,32 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # Shifted 685->686 by the silent-except-sweep audit (2026-07-11) adding
     # one `from mcp_server.observability import silent_failure` import line
     # above this site.
-    ("infrastructure/pg_store.py", 686),
+    ("infrastructure/pg_store.py", 695),
     # Canonical single-row writer (all callers route through this).
     # bump_heat_raw — the one canonical single-row site (re-pinned after
     # rebasing the read-path PR onto blame-path injection-receipts).
     # Shifted 727->728 by the same import-line addition above.
-    ("infrastructure/pg_store.py", 728),
+    ("infrastructure/pg_store.py", 737),
     # A3 batched writer (homeostatic cohort branch + any other batch consumer).
     # update_memories_heat_batch. Shifted 787->825 when M-D3 (7.1) added
     # get_homeostatic_factor/set_homeostatic_factor's write_class parameter
     # and the new log_homeostatic_fold method above it; 825->826 by the same
     # silent-except-sweep import-line addition.
-    ("infrastructure/pg_store.py", 826),
+    ("infrastructure/pg_store.py", 835),
     # SQLite parity of the anchor transfer (same transactional rationale).
     # Shifted 389->440 when M-D3 (7.1) added
     # _migrate_homeostatic_state_write_class above it.
-    ("infrastructure/sqlite_store.py", 440),
+    ("infrastructure/sqlite_store.py", 441),
     # SQLite parity: canonical bump_heat_raw / update_memories_heat_batch.
     # Shifted 419->470, 463->534 for the same reason.
-    ("infrastructure/sqlite_store.py", 470),
-    ("infrastructure/sqlite_store.py", 534),
+    ("infrastructure/sqlite_store.py", 471),
+    ("infrastructure/sqlite_store.py", 535),
     # Homeostatic fold (amortized ~once/month per (domain, write_class)).
     # M-D3 (7.1, 2026-07-10): split out of homeostatic.py into
     # homeostatic_apply.py (§4.1 500-line file cap — stratification by
     # write class grew homeostatic.py past the limit). Same rare
     # amortized fold UPDATE, now scoped to a class's own source values.
-    ("handlers/consolidation/homeostatic_apply.py", 228),
+    ("handlers/consolidation/homeostatic_apply.py", 220),
     # Anchor pin: heat_base=1.0 + no_decay=TRUE preserves resist-decay.
     ("handlers/anchor.py", 143),
     # Preemptive boost: heat_base += 0.1 on Read/Edit/Write hook.
@@ -84,7 +87,7 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # (docs/adr/ADR-0053-deliberate-reheat-cas-writer-i2-exception.md).
     # Shifted 157->160 when M-D3 (7.1) added a write_class='auto' filter
     # comment to the homeostatic_state join above it.
-    ("infrastructure/pg_store_memory_reheat.py", 160),
+    ("infrastructure/pg_store_memory_reheat.py", 177),
 }
 
 
