@@ -1,0 +1,74 @@
+{
+  "timestamp_utc": "20260711T190954Z",
+  "mode": "dry-run",
+  "health": {
+    "kinds": {
+      "wiki": {
+        "backlog_count": 12,
+        "last_run_at": "2026-07-11T18:41:52.763578+02:00",
+        "days_since_last_run": 0.1,
+        "stale": false
+      },
+      "distillation": {
+        "backlog_count": 25,
+        "last_run_at": null,
+        "days_since_last_run": null,
+        "stale": true
+      },
+      "promotion": {
+        "backlog_count": 133,
+        "last_run_at": null,
+        "days_since_last_run": null,
+        "stale": true
+      }
+    },
+    "threshold_days": 6.0,
+    "any_stale": true
+  },
+  "due": {
+    "wiki": false,
+    "distillation": true
+  },
+  "active_session_guard": null,
+  "wiki": {
+    "would_run": false
+  },
+  "distill": {
+    "would_run": true,
+    "jobs_offered": 5,
+    "total_dossiers_eligible": 25,
+    "jobs": [
+      {
+        "marker": "distill-of:f637fb42",
+        "dossier_kind": "error_success",
+        "prompt_preview": "Distillation dossier (error_success) \u2014 topic: mcp_server\n\nSources (read these, then write the WHY, not the WHAT):\n  - id=4262294 tags=['auto-captured', 'tool:read', 'error']: # Tool: Read **Read:** `/"
+      },
+      {
+        "marker": "distill-of:79a664a6",
+        "dossier_kind": "error_success",
+        "prompt_preview": "Distillation dossier (error_success) \u2014 topic: oracle_ceiling\n\nSources (read these, then write the WHY, not the WHAT):\n  - id=4262273 tags=['auto-captured', 'tool:write', 'error', 'success']: # Tool: W"
+      },
+      {
+        "marker": "distill-of:ea184466",
+        "dossier_kind": "error_success",
+        "prompt_preview": "Distillation dossier (error_success) \u2014 topic: ast_cache\n\nSources (read these, then write the WHY, not the WHAT):\n  - id=4262264 tags=['auto-captured', 'tool:write', 'error', 'success']: # Tool: Write "
+      },
+      {
+        "marker": "distill-of:759bd364",
+        "dossier_kind": "error_success",
+        "prompt_preview": "Distillation dossier (error_success) \u2014 topic: ap_graph_root\n\nSources (read these, then write the WHY, not the WHAT):\n  - id=4262263 tags=['auto-captured', 'tool:read', 'error']: # Tool: Read **Read:**"
+      },
+      {
+        "marker": "distill-of:f4ffaefe",
+        "dossier_kind": "error_success",
+        "prompt_preview": "Distillation dossier (error_success) \u2014 topic: bench_wiki_source\n\nSources (read these, then write the WHY, not the WHAT):\n  - id=4262232 tags=['auto-captured', 'tool:write', 'error', 'success']: # Tool"
+      }
+    ]
+  },
+  "promotion_backlog_reported_only": {
+    "backlog_count": 133,
+    "last_run_at": null,
+    "days_since_last_run": null,
+    "stale": true
+  }
+}
