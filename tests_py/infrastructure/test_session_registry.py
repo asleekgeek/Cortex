@@ -381,3 +381,96 @@ def test_session_id_change_seen_immediately_despite_cached_signature(
     # session_id changes, exactly what happens across a /clear
     assert sr.write_session("stem-second", claude_pid=6001) is True
     assert sr.current_window_session() == "stem-second"
+
+
+# ── has_active_session_window (G-3 groomer guard rail) ──────────────────
+
+
+def test_has_active_session_window_empty_registry(tmp_path, monkeypatch):
+    _patch_dir(tmp_path, monkeypatch)
+    assert sr.has_active_session_window() is False
+
+
+def test_has_active_session_window_true_for_live_session(tmp_path, monkeypatch):
+    d = _patch_dir(tmp_path, monkeypatch)
+    monkeypatch.setattr(sr, "_pid_alive", lambda pid: True)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "555.json").write_text(
+        json.dumps(
+            {
+                "v": 1,
+                "session_id": "stem-live",
+                "claude_pid": 555,
+                "claude_start_time": "sig",
+                "updated_at": time.time(),
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert sr.has_active_session_window() is True
+
+
+def test_has_active_session_window_false_for_dead_pid(tmp_path, monkeypatch):
+    d = _patch_dir(tmp_path, monkeypatch)
+    monkeypatch.setattr(sr, "_pid_alive", lambda pid: False)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "556.json").write_text(
+        json.dumps(
+            {
+                "v": 1,
+                "session_id": "stem-dead",
+                "claude_pid": 556,
+                "claude_start_time": "sig",
+                "updated_at": time.time(),
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert sr.has_active_session_window() is False
+
+
+def test_has_active_session_window_false_for_tombstoned_entry(tmp_path, monkeypatch):
+    d = _patch_dir(tmp_path, monkeypatch)
+    monkeypatch.setattr(sr, "_pid_alive", lambda pid: True)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "557.json").write_text(
+        json.dumps(
+            {
+                "v": 1,
+                "session_id": None,
+                "claude_pid": 557,
+                "claude_start_time": "sig",
+                "updated_at": time.time(),
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert sr.has_active_session_window() is False
+
+
+def test_has_active_session_window_false_for_unknown_schema_version(
+    tmp_path, monkeypatch
+):
+    d = _patch_dir(tmp_path, monkeypatch)
+    monkeypatch.setattr(sr, "_pid_alive", lambda pid: True)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "558.json").write_text(
+        json.dumps(
+            {
+                "v": 99,
+                "session_id": "stem-future",
+                "claude_pid": 558,
+                "claude_start_time": "sig",
+                "updated_at": time.time(),
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert sr.has_active_session_window() is False
+
+
+def test_has_active_session_window_unreadable_dir_degrades_false(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        sr, "registry_dir", lambda: tmp_path / "does-not-exist" / "nested"
+    )
+    assert sr.has_active_session_window() is False

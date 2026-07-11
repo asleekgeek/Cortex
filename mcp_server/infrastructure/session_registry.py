@@ -380,3 +380,48 @@ def purge_dead_entries() -> int:
             except OSError:
                 pass
     return removed
+
+
+def has_active_session_window() -> bool:
+    """True iff any window's registry entry is a live, non-tombstoned
+    session (G-3, scheduled-groomer guard rail: a headless run must not
+    compete with an interactive session for the same DB/attention).
+
+    Precondition: none.
+    Postcondition: scans every ``registry_dir()`` entry; returns True on
+    the first live ``claude_pid`` whose entry carries a non-empty
+    ``session_id``. Uses a coarser check than ``current_window_session``
+    deliberately: that function's process-lineage start-time comparison
+    exists to prevent CROSS-WINDOW misattribution when resolving one
+    specific pid's session identity (its own ``session_id``, exactly).
+    Here the question is only "is ANY interactive window mid-session
+    right now" — pid-reuse could at worst produce a false positive (an
+    unrelated process reusing a dead claude_pid before its registry file
+    was purged), which just makes the scheduled groomer skip a run it
+    could safely have taken; never a false negative that would let a
+    headless run collide with a live session. Never raises; an
+    unreadable directory/file degrades to being skipped, matching
+    ``purge_dead_entries``'s degrade-never-guess discipline (module
+    docstring, "a false attribution is worse than a missing one").
+    """
+    d = registry_dir()
+    try:
+        entries = list(d.iterdir())
+    except OSError:
+        return False
+    for entry in entries:
+        if entry.suffix != ".json":
+            continue
+        try:
+            pid = int(entry.stem)
+        except ValueError:
+            continue
+        if not _pid_alive(pid):
+            continue
+        data = read_json(entry)
+        if not isinstance(data, dict) or data.get("v") != _SCHEMA_VERSION:
+            continue
+        session_id = data.get("session_id")
+        if isinstance(session_id, str) and session_id:
+            return True
+    return False
