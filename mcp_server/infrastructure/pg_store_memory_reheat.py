@@ -13,7 +13,11 @@ derivation). Split into its own module for the same reason as
 precedent): one focused infrastructure file per campaign pass, under the
 size cap.
 
-Pure infrastructure — no core imports, no handler imports.
+Infrastructure — no handler imports. Imports ``mcp_server.core.write_class``
+(pure logic, no I/O) for the deliberate/non-deliberate source taxonomy —
+allowed under the dependency rule (infrastructure -> core + shared +
+stdlib) and required so this module's source filter cannot silently
+diverge from the single classification contract again (INC7.2).
 """
 
 from __future__ import annotations
@@ -21,18 +25,26 @@ from __future__ import annotations
 from psycopg import Connection
 from psycopg.rows import dict_row
 
-# Deliberate = everything that is NOT an auto-capture or mechanical write
-# path. Exact list from the I6-D5 acceptance-criterion SQL (design doc
-# §I6-D5) and the I6 audit's corpus table ("Auto-capturées actives
-# (post_tool_capture)" / "Backfill / mécaniques (codebase_analyze, seed,
-# ingest, cls)" rows) — the audit's own boundary between "délibérées" and
-# everything else.
-_AUTO_AND_MECHANICAL_SOURCES = (
-    "post_tool_capture",
-    "codebase_analyze",
-    "seed",
-    "ingest",
-    "cls",
+from mcp_server.core.write_class import (
+    NON_DELIBERATE_EXACT_SOURCES,
+    NON_DELIBERATE_SOURCE_PREFIXES,
+)
+
+# Deliberate = everything that is NOT an auto-capture, derived, or
+# mechanical write path (mcp_server.core.write_class.DELIBERATE — the
+# single taxonomy contract, M-D2/M-D3/7.4). INC7.2 root-cause fix: this
+# module used to carry its own hardcoded exact-match tuple
+# ("post_tool_capture", "codebase_analyze", "seed", "ingest", "cls") that
+# silently diverged from the real DB source values ("seed_project",
+# "ingest_codebase", "cls-consolidation" — a PREFIX family, not an exact
+# string) the moment write_class.py's taxonomy was corrected in 7.1 —
+# the NOT IN filter here was never updated to match, so it excluded
+# nothing beyond post_tool_capture/codebase_analyze in practice. Now
+# built directly from write_class.py's exported sets so there is exactly
+# one place the taxonomy is defined and this predicate cannot drift from
+# ``classify_write_class``'s verdict again.
+_NON_DELIBERATE_SOURCE_LIKE_PATTERNS = tuple(
+    f"{prefix}%" for prefix in NON_DELIBERATE_SOURCE_PREFIXES
 )
 
 # Per-run scan cap on candidate rows. The I6 audit measured 542 deliberate
@@ -64,9 +76,12 @@ def list_deliberate_below_target(
                     field changed" pattern, robust to schema changes
                     since it never lists the ``memories`` column set
                     explicitly). Scope: ``current_memories`` (chain heads
-                    only) ``WHERE NOT is_stale AND source NOT IN``
-                    the auto/mechanical set — the exact I6-D5
-                    acceptance-criterion population. The ``candidates``
+                    only) ``WHERE NOT is_stale`` and ``source`` resolves
+                    to ``write_class.DELIBERATE`` (excludes exact matches
+                    in ``NON_DELIBERATE_EXACT_SOURCES`` AND prefix matches
+                    in ``NON_DELIBERATE_SOURCE_PREFIXES`` — the two halves
+                    of ``classify_write_class``'s auto/derived/mechanical
+                    verdict, mirrored in SQL). The ``candidates``
                     CTE re-projects ``m.*`` before calling
                     ``effective_heat()`` for the same reason
                     ``pg_store_memory_dedup.py`` documents: ``current_
@@ -78,7 +93,8 @@ def list_deliberate_below_target(
             SELECT m.*
               FROM current_memories m
              WHERE NOT m.is_stale
-               AND NOT (m.source = ANY(%(sources)s))
+               AND NOT (m.source = ANY(%(exact_sources)s))
+               AND NOT (m.source LIKE ANY(%(prefix_patterns)s))
         ),
         probed AS (
             SELECT c.id,
@@ -108,7 +124,8 @@ def list_deliberate_below_target(
         cur.execute(
             sql,
             {
-                "sources": list(_AUTO_AND_MECHANICAL_SOURCES),
+                "exact_sources": list(NON_DELIBERATE_EXACT_SOURCES),
+                "prefix_patterns": list(_NON_DELIBERATE_SOURCE_LIKE_PATTERNS),
                 "target": target,
                 "limit": limit,
             },

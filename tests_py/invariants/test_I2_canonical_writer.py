@@ -78,8 +78,11 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # (2026-08-09) depends on staying untouched. Source: ADR-0053
     # (docs/adr/ADR-0053-deliberate-reheat-cas-writer-i2-exception.md).
     # Shifted 157->160 when M-D3 (7.1) added a write_class='auto' filter
-    # comment to the homeostatic_state join above it.
-    ("infrastructure/pg_store_memory_reheat.py", 160),
+    # comment to the homeostatic_state join above it; 160->177 when INC7.2
+    # fixed the module's source-taxonomy filter (root-cause: reused
+    # mcp_server.core.write_class instead of a second hardcoded, silently
+    # stale exact-match tuple), adding docstring/import lines above it.
+    ("infrastructure/pg_store_memory_reheat.py", 177),
 }
 
 

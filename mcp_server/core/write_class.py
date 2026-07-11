@@ -94,6 +94,26 @@ _MECHANICAL_SOURCE_PREFIXES: tuple[str, ...] = ("backfill:",)
 # migration — documented in homeostatic.py::_apply_fold.
 AUTO_SOURCE_VALUES: tuple[str, ...] = tuple(sorted(_AUTO_SOURCES))
 
+# SQL-side mirror of "everything NOT deliberate" (auto | derived |
+# mechanical), exported for pg_store_memory_reheat.py::
+# list_deliberate_below_target — the other DB-facing call site besides
+# homeostatic._apply_fold's AUTO_SOURCE_VALUES above. INC7.2 root-cause
+# fix: that query used to carry its OWN hardcoded exact-match tuple
+# ("seed", "ingest", "cls") that never matched the real DB values
+# ("seed_project", "ingest_codebase", "cls-consolidation" — a PREFIX
+# family, not an exact string) — a second, silently-diverged
+# classification path that let mechanical/derived rows through the
+# "deliberate" filter undetected. Exporting the exact-match and prefix
+# sets here instead means there is exactly ONE place the taxonomy is
+# defined; the SQL predicate cannot drift from ``classify_write_class``'s
+# verdict again because it is built from the same frozensets.
+NON_DELIBERATE_EXACT_SOURCES: tuple[str, ...] = tuple(
+    sorted(_AUTO_SOURCES | _DERIVED_SOURCES | _MECHANICAL_SOURCES)
+)
+NON_DELIBERATE_SOURCE_PREFIXES: tuple[str, ...] = tuple(
+    sorted(_DERIVED_SOURCE_PREFIXES + _MECHANICAL_SOURCE_PREFIXES)
+)
+
 
 def classify_write_class(memory: Mapping[str, Any] | str | None) -> str:
     """Resolve a memory (or a bare source string) to its write class.

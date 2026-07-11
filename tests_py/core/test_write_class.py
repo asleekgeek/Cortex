@@ -14,6 +14,8 @@ from mcp_server.core.write_class import (
     DELIBERATE,
     DERIVED,
     MECHANICAL,
+    NON_DELIBERATE_EXACT_SOURCES,
+    NON_DELIBERATE_SOURCE_PREFIXES,
     classify_write_class,
 )
 
@@ -90,6 +92,68 @@ class TestExplicitColumnForwardCompat:
     def test_invalid_explicit_write_class_falls_back_to_source(self):
         memory = {"source": "post_tool_capture", "write_class": "not-a-real-class"}
         assert classify_write_class(memory) == AUTO
+
+
+class TestNonDeliberateSqlMirror:
+    """NON_DELIBERATE_EXACT_SOURCES / NON_DELIBERATE_SOURCE_PREFIXES
+    (INC7.2) -- the SQL-side mirror consumed by
+    pg_store_memory_reheat.py::list_deliberate_below_target. Every real
+    measured DB source that should be excluded from the deliberate
+    reheat scan must appear in one of these two exports.
+    """
+
+    def test_seed_project_is_in_exact_sources(self):
+        assert "seed_project" in NON_DELIBERATE_EXACT_SOURCES
+
+    def test_ingest_codebase_is_in_exact_sources(self):
+        assert "ingest_codebase" in NON_DELIBERATE_EXACT_SOURCES
+
+    def test_codebase_analyze_is_in_exact_sources(self):
+        assert "codebase_analyze" in NON_DELIBERATE_EXACT_SOURCES
+
+    def test_post_tool_capture_is_in_exact_sources(self):
+        assert "post_tool_capture" in NON_DELIBERATE_EXACT_SOURCES
+
+    def test_cls_prefix_is_in_prefixes(self):
+        assert "cls" in NON_DELIBERATE_SOURCE_PREFIXES
+
+    def test_backfill_prefix_is_in_prefixes(self):
+        assert "backfill:" in NON_DELIBERATE_SOURCE_PREFIXES
+
+    def test_bare_cls_is_a_prefix_not_an_exact_string(self):
+        # The bug: pg_store_memory_reheat.py's OWN hardcoded tuple compared
+        # "cls" as an EXACT string, but the real DB value is
+        # "cls-consolidation" (a prefix family). "cls" must be a prefix
+        # entry, not an exact-match entry, or a real "cls-*" row would
+        # slip through an exact-match-only filter again.
+        assert "cls" in NON_DELIBERATE_SOURCE_PREFIXES
+        assert "cls" not in NON_DELIBERATE_EXACT_SOURCES
+
+    def test_mirror_agrees_with_classify_write_class_on_every_class(self):
+        non_deliberate_sources = (
+            "post_tool_capture",
+            "seed_project",
+            "ingest_codebase",
+            "codebase_analyze",
+            "cls-consolidation",
+            "consolidation",
+            "backfill:-Users-x",
+        )
+        deliberate_sources = ("feature", "lesson")
+
+        for source in non_deliberate_sources:
+            is_excluded = source in NON_DELIBERATE_EXACT_SOURCES or source.startswith(
+                NON_DELIBERATE_SOURCE_PREFIXES
+            )
+            assert classify_write_class(source) != DELIBERATE, source
+            assert is_excluded, source
+
+        for source in deliberate_sources:
+            is_excluded = source in NON_DELIBERATE_EXACT_SOURCES or source.startswith(
+                NON_DELIBERATE_SOURCE_PREFIXES
+            )
+            assert classify_write_class(source) == DELIBERATE, source
+            assert not is_excluded, source
 
 
 class TestTaxonomyInvariants:

@@ -180,6 +180,49 @@ class TestAutoCaptureSourceExcluded:
                 conn.commit()
 
 
+class TestRealMechanicalSourceStringsExcluded:
+    """INC7.2 regression test. The INC7.1 retro flagged that
+    ``_AUTO_AND_MECHANICAL_SOURCES`` compared against ``"seed"``/
+    ``"ingest"``/``"cls"`` while the REAL DB values are ``"seed_project"``/
+    ``"ingest_codebase"``/``"cls-consolidation"`` (a prefix family) --
+    the exact-match ``NOT IN`` filter never excluded any of them. Each
+    case here uses the literal real DB source string (measured via
+    ``SELECT DISTINCT source FROM memories``, 2026-07-11) so this test
+    fails against the pre-fix query and passes against the fix.
+    """
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "seed_project",
+            "ingest_codebase",
+            "cls-consolidation",
+            "backfill:-Users-test-Developments-Cortex",
+        ],
+    )
+    def test_real_mechanical_or_derived_source_is_never_a_candidate(self, source):
+        store = _pg_only()
+        content = _unique_content(f"mechanical-excluded-{source}")
+        with store.batch_pool.connection() as conn:
+            memory_id = _insert_deliberate(
+                conn, content=content, heat_base=0.05, source=source
+            )
+            conn.commit()
+        try:
+            result = _run(store, apply=True)
+            assert not any(j["id"] == memory_id for j in result["journal"]), (
+                f"source={source!r} was treated as a deliberate reheat "
+                "candidate -- the source-taxonomy filter regressed"
+            )
+            with store.batch_pool.connection() as conn:
+                heat_base_after = _fetch_heat_base(conn, memory_id)
+            assert heat_base_after == pytest.approx(0.05, abs=1e-6)
+        finally:
+            with store.batch_pool.connection() as conn:
+                conn.execute("DELETE FROM memories WHERE id = %s", (memory_id,))
+                conn.commit()
+
+
 class TestDryRun:
     def test_dry_run_writes_nothing(self):
         store = _pg_only()
