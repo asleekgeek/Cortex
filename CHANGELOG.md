@@ -19,7 +19,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Note
 - This release is dominated by measurement-instrument fixes: the reranker cache bug, the bench container isolation bug, and the embedding-revision pinning all exist because `benchmarks/reproduce.sh` itself was compromised or under-specified. No scoring/gate behavior changed except becoming honest about failures that were previously silent.
-- Pre-tag guard: a sealing bench run was in progress on this tree at prep time; its manifest is committed separately by the release orchestrator before tagging.
+- Pre-tag guard: LongMemEval-S MRR 0.9166 / R@10 0.982 (manifest `20260711T035233Z`, `reranker_active: true`, elapsed 1663s) — sealed on the exact release tree with the durable reranker cache and an empty `/tmp`, revalidating the historical `[0.9163, 0.9166]` band as the full-pipeline reference. The 0.8636 readings of 2026-07-10/11 were the broken instrument (reranker silently absent), not a code regression.
 
 ## [4.9.1] - 2026-07-10
 
