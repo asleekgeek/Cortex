@@ -70,7 +70,9 @@ def count_lesson_promotion_candidates(conn: Connection) -> int:
     ``list_lesson_promotion_candidates`` uses, just without a ``LIMIT``
     truncating it. Read-only, single indexed ``COUNT(*)`` (measured
     ~76ms against a 154-page / 3000+ memory dev corpus, 2026-07-11) —
-    cheap enough for a per-consolidate-cycle mechanical report, unlike
+    cheap enough for a per-consolidate-cycle mechanical report — and
+    down to ~0.8ms Bitmap Heap Scan with idx_memories_tags_gin
+    (pg_schema.py; EXPLAIN ANALYZE 2026-07-11, 11,012 rows) — unlike
     ``curate_distill``'s clustering-derived backlog count (measured
     ~2.6s on the same corpus; see wiki_backlog_pass.py's docstring for
     why that one is NOT wired into the recurring cycle).

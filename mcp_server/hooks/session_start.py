@@ -327,6 +327,60 @@ def _count_pending_curations(conn) -> int:
         return 0
 
 
+def _fetch_grooming_staleness(conn) -> list[str]:
+    """Return the kinds ('wiki'/'distillation'/'promotion') of
+    judgment-level grooming that are overdue for attention.
+
+    Precondition: none.
+    Postcondition: returns a subset of {'wiki', 'distillation',
+    'promotion'} -- kinds whose last execution is older than
+    ``core.grooming_health.GROOMING_STALENESS_THRESHOLD_DAYS`` days, or
+    that have never executed. Read-only, three bounded aggregate
+    queries (~30ms combined, EXPLAIN ANALYZE 2026-07-11 -- see
+    ``PgStatsMixin.get_grooming_ages`` for the per-query cost
+    breakdown; this hook queries directly rather than going through
+    ``get_shared_store`` to avoid pulling the full store composition
+    into the SessionStart hot path). Deliberately does NOT call the
+    backlog-count planners (curate_wiki/curate_distill/
+    lesson_promotion) -- those cost ~1s combined
+    (get_grooming_health.py), too expensive for every session start.
+
+    Failure here is non-fatal: a missing staleness signal must never
+    break the SessionStart preamble. Returns [] on any error.
+    """
+    try:
+        from mcp_server.core.grooming_health import is_stale
+
+        row = conn.execute(
+            "SELECT "
+            "  (SELECT MAX(tended) FROM wiki.pages) AS wiki_last, "
+            "  (SELECT MAX(created_at) FROM memories m "
+            "     WHERE m.tags @> '[\"lesson\"]'::jsonb "
+            "     AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(m.tags) tg "
+            "                 WHERE tg LIKE 'distill-of:%')) AS distill_last, "
+            "  (SELECT MAX(created_at) FROM memories m "
+            "     WHERE m.tags @> '[\"lesson\"]'::jsonb "
+            "     AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(m.tags) tg "
+            "                 WHERE tg LIKE 'promoted:%')) AS promo_last"
+        ).fetchone()
+        if not row:
+            return []
+        d = dict(row) if not isinstance(row, dict) else row
+        stale = []
+        for kind, col in (
+            ("wiki", "wiki_last"),
+            ("distillation", "distill_last"),
+            ("promotion", "promo_last"),
+        ):
+            ts = d.get(col)
+            last_iso = ts.isoformat() if ts else None
+            if is_stale(last_iso):
+                stale.append(kind)
+        return stale
+    except Exception:
+        return []
+
+
 def _fetch_checkpoint(conn) -> dict | None:
     """Fetch the latest active checkpoint."""
     try:
@@ -515,6 +569,7 @@ def _build_context(
     checkpoint: dict | None,
     team_decisions: list[dict] | None = None,
     pending_curations: int = 0,
+    stale_grooming: list[str] | None = None,
     receipt_id: int | None = None,
 ) -> str:
     """Build the Markdown context block injected into the session.
@@ -530,6 +585,7 @@ def _build_context(
         and not checkpoint
         and not team_decisions
         and not pending_curations
+        and not stale_grooming
     ):
         return ""
 
@@ -583,6 +639,18 @@ def _build_context(
             "needs to ask; the curator works queued."
         )
         lines.append("")
+
+    # G-4: one-line staleness reminder -- never a section, per the
+    # 76-day-silent-wiki lesson (a full pending-curations-style block per
+    # session would just become the next ignored nudge). Fires only when
+    # a kind has gone longer than the sourced threshold without a real
+    # (judgment-level) run; call `get_grooming_health` for exact counts.
+    if stale_grooming:
+        kinds_str = "/".join(stale_grooming)
+        lines.append(
+            f"*Grooming overdue ({kinds_str}) -- call `get_grooming_health` "
+            "for backlog counts and exact ages.*"
+        )
 
     lines.append(
         "*Use `recall` to retrieve full memories. "
@@ -1000,6 +1068,7 @@ def main() -> None:
     team_decisions = _fetch_team_decisions(conn, anchor_ids)
     checkpoint = _fetch_checkpoint(conn)
     pending_curations = _count_pending_curations(conn)
+    stale_grooming = _fetch_grooming_staleness(conn)
     # Receipt BEFORE rendering: the banner header carries the ⟦rcpt:id⟧
     # marker, so the id must exist when the context is built. A failed
     # write degrades to a marker-less banner (read path intact).
@@ -1012,6 +1081,7 @@ def main() -> None:
         checkpoint,
         team_decisions,
         pending_curations=pending_curations,
+        stale_grooming=stale_grooming,
         receipt_id=receipt_id,
     )
 

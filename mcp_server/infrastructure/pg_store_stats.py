@@ -342,3 +342,66 @@ class PgStatsMixin:
             "SELECT COUNT(*) AS c FROM prospective_memories WHERE is_active"
         ).fetchone()
         return row["c"] if row else 0
+
+    # ── Grooming staleness (judgment-level curation, not the mechanical
+    # consolidate pass -- see core.grooming_health module docstring) ────
+
+    def get_grooming_ages(self) -> dict[str, str | None]:
+        """Last-executed timestamp for each judgment-level grooming kind.
+
+        Precondition: none.
+        Postcondition: returns {"wiki", "distillation", "promotion"} ->
+        ISO-8601 timestamp of the most recent judgment-level action of
+        that kind, or None if that kind has never executed in this
+        store. Read-only, three bounded aggregate queries:
+          - wiki: MAX(wiki.pages.tended) -- ~0.4ms at 154 rows (EXPLAIN
+            ANALYZE, 2026-07-11; no dedicated index needed at this
+            table size, sequential scan).
+          - distillation / promotion: filtered by the 'lesson' tag
+            (semantically required -- curate_distill.py and
+            lesson_promotion.py both only ever tag their output
+            'lesson', so this prefilter cannot exclude a true positive)
+            then a tag-prefix scan for 'distill-of:'/'promoted:'.
+            idx_memories_tags_gin makes the 'lesson' prefilter an index
+            scan; measured 18-23ms worst case (zero matching rows --
+            the only state observed so far, 2026-07-11), collapsing to
+            sub-ms once any row matches.
+        """
+        wiki_row = self._execute(
+            "SELECT MAX(tended) AS last_ts FROM wiki.pages"
+        ).fetchone()
+        wiki_last = (
+            wiki_row["last_ts"].isoformat()
+            if wiki_row and wiki_row["last_ts"]
+            else None
+        )
+
+        distill_row = self._execute(
+            "SELECT MAX(created_at) AS last_ts FROM memories m "
+            "WHERE m.tags @> '[\"lesson\"]'::jsonb "
+            "AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(m.tags) tg "
+            "WHERE tg LIKE 'distill-of:%')"
+        ).fetchone()
+        distill_last = (
+            distill_row["last_ts"].isoformat()
+            if distill_row and distill_row["last_ts"]
+            else None
+        )
+
+        promo_row = self._execute(
+            "SELECT MAX(created_at) AS last_ts FROM memories m "
+            "WHERE m.tags @> '[\"lesson\"]'::jsonb "
+            "AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(m.tags) tg "
+            "WHERE tg LIKE 'promoted:%')"
+        ).fetchone()
+        promo_last = (
+            promo_row["last_ts"].isoformat()
+            if promo_row and promo_row["last_ts"]
+            else None
+        )
+
+        return {
+            "wiki": wiki_last,
+            "distillation": distill_last,
+            "promotion": promo_last,
+        }

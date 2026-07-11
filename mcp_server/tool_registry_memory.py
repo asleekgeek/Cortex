@@ -1,4 +1,4 @@
-"""Tool registration: Tier 1 memory read/write tools (8 tools).
+"""Tool registration: Tier 1 memory read/write tools (9 tools).
 
 Registers remember, recall, checkpoint, consolidation, and diagnostics tools.
 """
@@ -10,6 +10,7 @@ from fastmcp import FastMCP
 from mcp_server.handlers import (
     checkpoint,
     consolidate,
+    get_grooming_health,
     get_telemetry,
     import_sessions,
     memory_stats,
@@ -35,6 +36,7 @@ SCHEMAS: dict[str, dict] = {
     "import_sessions": import_sessions.schema,
     "unified_search": unified_search.schema,
     "get_telemetry": get_telemetry.schema,
+    "get_grooming_health": get_grooming_health.schema,
 }
 
 
@@ -49,6 +51,7 @@ def register(mcp: FastMCP) -> None:
     _register_import_sessions(mcp)
     _register_unified_search(mcp)
     _register_get_telemetry(mcp)
+    _register_get_grooming_health(mcp)
 
 
 def _register_remember(mcp: FastMCP) -> None:
@@ -304,6 +307,18 @@ def _register_get_telemetry(mcp: FastMCP) -> None:
     async def tool_get_telemetry() -> dict:
         """Return per-op counters + read/write ratio (Popper C6)."""
         return await safe_handler(get_telemetry.handler, {}, tool_name="get_telemetry")
+
+
+def _register_get_grooming_health(mcp: FastMCP) -> None:
+    @mcp.tool(
+        name="get_grooming_health",
+        **tool_kwargs(get_grooming_health.schema),
+    )
+    async def tool_get_grooming_health() -> dict:
+        """Backlog + staleness for wiki/distillation/promotion grooming."""
+        return await safe_handler(
+            get_grooming_health.handler, {}, tool_name="get_grooming_health"
+        )
 
 
 def _register_unified_search(mcp: FastMCP) -> None:
