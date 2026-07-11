@@ -22,8 +22,9 @@ class SqliteAuxiliaryMixin:
         cur = self._conn.execute(
             "INSERT INTO prospective_memories "
             "(content, trigger_condition, trigger_type, "
-            "target_directory, is_active, triggered_count, created_by) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "target_directory, is_active, triggered_count, created_by, "
+            "source_memory_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 data["content"],
                 data["trigger_condition"],
@@ -32,6 +33,7 @@ class SqliteAuxiliaryMixin:
                 int(data.get("is_active", True)),
                 data.get("triggered_count", 0),
                 data.get("created_by", ""),
+                data.get("source_memory_id"),
             ),
         )
         self._conn.commit()

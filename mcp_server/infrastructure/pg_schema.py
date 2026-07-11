@@ -552,7 +552,15 @@ CREATE TABLE IF NOT EXISTS prospective_memories (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     triggered_at        TIMESTAMPTZ,
     triggered_count     INTEGER DEFAULT 0,
-    created_by          TEXT NOT NULL DEFAULT ''
+    created_by          TEXT NOT NULL DEFAULT '',
+    -- M-D6 (7.6): the lesson memory this trigger was promoted from, when
+    -- created via a lesson_promotion job (mcp_server/handlers/
+    -- lesson_promotion.py). NULL for triggers created directly by
+    -- create_trigger without going through a promotion job. No FK: same
+    -- unenforced-pointer convention as memories' `derived-src:<id>` tags
+    -- (memify_derive.py) — a hard-forgotten source lesson must not force
+    -- deletion of the trigger it produced.
+    source_memory_id    INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS checkpoints (
@@ -659,7 +667,19 @@ CREATE TABLE IF NOT EXISTS memory_rules (
     action              TEXT NOT NULL,
     priority            INTEGER DEFAULT 0,
     is_active           BOOLEAN DEFAULT TRUE,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- M-D6 (7.6): the lesson memory this rule was promoted from, when
+    -- created via a lesson_promotion job. NULL for rules created
+    -- directly by add_rule without going through a promotion job.
+    -- READ-PATH NOTE: memory_rules is read every recall via
+    -- core.memory_rules.apply_rules (SELECT * in get_all_active_rules /
+    -- get_rules_for_scope, so this column is included automatically).
+    -- apply_rules() only ever reads rule_type/condition/action/priority
+    -- — it does not reference source_memory_id — so this addition does
+    -- NOT change recall's filtering or ranking decision, only the
+    -- shape of rows it already reads. No FK: same unenforced-pointer
+    -- convention as memories' `derived-src:<id>` tags.
+    source_memory_id    INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS schemas (
@@ -2249,6 +2269,26 @@ BEGIN
     ) THEN
         ALTER TABLE memories ADD COLUMN write_class TEXT NOT NULL DEFAULT 'deliberate'
             CHECK (write_class IN ('auto', 'deliberate', 'derived', 'mechanical'));
+    END IF;
+END $$;
+
+-- Migration: source_memory_id on memory_rules and prospective_memories
+-- (M-D6, 7.6, 2026-07-11). Structural only — nullable, no backfill (no
+-- pre-existing row was ever created via a promotion job, so NULL is
+-- correct for all of them, not a placeholder needing later correction).
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'memory_rules' AND column_name = 'source_memory_id'
+    ) THEN
+        ALTER TABLE memory_rules ADD COLUMN source_memory_id INTEGER;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'prospective_memories' AND column_name = 'source_memory_id'
+    ) THEN
+        ALTER TABLE prospective_memories ADD COLUMN source_memory_id INTEGER;
     END IF;
 END $$;
 """

@@ -78,6 +78,18 @@ schema = {
                 "description": "If set, the trigger only fires when the active project directory matches.",
                 "examples": ["/Users/alice/code/cortex"],
             },
+            "source_memory_id": {
+                "type": "integer",
+                "description": (
+                    "M-D6: the id of the lesson memory this trigger was "
+                    "promoted from, when created via a `lesson_promotion` "
+                    "job. Omit for triggers created directly. Stored as "
+                    "prospective_memories.source_memory_id — an "
+                    "unenforced pointer (no FK), queryable both ways "
+                    "with the lesson's own 'promoted:trigger' tag."
+                ),
+                "examples": [4198018],
+            },
         },
     },
 }
@@ -115,6 +127,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
         return {"created": False, "reason": f"invalid trigger_type: {trigger_type}"}
 
     target_directory = (args.get("target_directory") or "").strip() or None
+    source_memory_id = args.get("source_memory_id")
 
     store = _get_store()
 
@@ -127,6 +140,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
             "is_active": True,
             "triggered_count": 0,
             "created_by": "create_trigger",
+            "source_memory_id": source_memory_id,
         }
     )
 
@@ -137,5 +151,6 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
         "trigger_condition": trigger_condition,
         "content": content,
         "target_directory": target_directory,
+        "source_memory_id": source_memory_id,
         "active_triggers": store.count_active_triggers(),
     }

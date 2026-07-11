@@ -15,8 +15,8 @@ class SqliteRuleMixin:
         cur = self._conn.execute(
             "INSERT INTO memory_rules "
             "(rule_type, scope, scope_value, condition, action, priority, "
-            "is_active, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+            "is_active, source_memory_id, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
             (
                 data.get("rule_type", "soft"),
                 data.get("scope", "global"),
@@ -25,6 +25,7 @@ class SqliteRuleMixin:
                 data["action"],
                 data.get("priority", 0),
                 int(data.get("is_active", True)),
+                data.get("source_memory_id"),
             ),
         )
         self._conn.commit()

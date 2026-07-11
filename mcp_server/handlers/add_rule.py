@@ -124,6 +124,19 @@ schema = {
                 "maximum": 100,
                 "examples": [0, 10, 50],
             },
+            "source_memory_id": {
+                "type": "integer",
+                "description": (
+                    "M-D6: the id of the lesson memory this rule was "
+                    "promoted from, when created via a `lesson_promotion` "
+                    "job. Omit for rules created directly (not through a "
+                    "promotion job). Stored as memory_rules."
+                    "source_memory_id — an unenforced pointer (no FK), "
+                    "queryable both ways with the lesson's own "
+                    "'promoted:rule' tag."
+                ),
+                "examples": [4198018],
+            },
         },
     },
 }
@@ -196,6 +209,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     scope = args.get("scope", "global")
     scope_value = (args.get("scope_value") or "").strip() or None
     priority = int(args.get("priority", 0))
+    source_memory_id = args.get("source_memory_id")
 
     rule_id = _get_store().insert_rule(
         {
@@ -206,6 +220,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
             "action": action,
             "priority": priority,
             "is_active": True,
+            "source_memory_id": source_memory_id,
         }
     )
 
@@ -218,4 +233,5 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
         "condition": condition,
         "action": action,
         "priority": priority,
+        "source_memory_id": source_memory_id,
     }

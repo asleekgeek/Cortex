@@ -21,8 +21,8 @@ class PgRuleMixin:
         row = self._execute(
             "INSERT INTO memory_rules "
             "(rule_type, scope, scope_value, condition, action, priority, "
-            "is_active, created_at) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, NOW()) RETURNING id",
+            "is_active, source_memory_id, created_at) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW()) RETURNING id",
             (
                 data.get("rule_type", "soft"),
                 data.get("scope", "global"),
@@ -31,6 +31,7 @@ class PgRuleMixin:
                 data["action"],
                 data.get("priority", 0),
                 data.get("is_active", True),
+                data.get("source_memory_id"),
             ),
         ).fetchone()
         self._conn.commit()

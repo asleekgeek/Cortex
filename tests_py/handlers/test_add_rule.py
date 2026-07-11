@@ -499,6 +499,41 @@ class TestAddRuleGrammarValidation:
         assert "reason" in result
 
 
+# ── source_memory_id (M-D6, 7.6 lesson-promotion traceability) ────────────────
+
+
+class TestAddRuleSourceMemoryId:
+    @pytest.mark.asyncio
+    async def test_source_memory_id_round_trips(self):
+        from mcp_server.handlers.add_rule import handler
+
+        result = await handler(_minimal_args(source_memory_id=4198018))
+
+        assert result["created"] is True
+        assert result["source_memory_id"] == 4198018
+
+    @pytest.mark.asyncio
+    async def test_source_memory_id_defaults_to_none(self):
+        from mcp_server.handlers.add_rule import handler
+
+        result = await handler(_minimal_args())
+
+        assert result["created"] is True
+        assert result["source_memory_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_persisted_source_memory_id_readable_via_get_all_active_rules(self):
+        from mcp_server.handlers.add_rule import _get_store, handler
+
+        result = await handler(_minimal_args(source_memory_id=777))
+        assert result["created"] is True
+
+        store = _get_store()
+        rules = store.get_all_active_rules()
+        row = next(r for r in rules if r["id"] == result["rule_id"])
+        assert row["source_memory_id"] == 777
+
+
 # ── Schema introspection ───────────────────────────────────────────────────────
 
 
