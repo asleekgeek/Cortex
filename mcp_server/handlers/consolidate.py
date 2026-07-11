@@ -115,10 +115,12 @@ schema = {
                 "type": "boolean",
                 "description": (
                     "Run autonomous wiki maintenance: purge stub pages, "
-                    "report classifier-reject count, and update the "
-                    "curation backlog. Default true — the wiki must stay "
-                    "up-to-date without a human in the loop. Set false "
-                    "only when debugging consolidate."
+                    "report classifier-reject count, reconcile missing "
+                    "wiki.citations rows (HIGH-reliability tier only), "
+                    "and update the curation backlog (including the "
+                    "lesson_promotion candidate count). Default true — "
+                    "the wiki must stay up-to-date without a human in "
+                    "the loop. Set false only when debugging consolidate."
                 ),
                 "default": True,
             },
@@ -157,6 +159,27 @@ schema = {
                     "cap (one-shot full sweep)."
                 ),
                 "default": 500,
+            },
+            "wiki_apply_citation_seed": {
+                "type": "boolean",
+                "description": (
+                    "Reconcile missing `wiki.citations` rows for pages "
+                    "whose `wiki.pages.memory_id` already carries a "
+                    "verified pointer to the memory that authored them "
+                    "(HIGH-reliability tier only — no inferred/fabricated "
+                    "provenance; M-D7/INC7.7). Default true — cheap "
+                    "(~15-49ms measured) and idempotent."
+                ),
+                "default": True,
+            },
+            "wiki_citation_seed_limit": {
+                "type": "integer",
+                "minimum": 1,
+                "description": (
+                    "Per-cycle scan cap for the citation reconciliation "
+                    "sweep. Defaults to "
+                    "wiki_citation_seed_pass.DEFAULT_SEED_SCAN_LIMIT (5000)."
+                ),
             },
         },
     },
@@ -243,6 +266,8 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     if args.get("wiki", True):
         cap_raw = args.get("wiki_max_purges_per_axis", 500)
         cap = int(cap_raw) if cap_raw is not None and int(cap_raw) > 0 else None
+        seed_limit_raw = args.get("wiki_citation_seed_limit")
+        seed_limit = int(seed_limit_raw) if seed_limit_raw is not None else None
         wiki_stats = await _atimed(
             run_wiki_maintenance,
             store,
@@ -251,6 +276,8 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
                 args.get("wiki_apply_classifier_rejects", True)
             ),
             max_purges_per_axis=cap,
+            apply_citation_seed=bool(args.get("wiki_apply_citation_seed", True)),
+            citation_seed_limit=seed_limit,
         )
         stats["wiki"] = wiki_stats
         # Back-compat: keep ``pending_curations`` populated for callers

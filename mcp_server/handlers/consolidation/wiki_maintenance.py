@@ -129,6 +129,8 @@ async def run_wiki_maintenance(
     max_purges_per_axis: int | None = MAX_PURGES_PER_CYCLE,
     source_backfill_dry_run: bool = False,
     domain_backfill_dry_run: bool = False,
+    apply_citation_seed: bool = True,
+    citation_seed_limit: int | None = None,
 ) -> dict[str, Any]:
     """Purge stale wiki pages and report the curation backlog.
 
@@ -149,13 +151,23 @@ async def run_wiki_maintenance(
     Both apply by default; ``source_backfill_dry_run`` /
     ``domain_backfill_dry_run`` switch each to derive-without-write.
 
+    G-2 grooming (2026-07-11): also runs the ``wiki.citations``
+    reconciliation sweep (``wiki_citation_seed_pass`` — see its
+    docstring for why re-running this on new pages is reconciliation,
+    not a new retroactive-fabrication decision). ``apply_citation_seed``
+    (default True) and ``citation_seed_limit`` (default
+    ``DEFAULT_SEED_SCAN_LIMIT``, currently 5000 — measured ~15-49ms on
+    the dev DB) mirror the other axes' apply/cap knobs.
+
     Returns a dict with one stanza per axis (``stub`` / ``classifier``)
     each carrying ``{applied, purged, deferred, cap_reached, ...}`` plus
     a backlog stanza (``coverage_gaps``, ``cluster_jobs``,
-    ``pending_total``), a ``source_backfill`` stanza
-    (``{pages_scanned, primaries_written, by_source, status}``), and a
-    ``domain_backfill`` stanza (``{pages_scanned, domains_reassigned,
-    by_domain, status}``).
+    ``pending_total``, ``lesson_promotion_backlog``), a
+    ``source_backfill`` stanza (``{pages_scanned, primaries_written,
+    by_source, status}``), a ``domain_backfill`` stanza
+    (``{pages_scanned, domains_reassigned, by_domain, status}``), and a
+    ``citation_seed`` stanza (``{scanned_rows, seeded, already_cited,
+    skipped_race, journal, status}``).
     """
     out: dict[str, Any] = {
         "stub": {
@@ -286,6 +298,32 @@ async def run_wiki_maintenance(
         out["domain_backfill"] = {"status": f"error: {type(exc).__name__}: {exc}"}
         if out["status"] == "ok":
             out["status"] = f"domain_backfill_error: {type(exc).__name__}: {exc}"
+
+    # Citation reconciliation (M-D7/INC7.7, recurring since G-2 — see
+    # wiki_citation_seed_pass.py's docstring). Runs after source/domain
+    # backfill so a page whose domain was just corrected above is
+    # scanned with its current domain; self-contained (never raises —
+    # its own internal try/except degrades to a "status": "error: ..."
+    # dict) but wrapped here anyway for defense in depth, matching every
+    # other axis in this function.
+    try:
+        from mcp_server.handlers.consolidation.wiki_citation_seed_pass import (
+            DEFAULT_SEED_SCAN_LIMIT,
+            run_wiki_citation_seed_pass,
+        )
+
+        out["citation_seed"] = await run_wiki_citation_seed_pass(
+            store,
+            apply=apply_citation_seed,
+            limit=citation_seed_limit or DEFAULT_SEED_SCAN_LIMIT,
+        )
+    except Exception as exc:
+        logger.warning(
+            "wiki_maintenance: citation seed pass failed (non-fatal): %s", exc
+        )
+        out["citation_seed"] = {"status": f"error: {type(exc).__name__}: {exc}"}
+        if out["status"] == "ok":
+            out["status"] = f"citation_seed_error: {type(exc).__name__}: {exc}"
 
     # Curation backlog.
     try:

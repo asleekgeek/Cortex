@@ -14,6 +14,23 @@ from typing import Any
 from psycopg import Connection
 from psycopg.rows import dict_row
 
+# Shared by both queries below so the eligibility definition cannot drift
+# between the job-listing path and the count-only path (G-2 grooming:
+# count_lesson_promotion_candidates reuses this verbatim rather than
+# re-deriving an equivalent WHERE clause that could silently disagree).
+_ELIGIBLE_WHERE = """
+    NOT m.is_stale
+      AND (
+        m.tags @> '["lesson"]'::jsonb
+        OR m.tags @> '["lesson-candidate"]'::jsonb
+      )
+      AND (m.access_count > 0 OR m.useful_count > 0)
+      AND NOT EXISTS (
+        SELECT 1 FROM jsonb_array_elements_text(m.tags) t
+        WHERE t LIKE 'promoted:%%'
+      )
+"""
+
 
 def list_lesson_promotion_candidates(
     conn: Connection, limit: int = 20
@@ -31,23 +48,35 @@ def list_lesson_promotion_candidates(
     first. Read-only: never mutates memory_rules, prospective_memories,
     wiki.citations, or the memories table itself.
     """
-    sql = """
+    sql = f"""
     SELECT m.id, LEFT(m.content, 500) AS content_preview, m.domain,
            m.tags, m.useful_count, m.access_count, m.created_at
     FROM current_memories m
-    WHERE NOT m.is_stale
-      AND (
-        m.tags @> '["lesson"]'::jsonb
-        OR m.tags @> '["lesson-candidate"]'::jsonb
-      )
-      AND (m.access_count > 0 OR m.useful_count > 0)
-      AND NOT EXISTS (
-        SELECT 1 FROM jsonb_array_elements_text(m.tags) t
-        WHERE t LIKE 'promoted:%%'
-      )
+    WHERE {_ELIGIBLE_WHERE}
     ORDER BY m.useful_count DESC, m.access_count DESC, m.created_at DESC
     LIMIT %s;
     """
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(sql, (limit,))
         return list(cur.fetchall())
+
+
+def count_lesson_promotion_candidates(conn: Connection) -> int:
+    """Total count of lesson-promotion candidates, unbounded by any limit.
+
+    Precondition: same as ``list_lesson_promotion_candidates``.
+    Postcondition: returns the exact row count matching
+    ``_ELIGIBLE_WHERE`` — the same eligibility definition
+    ``list_lesson_promotion_candidates`` uses, just without a ``LIMIT``
+    truncating it. Read-only, single indexed ``COUNT(*)`` (measured
+    ~76ms against a 154-page / 3000+ memory dev corpus, 2026-07-11) —
+    cheap enough for a per-consolidate-cycle mechanical report, unlike
+    ``curate_distill``'s clustering-derived backlog count (measured
+    ~2.6s on the same corpus; see wiki_backlog_pass.py's docstring for
+    why that one is NOT wired into the recurring cycle).
+    """
+    sql = f"SELECT count(*) AS n FROM current_memories m WHERE {_ELIGIBLE_WHERE};"
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql)
+        row = cur.fetchone()
+        return int(row["n"]) if row else 0

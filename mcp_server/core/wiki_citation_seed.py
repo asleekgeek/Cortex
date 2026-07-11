@@ -1,6 +1,11 @@
-"""One-shot seed of ``wiki.citations`` for pages created BEFORE the
-flow-forward write-path landed (I6-D7/INC6.8, ``insert_citation`` wired
-into ``wiki_write``'s completion handler — 2026-07-10). M-D7/INC7.7.
+"""Seed logic for ``wiki.citations`` (M-D7/INC7.7). Originally a one-shot
+campaign for pages created BEFORE the flow-forward write-path landed
+(I6-D7/INC6.8, ``insert_citation`` wired into ``wiki_write``'s
+completion handler — 2026-07-10); as of the G-2 grooming pass
+(2026-07-11) the same decision rule also runs recurringly via
+``consolidation.wiki_citation_seed_pass`` inside ``run_wiki_
+maintenance`` — see that module's docstring for why re-running this
+logic on new pages is reconciliation, not a new fabrication decision.
 
 INC6.8 explicitly rejected a retroactive backfill for the (then) 154
 existing pages ("Q5 ... arbitrage par défaut ... AUCUN backfill

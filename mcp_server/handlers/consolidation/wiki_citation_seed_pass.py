@@ -6,10 +6,31 @@ infrastructure (``pg_store_wiki_citation_seed``'s candidate scan,
 ``memory_reheat_pass.py``'s split (I6-D5 precedent): pure decision in
 core, I/O in infrastructure, wiring here.
 
-One-shot campaign pass, not wired into ``consolidate`` — INC6.8/Q5
-explicitly rejected an automatic retroactive backfill; this pass exists
-to be run deliberately, once, via ``scripts/wiki_citation_seed.py``, on
-a decision from the orchestrator/user reviewing the dry-run artifact.
+History (M-D7/INC7.7, 2026-07-11): first ran as a one-shot campaign via
+``scripts/wiki_citation_seed.py`` — INC6.8/Q5 had explicitly rejected an
+*automatic* retroactive backfill for the wiki's pre-existing pages
+unless the provenance was not fabricated, so the campaign's dry-run
+artifact was reviewed by the user before ``--apply`` (commit
+``a434f5bd`` seed, ``f8bcb9e0`` APPLY journal — 20 HIGH-reliability
+pairs). That one-shot decision is now settled history, not an open
+question.
+
+G-2 grooming (2026-07-11): wired into ``run_wiki_maintenance`` as a
+RECURRING reconciliation pass, alongside the campaign script (which
+still exists for ad-hoc manual runs). This is a distinct decision from
+the one INC6.8/Q5 made, not a reversal of it: the classification logic
+(``classify_seed_candidates``) is unchanged — it still inserts ONLY
+HIGH-reliability, FK-verified ``(page_id, memory_id)`` pairs, the exact
+same non-fabricated-provenance rule the campaign was reviewed against.
+What changed is *when* it runs: going forward, new ``wiki.pages`` rows
+can get their citation row lost to ``wiki_write``'s best-effort
+``_sync_page_and_cite`` degrading silently on a transient failure (its
+own documented no-op-on-exception contract) — this pass is the
+reconciliation sweep for exactly that class of accidental gap, not a
+new retroactive-fabrication decision. Idempotent (measured: 0 ``seeded``
+on immediate re-run) and cheap (measured ~15-49ms against a 20-row
+candidate set, dev DB, 2026-07-11) — see ``DEFAULT_SEED_SCAN_LIMIT``
+for the per-cycle cap.
 """
 
 from __future__ import annotations
