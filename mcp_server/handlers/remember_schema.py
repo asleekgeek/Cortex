@@ -175,7 +175,24 @@ schema = {
             "source": {
                 "type": "string",
                 "description": "Origin tag for provenance and replay scoring.",
-                "enum": ["session", "tool", "user", "consolidation", "import"],
+                # source: mcp_server/core/distillation_reporting.py::build_distill_prompt
+                # is the sole emitter of source='distillation' (grep-verified,
+                # 2026-07-12) — the required-call-shape prompt for M-D8
+                # distillation dossiers. classify_write_class (core/write_class.py)
+                # does not special-case it (not in _DERIVED_SOURCES/
+                # _MECHANICAL_SOURCES prefixes/sets), so an unclassified
+                # 'distillation' source falls through to DELIBERATE by default —
+                # matching the prompt's own explicit write_class='deliberate'.
+                # Safe to enumerate: no downstream `source ==`/`source in`
+                # branch treats it specially (grep-verified).
+                "enum": [
+                    "session",
+                    "tool",
+                    "user",
+                    "consolidation",
+                    "import",
+                    "distillation",
+                ],
                 "default": "user",
                 "examples": ["session", "tool"],
             },

@@ -26,12 +26,24 @@ schema = {
     "annotations": IDEMPOTENT_WRITE,
     "outputSchema": {
         "type": "object",
-        "required": ["action"],
+        # action is intentionally NOT required (#99 fix): the dispatch
+        # error path (handler(), args missing/invalid `action`) and the
+        # "Unknown action" path fire precisely when `action` is absent or
+        # not one of the enum values below, so a required+enum-constrained
+        # `action` could never validate on those paths. Kept as an
+        # optional documented property instead — populated on both
+        # success paths (_save_checkpoint/_restore_context) below.
         "properties": {
             "action": {"type": "string", "enum": ["save", "restore"]},
             "checkpoint_id": {
-                "type": "string",
-                "description": "UUID of the saved or restored checkpoint row.",
+                # source: MemoryStore.insert_checkpoint (pg_store_auxiliary.py,
+                # sqlite_store_auxiliary.py) both declare `-> int` and return
+                # the serial primary key via `RETURNING id` — never a UUID.
+                # Same drift family as #99 (declared schema didn't match the
+                # actual return value); fixed alongside since it blocks the
+                # "every return dict validates" verification for this file.
+                "type": "integer",
+                "description": "ID of the saved or restored checkpoint row (serial PK, not a UUID).",
             },
             "restored_context": {
                 "type": "string",
@@ -220,6 +232,7 @@ def _save_checkpoint(args: dict) -> dict:
 
     return {
         "status": "saved",
+        "action": "save",
         "checkpoint_id": checkpoint_id,
         "epoch": store.get_current_epoch(),
     }
@@ -299,6 +312,7 @@ def _restore_context(args: dict) -> dict:
 
     return {
         "status": "restored",
+        "action": "restore",
         "checkpoint": checkpoint is not None,
         "anchored_count": len(anchored),
         "recent_count": len(recent),

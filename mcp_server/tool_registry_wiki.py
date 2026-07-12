@@ -60,6 +60,7 @@ def _register_wiki_write(mcp: FastMCP) -> None:
         content: str,
         mode: str = "create",
         tags: list[str] | None = None,
+        memory_ids: list[int] | None = None,
     ) -> dict:
         """Author a wiki page (create/append/replace) with the provided markdown."""
         return await safe_handler(
@@ -69,6 +70,7 @@ def _register_wiki_write(mcp: FastMCP) -> None:
                 "content": content,
                 "mode": mode,
                 "tags": tags or [],
+                "memory_ids": memory_ids or [],
             },
             tool_name="wiki_write",
         )
