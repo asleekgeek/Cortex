@@ -690,7 +690,7 @@ class TestGradeFromContentPure:
             "see https://example.com/docs for details", base_dir=str(tmp_path)
         )
         assert report.grade == "verifiable"
-        assert "https://example.com/docs" in report.uncheckable_refs
+        assert report.uncheckable_refs == ["https://example.com/docs"]
 
     def test_never_hits_network(self, tmp_path, monkeypatch):
         def _boom(*_a, **_k):

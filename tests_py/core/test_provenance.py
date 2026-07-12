@@ -48,11 +48,11 @@ class TestExtractCommitRefs:
 class TestExtractUrlRefs:
     def test_extracts_url(self):
         refs = extract_url_refs("see https://example.com/docs for details")
-        assert "https://example.com/docs" in refs
+        assert refs == ["https://example.com/docs"]
 
     def test_strips_trailing_punctuation(self):
         refs = extract_url_refs("see (https://example.com/docs).")
-        assert "https://example.com/docs" in refs
+        assert refs == ["https://example.com/docs"]
 
     def test_dedupes(self):
         refs = extract_url_refs("https://a.com and https://a.com again")
@@ -150,7 +150,7 @@ class TestGradeUrlRefs:
             url_refs=["https://a.com"], url_verdicts={"https://a.com": False}
         )
         assert report.grade == UNVERIFIABLE
-        assert "https://a.com" in report.dead_refs
+        assert report.dead_refs == ["https://a.com"]
 
     def test_unsampled_url_is_verifiable_not_penalized(self):
         # verdict=None means "not checked this pass" (bounded sample) —
@@ -159,7 +159,7 @@ class TestGradeUrlRefs:
             url_refs=["https://a.com"], url_verdicts={"https://a.com": None}
         )
         assert report.grade == VERIFIABLE
-        assert "https://a.com" in report.uncheckable_refs
+        assert report.uncheckable_refs == ["https://a.com"]
 
 
 class TestGradeArtifactRefs:
