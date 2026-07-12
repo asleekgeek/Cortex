@@ -1,6 +1,6 @@
 # Privacy Policy — Cortex (hypermnesia-mcp)
 
-_Last updated: 2026-06-18_
+_Last updated: 2026-07-12_
 
 Cortex is a **local-first** memory server for Claude. It is designed so that your
 data stays on your machine. This policy describes exactly what data Cortex
@@ -23,13 +23,18 @@ like any other memory (locally) — avoid doing so.
 
 ## Where your data is stored
 
-- **Default (SQLite):** all memories, entities, the knowledge graph, and profiles
-  are stored in a single local database file at
-  `~/.claude/methodology/memory.db`. Nothing is uploaded.
-- **Optional (PostgreSQL):** if you explicitly configure a PostgreSQL + pgvector
-  database (via the `database_url` setting), your data is stored in **your own**
-  database. Cortex never provisions or connects to any database you did not
-  configure.
+- **SQLite (default — Claude Desktop `.mcpb` connector, Claude Cowork, and
+  other sandboxed launches):** all memories, entities, the knowledge graph, and
+  profiles are stored in a single local database file at
+  `~/.claude/methodology/memory.db`. If a configured PostgreSQL instance is
+  unreachable, Cortex falls back to this SQLite store with an explicit warning
+  in the logs. Nothing is uploaded.
+- **PostgreSQL + pgvector (Claude Code plugin / CLI mode, large stores, shared
+  team databases):** your data is stored in **your own** database, configured
+  via the `DATABASE_URL` environment variable (default
+  `postgresql://127.0.0.1:5432/cortex`); the plugin's setup script installs
+  PostgreSQL locally on your machine. Cortex never provisions or connects to
+  any database you did not configure.
 
 You own this data. Deleting the database file (or the relevant rows) permanently
 removes it. The `forget` tool deletes individual memories.

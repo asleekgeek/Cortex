@@ -51,6 +51,8 @@ Cortex ships as a single-click MCP bundle (`.mcpb`). Download the latest **`hype
 
 It runs immediately on the built-in **SQLite backend**: zero configuration, no database to provision, nothing to set up. Memory persists to a local file under `~/.claude/methodology/`. That's the whole install.
 
+**Claude Cowork** works the same zero-setup way: the sandboxed environment is detected automatically (`CLAUDE_ENVIRONMENT=cowork`) and Cortex uses the local SQLite store — no PostgreSQL required.
+
 Want PostgreSQL + pgvector instead (for very large stores or a shared team database)? It's a single configuration field — see [Configuration](#configuration) below. SQLite is the default; PostgreSQL is opt-in.
 
 <details>
