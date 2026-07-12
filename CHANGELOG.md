@@ -6,6 +6,23 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.13.3] - 2026-07-12
+
+### Fixed
+- **Third-party inspection contract restored — every registry indexer had been failing silently for ~2 months.** `psycopg` is an optional dependency (`[project.optional-dependencies].postgresql`), yet 22 `mcp_server/infrastructure/pg_store_*.py` modules imported it unconditionally at module top-level — so any bare install (`uv sync` + `uv run`, exactly glama.ai's sandbox build path, and any fresh-environment first try) crashed at import time, before `tools/list` could ever answer. All 22 modules now import psycopg under `TYPE_CHECKING` or function-locally (the lazy pattern 3 hook modules in this repo already used); the DB-less standalone surface (49 tools) registers cleanly with zero environment. Root-caused from a live reproduction; glama's card had been frozen at v3.0.0 (2026-03-30) as a result.
+- **Silent-SQLite-fallback integrity boundary.** The root `Dockerfile` now ships `CORTEX_RUNTIME=cowork` for zero-env DB-less operation — which made a dangerous case possible: a production user passing an unreachable `-e DATABASE_URL=…` would have silently landed on SQLite. `memory_store` now distinguishes an *explicit* `DATABASE_URL` (env-set) from the config default: explicit + unreachable → loud `explicit_database_url_unreachable` refusal (opt-out via `CORTEX_ALLOW_SQLITE_FALLBACK=1`); no explicit URL → sandbox fallback unchanged. Found and fixed along the way: `tool_error_handler._classify_error` was re-classifying the refusal into the generic `database_not_connected` setup guide because the message embeds raw psycopg error text — an explicit-marker guard now runs before the generic keyword scan.
+- Root `Dockerfile`: CPU-only torch wheel pin (image 2.03 GB; the default index pulled the CUDA build), DB-less `HEALTHCHECK`, and `manifest.json`/doc tool-count drift corrected to the measured ground truth (49 standalone / 52 with upstream integrations).
+- CodeQL `py/incomplete-url-substring-sanitization` alerts #97/#98 (false positives on `list[str]` membership asserts): the 5 sibling test sites hardened to exact-equality assertions; both alerts now read `fixed`.
+
+### Added
+- **Blocking `docker-smoke` CI gate** (`scripts/docker_smoke.sh` + job in `ci.yml`): builds the bare image, runs it with zero env vars and zero linked services, drives real MCP stdio (`initialize` + `tools/list`), and fails the pipeline under 49 tools. This is the feedback loop whose absence let the contract stay broken for two months — verified in both directions (PASS at 49; synthetic FAIL at a raised threshold).
+
+### Docs
+- `PRIVACY.md` rewritten truthfully per surface (SQLite default for `.mcpb`/Cowork/sandboxed launches; PostgreSQL via explicit `DATABASE_URL` for the Claude Code plugin) — verified same-day by an E2E `remember→recall` round-trip on the pure-SQLite path (PG unreachable, fresh HOME, cross-process persistence). README gains an explicit Claude Cowork zero-setup line, and its tagline now matches the repo's accountable-memory positioning.
+
+### Note
+- Pre-tag guard: LongMemEval-S MRR 0.9166 / R@10 0.982 (manifest `20260712T191146Z`, `git_sha d56c72ac`, `reranker_active: true`, `reranker_state: loaded`) — bit-identical to the 4.13.2 band, as expected: this release is import-timing, deployment, CI, and docs only, entirely outside the read path. Both gated floors PASS (MRR 0.9166 vs floor 0.914 +0.0026; R@10 0.982 vs floor 0.982 +0.0000).
+
 ## [4.13.2] - 2026-07-12
 
 ### Fixed
