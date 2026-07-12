@@ -9,11 +9,14 @@ Pure infrastructure — no core imports, no handler imports.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 import json
 from typing import Any
 
-from psycopg import Connection
-from psycopg.rows import dict_row
 
 from mcp_server.infrastructure.pg_store_wiki_common import _returning_id
 
@@ -25,6 +28,8 @@ def list_concepts(
     limit: int = 200,
 ) -> list[dict]:
     """Return concept rows, optionally filtered by status."""
+    from psycopg.rows import dict_row
+
     if status:
         sql = "SELECT * FROM wiki.concepts WHERE status = %s ORDER BY id LIMIT %s"
         params: tuple = (status, limit)
@@ -40,6 +45,8 @@ def get_concepts_by_entity_overlap(
     conn: Connection, entity_ids: list[int]
 ) -> list[dict]:
     """Return concepts whose entity_ids intersect the given list."""
+    from psycopg.rows import dict_row
+
     if not entity_ids:
         return []
     with conn.cursor(row_factory=dict_row) as cur:

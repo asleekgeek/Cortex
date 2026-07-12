@@ -22,8 +22,11 @@ diverge from the single classification contract again (INC7.2).
 
 from __future__ import annotations
 
-from psycopg import Connection
-from psycopg.rows import dict_row
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 
 from mcp_server.core.write_class import (
     NON_DELIBERATE_EXACT_SOURCES,
@@ -88,6 +91,8 @@ def list_deliberate_below_target(
                     memories`` is a VIEW with its own composite type that
                     Postgres will not implicitly cast to ``memories``.
     """
+    from psycopg.rows import dict_row
+
     sql = """
         WITH candidates AS (
             SELECT m.*

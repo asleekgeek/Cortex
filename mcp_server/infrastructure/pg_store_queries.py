@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Iterator
+from typing import TYPE_CHECKING, Any, Iterator
 
-import psycopg
+if TYPE_CHECKING:
+    import psycopg
 
 
 class PgQueryMixin:

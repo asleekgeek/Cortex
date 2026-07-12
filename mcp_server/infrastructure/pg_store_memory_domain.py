@@ -18,8 +18,11 @@ application-level bookkeeping).
 
 from __future__ import annotations
 
-from psycopg import Connection
-from psycopg.rows import dict_row
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 
 _ORPHAN_TAG = "domain-orphan"
 
@@ -52,6 +55,8 @@ def list_domainless_memories(
                     successful re-resolution, so a rescanned-and-resolved
                     row will not be re-selected as an orphan again.
     """
+    from psycopg.rows import dict_row
+
     orphan_filter = (
         "" if include_orphans else "AND NOT tags @> '[\"domain-orphan\"]'::jsonb"
     )

@@ -27,8 +27,11 @@ non-current survivor or double-supersede an already-superseded row.
 
 from __future__ import annotations
 
-from psycopg import Connection
-from psycopg.rows import dict_row
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 
 # Per-run scan cap on GROUP MEMBER ROWS (not groups) — mirrors
 # DEFAULT_MEMORY_DOMAIN_BACKFILL_LIMIT's rationale: bounds one run's cost.
@@ -68,6 +71,8 @@ def list_exact_duplicate_groups(conn: Connection, limit: int) -> list[dict]:
                     group consecutive rows by a single pass
                     (``itertools.groupby``) without an extra sort.
     """
+    from psycopg.rows import dict_row
+
     # candidates: re-selects `m.*` into its own CTE before calling
     # effective_heat(). Required, not stylistic — current_memories is a
     # VIEW with its own composite row type, which PostgreSQL will NOT

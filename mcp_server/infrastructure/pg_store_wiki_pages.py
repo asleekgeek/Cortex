@@ -9,11 +9,14 @@ Pure infrastructure — no core imports, no handler imports.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 import json
 from typing import Any
 
-from psycopg import Connection
-from psycopg.rows import dict_row
 
 from mcp_server.infrastructure.pg_store_wiki_common import body_hash
 from mcp_server.infrastructure.pg_store_wiki_sources import upsert_page_sources
@@ -131,6 +134,8 @@ def upsert_page(conn: Connection, page: dict[str, Any]) -> tuple[int, bool]:
 
 def get_page_by_slug(conn: Connection, slug: str) -> dict | None:
     """Return a page row by slug, or None."""
+    from psycopg.rows import dict_row
+
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("SELECT * FROM wiki.pages WHERE slug = %s LIMIT 1", (slug,))
         return cur.fetchone()
@@ -138,6 +143,8 @@ def get_page_by_slug(conn: Connection, slug: str) -> dict | None:
 
 def get_page_by_rel_path(conn: Connection, rel_path: str) -> dict | None:
     """Return a page row by rel_path, or None."""
+    from psycopg.rows import dict_row
+
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("SELECT * FROM wiki.pages WHERE rel_path = %s LIMIT 1", (rel_path,))
         return cur.fetchone()

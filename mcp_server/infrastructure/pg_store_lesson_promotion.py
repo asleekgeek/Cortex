@@ -9,10 +9,13 @@ never writes a rule, a trigger, a page, or a tag. It lists candidates for
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 from typing import Any
 
-from psycopg import Connection
-from psycopg.rows import dict_row
 
 # Shared by both queries below so the eligibility definition cannot drift
 # between the job-listing path and the count-only path (G-2 grooming:
@@ -48,6 +51,8 @@ def list_lesson_promotion_candidates(
     first. Read-only: never mutates memory_rules, prospective_memories,
     wiki.citations, or the memories table itself.
     """
+    from psycopg.rows import dict_row
+
     sql = f"""
     SELECT m.id, LEFT(m.content, 500) AS content_preview, m.domain,
            m.tags, m.useful_count, m.access_count, m.created_at
@@ -77,6 +82,8 @@ def count_lesson_promotion_candidates(conn: Connection) -> int:
     ~2.6s on the same corpus; see wiki_backlog_pass.py's docstring for
     why that one is NOT wired into the recurring cycle).
     """
+    from psycopg.rows import dict_row
+
     sql = f"SELECT count(*) AS n FROM current_memories m WHERE {_ELIGIBLE_WHERE};"
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(sql)

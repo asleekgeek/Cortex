@@ -10,9 +10,10 @@ Kept in its own mixin so ``pg_store_entities.py`` stays under the 300-line cap.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import psycopg
+if TYPE_CHECKING:
+    import psycopg
 
 
 class PgEntityMergeMixin:
