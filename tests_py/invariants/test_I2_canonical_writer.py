@@ -87,7 +87,10 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # (docs/adr/ADR-0053-deliberate-reheat-cas-writer-i2-exception.md).
     # Shifted 157->160 when M-D3 (7.1) added a write_class='auto' filter
     # comment to the homeostatic_state join above it.
-    ("infrastructure/pg_store_memory_reheat.py", 177),
+    # Shifted 177->182 when the bare-container contract fix (5d71069c)
+    # moved the module's psycopg import under TYPE_CHECKING, adding the
+    # guard block above this writer.
+    ("infrastructure/pg_store_memory_reheat.py", 182),
 }
 
 
