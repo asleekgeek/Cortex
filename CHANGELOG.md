@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.13.1] - 2026-07-12
+
+### Fixed
+- **Windows: SessionStart memory injection lost to a `UnicodeEncodeError` (#96).** Under a pipe (Claude Code's hook runner), CPython encoded hook stdout with the locale code page (cp1252), which cannot represent the `⟦rcpt:N⟧` injection-receipt marker — the entire SessionStart banner (anchors, hot memories, checkpoint, grooming line) was silently discarded on every Windows session, and `auto_recall`'s UserPromptSubmit injection was exposed the same way. `launcher.py::main()` now reconfigures stdout/stderr to UTF-8 (`errors="replace"`) before anything else — one choke point covering the MCP server, all 8 hooks, and both detached background workers. Repro validated by forcing `PYTHONIOENCODING=cp1252` through a pipe. Reported with an exact position-25 diagnosis and a validated A/B by @mbe14.
+- **Windows: `_pip_install`'s commit destroyed shared dependency packages under a running server (#97).** The commit loop blindly `rmtree`'d + `os.replace`'d every resolved entry — including transitives like numpy whose `.pyd` files the concurrently-booting MCP server had locked — leaving husk packages, and the unconditional `finally: rmtree(tmp_dir)` destroyed the fresh copy too, making the failure permanent and re-triggering a multi-hundred-MB install per prompt. Fixed with all four measures from the report: a dist-info idempotence guard (satisfied entries are never touched), a rename-aside/rollback non-destructive commit that preserves `tmp_dir` on failure, a version-pinned success stamp + bounded directory lock taking the check out of the SessionStart hot path, and a dist-info presence probe (no more importing torch inside the hook). The bootstrap logic moved to a dedicated `scripts/launcher_deps.py` (stdlib-only preserved) with 21 tests including a simulated mid-commit `PermissionError` rollback. Reported with root cause and the fix list by @mbe14.
+
+### Note
+- Pre-tag guard: LongMemEval-S MRR 0.9166 / R@10 0.982 (manifest `20260712T021633Z`) — bit-identical to the reference band; the launcher is pure process bootstrap, outside the read path. Real-Windows confirmation (genuine file locks, genuine cp1252 console) pending from the reporter, as with #91–#95.
+
 ## [4.13.0] - 2026-07-11
 
 ### Added
