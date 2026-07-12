@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.13.2] - 2026-07-12
+
+### Fixed
+- **MCP tool schemas drifted from their handler signatures (#98).** Several `inputSchema` declarations in the tool registry no longer matched the parameters their handlers actually accept, so schema-aware clients could not pass valid arguments. `tool_registry_memory.py` restores `supersedes_id` + `write_class` on both `remember` variants; `tool_registry_wiki.py` restores `memory_ids` on `wiki_write`; `remember_schema.py`'s `source` enum regains `distillation`. A new `tests_py/handlers/test_tool_schema_parity.py` asserts wrapper↔handler parity so the drift cannot silently recur (the known sibling gaps — `is_global`/`initial_heat` on `remember`, `title`/`body`/`summary` on `wiki_write` — are explicitly whitelisted and tracked as a follow-up).
+- **`checkpoint` output schema was unsatisfiable and mistyped (#99).** `action` was declared `required` in the `outputSchema` but only ever populated on failure paths, and `checkpoint_id` was typed `string` while the handler returns an integer. `checkpoint.py` removes `action` from `required` (and now populates it on success), and retypes `checkpoint_id` to `integer`. Covered by `tests_py/handlers/test_checkpoint_output_schema.py`.
+
+### Note
+- Pre-tag guard: LongMemEval-S MRR 0.9166 / R@10 0.982 (manifest `20260712T123142Z`, `reranker_active: true`, `reranker_state: loaded`) — bit-identical to the 4.13.1 reference band, as expected: #98/#99 touch only tool-schema declarations and the checkpoint output object, outside the read path. Both gated floors PASS (MRR 0.9166 vs floor 0.914 +0.0026; R@10 0.982 vs floor 0.982 +0.0000).
+
 ## [4.13.1] - 2026-07-12
 
 ### Fixed
