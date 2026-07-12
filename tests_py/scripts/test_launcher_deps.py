@@ -110,7 +110,7 @@ def test_pip_install_never_touches_already_satisfied_entry(
 
         return _Result()
 
-    monkeypatch.setattr(deps_mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(deps_mod._install.subprocess, "run", fake_run)
     ok = deps_mod._pip_install(str(deps_dir), ["numpy==2.4.4"])
     assert ok is True
     # dest's original marker survives untouched -- never replaced.
@@ -140,17 +140,16 @@ def test_pip_install_replaces_entry_when_version_differs(
 
         return _Result()
 
-    monkeypatch.setattr(deps_mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(deps_mod._install.subprocess, "run", fake_run)
     ok = deps_mod._pip_install(str(deps_dir), ["numpy==2.4.4"])
     assert ok is True
     assert "NEW" in (deps_dir / "numpy" / "__init__.py").read_text(encoding="utf-8")
     assert (deps_dir / "numpy-2.4.4.dist-info").is_dir()
-    # NOTE: the stale numpy-2.2.6.dist-info is orphaned, not cleaned up —
-    # pre-existing behavior (unchanged by this fix): the commit loop only
-    # ever touches entries present in tmp_dir's listing, and the OLD
-    # dist-info's name isn't one of them. Not this issue's scope (#97 is
-    # about not DESTROYING already-correct installs, not about pruning
-    # stale dist-info directories).
+    # Residue 2 fix: the superseded numpy-2.2.6.dist-info is pruned right
+    # after the commit, not left as duplicate metadata for one dist. See
+    # test_pip_install_prunes_superseded_dist_info_on_version_bump below
+    # for the dedicated coverage of this behavior.
+    assert not (deps_dir / "numpy-2.2.6.dist-info").exists()
 
 
 # ------------------------------------------------- non-destructive commit ---
@@ -183,7 +182,7 @@ def test_pip_install_rollback_on_mid_commit_failure(deps_mod, tmp_path, monkeypa
 
         return _Result()
 
-    monkeypatch.setattr(deps_mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(deps_mod._install.subprocess, "run", fake_run)
 
     real_replace = os.replace
 
@@ -199,7 +198,7 @@ def test_pip_install_rollback_on_mid_commit_failure(deps_mod, tmp_path, monkeypa
             )
         return real_replace(src, dst)
 
-    monkeypatch.setattr(deps_mod.os, "replace", flaky_replace)
+    monkeypatch.setattr(deps_mod._install.os, "replace", flaky_replace)
 
     ok = deps_mod._pip_install(str(deps_dir), ["numpy==2.4.4"])
 
@@ -235,7 +234,7 @@ def test_pip_install_no_backup_leaked_on_success(deps_mod, tmp_path, monkeypatch
 
         return _Result()
 
-    monkeypatch.setattr(deps_mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(deps_mod._install.subprocess, "run", fake_run)
     assert deps_mod._pip_install(str(deps_dir), ["numpy==2.4.4"]) is True
     leftovers = [p for p in deps_dir.iterdir() if ".bak-" in p.name]
     assert leftovers == []
@@ -257,7 +256,7 @@ def test_pip_install_failure_preserves_tmp_dir_and_returns_false(
 
         return _Result()
 
-    monkeypatch.setattr(deps_mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(deps_mod._install.subprocess, "run", fake_run)
     ok = deps_mod._pip_install(str(deps_dir), ["numpy==2.4.4"])
     assert ok is False
 
@@ -372,3 +371,293 @@ def test_entry_dist_key_strips_dist_info_suffix(deps_mod):
         deps_mod._entry_dist_key("pydantic_settings-2.14.0.dist-info")
         == "pydantic_settings"
     )
+
+
+# ---------------------------------------------------- residue 1: sweep ---
+
+
+def test_pid_alive_true_for_current_process(deps_mod):
+    assert deps_mod._pid_alive(os.getpid()) is True
+
+
+def test_pid_alive_false_for_invalid_pid(deps_mod):
+    assert deps_mod._pid_alive(0) is False
+    assert deps_mod._pid_alive(-1) is False
+
+
+def test_sweep_stale_backups_removes_dead_pid_husk(deps_mod, tmp_path, monkeypatch):
+    """mbe14's real-Windows-lock finding: a locked file inside the
+    rename-aside backup leaves `<entry>.bak-<pid>` husks that
+    `shutil.rmtree(..., ignore_errors=True)` silently kept. Once the
+    owning pid is dead, the sweep must reclaim them."""
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    (deps_dir / "numpy.bak-4242").mkdir()
+    (deps_dir / "numpy-2.4.4.dist-info.bak-4242").mkdir()
+    monkeypatch.setattr(deps_mod._fs, "pid_alive", lambda _pid: False)
+    deps_mod._sweep_stale_backups(str(deps_dir))
+    assert not (deps_dir / "numpy.bak-4242").exists()
+    assert not (deps_dir / "numpy-2.4.4.dist-info.bak-4242").exists()
+
+
+def test_sweep_stale_backups_leaves_live_pid_alone(deps_mod, tmp_path, monkeypatch):
+    """A backup whose owning process is still alive (still holding the
+    lock) must survive the sweep."""
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    (deps_dir / "numpy.bak-4242").mkdir()
+    monkeypatch.setattr(deps_mod._fs, "pid_alive", lambda _pid: True)
+    deps_mod._sweep_stale_backups(str(deps_dir))
+    assert (deps_dir / "numpy.bak-4242").exists()
+
+
+def test_sweep_stale_backups_ignores_non_matching_names(
+    deps_mod, tmp_path, monkeypatch
+):
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    (deps_dir / "numpy").mkdir()
+    (deps_dir / "not-a-backup.txt").write_text("x", encoding="utf-8")
+    monkeypatch.setattr(deps_mod._fs, "pid_alive", lambda _pid: False)
+    deps_mod._sweep_stale_backups(str(deps_dir))
+    assert (deps_dir / "numpy").exists()
+    assert (deps_dir / "not-a-backup.txt").exists()
+
+
+def test_ensure_deps_sweeps_stale_backups(deps_mod, tmp_path, monkeypatch):
+    """The sweep runs unconditionally at the top of ensure_deps, even
+    when the stamp already short-circuits the rest of the bootstrap."""
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    (deps_dir / "numpy.bak-4242").mkdir()
+    pins = [spec for _name, spec in deps_mod._BASE_PACKAGES]
+    deps_mod._write_stamp(str(deps_dir), "base", pins)
+    monkeypatch.setattr(deps_mod._fs, "pid_alive", lambda _pid: False)
+    deps_mod.ensure_deps(str(deps_dir))
+    assert not (deps_dir / "numpy.bak-4242").exists()
+
+
+# ------------------------------------------- residue 2: dist-info prune ---
+
+
+def test_pip_install_prunes_superseded_dist_info_on_version_bump(
+    deps_mod, tmp_path, monkeypatch
+):
+    """A cross-version commit must remove the OLD dist-info, not leave
+    duplicate metadata for the same distribution (importlib.metadata /
+    pip both see two records for one dist otherwise)."""
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    _make_pkg_dir(deps_dir, "numpy", marker="OLD")
+    _make_dist_info(deps_dir, "numpy", "2.4.4")
+
+    def fake_run(cmd, **kwargs):
+        tmp_dir = Path(cmd[cmd.index("--target") + 1])
+        _make_pkg_dir(tmp_dir, "numpy", marker="NEW")
+        _make_dist_info(tmp_dir, "numpy", "2.5.1")
+
+        class _Result:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return _Result()
+
+    monkeypatch.setattr(deps_mod._install.subprocess, "run", fake_run)
+    ok = deps_mod._pip_install(str(deps_dir), ["numpy==2.5.1"])
+    assert ok is True
+    assert (deps_dir / "numpy-2.5.1.dist-info").is_dir()
+    assert not (deps_dir / "numpy-2.4.4.dist-info").exists()
+
+
+def test_pip_install_prune_does_not_touch_unrelated_dist_info(
+    deps_mod, tmp_path, monkeypatch
+):
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    _make_pkg_dir(deps_dir, "numpy", marker="OLD")
+    _make_dist_info(deps_dir, "numpy", "2.4.4")
+    _make_dist_info(deps_dir, "pydantic", "2.13.3")
+
+    def fake_run(cmd, **kwargs):
+        tmp_dir = Path(cmd[cmd.index("--target") + 1])
+        _make_pkg_dir(tmp_dir, "numpy", marker="NEW")
+        _make_dist_info(tmp_dir, "numpy", "2.5.1")
+
+        class _Result:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return _Result()
+
+    monkeypatch.setattr(deps_mod._install.subprocess, "run", fake_run)
+    deps_mod._pip_install(str(deps_dir), ["numpy==2.5.1"])
+    assert (deps_dir / "pydantic-2.13.3.dist-info").is_dir()
+
+
+def test_pip_install_prune_not_reached_on_idempotence_skip(
+    deps_mod, tmp_path, monkeypatch
+):
+    """The idempotence guard's `continue` never commits anything, so the
+    prune step must not run either -- nothing changed, nothing to
+    prune."""
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    _make_pkg_dir(deps_dir, "numpy", marker="SAME")
+    _make_dist_info(deps_dir, "numpy", "2.4.4")
+
+    def fake_run(cmd, **kwargs):
+        tmp_dir = Path(cmd[cmd.index("--target") + 1])
+        _make_pkg_dir(tmp_dir, "numpy", marker="SAME")
+        _make_dist_info(tmp_dir, "numpy", "2.4.4")
+
+        class _Result:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return _Result()
+
+    pruned = {"called": False}
+    monkeypatch.setattr(deps_mod._install.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        deps_mod._install._fs,
+        "prune_superseded_dist_info",
+        lambda *a, **k: pruned.__setitem__("called", True),
+    )
+    ok = deps_mod._pip_install(str(deps_dir), ["numpy==2.4.4"])
+    assert ok is True
+    assert pruned["called"] is False
+
+
+# ---------------------------------------- residue 3: hermetic bootstrap ---
+
+
+def test_dist_info_satisfies_ignores_host_sys_path(deps_mod, tmp_path, monkeypatch):
+    """The install decision must be based on deps_dir's OWN dist-info,
+    not on whatever the host interpreter can import from the rest of
+    sys.path. Simulate a host-global numpy: it's importable, but
+    deps_dir itself has no numpy dist-info, so the pin must still read
+    as unsatisfied."""
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    fake_site_packages = tmp_path / "host-site-packages"
+    _make_pkg_dir(fake_site_packages, "numpy")
+    monkeypatch.syspath_prepend(str(fake_site_packages))
+
+    assert deps_mod._importable("numpy", str(deps_dir)) is True  # host shadow
+    assert deps_mod._dist_info_satisfies(str(deps_dir), "numpy==2.4.4") is False
+
+
+def test_ensure_deps_requests_package_satisfied_only_by_host(
+    deps_mod, tmp_path, monkeypatch
+):
+    """End-to-end residue 3: a package importable only via the HOST's
+    global site-packages (not deps_dir) must still be requested from
+    pip -- it must not silently drop out of the install set and enter
+    deps_dir only later as an unpinned transitive."""
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    fake_site_packages = tmp_path / "host-site-packages"
+    _make_pkg_dir(fake_site_packages, "numpy")
+    monkeypatch.syspath_prepend(str(fake_site_packages))
+
+    requested = {}
+
+    def fake_pip_install(_deps_dir, packages, constraints=None):
+        requested["packages"] = packages
+        return True
+
+    monkeypatch.setattr(deps_mod, "_pip_install", fake_pip_install)
+    monkeypatch.setattr(deps_mod, "_importable", lambda *a, **k: True)
+    deps_mod.ensure_deps(str(deps_dir))
+    numpy_spec = next(spec for name, spec in deps_mod._BASE_PACKAGES if name == "numpy")
+    assert numpy_spec in requested["packages"]
+
+
+def test_ensure_all_deps_passes_base_pins_as_constraints(
+    deps_mod, tmp_path, monkeypatch
+):
+    """Residue 3, second half: the ML install must constrain its resolve
+    to the base pins so a shared transitive (numpy) agrees with the
+    base install regardless of order."""
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    base_pins = [spec for _name, spec in deps_mod._BASE_PACKAGES]
+    deps_mod._write_stamp(str(deps_dir), "base", base_pins)
+
+    captured = {}
+
+    def fake_pip_install(_deps_dir, packages, constraints=None):
+        captured["packages"] = packages
+        captured["constraints"] = constraints
+        return True
+
+    monkeypatch.setattr(deps_mod, "_pip_install", fake_pip_install)
+    monkeypatch.setattr(deps_mod, "_importable", lambda *a, **k: True)
+    deps_mod.ensure_all_deps(str(deps_dir))
+    assert captured["constraints"] == base_pins
+
+
+def test_pip_install_writes_and_cleans_constraints_file(
+    deps_mod, tmp_path, monkeypatch
+):
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    captured_cmd = {}
+
+    def fake_run(cmd, **kwargs):
+        captured_cmd["cmd"] = cmd
+        if "-c" in cmd:
+            constraints_path = cmd[cmd.index("-c") + 1]
+            captured_cmd["constraints_path"] = constraints_path
+            captured_cmd["constraints_contents"] = Path(constraints_path).read_text(
+                encoding="utf-8"
+            )
+        tmp_dir = Path(cmd[cmd.index("--target") + 1])
+        _make_pkg_dir(tmp_dir, "flashrank")
+        _make_dist_info(tmp_dir, "flashrank", "0.2.10")
+
+        class _Result:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return _Result()
+
+    monkeypatch.setattr(deps_mod._install.subprocess, "run", fake_run)
+    ok = deps_mod._pip_install(
+        str(deps_dir), ["flashrank==0.2.10"], constraints=["numpy==2.4.4"]
+    )
+    assert ok is True
+    assert "-c" in captured_cmd["cmd"]
+    assert "numpy==2.4.4" in captured_cmd["constraints_contents"]
+    assert not Path(captured_cmd["constraints_path"]).exists()  # cleaned up
+
+
+def test_pip_install_no_constraints_file_when_none_given(
+    deps_mod, tmp_path, monkeypatch
+):
+    """The common (base-install) case passes no constraints -- must not
+    add a `-c` flag or create a stray file."""
+    deps_dir = tmp_path / "deps"
+    deps_dir.mkdir()
+    captured_cmd = {}
+
+    def fake_run(cmd, **kwargs):
+        captured_cmd["cmd"] = cmd
+        tmp_dir = Path(cmd[cmd.index("--target") + 1])
+        _make_pkg_dir(tmp_dir, "numpy")
+        _make_dist_info(tmp_dir, "numpy", "2.4.4")
+
+        class _Result:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return _Result()
+
+    monkeypatch.setattr(deps_mod._install.subprocess, "run", fake_run)
+    deps_mod._pip_install(str(deps_dir), ["numpy==2.4.4"])
+    assert "-c" not in captured_cmd["cmd"]
