@@ -46,17 +46,19 @@ class TestMain:
             # Should call mcp.run with stdio transport
             mock_run.assert_called_once_with(transport="stdio")
 
-    def test_standalone_baseline_is_48_tools(self):
-        """With no upstream available, exactly the 48 standalone tools register.
+    def test_standalone_baseline_is_49_tools(self):
+        """With no upstream available, exactly the 49 standalone tools register.
 
-        48 = the 44 pre-blame-path tools + `why` (blame path T3, decision
-        4255039) + `ingest_findings` (INC5.1, ADR-0052 — reads AP artifacts
-        from disk, no upstream connection needed) + `lesson_promotion`
-        (M-D6, 7.6 — reads PG only) + `curate_distill` (INC7.8/M-D8 —
-        understanding-level distillation jobs, read-only). The 3
-        upstream-integration tools (ingest_codebase, change_impact,
-        ingest_prd) MUST NOT be advertised — every advertised tool then
-        works out of the box.
+        Re-derived 2026-07-12 (fix/bare-container-contract): this test's own
+        name/docstring previously said 48 while its own `assert len(names)
+        == 49` two lines below already asserted 49 — a self-contradictory
+        drift caught by a live DB-less `tools/list` round-trip (a `docker
+        run` of the root Dockerfile and an out-of-container `uv run
+        hypermnesia-mcp` reproduction each independently returned 49 tools
+        with zero upstream MCP servers reachable, matching this test's
+        assertion, not its old name). The 3 upstream-integration tools
+        (ingest_codebase, change_impact, ingest_prd) MUST NOT be
+        advertised — every advertised tool then works out of the box.
         source: MCP Directory submission decision 2026-06-19.
         """
         names = _tool_names(codebase=False, prd=False)

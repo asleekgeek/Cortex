@@ -9,10 +9,13 @@ Pure infrastructure — no core imports, no handler imports.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 import json
 
-from psycopg import Connection
-from psycopg.rows import dict_row
 
 from mcp_server.infrastructure.pg_store_wiki_common import _returning_id
 
@@ -69,6 +72,8 @@ def delete_claims_for_memory(conn: Connection, memory_id: int) -> int:
 
 def get_claims_for_memory(conn: Connection, memory_id: int) -> list[dict]:
     """Return all claim_events derived from a single memory."""
+    from psycopg.rows import dict_row
+
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             "SELECT * FROM wiki.claim_events WHERE memory_id = %s ORDER BY id",
@@ -133,6 +138,8 @@ def get_claims_by_entity(
     Used by the resolver to find supersedes / conflict candidates.
     Excludes the claims being resolved (avoid self-matches).
     """
+    from psycopg.rows import dict_row
+
     if not entity_ids:
         return {}
     excl = exclude_claim_ids or []

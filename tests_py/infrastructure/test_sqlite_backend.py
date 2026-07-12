@@ -443,3 +443,116 @@ class TestBackendSelection:
         finally:
             store.close()
             get_memory_settings.cache_clear()
+
+
+# ── Explicit-DATABASE_URL anti-silent-fallback boundary ────────────────────
+#
+# Review finding (fix/bare-container-contract, 2026-07-12): the Docker image
+# now bakes CORTEX_RUNTIME=cowork for the DB-less inspection contract. A
+# production user launching the container with a misconfigured/unreachable
+# DATABASE_URL must NOT silently redirect writes to SQLite — that is an
+# integrity hazard (writes land in a different database than the operator
+# believes). The sandbox path (no DATABASE_URL at all — Cowork never sets
+# one) must keep falling back to SQLite with a warning, unchanged.
+
+
+class TestExplicitDatabaseUrlFallbackBoundary:
+    def _unreachable_pg(self, monkeypatch):
+        """Force every _try_pg_verbose call to behave as a failed PG connection."""
+        import mcp_server.infrastructure.memory_store as memory_store_module
+
+        monkeypatch.setattr(
+            memory_store_module,
+            "_try_pg_verbose",
+            lambda url: (None, "connection refused"),
+        )
+
+    def test_explicit_env_url_unreachable_cowork_raises(self, monkeypatch):
+        """(a) Explicit DATABASE_URL + PG unreachable + cowork → RuntimeError,
+        not a silent SQLite fallback."""
+        from mcp_server.infrastructure.memory_config import get_memory_settings
+        from mcp_server.infrastructure.memory_store import _construct_store
+
+        monkeypatch.setenv("CORTEX_RUNTIME", "cowork")
+        monkeypatch.setenv("CORTEX_MEMORY_STORE_BACKEND", "auto")
+        monkeypatch.setenv("DATABASE_URL", "postgresql://127.0.0.1:1/nonexistent")
+        monkeypatch.delenv("CORTEX_ALLOW_SQLITE_FALLBACK", raising=False)
+        self._unreachable_pg(monkeypatch)
+        get_memory_settings.cache_clear()
+
+        try:
+            with pytest.raises(RuntimeError, match="explicit DATABASE_URL unreachable"):
+                _construct_store()
+        finally:
+            get_memory_settings.cache_clear()
+
+    def test_explicit_env_url_unreachable_with_opt_in_falls_back(
+        self, monkeypatch, tmp_path
+    ):
+        """(b) Explicit DATABASE_URL + PG unreachable + CORTEX_ALLOW_SQLITE_FALLBACK=1
+        → SQLite fallback (opt-in honored), with a warning logged."""
+        from mcp_server.infrastructure.memory_config import get_memory_settings
+        from mcp_server.infrastructure.memory_store import _construct_store
+
+        db_path = str(tmp_path / "opt_in.db")
+        monkeypatch.setenv("CORTEX_RUNTIME", "cowork")
+        monkeypatch.setenv("CORTEX_MEMORY_STORE_BACKEND", "auto")
+        monkeypatch.setenv("DATABASE_URL", "postgresql://127.0.0.1:1/nonexistent")
+        monkeypatch.setenv("CORTEX_ALLOW_SQLITE_FALLBACK", "1")
+        self._unreachable_pg(monkeypatch)
+        get_memory_settings.cache_clear()
+
+        store = None
+        try:
+            store = _construct_store(db_path=db_path)
+            assert type(store).__name__ == "SqliteMemoryStore"
+        finally:
+            if store is not None:
+                store.close()
+            get_memory_settings.cache_clear()
+
+    def test_no_explicit_url_cowork_falls_back_silently(self, monkeypatch, tmp_path):
+        """(c) No DATABASE_URL in the environment (the Cowork sandbox contract)
+        + PG unreachable + cowork → SQLite fallback preserved (no raise)."""
+        from mcp_server.infrastructure.memory_config import get_memory_settings
+        from mcp_server.infrastructure.memory_store import _construct_store
+
+        db_path = str(tmp_path / "sandbox.db")
+        monkeypatch.setenv("CORTEX_RUNTIME", "cowork")
+        monkeypatch.setenv("CORTEX_MEMORY_STORE_BACKEND", "auto")
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.delenv("CORTEX_ALLOW_SQLITE_FALLBACK", raising=False)
+        # settings.DATABASE_URL default (postgresql://127.0.0.1:5432/cortex) is
+        # still the URL that gets tried against PG, but its source is the
+        # hardcoded default, not an operator-supplied env var.
+        self._unreachable_pg(monkeypatch)
+        get_memory_settings.cache_clear()
+
+        store = None
+        try:
+            store = _construct_store(db_path=db_path)
+            assert type(store).__name__ == "SqliteMemoryStore"
+        finally:
+            if store is not None:
+                store.close()
+            get_memory_settings.cache_clear()
+
+    def test_postgresql_mode_unreachable_still_raises_unchanged(self, monkeypatch):
+        """(d) STORE_BACKEND=postgresql (the CLI/explicit-postgresql path) with
+        PG unreachable must keep raising exactly as before this fix — this
+        change only touches the "auto" + cowork branch."""
+        from mcp_server.infrastructure.memory_config import get_memory_settings
+        from mcp_server.infrastructure.memory_store import _construct_store
+
+        monkeypatch.setenv("CORTEX_RUNTIME", "cowork")
+        monkeypatch.setenv("CORTEX_MEMORY_STORE_BACKEND", "postgresql")
+        monkeypatch.setenv("DATABASE_URL", "postgresql://127.0.0.1:1/nonexistent")
+        monkeypatch.delenv("CORTEX_ALLOW_SQLITE_FALLBACK", raising=False)
+        self._unreachable_pg(monkeypatch)
+        get_memory_settings.cache_clear()
+
+        try:
+            with pytest.raises(RuntimeError, match="Cortex requires PostgreSQL"):
+                _construct_store()
+        finally:
+            get_memory_settings.cache_clear()

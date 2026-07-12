@@ -59,6 +59,17 @@ def _classify_error(exc: Exception) -> tuple[str, str]:
     """Classify an exception into a user-friendly category and message."""
     exc_lower = (type(exc).__name__ + " " + str(exc)).lower()
 
+    # Anti-silent-fallback boundary (memory_store._construct_store): the
+    # RuntimeError text embeds the raw psycopg error, which otherwise
+    # collides with the generic "connection refused"/"operationalerror"
+    # keywords below and would get reclassified into the generic
+    # database_not_connected setup guide — silently discarding the far
+    # more load-bearing message that a production DATABASE_URL was
+    # explicitly configured and refused to fall back to SQLite. Must be
+    # checked before the generic keyword scan.
+    if "explicit database_url unreachable" in exc_lower:
+        return "explicit_database_url_unreachable", str(exc)
+
     if any(
         kw in exc_lower
         for kw in [
@@ -197,6 +208,11 @@ async def safe_handler(
                 "If this persists, check that PostgreSQL is running "
                 "and DATABASE_URL is set correctly."
             )
-            if error_type not in ("missing_extension", "database_not_connected")
+            if error_type
+            not in (
+                "missing_extension",
+                "database_not_connected",
+                "explicit_database_url_unreachable",
+            )
             else None,
         }

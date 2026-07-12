@@ -9,11 +9,14 @@ Pure infrastructure — no core imports, no handler imports.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 import json
 from typing import Any
 
-from psycopg import Connection
-from psycopg.rows import dict_row
 
 from mcp_server.infrastructure.pg_store_wiki_common import _returning_id
 
@@ -57,6 +60,8 @@ def insert_draft(conn: Connection, draft: dict[str, Any]) -> int:
 
 
 def get_draft(conn: Connection, draft_id: int) -> dict | None:
+    from psycopg.rows import dict_row
+
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("SELECT * FROM wiki.drafts WHERE id = %s", (draft_id,))
         return cur.fetchone()
@@ -69,6 +74,8 @@ def list_drafts(
     kind: str | None = None,
     limit: int = 50,
 ) -> list[dict]:
+    from psycopg.rows import dict_row
+
     where: list[str] = []
     params: list = []
     if status:
@@ -166,6 +173,8 @@ def find_draft_for_source(
     conn: Connection, *, memory_id: int | None = None, concept_id: int | None = None
 ) -> dict | None:
     """Return the most recent draft for a given source, or None."""
+    from psycopg.rows import dict_row
+
     if not memory_id and not concept_id:
         return None
     if memory_id is not None:

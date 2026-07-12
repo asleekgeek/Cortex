@@ -34,8 +34,11 @@ schema migration landing and this one-shot script's first run (see
 
 from __future__ import annotations
 
-from psycopg import Connection
-from psycopg.rows import dict_row
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 
 _DEFAULT_SENTINEL = "deliberate"
 
@@ -57,6 +60,8 @@ def list_source_groups_at_default(conn: Connection, limit: int) -> list[dict]:
                     a full apply finds nothing left to reclassify
                     (idempotence).
     """
+    from psycopg.rows import dict_row
+
     sql = (
         "SELECT COALESCE(source, '') AS source, COUNT(*) AS row_count\n"
         "  FROM current_memories\n"

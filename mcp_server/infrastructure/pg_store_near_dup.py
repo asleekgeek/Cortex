@@ -30,8 +30,11 @@ and is documented as such in the campaign artifact (I6-D2 step 2:
 
 from __future__ import annotations
 
-from psycopg import Connection
-from psycopg.rows import dict_row
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 
 from mcp_server.core.near_dup_calibration import SCAN_FLOOR, CandidatePair
 
@@ -70,6 +73,8 @@ def list_candidate_pairs(
                     by ``(id_a, id_b)`` for deterministic downstream
                     stratified sampling.
     """
+    from psycopg.rows import dict_row
+
     sql = """
         WITH anchors AS (
             SELECT id, embedding
@@ -121,6 +126,8 @@ def fetch_contents(conn: Connection, ids: list[int]) -> dict[int, str]:
                     caller must handle a missing key, not assume
                     completeness.
     """
+    from psycopg.rows import dict_row
+
     if not ids:
         return {}
     with conn.cursor(row_factory=dict_row) as cur:
@@ -147,6 +154,8 @@ def fetch_member_stats(conn: Connection, ids: list[int]) -> dict[int, dict]:
                     still present in ``current_memories``; missing ids
                     (superseded concurrently) are simply absent.
     """
+    from psycopg.rows import dict_row
+
     if not ids:
         return {}
     sql = """

@@ -1,14 +1,23 @@
 # Cortex MCP server — production image.
 #
 # Build:    docker build -t cortex:latest .
-# Run:      docker run --rm \
+# Run (DB-less, zero setup — the bare-container / registry-indexer
+#       contract, e.g. Glama's per-release microVM):
+#           docker run --rm -i cortex:latest
+#       tools/list answers with the full standalone tool set on the
+#       built-in SQLite backend, no external service, no env vars.
+# Run (PostgreSQL, advanced):
+#           docker run --rm -i \
 #             -e DATABASE_URL=postgresql://user:pass@host:5432/cortex \
 #             -e CORTEX_MEMORY_POOL_INTERACTIVE_MAX=16 \
 #             cortex:latest
 #
-# Requires: PostgreSQL 15+ with pgvector + pg_trgm extensions on the
-# DATABASE_URL endpoint. The image does NOT bundle PostgreSQL; it
-# connects to an external instance.
+# Storage: SQLite by default (zero setup, matches CORTEX_RUNTIME=cowork
+# below), or PostgreSQL 15+ with pgvector + pg_trgm when DATABASE_URL is
+# set. The image does NOT bundle PostgreSQL; it connects to an external
+# instance when one is configured — see mcp_server/infrastructure/
+# memory_store.py for the auto/postgresql/sqlite backend-selection logic
+# this image relies on (not duplicated here).
 #
 # Source: docs/program/phase-5-pool-admission-design.md §7.
 
@@ -26,7 +35,16 @@ COPY pyproject.toml README.md ./
 COPY mcp_server ./mcp_server
 COPY tests_py ./tests_py
 
+# CPU-only torch wheel: sentence-transformers pulls torch transitively as
+# a mandatory base dependency (pyproject.toml); pip's default index
+# resolves the full CUDA build (~2GB across torch/cudnn/cusparselt/
+# cublas/etc.) even though this image never uses a GPU. Pinning the CPU
+# wheel index first, same as docker/Dockerfile:33-34, keeps this layer's
+# download bounded — source: measured 2026-07-12, root Dockerfile build
+# pulled 2GB+ of nvidia-cu13-* wheels before this pin was added (H2,
+# fix/bare-container-contract root-cause report).
 RUN pip install --no-cache-dir --upgrade pip build && \
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir .[postgresql]
 
 # ── Runtime stage ────────────────────────────────────────────────────────
@@ -49,10 +67,27 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 USER cortex
 WORKDIR /home/cortex
 
-# Health check: probe the settings module loads + DB URL is reachable.
-# Exit 0 means ready; any non-zero from entrypoint propagates.
+# CORTEX_RUNTIME=cowork opts into the store factory's existing permissive
+# fallback path (mcp_server/infrastructure/memory_store.py::_construct_store):
+# "auto" backend tries PostgreSQL when DATABASE_URL is set, and always
+# falls back to the built-in SQLite store otherwise -- no external
+# service required. Without this, the factory's default "cli" runtime
+# treats an unreachable/default PostgreSQL URL as fatal (by design, for
+# a developer laptop expecting Postgres) rather than falling back, which
+# is wrong for a container with no external services attached. This does
+# not affect `tools/list` (registration never touches the store), only
+# the tool call paths (remember/recall/etc.) -- see bare-container-contract
+# root-cause report, fact #11.
+ENV CORTEX_RUNTIME=cowork
+
+# Health check: the process is alive and the full tool-registration import
+# chain (mcp_server.__main__, all 49 standalone tool handlers) succeeds --
+# NOT a database reachability probe. Registration must succeed with zero
+# external services (see CORTEX_RUNTIME above); a DB-touching healthcheck
+# would fail this image's own DB-less contract. Exit 0 means ready; any
+# non-zero from entrypoint propagates.
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD python -c "from mcp_server.infrastructure.memory_config import get_memory_settings; get_memory_settings()"
+    CMD python -c "import mcp_server.__main__"
 
 # MCP servers typically run stdio transport; no ports to expose.
 # Prometheus metrics endpoint is served by the sidecar in Phase 7.1.

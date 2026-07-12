@@ -11,8 +11,10 @@ Pure infrastructure — no core imports, no handler imports.
 
 from __future__ import annotations
 
-from psycopg import Connection
-from psycopg.rows import dict_row
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
 
 
 def list_pages_missing_source_link(conn: Connection, *, limit: int) -> list[dict]:
@@ -30,6 +32,8 @@ def list_pages_missing_source_link(conn: Connection, *, limit: int) -> list[dict
                     zero 'documents' rows in wiki.page_sources and a
                     NULL documents_primary.
     """
+    from psycopg.rows import dict_row
+
     sql = """
     SELECT p.id, p.memory_id, p.rel_path, p.title, p.domain, p.lead, p.sections
       FROM wiki.pages p

@@ -9,8 +9,11 @@ Pure infrastructure — no core imports, no handler imports.
 
 from __future__ import annotations
 
-from psycopg import Connection
-from psycopg.rows import dict_row
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 
 from mcp_server.infrastructure.pg_store_wiki_pages import get_page_by_slug
 
@@ -51,6 +54,8 @@ def delete_links_from(conn: Connection, src_page_id: int) -> int:
 
 def get_backlinks(conn: Connection, dst_page_id: int) -> list[dict]:
     """Return rows linking TO this page."""
+    from psycopg.rows import dict_row
+
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             """

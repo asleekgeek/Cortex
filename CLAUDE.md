@@ -208,7 +208,7 @@ Handlers are the **composition roots**: they wire infrastructure (I/O) to core (
 - `artifact_store.py` — Content-addressed raw-output artifacts (`~/.claude/methodology/artifacts/<yyyy-mm>/<sha256[:16]>.md`) backing gist+pointer memories
 - `agent_config.py` — Agent configuration and topic scoping
 
-**handlers/** — Composition roots (47 standalone tools + 3 upstream-integration tools conditionally registered = 50 total + helpers, one per tool)
+**handlers/** — Composition roots (49 standalone tools + 3 upstream-integration tools conditionally registered = 52 total + helpers, one per tool)
 
 **validation/** — `schemas.py` — Per-tool argument validation
 
@@ -293,13 +293,14 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `wiki_purge` | Permanently delete a wiki page | <50ms |
 
 **Upstream-integration tools (3, conditionally registered)** — these register
-only when their upstream MCP server is configured, bringing the total to 50:
+only when their upstream MCP server is configured, bringing the total to 52:
 `ingest_codebase` + `change_impact` (automatised-pipeline) and `ingest_prd`
-(prd-spec-generator). With no upstream present, exactly the **47 standalone
-tools** above register (ground truth: `tests_py/test_main.py::test_standalone_baseline_is_47_tools`
-— this file's per-tier counts below that line drifted out of sync with the
-test before INC7.8 as well, e.g. `__main__.py`'s docstring said 43; not
-re-audited end-to-end here, only the delta this increment introduces).
+(prd-spec-generator). With no upstream present, exactly the **49 standalone
+tools** above register (ground truth: `tests_py/test_main.py::test_standalone_baseline_is_49_tools`
+— re-verified 2026-07-12 by a live DB-less `tools/list` stdio round-trip
+against `bare-container-contract`, both via `docker run` of the root
+Dockerfile and an out-of-container `uv run hypermnesia-mcp`: 49 tools with
+zero upstream MCP servers reachable, exactly matching the test).
 Driving the ai-architect pipeline end-to-end (formerly `run_pipeline`) is
 **not** part of this server — it lives in the automatised-pipeline MCP.
 

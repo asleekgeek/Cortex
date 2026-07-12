@@ -10,8 +10,10 @@ Pure infrastructure — no core imports, no handler imports.
 
 from __future__ import annotations
 
-from psycopg import Connection
-from psycopg.rows import dict_row
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
 
 
 def list_catchall_pages_with_sources(
@@ -32,6 +34,8 @@ def list_catchall_pages_with_sources(
                     ``wiki.page_sources.source_path`` values (empty list
                     when the page has none).
     """
+    from psycopg.rows import dict_row
+
     sql = """
     SELECT p.id, p.domain,
            COALESCE(array_agg(ps.source_path) FILTER (WHERE ps.source_path IS NOT NULL), '{}') AS source_paths

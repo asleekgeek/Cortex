@@ -14,8 +14,11 @@ in ``core.wiki_citation_seed.classify_seed_candidates``).
 
 from __future__ import annotations
 
-from psycopg import Connection
-from psycopg.rows import dict_row
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 
 # Measured 20 rows on the dev DB (2026-07-11); comfortably above any
 # realistic corpus size for the filename-encoded-memory_id convention
@@ -37,6 +40,8 @@ def list_page_memory_seed_candidates(conn: Connection, limit: int) -> list[dict]
     change cannot silently admit a stale id without this query
     reflecting it.
     """
+    from psycopg.rows import dict_row
+
     sql = """
     SELECT p.id AS page_id, p.memory_id AS memory_id,
            p.domain AS domain
@@ -67,6 +72,8 @@ def list_existing_page_memory_citations(
     time), and after ``--apply`` a set equal to the full candidate list
     (proving idempotence on re-run).
     """
+    from psycopg.rows import dict_row
+
     if not page_ids:
         return set()
     sql = """

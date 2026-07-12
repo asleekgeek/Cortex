@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import psycopg
-from psycopg import sql
+if TYPE_CHECKING:
+    import psycopg
+    from psycopg import sql
 
 
 class PgRuleMixin:
@@ -52,6 +53,8 @@ class PgRuleMixin:
         return [dict(r) for r in rows]
 
     def update_rule(self, rule_id: int, updates: dict[str, Any]) -> None:
+        from psycopg import sql
+
         allowed = {
             "rule_type",
             "scope",

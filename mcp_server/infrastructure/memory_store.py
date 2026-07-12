@@ -1,7 +1,12 @@
 """Memory store factory — runtime-aware backend selection.
 
 CLI mode: PostgreSQL required, no silent fallback.
-Cowork mode: tries PostgreSQL, falls back to SQLite.
+Cowork mode: tries PostgreSQL, falls back to SQLite when no DATABASE_URL was
+explicitly configured (the DB-less inspection/sandbox contract). When
+DATABASE_URL IS explicitly set (env var or constructor arg) and unreachable,
+falls back only with CORTEX_ALLOW_SQLITE_FALLBACK=1 opt-in — otherwise raises,
+so a misconfigured production DATABASE_URL never silently redirects writes to
+a different database. See _database_url_is_explicit for the explicitness test.
 """
 
 from __future__ import annotations
@@ -21,12 +26,6 @@ logger = logging.getLogger(__name__)
 # fixes the same connection-quota leak in production.
 _shared_lock = threading.Lock()
 _shared_stores: dict[tuple[str, str, int], object] = {}
-
-
-def _try_pg(database_url: str):
-    """Try connecting to PostgreSQL. Returns PgMemoryStore or None."""
-    store, _ = _try_pg_verbose(database_url)
-    return store
 
 
 def _try_pg_verbose(database_url: str):
@@ -183,13 +182,72 @@ def _construct_store(
             "to allow SQLite fallback."
         )
 
-    # "auto" in cowork mode: try PG, fall back to SQLite
+    # "auto" in cowork mode: try PG, fall back to SQLite — but only when the
+    # URL came from the DB-less inspection default, not from an operator who
+    # explicitly configured a target. An explicit DATABASE_URL that fails to
+    # connect must not silently redirect writes to a different database
+    # (integrity risk: the caller believes it is writing to Postgres).
     if url:
-        store = _try_pg(url)
+        store, err = _try_pg_verbose(url)
         if store is not None:
             return store
+        if _database_url_is_explicit(database_url):
+            allow_fallback = os.environ.get(
+                "CORTEX_ALLOW_SQLITE_FALLBACK", ""
+            ).lower() in ("1", "true", "yes")
+            if not allow_fallback:
+                raise RuntimeError(
+                    f"explicit DATABASE_URL unreachable (url={url}): {err}; "
+                    "refusing silent SQLite fallback; unset DATABASE_URL for "
+                    "sandbox mode or set CORTEX_ALLOW_SQLITE_FALLBACK=1 to opt in"
+                )
+            logger.warning(
+                "Explicit DATABASE_URL (%s) unreachable (%s), but "
+                "CORTEX_ALLOW_SQLITE_FALLBACK=1 opts in to SQLite fallback.",
+                url,
+                err,
+            )
+        else:
+            logger.warning(
+                "PostgreSQL unavailable (%s); falling back to SQLite. "
+                "This is expected for inspection/sandbox launches; "
+                "production installs should set DATABASE_URL.",
+                err,
+            )
 
     return _make_sqlite(db_path or settings.SQLITE_FALLBACK_PATH, embedding_dim)
+
+
+def _database_url_is_explicit(database_url_param: str | None) -> bool:
+    """True when the resolved URL came from an operator, not the DB-less
+    inspection default.
+
+    ``settings.DATABASE_URL`` (memory_config.py) carries a hardcoded default
+    (``postgresql://127.0.0.1:5432/cortex``) so it is indistinguishable in
+    *value* from a real operator-supplied URL that happens to match it —
+    the explicitness test must be on the SOURCE (was a URL supplied at all),
+    not the value. Two sources count as explicit, matching the priority
+    order in ``_construct_store``/``_resolve_backend_url``:
+      1. ``database_url`` passed directly to the constructor (CLI arg, test
+         fixture, or caller-supplied override).
+      2. The bare ``DATABASE_URL`` env var — the convention this codebase
+         uses everywhere else (pg_store.py, doctor.py, session_start.py,
+         etc.) to mean "the operator configured Postgres".
+    ``CORTEX_MEMORY_DATABASE_URL`` (the pydantic-settings prefixed var
+    documented in README.md for the "postgresql"/"auto" backend) is NOT
+    checked here: pydantic-settings folds it into ``settings.DATABASE_URL``
+    before this function ever sees it, so by the time execution reaches
+    here it is already indistinguishable from the hardcoded default. This
+    is a known blind spot — an operator using only the prefixed var will
+    get the sandbox (silent-fallback-with-warning) behavior instead of the
+    strict one. Documented rather than silently "fixed" by inspecting
+    pydantic internals, because doing so would require importing the
+    settings' env-value provenance, which pydantic-settings does not
+    expose. source: this file, _resolve_backend_url and _construct_store
+    priority chain (database_url param > os.environ["DATABASE_URL"] >
+    settings.DATABASE_URL).
+    """
+    return database_url_param is not None or "DATABASE_URL" in os.environ
 
 
 def _make_sqlite(path: str, embedding_dim: int):

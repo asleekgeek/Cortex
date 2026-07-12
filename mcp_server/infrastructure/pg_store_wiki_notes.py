@@ -9,10 +9,13 @@ Pure infrastructure — no core imports, no handler imports.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from psycopg import Connection
+
 import json
 
-from psycopg import Connection
-from psycopg.rows import dict_row
 
 from mcp_server.infrastructure.pg_store_wiki_common import _returning_id
 
@@ -118,6 +121,8 @@ def list_uncited_deliberate_memories(conn: Connection, limit: int = 20) -> list[
     values — this query already reads that column so it benefits
     automatically once D6 lands, without needing a schema change here.
     """
+    from psycopg.rows import dict_row
+
     sql = """
     SELECT m.id, LEFT(m.content, 200) AS content_preview, m.domain,
            m.importance, m.is_protected, m.source_attribution,
@@ -144,6 +149,8 @@ def list_uncited_deliberate_memories(conn: Connection, limit: int = 20) -> list[
 
 def wiki_stats(conn: Connection) -> dict:
     """Counts across the wiki schema."""
+    from psycopg.rows import dict_row
+
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             """
