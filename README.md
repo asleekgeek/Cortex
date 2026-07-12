@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <strong>Persistent memory &amp; cognitive profiling for Claude Code</strong> — local-first, single-click MCP install.
+  <strong>Persistent memory for Claude Code that holds itself accountable</strong> — forgets on purpose, says "I don't know" when unsure, flags its own contradictions. Local-first, single-click MCP install.
 </p>
 
 <p align="center">
