@@ -75,11 +75,12 @@ mcp = FastMCP(
 def register_all(mcp: FastMCP, *, codebase: bool, prd: bool) -> None:
     """Wire every tool registry onto ``mcp``.
 
-    The 49 standalone tools always register (ground truth:
-    ``tests_py/test_main.py::test_standalone_baseline_is_49_tools``,
+    The 50 standalone tools always register (ground truth:
+    ``tests_py/test_main.py::test_standalone_baseline_is_50_tools`` — the 49
     re-verified 2026-07-12 by a live DB-less stdio `tools/list` round-trip
-    on `bare-container-contract` — see CLAUDE.md handlers/ section for the
-    per-tier breakdown). The 3 upstream-integration tools
+    on `bare-container-contract`, plus ``wiki_migrate`` (FS→PG wiki parity);
+    see CLAUDE.md handlers/ section for the per-tier breakdown). The 3
+    upstream-integration tools
     register only when their upstream MCP server is available — ``codebase``
     gates ingest_codebase + change_impact (automatised-pipeline), ``prd`` gates
     ingest_prd (prd-spec-generator). source: MCP Directory decision 2026-06-19.
