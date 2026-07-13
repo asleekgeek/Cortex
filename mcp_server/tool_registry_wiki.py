@@ -1,9 +1,12 @@
-"""Tool registration: wiki authoring tools (7 tools).
+"""Tool registration: wiki authoring tools (10 tools).
 
 Registers the authoring surface that lets Claude maintain a first-class
 Markdown wiki (ADRs, specs, file docs, notes) alongside PostgreSQL
 memory. Pages are never derived from PG — they are authored via these
 tools and indexed in PG as protected pointer memories for recall.
+``wiki_migrate`` is the exception: it is the one-shot FS->PG sync +
+ghost-reconciliation job (see ``mcp_server.handlers.wiki_migrate``),
+exposed here so parity can be re-run and inspected without a shell.
 """
 
 from __future__ import annotations
@@ -14,6 +17,7 @@ from mcp_server.handlers import (
     wiki_adr,
     wiki_link,
     wiki_list,
+    wiki_migrate,
     wiki_purge,
     wiki_read,
     wiki_reindex,
@@ -31,6 +35,7 @@ SCHEMAS: dict[str, dict] = {
     "wiki_adr": wiki_adr.schema,
     "wiki_link": wiki_link.schema,
     "wiki_list": wiki_list.schema,
+    "wiki_migrate": wiki_migrate.schema,
     "wiki_purge": wiki_purge.schema,
     "wiki_read": wiki_read.schema,
     "wiki_reindex": wiki_reindex.schema,
@@ -51,6 +56,7 @@ def register(mcp: FastMCP) -> None:
     _register_wiki_purge(mcp)
     _register_wiki_verify(mcp)
     _register_wiki_rename(mcp)
+    _register_wiki_migrate(mcp)
 
 
 def _register_wiki_write(mcp: FastMCP) -> None:
@@ -181,6 +187,21 @@ def _register_wiki_verify(mcp: FastMCP) -> None:
             wiki_verify.handler,
             {"path": path} if path else {},
             tool_name="wiki_verify",
+        )
+
+
+def _register_wiki_migrate(mcp: FastMCP) -> None:
+    @mcp.tool(name="wiki_migrate", **tool_kwargs(wiki_migrate.schema))
+    async def tool_wiki_migrate(dry_run: bool = True) -> dict:
+        """Sync the filesystem wiki into PG and reconcile FS-deleted ghosts.
+
+        Defaults to dry_run=true (report ghost rel_paths without
+        deleting). Pass dry_run=false to actually purge.
+        """
+        return await safe_handler(
+            wiki_migrate.handler,
+            {"dry_run": dry_run},
+            tool_name="wiki_migrate",
         )
 
 

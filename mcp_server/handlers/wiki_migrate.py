@@ -1,13 +1,33 @@
-"""Wiki filesystem → DB migration (Phase 1.2 of redesign).
+"""Wiki filesystem → DB migration + ghost reconciliation (Phase 1.2 of
+redesign, extended for FS<->PG parity).
 
 One-shot idempotent job: walk ~/.claude/methodology/wiki/, parse every
 .md file, upsert into wiki.pages, then resolve [[slug]] references
-into wiki.links.
+into wiki.links. A fourth pass reconciles wiki.pages against the same
+filesystem scan: any row whose rel_path no longer exists on disk (file
+deleted, renamed, or purged by wiki_purge — which only ever touches the
+FS, never PG) is a "ghost" and is deleted from wiki.pages, cascading via
+FK ON DELETE CASCADE to wiki.links and wiki.page_sources (see
+pg_schema.py — src_page_id/page_id both CASCADE).
 
-Re-running is safe — body_hash guards against redundant writes.
+Coverage: PAGE_KINDS-listed directories only (adr/conventions/
+explanation/guides/how-to/lessons/notes/reference/rfc/runbook/specs/
+tutorial). The `_`-prefixed directories (_kinds/_rules/_views/
+_bibliography/_dashboards) and the root README.md are outside
+``list_pages``'s scan entirely — they were never upserted, so they can
+never appear as ghosts either. No separate exclusion list is needed:
+the existence criterion for both phases (upsert, purge) is identical —
+"does list_pages() return this rel_path right now".
+
+Re-running is safe — body_hash guards against redundant upsert writes;
+the purge phase re-computes ghosts from scratch every run (no state to
+go stale).
 
 Invoked as an MCP tool (`wiki_migrate`) or via `python -m
-mcp_server.handlers.wiki_migrate`. Never raises; returns a summary.
+mcp_server.handlers.wiki_migrate [--dry-run]`. Never raises; returns a
+summary. dry_run defaults to True (report-only) — matching wiki_purge's
+apply=False default — because purging is destructive and this tool is
+now exposed over MCP for the first time.
 """
 
 from __future__ import annotations
@@ -17,9 +37,12 @@ from pathlib import Path
 from typing import Any
 
 from mcp_server.core.wiki_pages import parse_page
+from mcp_server.handlers._tool_meta import DESTRUCTIVE
 from mcp_server.infrastructure.pg_store_wiki import (
     body_hash,
     delete_links_from,
+    delete_pages_by_rel_path,
+    list_all_rel_paths,
     resolve_unresolved_links,
     upsert_link,
     upsert_page,
@@ -29,6 +52,48 @@ from mcp_server.shared.wiki_source_paths import extract_document_paths
 
 # Wiki-link syntax: [[slug]] or [[slug|display text]]
 _WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
+
+# ── MCP schema ───────────────────────────────────────────────────────────
+
+schema = {
+    "title": "Wiki — migrate FS to PG + reconcile ghosts",
+    "annotations": DESTRUCTIVE,
+    "description": (
+        "One-shot idempotent sync of the filesystem wiki "
+        "(~/.claude/methodology/wiki/) into wiki.pages / wiki.links / "
+        "wiki.page_sources. Walks every PAGE_KINDS directory, upserts "
+        "each page keyed on rel_path (body_hash guards no-op re-writes), "
+        "re-resolves [[slug]] links, then reconciles: any wiki.pages row "
+        "whose rel_path no longer exists on disk (deleted file, rename, "
+        "or a wiki_purge run — which only touches the FS, never PG) is "
+        "purged from wiki.pages, cascading via FK ON DELETE CASCADE to "
+        "wiki.links and wiki.page_sources. The `_`-prefixed kind dirs "
+        "(_kinds/_rules/_views/_bibliography/_dashboards) and the root "
+        "README.md are outside the scan entirely on both phases, so they "
+        "are never upserted and never purged. Defaults to dry_run=true "
+        "(report the ghost rel_paths without deleting); pass "
+        "dry_run=false to actually purge. Distinct from `wiki_purge` "
+        "(deletes FS files that fail the classifier, never touches PG) — "
+        "this tool never touches the FS, only reconciles PG to match it. "
+        "Returns {pages_processed, pages_written, pages_unchanged, "
+        "links_written, links_resolved_pass3, purge: {dry_run, "
+        "ghost_count, ghost_paths, purged}, errors, error_count}."
+    ),
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "dry_run": {
+                "type": "boolean",
+                "default": True,
+                "description": (
+                    "If true (default), report which wiki.pages rows "
+                    "would be purged as filesystem ghosts without "
+                    "deleting them. Pass false to actually delete."
+                ),
+            },
+        },
+    },
+}
 
 
 def _slug_from_rel_path(rel_path: str) -> str:
@@ -158,34 +223,66 @@ def _existing_memory_ids(conn, ids: set[int]) -> set[int]:
     return out
 
 
-def migrate_wiki(wiki_root: Path | str, conn) -> dict:
-    """Walk the wiki folder and mirror every .md into wiki.pages + wiki.links.
+def find_ghost_rel_paths(fs_rel_paths: list[str], pg_rel_paths: list[str]) -> list[str]:
+    """Return the rel_paths present in PG but absent from the current FS scan.
 
-    Three passes:
-      1. Upsert all pages (records each slug → id).
-      2. Re-scan bodies for [[slug]] refs → upsert into wiki.links.
-      3. Call resolve_unresolved_links to catch stragglers.
-
-    Stale memory_ids (from filenames) that no longer exist in the memories
-    table are silently dropped — the wiki page survives orphaned.
-
-    Returns a summary dict.
+    Pure set difference — no I/O. Precondition: both lists use the same
+    rel_path convention (POSIX, relative to the wiki root, as produced by
+    ``list_pages``). Postcondition: result is sorted and contains exactly
+    the pg_rel_paths not present in fs_rel_paths — a page in fs_rel_paths
+    but not yet in PG is not a ghost, it's simply not-yet-migrated.
     """
-    root = Path(wiki_root)
-    rel_paths = list_pages(root)
-    pages_written = 0
-    pages_unchanged = 0
-    links_written = 0
-    errors: list[str] = []
+    fs_set = set(fs_rel_paths)
+    return sorted(rp for rp in pg_rel_paths if rp not in fs_set)
 
-    # Pre-pass — collect candidate memory_ids and filter to those that exist
+
+def purge_ghost_pages(conn, fs_rel_paths: list[str], *, dry_run: bool = True) -> dict:
+    """Reconcile wiki.pages against the filesystem: delete rows with no
+    backing file.
+
+    Precondition: fs_rel_paths is the result of the SAME list_pages() scan
+    used by the upsert pass in this run — using a stale or differently
+    scoped scan would misclassify pages as ghosts.
+    Postcondition (dry_run=False): every wiki.pages row whose rel_path is
+    not in fs_rel_paths is deleted (cascading to wiki.links/page_sources/
+    citations per FK ON DELETE CASCADE); rows whose rel_path IS in
+    fs_rel_paths are untouched. (dry_run=True): no row is deleted; the
+    same ghost set is still computed and returned for review.
+
+    Deletion goes through the store (delete_pages_by_rel_path) — no SQL
+    inline here (Move 5: this handler orchestrates, the store executes).
+    """
+    pg_rel_paths = list_all_rel_paths(conn)
+    ghosts = find_ghost_rel_paths(fs_rel_paths, pg_rel_paths)
+    if dry_run or not ghosts:
+        return {
+            "dry_run": dry_run,
+            "ghost_count": len(ghosts),
+            "ghost_paths": ghosts,
+            "purged": [],
+        }
+    deleted = delete_pages_by_rel_path(conn, ghosts)
+    return {
+        "dry_run": dry_run,
+        "ghost_count": len(ghosts),
+        "ghost_paths": ghosts,
+        "purged": sorted(r["rel_path"] for r in deleted),
+    }
+
+
+def _upsert_all_pages(
+    root: Path, rel_paths: list[str], conn
+) -> tuple[dict[str, int], int, int, list[str]]:
+    """Pass 1 — upsert every page. Returns (id_by_rel, written, unchanged, errors)."""
     candidate_ids = {
         mid for rp in rel_paths if (mid := _memory_id_from_rel_path(rp)) is not None
     }
     valid_ids = _existing_memory_ids(conn, candidate_ids)
 
-    # Pass 1 — upsert every page
     id_by_rel: dict[str, int] = {}
+    written = 0
+    unchanged = 0
+    errors: list[str] = []
     for rp in rel_paths:
         try:
             content = read_page(root, rp)
@@ -197,13 +294,20 @@ def migrate_wiki(wiki_root: Path | str, conn) -> dict:
             page_id, was_modified = upsert_page(conn, row)
             id_by_rel[rp] = page_id
             if was_modified:
-                pages_written += 1
+                written += 1
             else:
-                pages_unchanged += 1
+                unchanged += 1
         except Exception as e:
             errors.append(f"{rp}: {e}")
+    return id_by_rel, written, unchanged, errors
 
-    # Pass 2 — re-scan bodies for wikilinks, upsert into wiki.links
+
+def _upsert_all_links(
+    root: Path, id_by_rel: dict[str, int], conn
+) -> tuple[int, list[str]]:
+    """Pass 2 — re-scan bodies for [[slug]] refs, upsert into wiki.links."""
+    written = 0
+    errors: list[str] = []
     for rp, page_id in id_by_rel.items():
         try:
             content = read_page(root, rp)
@@ -216,39 +320,108 @@ def migrate_wiki(wiki_root: Path | str, conn) -> dict:
             delete_links_from(conn, page_id)  # idempotent refresh
             for slug in set(targets):
                 upsert_link(conn, page_id, slug, link_kind="inline")
-                links_written += 1
+                written += 1
         except Exception as e:
             errors.append(f"{rp} links: {e}")
+    return written, errors
 
-    # Pass 3 — resolve any leftover unresolved slugs
+
+def migrate_wiki(wiki_root: Path | str, conn, *, dry_run: bool = True) -> dict:
+    """Walk the wiki folder and mirror every .md into wiki.pages + wiki.links,
+    then reconcile ghosts.
+
+    Four passes:
+      1. Upsert all pages (records each slug → id) — ``_upsert_all_pages``.
+      2. Re-scan bodies for [[slug]] refs → upsert into wiki.links —
+         ``_upsert_all_links``.
+      3. Call resolve_unresolved_links to catch stragglers.
+      4. Purge wiki.pages rows whose rel_path no longer exists on disk
+         (see purge_ghost_pages). Gated by ``dry_run`` — report-only by
+         default.
+
+    Stale memory_ids (from filenames) that no longer exist in the memories
+    table are silently dropped — the wiki page survives orphaned.
+
+    Returns a summary dict.
+    """
+    root = Path(wiki_root)
+    rel_paths = list_pages(root)
+
+    id_by_rel, pages_written, pages_unchanged, errors1 = _upsert_all_pages(
+        root, rel_paths, conn
+    )
+    links_written, errors2 = _upsert_all_links(root, id_by_rel, conn)
     resolved = resolve_unresolved_links(conn)
+
+    # Pass 4 — reconcile: purge wiki.pages rows with no backing FS file.
+    # Uses the SAME rel_paths scan as Pass 1 so "ghost" is computed against
+    # this run's view of the filesystem, not a stale one.
+    purge_summary = purge_ghost_pages(conn, rel_paths, dry_run=dry_run)
+
     conn.commit()
 
+    errors = errors1 + errors2
     return {
         "pages_processed": len(rel_paths),
         "pages_written": pages_written,
         "pages_unchanged": pages_unchanged,
         "links_written": links_written,
         "links_resolved_pass3": resolved,
+        "purge": purge_summary,
         "errors": errors[:10],
         "error_count": len(errors),
     }
 
 
-async def handler(args: dict) -> dict:
-    """MCP tool entry: run migration, return summary."""
+async def handler(args: dict | None = None) -> dict:
+    """MCP tool entry: run migration + ghost-page reconciliation, return summary."""
     from mcp_server.infrastructure.config import WIKI_ROOT
     from mcp_server.infrastructure.memory_config import get_memory_settings
     from mcp_server.infrastructure.memory_store import get_shared_store
 
+    args = args or {}
+    dry_run = bool(args.get("dry_run", True))
     settings = get_memory_settings()
     store = get_shared_store(settings.DB_PATH, settings.EMBEDDING_DIM)
-    return migrate_wiki(WIKI_ROOT, store._conn)
+    return migrate_wiki(WIKI_ROOT, store._conn, dry_run=dry_run)
+
+
+__all__ = [
+    "handler",
+    "schema",
+    "migrate_wiki",
+    "find_ghost_rel_paths",
+    "purge_ghost_pages",
+]
 
 
 if __name__ == "__main__":
-    # Direct CLI invocation
+    # Direct CLI invocation: python -m mcp_server.handlers.wiki_migrate [--dry-run]
+    import argparse
     import asyncio
     import json as _json
 
-    print(_json.dumps(asyncio.run(handler({})), indent=2))
+    parser = argparse.ArgumentParser(
+        description="Wiki FS -> PG migration + ghost-page reconciliation"
+    )
+    parser.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        default=True,
+        help="Report ghost rel_paths without deleting (default).",
+    )
+    parser.add_argument(
+        "--apply",
+        dest="dry_run",
+        action="store_false",
+        help="Actually purge ghost rel_paths from wiki.pages.",
+    )
+    cli_args = parser.parse_args()
+
+    print(
+        _json.dumps(
+            asyncio.run(handler({"dry_run": cli_args.dry_run})),
+            indent=2,
+        )
+    )

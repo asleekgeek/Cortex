@@ -59,8 +59,10 @@ from mcp_server.infrastructure.pg_store_wiki_notes import (
     wiki_stats,
 )
 from mcp_server.infrastructure.pg_store_wiki_pages import (
+    delete_pages_by_rel_path,
     get_page_by_rel_path,
     get_page_by_slug,
+    list_all_rel_paths,
     upsert_page,
 )
 from mcp_server.infrastructure.pg_store_wiki_sources import upsert_page_sources
@@ -77,6 +79,7 @@ __all__ = [
     "body_hash",
     "delete_claims_for_memory",
     "delete_links_from",
+    "delete_pages_by_rel_path",
     "find_draft_for_source",
     "get_backlinks",
     "get_claim_file_refs_for_pages",
@@ -93,6 +96,7 @@ __all__ = [
     "insert_concept",
     "insert_draft",
     "insert_memo",
+    "list_all_rel_paths",
     "list_concepts",
     "list_drafts",
     "list_pages_for_decay",
