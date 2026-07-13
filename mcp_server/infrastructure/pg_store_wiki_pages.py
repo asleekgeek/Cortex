@@ -160,6 +160,8 @@ def delete_pages_by_rel_path(conn: Connection, rel_paths: list[str]) -> list[dic
     """
     if not rel_paths:
         return []
+    from psycopg.rows import dict_row
+
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             "DELETE FROM wiki.pages WHERE rel_path = ANY(%s) RETURNING id, rel_path",

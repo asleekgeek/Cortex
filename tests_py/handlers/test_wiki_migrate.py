@@ -29,7 +29,7 @@ import pytest
 
 from mcp_server.handlers.wiki_migrate import (
     _normalize_status,
-    _page_row_from_md,
+    page_row_from_md,
     find_ghost_rel_paths,
     migrate_wiki,
     purge_ghost_pages,
@@ -68,7 +68,7 @@ def test_ghost_rel_paths_result_is_sorted() -> None:
     assert find_ghost_rel_paths(fs, pg) == ["notes/a.md", "notes/z.md"]
 
 
-# ── _normalize_status / _page_row_from_md status validation ─────────────
+# ── _normalize_status / page_row_from_md status validation ─────────────
 # Mirrors wiki.pages.status's DB CHECK constraint (pg_schema.py) — every
 # value accepted here must also be accepted there, and vice versa.
 
@@ -101,16 +101,16 @@ def test_normalize_status_unknown_falls_back_to_seedling_with_warning() -> None:
     )
 
 
-def test_page_row_from_md_valid_adr_status_passes_through_unwarned() -> None:
+def testpage_row_from_md_valid_adr_status_passes_through_unwarned() -> None:
     content = "---\ntitle: Some ADR\nkind: adr\ndomain: cortex\nstatus: accepted\n---\n\nBody.\n"
-    row = _page_row_from_md("adr/cortex/1-some-adr.md", content)
+    row = page_row_from_md("adr/cortex/1-some-adr.md", content)
     assert row["status"] == "accepted"
     assert row["status_warning"] is None
 
 
-def test_page_row_from_md_unknown_status_falls_back_and_warns() -> None:
+def testpage_row_from_md_unknown_status_falls_back_and_warns() -> None:
     content = "---\ntitle: Some Note\nkind: notes\ndomain: cortex\nstatus: garbage\n---\n\nBody.\n"
-    row = _page_row_from_md("notes/cortex/1-some-note.md", content)
+    row = page_row_from_md("notes/cortex/1-some-note.md", content)
     assert row["status"] == "seedling"
     assert row["status_warning"] == (
         "notes/cortex/1-some-note.md: unknown status 'garbage' -> falling back to 'seedling'"
