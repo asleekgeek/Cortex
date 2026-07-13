@@ -1,4 +1,5 @@
-"""Unit tests for mcp_server.tool_error_handler._classify_error.
+"""Unit tests for mcp_server.tool_error_handler._classify_error and
+safe_handler's error path.
 
 Focus: the anti-silent-fallback boundary (fix/bare-container-contract review
 finding #2). RuntimeError raised by memory_store._construct_store when an
@@ -7,11 +8,24 @@ generic "database_not_connected" PostgreSQL-setup guide — that guide tells
 the user to install/configure Postgres, discarding the actually load-bearing
 information (the fallback was refused on purpose; unset DATABASE_URL or opt
 in via CORTEX_ALLOW_SQLITE_FALLBACK=1).
+
+``TestSafeHandlerErrorPath`` covers the 2026-07-14 fix: safe_handler must
+RAISE fastmcp.exceptions.ToolError carrying the classified message (not
+return an {"error", "message", "hint"} dict, which fails every tool's
+outputSchema validation and is replaced client-side by a generic
+"'<field>' is a required property" message), and must log the exception
+with its traceback before classifying it away.
 """
 
 from __future__ import annotations
 
-from mcp_server.tool_error_handler import _classify_error
+import asyncio
+import logging
+
+import pytest
+from fastmcp.exceptions import ToolError
+
+from mcp_server.tool_error_handler import _classify_error, safe_handler
 
 
 class TestExplicitDatabaseUrlUnreachableClassification:
@@ -51,3 +65,39 @@ class TestGenericClassification:
         error_type, message = _classify_error(exc)
         assert error_type == "ValueError"
         assert message == "some unrelated application error"
+
+
+class TestSafeHandlerErrorPath:
+    """safe_handler must raise ToolError, not return an error dict, and
+    must log the underlying exception (with traceback) before
+    classification discards it."""
+
+    def test_raises_tool_error_with_classified_message(self):
+        async def failing_handler(_args):
+            raise ValueError("boom")
+
+        with pytest.raises(ToolError) as exc_info:
+            asyncio.run(safe_handler(failing_handler, {}))
+
+        assert "ValueError" in str(exc_info.value)
+        assert "boom" in str(exc_info.value)
+
+    def test_logs_exception_with_traceback_before_raising(self, caplog):
+        async def failing_handler(_args):
+            raise RuntimeError("root cause detail")
+
+        with caplog.at_level(logging.ERROR, logger="mcp_server.tool_error_handler"):
+            with pytest.raises(ToolError):
+                asyncio.run(safe_handler(failing_handler, {}, tool_name="recall"))
+
+        assert any(
+            "RuntimeError" in record.getMessage() and record.exc_info
+            for record in caplog.records
+        )
+
+    def test_success_path_still_returns_dict_unchanged(self):
+        async def good_handler(_args):
+            return {"ok": True}
+
+        result = asyncio.run(safe_handler(good_handler, {}))
+        assert result == {"ok": True}
