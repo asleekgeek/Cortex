@@ -208,7 +208,7 @@ Handlers are the **composition roots**: they wire infrastructure (I/O) to core (
 - `artifact_store.py` — Content-addressed raw-output artifacts (`~/.claude/methodology/artifacts/<yyyy-mm>/<sha256[:16]>.md`) backing gist+pointer memories
 - `agent_config.py` — Agent configuration and topic scoping
 
-**handlers/** — Composition roots (49 standalone tools + 3 upstream-integration tools conditionally registered = 52 total + helpers, one per tool)
+**handlers/** — Composition roots (50 standalone tools + 3 upstream-integration tools conditionally registered = 53 total + helpers, one per tool)
 
 **validation/** — `schemas.py` — Per-tool argument validation
 
@@ -278,7 +278,7 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `curate_wiki` | Auto-curate wiki pages from memory clusters | varies |
 | `curate_distill` | Return understanding-level distillation dossiers (error->success, co-access, entity family) for the LLM to author `lesson` memories from (M-D8) | ~200-500ms |
 
-### Tier 4 — Wiki (9 tools)
+### Tier 4 — Wiki (10 tools)
 
 | Tool | Purpose | Target Latency |
 |---|---|---|
@@ -291,18 +291,18 @@ stack (galaxy/trace/wiki/knowledge/board UI) was extracted to the standalone
 | `wiki_verify` | Verify wiki page integrity and links | <100ms |
 | `wiki_reindex` | Reindex wiki pages into memory pointers | varies |
 | `wiki_purge` | Permanently delete a wiki page | <50ms |
+| `wiki_migrate` | Reconcile wiki.pages against FS (backfill + ghost purge) | varies |
 
 **Upstream-integration tools (3, conditionally registered)** — these register
-only when their upstream MCP server is configured, bringing the total to 52:
+only when their upstream MCP server is configured, bringing the total to 53:
 `ingest_codebase` + `change_impact` (automatised-pipeline) and `ingest_prd`
-(prd-spec-generator). With no upstream present, exactly the **49 standalone
-tools** above register (ground truth: `tests_py/test_main.py::test_standalone_baseline_is_49_tools`
-— re-verified 2026-07-12 by a live DB-less `tools/list` stdio round-trip
-against `bare-container-contract`, both via `docker run` of the root
-Dockerfile and an out-of-container `uv run hypermnesia-mcp`: 49 tools with
-zero upstream MCP servers reachable, exactly matching the test).
-Driving the ai-architect pipeline end-to-end (formerly `run_pipeline`) is
-**not** part of this server — it lives in the automatised-pipeline MCP.
+(prd-spec-generator). With no upstream present, exactly the **50 standalone
+tools** above register (ground truth: `tests_py/test_main.py::test_standalone_baseline_is_50_tools`
+— the 49 tools re-verified 2026-07-12 by a live DB-less `tools/list` stdio
+round-trip against `bare-container-contract` + `wiki_migrate`, commit
+4be298a3). Driving the ai-architect pipeline end-to-end (formerly
+`run_pipeline`) is **not** part of this server — it lives in the
+automatised-pipeline MCP.
 
 ## Slash Commands
 

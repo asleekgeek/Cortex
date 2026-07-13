@@ -296,8 +296,23 @@ CREATE TABLE IF NOT EXISTS wiki.pages (
     tags            JSONB NOT NULL DEFAULT '[]'::jsonb,
     audience        JSONB NOT NULL DEFAULT '[]'::jsonb,
     requires        JSONB NOT NULL DEFAULT '[]'::jsonb,
+    -- Union of the digital-garden maturity vocabulary (seedling/budding/
+    -- evergreen, the column default) with every status vocabulary the
+    -- system itself emits into frontmatter: 'living' (core/auto_curator.py
+    -- lines 475,538 and handlers/consolidation/page_io.py:376) and the
+    -- kind-specific ADR/specs statuses in
+    -- core/wiki_templates.py STATUS_VALUES (proposed/accepted/rejected/
+    -- deprecated/superseded for ADRs; draft/review/accepted/implemented/
+    -- deprecated for specs). Kept in sync manually with wiki_migrate.py's
+    -- _VALID_STATUS_VALUES (handlers may import core; infrastructure may
+    -- not, so the union is duplicated here with this provenance comment
+    -- rather than imported).
     status          TEXT NOT NULL DEFAULT 'seedling'
-                    CHECK (status IN ('seedling','budding','evergreen')),
+                    CHECK (status IN (
+                      'seedling','budding','evergreen','living',
+                      'proposed','accepted','rejected','deprecated','superseded',
+                      'draft','review','implemented'
+                    )),
     lifecycle_state TEXT NOT NULL DEFAULT 'active'
                     CHECK (lifecycle_state IN ('active','area','archived','evergreen')),
     supersedes      TEXT,
@@ -2301,6 +2316,25 @@ BEGIN
         ALTER TABLE prospective_memories ADD COLUMN source_memory_id INTEGER;
     END IF;
 END $$;
+
+-- Migration: widen wiki.pages.status's CHECK to the full per-kind status
+-- union. DBs provisioned before this change carry the narrower
+-- ('seedling','budding','evergreen') constraint, which rejects every ADR
+-- ('proposed'/'accepted'/...), specs ('draft'/'review'/...), and 'living'
+-- status that the system itself writes into frontmatter — see the CREATE
+-- TABLE comment above for the full provenance. Unconditional drop-then-add
+-- is the idempotent form here (cheaper and more robust than diffing
+-- pg_get_constraintdef's version-dependent textual output): dropping a
+-- constraint that doesn't exist is a documented no-op via IF EXISTS, and
+-- re-adding the same definition is safe on every rerun.
+ALTER TABLE wiki.pages DROP CONSTRAINT IF EXISTS pages_status_check;
+ALTER TABLE wiki.pages ADD CONSTRAINT pages_status_check CHECK (
+    status IN (
+      'seedling','budding','evergreen','living',
+      'proposed','accepted','rejected','deprecated','superseded',
+      'draft','review','implemented'
+    )
+);
 """
 
 # ── Schema initialization ────────────────────────────────────────────────

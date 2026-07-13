@@ -132,6 +132,44 @@ def upsert_page(conn: Connection, page: dict[str, Any]) -> tuple[int, bool]:
         return existing_id, False
 
 
+def list_all_rel_paths(conn: Connection) -> list[str]:
+    """Return every rel_path currently stored in wiki.pages.
+
+    Used by the migration reconciliation phase to compute which rows
+    no longer have a backing file on disk (see wiki_migrate.purge_ghost_pages).
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT rel_path FROM wiki.pages")
+        rows = cur.fetchall()
+    return [r["rel_path"] if isinstance(r, dict) else r[0] for r in rows]
+
+
+def delete_pages_by_rel_path(conn: Connection, rel_paths: list[str]) -> list[dict]:
+    """Delete wiki.pages rows for the given rel_paths.
+
+    Cascades to wiki.links (src_page_id ON DELETE CASCADE), wiki.page_sources
+    (page_id ON DELETE CASCADE), and wiki.citations (page_id ON DELETE CASCADE)
+    per the FKs declared in pg_schema.py — no separate DELETE against those
+    tables is needed here.
+
+    Precondition: rel_paths identifies rows the caller has already decided
+    are safe to remove (e.g. no longer present on the filesystem).
+    Postcondition: every wiki.pages row matching rel_paths is gone; rows not
+    matching are untouched. Returns the deleted (id, rel_path) rows so the
+    caller can report exactly what was purged.
+    """
+    if not rel_paths:
+        return []
+    from psycopg.rows import dict_row
+
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            "DELETE FROM wiki.pages WHERE rel_path = ANY(%s) RETURNING id, rel_path",
+            (list(rel_paths),),
+        )
+        return list(cur.fetchall())
+
+
 def get_page_by_slug(conn: Connection, slug: str) -> dict | None:
     """Return a page row by slug, or None."""
     from psycopg.rows import dict_row
