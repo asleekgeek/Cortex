@@ -45,6 +45,39 @@ from mcp_server.observability import silent_failure
 logger = logging.getLogger(__name__)
 
 
+def compute_ddl_hash() -> str:
+    """SHA-256 fingerprint of the code's full ordered DDL set.
+
+    Pre: none. Post: deterministic hex digest — same algorithm and input
+    order as ``PgMemoryStore._init_schema``'s migration gate, so external
+    callers (e.g. ``mcp_server.migrate``, a standalone entry point that
+    must decide "is the DB current" without constructing a full store
+    first) compute the identical value. Single source of truth: both
+    ``_init_schema`` and this function call ``get_all_ddl()``, never a
+    duplicated statement list.
+    """
+    return hashlib.sha256("\n".join(get_all_ddl()).encode("utf-8")).hexdigest()
+
+
+def read_schema_hash(conn: psycopg.Connection) -> str | None:
+    """Read the recorded DDL hash from ``schema_meta`` on ``conn``, or None.
+
+    Pre: ``conn`` is a live psycopg connection opened with
+    ``row_factory=dict_row`` (matches every connection this module opens —
+    ``PgMemoryStore._create_connection`` and standalone probes alike).
+    Post: returns the hash of the last-applied DDL revision, or None when
+    ``schema_meta`` doesn't exist yet (fresh DB) or the read fails for any
+    reason — both cases mean "not yet migrated to any known revision".
+    Read-only; issues no DDL and leaves no aborted-transaction state
+    behind on failure.
+    """
+    try:
+        row = conn.execute("SELECT ddl_hash FROM schema_meta WHERE id = 1;").fetchone()
+        return row["ddl_hash"] if row else None
+    except Exception:
+        return None
+
+
 def _get_database_url() -> str:
     """Get DATABASE_URL from environment or MemorySettings default.
 
@@ -356,15 +389,11 @@ class PgMemoryStore(
         A missing ``schema_meta`` table (fresh DB) or any read error reads
         as None → the caller migrates. Single-row indexed lookup; no
         table scan, no locks. ``self._conn`` is autocommit, so a failed
-        read leaves no aborted-transaction state behind.
+        read leaves no aborted-transaction state behind. Delegates to the
+        module-level ``read_schema_hash`` — see that function for the
+        single source of truth shared with standalone callers.
         """
-        try:
-            row = self._conn.execute(
-                "SELECT ddl_hash FROM schema_meta WHERE id = 1;"
-            ).fetchone()
-            return row.get("ddl_hash") if row else None
-        except Exception:
-            return None
+        return read_schema_hash(self._conn)
 
     def _record_schema_hash(self, ddl_hash: str) -> None:
         """Persist the just-applied DDL revision (upsert the single row)."""
@@ -404,7 +433,7 @@ class PgMemoryStore(
         even on failure (try/finally).
         """
         ddl_list = get_all_ddl()
-        ddl_hash = hashlib.sha256("\n".join(ddl_list).encode("utf-8")).hexdigest()
+        ddl_hash = compute_ddl_hash()
 
         # Fast path: DB already at this exact DDL revision. This is the
         # steady state for every construction once the DB is provisioned —
