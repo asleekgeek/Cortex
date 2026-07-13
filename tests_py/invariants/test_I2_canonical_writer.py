@@ -44,18 +44,28 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # Shifted 685->686 by the silent-except-sweep audit (2026-07-11) adding
     # one `from mcp_server.observability import silent_failure` import line
     # above this site.
-    ("infrastructure/pg_store.py", 695),
+    # Shifted 695->724 by the module-level hash helpers extraction
+    # (feat/migrate-entrypoint, PR #101): compute_ddl_hash()/
+    # read_schema_hash() were pulled out of PgMemoryStore as module-level
+    # functions (net +29 lines above this site — 33 lines of new function
+    # bodies/docstrings added, 4 lines of inline hash-computation removed
+    # from _recorded_schema_hash, which now delegates to read_schema_hash).
+    ("infrastructure/pg_store.py", 724),
     # Canonical single-row writer (all callers route through this).
     # bump_heat_raw — the one canonical single-row site (re-pinned after
     # rebasing the read-path PR onto blame-path injection-receipts).
     # Shifted 727->728 by the same import-line addition above.
-    ("infrastructure/pg_store.py", 737),
+    # Shifted 737->766 by the module-level hash helpers extraction (same
+    # net +29 cause as the entry above).
+    ("infrastructure/pg_store.py", 766),
     # A3 batched writer (homeostatic cohort branch + any other batch consumer).
     # update_memories_heat_batch. Shifted 787->825 when M-D3 (7.1) added
     # get_homeostatic_factor/set_homeostatic_factor's write_class parameter
     # and the new log_homeostatic_fold method above it; 825->826 by the same
     # silent-except-sweep import-line addition.
-    ("infrastructure/pg_store.py", 835),
+    # Shifted 835->864 by the module-level hash helpers extraction (same
+    # net +29 cause as the two entries above).
+    ("infrastructure/pg_store.py", 864),
     # SQLite parity of the anchor transfer (same transactional rationale).
     # Shifted 389->440 when M-D3 (7.1) added
     # _migrate_homeostatic_state_write_class above it.
