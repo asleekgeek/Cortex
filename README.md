@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <strong>Persistent memory for Claude Code that holds itself accountable</strong> — forgets on purpose, says "I don't know" when unsure, flags its own contradictions. Local-first, single-click MCP install.
+  <strong>Persistent memory for Claude Code built on computational neuroscience — not just retrieval.</strong> 36 cited brain mechanisms consolidate what matters, keep it current as your project evolves, and reconstruct the right context at the right time — a living memory, not a flat RAG. Says "I don't know" when unsure, flags its own contradictions. Local-first, single-click MCP install.
 </p>
 
 <p align="center">
