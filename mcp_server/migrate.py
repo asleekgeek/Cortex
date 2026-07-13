@@ -26,18 +26,26 @@ at (env ``DATABASE_URL``, falling back to the packaged default
 
 Contract (frozen — consumed by the cortex-viz plugin):
     DATABASE_URL=<url> python3 -m mcp_server.migrate
-    exit 0  -> schema already at the code's revision, or successfully
-               migrated to it. stdout carries exactly one summary line:
-                 "cortex-migrate: schema up to date"
-                 "cortex-migrate: applied N statements"
-    exit 1  -> migration failed. stderr carries a one-line reason.
+    exit 0  -> no exception was raised while resolving/connecting/applying
+               the DDL. stdout carries exactly one summary line:
+                 "cortex-migrate: schema up to date"      (hash unchanged)
+                 "cortex-migrate: applied N statements"   (hash was stale)
+               Note this is NOT a guarantee that every individual DDL
+               statement succeeded: ``_init_schema`` logs and skips any
+               single statement that raises rather than aborting (see
+               pg_store.py), so "applied N statements" means "the full
+               DDL set was submitted", not "N statements each verified
+               successful" — check the MCP server's own log for
+               per-statement warnings if a downstream query then fails.
+    exit 1  -> connecting to the database itself failed, or constructing
+               PgMemoryStore raised for a reason other than a per-
+               statement DDL failure (auth, network, driver install).
+               stderr carries a one-line reason.
                No corrupted state is left: every statement in
                get_all_ddl() is independently idempotent (CREATE TABLE
                IF NOT EXISTS, CREATE OR REPLACE FUNCTION, guarded
-               ALTER TABLE ADD COLUMN — see pg_schema.py), and
-               _init_schema logs+skips any single statement that fails
-               rather than aborting, so re-running this entry point
-               after a failure is always safe.
+               ALTER TABLE ADD COLUMN — see pg_schema.py), so re-running
+               this entry point after a failure is always safe.
 
 Not a single PostgreSQL transaction: get_all_ddl() contains no
 transaction-hostile statements (no CREATE INDEX CONCURRENTLY — verified
@@ -54,6 +62,40 @@ from __future__ import annotations
 import sys
 
 
+def _probe_was_current(url: str, target_hash: str) -> bool:
+    """Read the pre-migration schema state on a short-lived probe connection.
+
+    Pre: ``url`` is a PostgreSQL DSN; ``target_hash`` is
+    ``compute_ddl_hash()``'s current value. Opens and closes its OWN
+    connection — never ``PgMemoryStore``'s, which does not exist yet at
+    call time — so the result reflects what was true BEFORE this process
+    touches the DB, not after ``_init_schema`` may have already migrated
+    it. Uses ``read_schema_hash``, the same read ``_init_schema`` itself
+    performs — single source of truth, just invoked earlier.
+    Post: returns True iff the recorded ``schema_meta.ddl_hash`` already
+    equals ``target_hash``. Raises whatever ``psycopg.connect`` raises on
+    a connection failure — the caller catches it once, this function does
+    not swallow it, so "cannot connect" and "migration failed" stay two
+    distinct, separately-tested error paths (see module docstring).
+    """
+    import psycopg
+    from psycopg.rows import dict_row
+
+    from mcp_server.infrastructure.pg_store import read_schema_hash
+
+    with psycopg.connect(
+        url,
+        # source: doctor.py::_pg_connection / doctor_mcp.py:458 use
+        # connect_timeout=5 for a live health-check probe; this probe is
+        # the same kind of short read, so it matches that convention
+        # rather than inventing a new one.
+        connect_timeout=5,
+        autocommit=True,
+        row_factory=dict_row,
+    ) as probe:
+        return read_schema_hash(probe) == target_hash
+
+
 def _run() -> int:
     """Resolve DATABASE_URL, connect, and migrate schema to the code's revision.
 
@@ -63,31 +105,18 @@ def _run() -> int:
     exactly one line to stderr on failure (return 1). Never raises —
     every exception is caught and mapped to the frozen exit contract.
     """
-    import psycopg
-
     from mcp_server.infrastructure.pg_schema import get_all_ddl
     from mcp_server.infrastructure.pg_store import (
         PgMemoryStore,
         _get_database_url,
         compute_ddl_hash,
-        read_schema_hash,
     )
 
     url = _get_database_url()
     target_hash = compute_ddl_hash()
 
-    # Read the pre-migration state on our own short-lived probe connection
-    # (never PgMemoryStore's, which we haven't constructed yet) so the
-    # "up to date" vs. "applied" report reflects what was true BEFORE this
-    # process touched the DB — read_schema_hash is the same read
-    # _init_schema itself performs, just invoked before construction.
     try:
-        from psycopg.rows import dict_row
-
-        with psycopg.connect(
-            url, connect_timeout=10, autocommit=True, row_factory=dict_row
-        ) as probe:
-            was_current = read_schema_hash(probe) == target_hash
+        was_current = _probe_was_current(url, target_hash)
     except Exception as exc:
         print(f"cortex-migrate: cannot connect to database: {exc}", file=sys.stderr)
         return 1
