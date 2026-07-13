@@ -1,0 +1,52 @@
+{
+  "overall_mrr": 0.8005289670526804,
+  "overall_recall10": 0.91372351160444,
+  "category_mrr": {
+    "multi_hop": 0.732553280917767,
+    "temporal": 0.5713724982746722,
+    "single_hop": 0.7319542947202521,
+    "open_domain": 0.844440197799294,
+    "adversarial": 0.8572807673143996
+  },
+  "category_recall10": {
+    "multi_hop": 0.838006230529595,
+    "temporal": 0.8152173913043478,
+    "single_hop": 0.9397163120567376,
+    "open_domain": 0.9310344827586207,
+    "adversarial": 0.9394618834080718
+  },
+  "elapsed_s": 2069.400463104248,
+  "consolidation_total_wall_s": 0.0,
+  "consolidation_call_count": 0,
+  "manifest": {
+    "with_consolidation": false,
+    "ablate_mechanism": null,
+    "ablate_env_var": null,
+    "n_conversations": 10,
+    "n_questions": 1982,
+    "n_runs": 1,
+    "consolidation_call_count": 0,
+    "consolidation_total_wall_s": 0.0,
+    "repro": {
+      "git_commit": "4fd17b450fe0b87cf8e28b20fb741dce6d39cc22",
+      "git_dirty": true,
+      "python_version": "3.12.11 (main, Sep 18 2025, 19:41:45) [Clang 20.1.4 ]",
+      "platform_system": "Darwin",
+      "platform_machine": "arm64",
+      "platform_node": "mac-1.home",
+      "timestamp_utc": "2026-07-13T15:28:50.882626+00:00",
+      "lib_versions": {
+        "sentence-transformers": "5.4.1",
+        "torch": "2.11.0",
+        "numpy": "2.4.4",
+        "psycopg": "3.3.3",
+        "pgvector": "0.4.2",
+        "flashrank": "0.2.10"
+      },
+      "reranker_active": true,
+      "reranker_state": "loaded",
+      "reranker_model_path": "/Users/cdeust/.cache/flashrank/ms-marco-MiniLM-L-12-v2/flashrank-MiniLM-L-12-v2_Q.onnx",
+      "reranker_model_sha256": "d3dd7b09fcf06b0c070081d6819b5effbb40b667bcad78b2d7543400271141d1"
+    }
+  }
+}

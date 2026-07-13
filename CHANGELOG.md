@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.14.0] - 2026-07-13
+
+### Added
+- **Standalone schema-migration entry point** (`python -m mcp_server.migrate`). Brings a PostgreSQL store's schema current by reusing `PgMemoryStore`'s existing hash-gated, advisory-lock-serialized DDL apply path — no duplicated DDL, no MCP server boot. Frozen contract (consumed by the cortex-viz plugin): `DATABASE_URL=<url> python -m mcp_server.migrate` → exit 0 (`schema up to date` | `applied N statements`) / exit 1 (one-line stderr reason). cortex-viz 2.6.1's `open_visualization` preflight invokes it to migrate an outdated store before building the graph, surfacing an actionable message instead of a silently empty graph when it can't.
+- **`wiki_migrate` MCP tool + wiki.pages↔filesystem reconciliation**: backfill, ghost purge, and a parity guard keep the `wiki.pages` table and the on-disk wiki in sync. Standalone tool count 49 → 50 (53 with upstream integrations).
+
+### Fixed
+- `wiki.pages` `pages_status_check` widened to the full system-emitted status union — interactively-authored pages carrying a valid-but-unlisted status no longer fail the FS↔PG sync.
+
+### Changed
+- Docs and marketplace tool count corrected to the measured ground truth (50 standalone / 53 with upstream integrations).
+
+### Verified
+- Pre-tag guard on the exact release tree: LongMemEval MRR 0.9166 / R@10 0.982; LoCoMo 3-run mean MRR 0.8005 / R@10 0.9131 (single-run variance ±0.0025 straddles the 0.805 floor; the mean clears the 0.005 tolerance and matches the 4.13.3 baseline 0.8017 / 0.9152 on identical, retrieval-orthogonal code); BEAM 0.5471; reranker active; all gated floors PASS.
+
 ## [4.13.3] - 2026-07-12
 
 ### Fixed
