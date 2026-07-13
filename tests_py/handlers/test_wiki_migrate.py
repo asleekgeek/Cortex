@@ -28,6 +28,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from mcp_server.handlers.wiki_migrate import (
+    _normalize_status,
+    _page_row_from_md,
     find_ghost_rel_paths,
     migrate_wiki,
     purge_ghost_pages,
@@ -64,6 +66,55 @@ def test_ghost_rel_paths_result_is_sorted() -> None:
     fs: list[str] = []
     pg = ["notes/z.md", "notes/a.md"]
     assert find_ghost_rel_paths(fs, pg) == ["notes/a.md", "notes/z.md"]
+
+
+# ── _normalize_status / _page_row_from_md status validation ─────────────
+# Mirrors wiki.pages.status's DB CHECK constraint (pg_schema.py) — every
+# value accepted here must also be accepted there, and vice versa.
+
+
+def test_normalize_status_accepts_adr_status() -> None:
+    status, warning = _normalize_status("proposed", "adr/cortex/1-foo.md")
+    assert status == "proposed"
+    assert warning is None
+
+
+def test_normalize_status_accepts_specs_status() -> None:
+    status, warning = _normalize_status("implemented", "specs/cortex/1-foo.md")
+    assert status == "implemented"
+    assert warning is None
+
+
+def test_normalize_status_accepts_legacy_maturity_and_living() -> None:
+    for value in ("seedling", "budding", "evergreen", "living"):
+        status, warning = _normalize_status(value, "notes/cortex/1-foo.md")
+        assert status == value
+        assert warning is None
+
+
+def test_normalize_status_unknown_falls_back_to_seedling_with_warning() -> None:
+    status, warning = _normalize_status("garbage", "notes/cortex/1-foo.md")
+    assert status == "seedling"
+    assert (
+        warning
+        == "notes/cortex/1-foo.md: unknown status 'garbage' -> falling back to 'seedling'"
+    )
+
+
+def test_page_row_from_md_valid_adr_status_passes_through_unwarned() -> None:
+    content = "---\ntitle: Some ADR\nkind: adr\ndomain: cortex\nstatus: accepted\n---\n\nBody.\n"
+    row = _page_row_from_md("adr/cortex/1-some-adr.md", content)
+    assert row["status"] == "accepted"
+    assert row["status_warning"] is None
+
+
+def test_page_row_from_md_unknown_status_falls_back_and_warns() -> None:
+    content = "---\ntitle: Some Note\nkind: notes\ndomain: cortex\nstatus: garbage\n---\n\nBody.\n"
+    row = _page_row_from_md("notes/cortex/1-some-note.md", content)
+    assert row["status"] == "seedling"
+    assert row["status_warning"] == (
+        "notes/cortex/1-some-note.md: unknown status 'garbage' -> falling back to 'seedling'"
+    )
 
 
 # ── pg_store_wiki_pages: list_all_rel_paths / delete_pages_by_rel_path ──
@@ -287,6 +338,26 @@ def test_migrate_wiki_parity_after_purge(tmp_path, fake_store) -> None:
         "notes/alive-page.md",
         "notes/second-alive.md",
     }
+
+
+def test_migrate_wiki_reports_status_warning_without_failing_the_page(
+    tmp_path, fake_store
+) -> None:
+    """A garbage frontmatter status is a non-blocking warning, not an error."""
+    full = tmp_path / "notes/cortex/garbage-status.md"
+    full.parent.mkdir(parents=True, exist_ok=True)
+    full.write_text(
+        "---\ntitle: Garbage\nkind: notes\ndomain: cortex\nstatus: garbage\n---\n\nBody.\n"
+    )
+
+    summary = migrate_wiki(tmp_path, conn=MagicMock(), dry_run=True)
+
+    assert summary["error_count"] == 0
+    assert summary["warning_count"] == 1
+    assert summary["warnings"] == [
+        "notes/cortex/garbage-status.md: unknown status 'garbage' -> falling back to 'seedling'"
+    ]
+    assert "notes/cortex/garbage-status.md" in fake_store.rows
 
 
 def test_migrate_wiki_dry_run_default_leaves_ghost_in_place(

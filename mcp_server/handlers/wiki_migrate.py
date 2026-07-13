@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp_server.core.wiki_pages import parse_page
+from mcp_server.core.wiki_templates import STATUS_VALUES
 from mcp_server.handlers._tool_meta import DESTRUCTIVE
 from mcp_server.infrastructure.pg_store_wiki import (
     body_hash,
@@ -52,6 +53,36 @@ from mcp_server.shared.wiki_source_paths import extract_document_paths
 
 # Wiki-link syntax: [[slug]] or [[slug|display text]]
 _WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
+
+# wiki.pages.status's DB CHECK constraint (pg_schema.py) accepts the union
+# of: the digital-garden maturity vocabulary ('seedling'/'budding'/
+# 'evergreen', the column default) plus 'living' (emitted by
+# core/auto_curator.py:475,538 and handlers/consolidation/page_io.py:376)
+# plus every kind-specific ADR/specs status in STATUS_VALUES
+# (core/wiki_templates.py). Frontmatter is FS-authored and not itself
+# constrained, so any value outside this union must be caught here — the
+# system boundary (coding-standards.md 3.2) — before it reaches the DB.
+_LEGACY_MATURITY_STATUSES = frozenset({"seedling", "budding", "evergreen", "living"})
+_VALID_STATUS_VALUES = _LEGACY_MATURITY_STATUSES | {
+    v for values in STATUS_VALUES.values() for v in values
+}
+
+
+def _normalize_status(raw_status: str, rel_path: str) -> tuple[str, str | None]:
+    """Validate a frontmatter status against wiki.pages' DB CHECK union.
+
+    Precondition: raw_status is a non-empty string (the caller has already
+    collapsed missing frontmatter status/maturity to 'seedling').
+    Postcondition: returns (raw_status, None) when raw_status is a member
+    of _VALID_STATUS_VALUES; otherwise returns ('seedling', <warning>) —
+    'seedling' matches the column's own DB default, so an unrecognized
+    frontmatter value can never trip pages_status_check.
+    """
+    if raw_status in _VALID_STATUS_VALUES:
+        return raw_status, None
+    warning = f"{rel_path}: unknown status '{raw_status}' -> falling back to 'seedling'"
+    return "seedling", warning
+
 
 # ── MCP schema ───────────────────────────────────────────────────────────
 
@@ -75,9 +106,12 @@ schema = {
         "dry_run=false to actually purge. Distinct from `wiki_purge` "
         "(deletes FS files that fail the classifier, never touches PG) — "
         "this tool never touches the FS, only reconciles PG to match it. "
-        "Returns {pages_processed, pages_written, pages_unchanged, "
-        "links_written, links_resolved_pass3, purge: {dry_run, "
-        "ghost_count, ghost_paths, purged}, errors, error_count}."
+        "A frontmatter status outside wiki.pages' DB CHECK union falls "
+        "back to 'seedling' and is reported in warnings (never blocks "
+        "the page write). Returns {pages_processed, pages_written, "
+        "pages_unchanged, links_written, links_resolved_pass3, "
+        "purge: {dry_run, ghost_count, ghost_paths, purged}, errors, "
+        "error_count, warnings, warning_count}."
     ),
     "inputSchema": {
         "type": "object",
@@ -160,6 +194,9 @@ def page_row_from_md(
     # canonical list. documents_primary is the 1:1 fast-path scalar.
     documents = extract_document_paths(fm, tags)
 
+    raw_status = fm.get("status") or fm.get("maturity") or "seedling"
+    status, status_warning = _normalize_status(raw_status, rel_path)
+
     return {
         "memory_id": memory_id,
         "rel_path": rel_path,
@@ -171,7 +208,12 @@ def page_row_from_md(
         "tags": tags,
         "audience": fm.get("audience", []),
         "requires": fm.get("requires", []),
-        "status": fm.get("status") or fm.get("maturity") or "seedling",
+        "status": status,
+        # Not a DB column — upsert_page only reads the params it names, so
+        # this rides along on the row dict and is popped by
+        # _upsert_all_pages before/after the insert to build the run's
+        # warnings list (never written to wiki.pages).
+        "status_warning": status_warning,
         "lifecycle_state": fm.get("lifecycle_state", "active"),
         "supersedes": fm.get("supersedes"),
         "superseded_by": fm.get("superseded_by"),
@@ -272,8 +314,15 @@ def purge_ghost_pages(conn, fs_rel_paths: list[str], *, dry_run: bool = True) ->
 
 def _upsert_all_pages(
     root: Path, rel_paths: list[str], conn
-) -> tuple[dict[str, int], int, int, list[str]]:
-    """Pass 1 — upsert every page. Returns (id_by_rel, written, unchanged, errors)."""
+) -> tuple[dict[str, int], int, int, list[str], list[str]]:
+    """Pass 1 — upsert every page.
+
+    Returns (id_by_rel, written, unchanged, errors, warnings). ``warnings``
+    collects non-blocking status-normalization notices (see
+    ``_normalize_status``) — an unrecognized frontmatter status never fails
+    the page, it falls back to 'seedling' and is reported here instead of
+    silently.
+    """
     candidate_ids = {
         mid for rp in rel_paths if (mid := _memory_id_from_rel_path(rp)) is not None
     }
@@ -283,6 +332,7 @@ def _upsert_all_pages(
     written = 0
     unchanged = 0
     errors: list[str] = []
+    warnings: list[str] = []
     for rp in rel_paths:
         try:
             content = read_page(root, rp)
@@ -291,6 +341,9 @@ def _upsert_all_pages(
             mid = _memory_id_from_rel_path(rp)
             mid = mid if mid in valid_ids else None
             row = page_row_from_md(rp, content, memory_id=mid)
+            status_warning = row.pop("status_warning", None)
+            if status_warning:
+                warnings.append(status_warning)
             page_id, was_modified = upsert_page(conn, row)
             id_by_rel[rp] = page_id
             if was_modified:
@@ -299,7 +352,7 @@ def _upsert_all_pages(
                 unchanged += 1
         except Exception as e:
             errors.append(f"{rp}: {e}")
-    return id_by_rel, written, unchanged, errors
+    return id_by_rel, written, unchanged, errors, warnings
 
 
 def _upsert_all_links(
@@ -347,7 +400,7 @@ def migrate_wiki(wiki_root: Path | str, conn, *, dry_run: bool = True) -> dict:
     root = Path(wiki_root)
     rel_paths = list_pages(root)
 
-    id_by_rel, pages_written, pages_unchanged, errors1 = _upsert_all_pages(
+    id_by_rel, pages_written, pages_unchanged, errors1, warnings = _upsert_all_pages(
         root, rel_paths, conn
     )
     links_written, errors2 = _upsert_all_links(root, id_by_rel, conn)
@@ -370,6 +423,8 @@ def migrate_wiki(wiki_root: Path | str, conn, *, dry_run: bool = True) -> dict:
         "purge": purge_summary,
         "errors": errors[:10],
         "error_count": len(errors),
+        "warnings": warnings[:10],
+        "warning_count": len(warnings),
     }
 
 
