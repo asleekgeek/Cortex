@@ -1,0 +1,69 @@
+{
+  "overall_mrr": 0.5444683641975309,
+  "overall_r10": 0.7266666666666667,
+  "ability_mrr": {
+    "abstention": 0.15,
+    "contradiction_resolution": 0.8833333333333334,
+    "event_ordering": 0.40867063492063493,
+    "information_extraction": 0.5985714285714285,
+    "instruction_following": 0.2961111111111111,
+    "knowledge_update": 0.85,
+    "multi_session_reasoning": 0.7114583333333333,
+    "preference_following": 0.39801587301587305,
+    "summarization": 0.31518959435626104,
+    "temporal_reasoning": 0.8333333333333334
+  },
+  "ability_r5": {
+    "abstention": 0.15,
+    "contradiction_resolution": 0.975,
+    "event_ordering": 0.525,
+    "information_extraction": 0.65,
+    "instruction_following": 0.425,
+    "knowledge_update": 0.95,
+    "multi_session_reasoning": 0.9,
+    "preference_following": 0.6,
+    "summarization": 0.5277777777777778,
+    "temporal_reasoning": 0.975
+  },
+  "ability_r10": {
+    "abstention": 0.15,
+    "contradiction_resolution": 0.975,
+    "event_ordering": 0.65,
+    "information_extraction": 0.725,
+    "instruction_following": 0.575,
+    "knowledge_update": 0.95,
+    "multi_session_reasoning": 0.925,
+    "preference_following": 0.675,
+    "summarization": 0.6666666666666666,
+    "temporal_reasoning": 0.975
+  },
+  "total_questions": 395,
+  "elapsed_s": 810.1525480747223,
+  "manifest": {
+    "split": "100K",
+    "n_conversations": 20,
+    "n_questions": 395,
+    "n_runs": 1,
+    "repro": {
+      "git_commit": "da3f21049a4179c81c0b02f055f16654e97210f9",
+      "git_dirty": false,
+      "python_version": "3.13.7 (main, Aug 14 2025, 11:12:11) [Clang 17.0.0 (clang-1700.0.13.3)]",
+      "platform_system": "Darwin",
+      "platform_machine": "arm64",
+      "platform_node": "mac-1.home",
+      "timestamp_utc": "2026-07-14T12:01:10.530382+00:00",
+      "lib_versions": {
+        "sentence-transformers": "5.4.1",
+        "torch": "2.11.0",
+        "numpy": "2.4.4",
+        "psycopg": "3.3.3",
+        "pgvector": "0.4.2",
+        "flashrank": "0.2.10"
+      },
+      "reranker_active": true,
+      "reranker_state": "loaded",
+      "reranker_model_path": "/Users/cdeust/.cache/flashrank/ms-marco-MiniLM-L-12-v2/flashrank-MiniLM-L-12-v2_Q.onnx",
+      "reranker_model_sha256": "d3dd7b09fcf06b0c070081d6819b5effbb40b667bcad78b2d7543400271141d1"
+    }
+  }
+}
