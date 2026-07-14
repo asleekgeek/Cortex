@@ -197,55 +197,73 @@ class TestSessionStartHook:
 
 
 class TestToolErrorHandler:
-    """Test that tool errors produce friendly, actionable messages."""
+    """Test that tool errors produce friendly, actionable messages.
+
+    2026-07-14 fix: safe_handler no longer RETURNS an error dict on
+    failure -- that dict violates every tool's outputSchema (recall
+    requires "memories", remember requires "stored"/"action", etc.),
+    so FastMCP's own output validation discarded our classified
+    message and substituted a generic "'<field>' is a required
+    property" error. safe_handler now RAISES fastmcp.exceptions.ToolError
+    with the classified message; the MCP low-level server builds the
+    isError=True result from str(exc) directly, bypassing outputSchema
+    validation entirely (that check only runs on the non-error branch).
+    """
 
     @pytest.mark.asyncio
     async def test_db_connection_error_returns_setup_guide(self):
-        """Database connection errors should return setup instructions."""
+        """Database connection errors should raise with setup instructions."""
+        from fastmcp.exceptions import ToolError
+
         from mcp_server.tool_error_handler import safe_handler
 
         async def failing_handler(args):
             raise ConnectionError("could not connect to server: Connection refused")
 
-        # Issue #17: safe_handler returns dict, not JSON string.
-        result = await safe_handler(failing_handler, {})
-        assert isinstance(result, dict)
+        with pytest.raises(ToolError) as exc_info:
+            await safe_handler(failing_handler, {})
 
-        assert result["error"] == "database_not_connected"
-        assert "PostgreSQL" in result["message"]
-        assert "brew install" in result["message"]
+        message = str(exc_info.value)
+        assert "database_not_connected" in message
+        assert "PostgreSQL" in message
+        assert "brew install" in message
 
     @pytest.mark.asyncio
     async def test_missing_extension_error(self):
         """Missing pgvector/pg_trgm should show extension install guide."""
+        from fastmcp.exceptions import ToolError
+
         from mcp_server.tool_error_handler import safe_handler
 
         async def failing_handler(args):
             raise Exception('type "vector" does not exist')
 
-        result = await safe_handler(failing_handler, {})
-        assert isinstance(result, dict)
+        with pytest.raises(ToolError) as exc_info:
+            await safe_handler(failing_handler, {})
 
-        assert result["error"] == "missing_extension"
-        assert "pgvector" in result["message"]
+        message = str(exc_info.value)
+        assert "missing_extension" in message
+        assert "pgvector" in message
 
     @pytest.mark.asyncio
     async def test_generic_error_no_traceback(self):
         """Generic errors should not leak Python tracebacks."""
+        from fastmcp.exceptions import ToolError
+
         from mcp_server.tool_error_handler import safe_handler
 
         async def failing_handler(args):
             raise ValueError("something went wrong")
 
-        result = await safe_handler(failing_handler, {})
-        assert isinstance(result, dict)
+        with pytest.raises(ToolError) as exc_info:
+            await safe_handler(failing_handler, {})
 
-        assert result["error"] == "ValueError"
-        assert "something went wrong" in result["message"]
-        # Should NOT contain traceback markers anywhere in the payload.
-        serialized = json.dumps(result, default=str)
-        assert "Traceback" not in serialized
-        assert "File " not in serialized
+        message = str(exc_info.value)
+        assert "ValueError" in message
+        assert "something went wrong" in message
+        # Should NOT contain traceback markers in the client-visible message.
+        assert "Traceback" not in message
+        assert "File " not in message
 
     @pytest.mark.asyncio
     async def test_successful_handler_returns_dict(self):

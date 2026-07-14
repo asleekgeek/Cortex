@@ -17,6 +17,23 @@ against the declared schema and rejects strings. Fix: return the
 dict directly. The handler contract IS dict-or-None (Liskov: every
 ``mcp__cortex__*`` handler now uniformly satisfies the same interface).
 
+Issue (2026-07-14): on the ERROR path this wrapper still returned a
+``{"error", "message", "hint"}`` dict. That dict is not a valid
+instance of ANY tool's ``outputSchema`` (recall requires "memories",
+remember requires "stored"/"action" -- mcp/server/lowlevel/server.py's
+``call_tool`` handler validates ``structuredContent`` against
+``tool.outputSchema`` via ``jsonschema.validate`` and, on mismatch,
+discards our classified message and replaces it with its own generic
+``Output validation error: '<field>' is a required property``). Every
+one of the ~50 tools registered through ``safe_handler`` was affected.
+Fix: raise ``fastmcp.exceptions.ToolError`` instead of returning the
+error dict. FastMCP's own ``call_tool`` (fastmcp/server/server.py)
+re-raises a ``FastMCPError`` subclass unchanged (no re-wrapping), and
+the low-level MCP server's ``call_tool`` handler builds the
+``isError=True`` result from ``str(exc)`` directly -- BEFORE any
+outputSchema check, which only runs on the non-error branch. Raising
+therefore reaches the client with the classified message intact.
+
 Usage in tool registries:
     from mcp_server.tool_error_handler import safe_handler
 
@@ -28,9 +45,14 @@ Usage in tool registries:
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any, Callable, Coroutine
 
+from fastmcp.exceptions import ToolError
+
 from mcp_server.shared.json_native import to_json_native
+
+logger = logging.getLogger(__name__)
 
 _DB_SETUP_GUIDE = (
     "Cortex could not connect to PostgreSQL. "
@@ -151,8 +173,12 @@ async def safe_handler(
                      the declared ``output_schema`` and rejects strings.
 
     On success: returns the handler's dict verbatim.
-    On DB errors: returns a friendly setup-guide dict.
-    On other errors: returns an error-type/message dict (no traceback).
+    On any exception: logs the exception (type + full traceback) then
+    raises ``fastmcp.exceptions.ToolError`` carrying the classified,
+    user-friendly message (DB errors get the setup guide; everything
+    else gets ``<ExceptionType>: <message>``, no traceback). Never
+    returns an error dict -- see the module docstring for why a dict
+    return on this path silently fails FastMCP's outputSchema check.
     """
     try:
         if tool_name:
@@ -190,6 +216,17 @@ async def safe_handler(
         # it. Native dicts (e.g. remember) pass through unchanged.
         return to_json_native(result)
     except Exception as exc:
+        # Log BEFORE classification: classification only keeps a
+        # user-friendly message, discarding the traceback. Without this,
+        # the underlying failure (e.g. a real bug in the handler body,
+        # as opposed to a DB-not-configured condition) is unrecoverable
+        # from server logs -- the diagnosticability gap that motivated
+        # this fix.
+        logger.exception(
+            "safe_handler caught %s in tool %r",
+            type(exc).__name__,
+            tool_name or "<unnamed>",
+        )
         error_type, message = _classify_error(exc)
         if tool_name:
             try:
@@ -201,18 +238,16 @@ async def safe_handler(
                 )
             except Exception:
                 pass
-        return {
-            "error": error_type,
-            "message": message,
-            "hint": (
-                "If this persists, check that PostgreSQL is running "
-                "and DATABASE_URL is set correctly."
-            )
+        hint = (
+            "If this persists, check that PostgreSQL is running "
+            "and DATABASE_URL is set correctly."
             if error_type
             not in (
                 "missing_extension",
                 "database_not_connected",
                 "explicit_database_url_unreachable",
             )
-            else None,
-        }
+            else None
+        )
+        full_message = f"{error_type}: {message}" + (f"\n\n{hint}" if hint else "")
+        raise ToolError(full_message) from exc
