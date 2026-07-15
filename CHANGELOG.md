@@ -6,6 +6,29 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.14.2] - 2026-07-15
+
+### Fixed
+- The 3 pre-existing `core → infrastructure` layer violations tracked since #114 (`wiki_axis_registry.py`, `wiki_classifier.py`, `wiki_schema_loader.py` importing `infrastructure.config`/`infrastructure.wiki_schema_reader` directly) are closed via reverse-DI ports-and-adapters — core now declares a zero-arg wiki-root/user-rules provider port, wired at the `mcp_server/__main__.py` composition root; no behaviour change (#135).
+- Explicit XDG-aware `cache_folder` passed to `SentenceTransformer` instead of relying on the library default, closing a residual `/tmp`-caching risk class (#132).
+- Stale hard-coded module counts in `docs/architecture.md` replaced with a single-source pointer to `docs/module-inventory.md` (#130).
+- Windows `postInstall` dispatch routed through the cross-platform `setup.py` path, with the real install path now exercised in CI (#117).
+- Stale "production database" bench-gate claim in `CLAUDE.md`/docs fixed; LoCoMo intra-day noise caveat documented alongside the isolated-container `reproduce.sh` gate (#121).
+
+### Added
+- `check_setup` MCP tool exposed as a facade over `mcp_server.doctor` for in-session install diagnosis, plus a `/preflight` command that turns the 7-check output into a dependency-ordered repair plan (#115, #119).
+- Project settings catalogue + headless CI regimes (#131).
+- One-command devcontainer (`.devcontainer/`) with pgvector + prewarmed embedding/reranker models (#129).
+- Optional OTLP telemetry exporter, OFF by default — mirrors the existing local, content-free `get_telemetry` aggregate metrics to a configured `OTEL_EXPORTER_OTLP_ENDPOINT` (#128).
+
+### Changed
+- `CLAUDE.md` refactored to under 200 lines, resyncing storage-truth prose against `PRIVACY.md` (#125).
+- Corporate proxy/CA setup for model downloads documented (#123).
+
+### Verified
+- Pre-tag guard on the exact release tree (git_sha `018c76d7`, `benchmarks/reproduce.sh --no-ablation`, isolated ephemeral pgvector container, reranker loaded): LongMemEval MRR 0.9166 / R@10 0.9820 (matches v4.14.1 0.9167/0.982 — no regression, retrieval code untouched by the 13 commits since v4.14.1). LoCoMo 3-run mean MRR 0.8009 / R@10 0.9146 (runs: 0.8015/0.9168, 0.8004/0.9142, 0.8006/0.9127 — vs v4.14.1's 3-run mean 0.7984/0.9142, an improvement within the documented same-commit noise band, not a regression). BEAM MRR 0.5437 / R@10 0.7139 (vs v4.14.1's 0.5406 — within the 0.539–0.547 intra-day production-DB variance band established in v4.14.1's own investigation; BEAM is a proxy metric not gated by `check_floors`).
+- Floor-gate result (`reproduce.sh::check_floors`, tolerance 0.005): LongMemEval R@10 0.982 vs floor 0.982 PASS; LongMemEval MRR 0.9166 vs floor 0.914 PASS; LoCoMo R@10 0.9146 (mean) vs floor 0.915 PASS (individual reps 0.9168/0.9142/0.9127, each within tolerance); LoCoMo MRR 0.8009 (mean) vs floor 0.805 PASS (-0.0041, within the 0.005 tolerance — each individual rep also passes, unlike v4.14.1 where rep1 alone read FAIL). Reranker active (`reranker_state: loaded`). Evidence: `benchmarks/results/repro/20260715-v4.14.2-pretag/` (5 files: longmemeval-s.json, locomo-rep{1,2,3}.json, beam-100K.json, MANIFEST.json), matching the v4.14.1 evidence-directory convention.
+
 ## [4.14.1] - 2026-07-14
 
 ### Fixed
