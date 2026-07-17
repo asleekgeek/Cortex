@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.14.3] - 2026-07-17
+
+### Fixed
+- `write_class="deliberate"` (or omitted, source-fallback) was rejected by the novelty gate, violating the documented contract that deliberate writes are never rejected for low novelty. `write_class` is now threaded through `evaluate_gate` / `_compute_gate_decision` / `determine_bypass`, checked last so a more specific content-based bypass reason (`bypass_error`/`bypass_decision`/`bypass_important_tag`) still wins when it applies (#147, #148).
+- `force=True` (and plain) writes intermittently raised a misleading "check DATABASE_URL" hint on a bare `FileNotFoundError` — root cause was `validate_memory.grade_from_content(base_dir=os.getcwd())` in the write-time provenance grading step, unguarded unlike every sibling enrichment step, raising when the process cwd had been removed mid-session (e.g. a worktree cleanup), unrelated to the DB. Wrapped in the same defensive try/except pattern used elsewhere; `tool_error_handler.py`'s blanket DATABASE_URL hint no longer fires for exception types it doesn't recognize as DB-related (#147, #148).
+- Issue #149's Python-3.10-only flake: `pip_install`'s per-entry commit loop pruned superseded `*.dist-info` siblings immediately after each entry committed. `os.listdir()` order is unspecified by the stdlib and differs by OS/filesystem, so the prune could permanently delete the still-valid OLD dist-info right before the package-directory entry failed and rolled back, leaving `deps_dir` with reverted package files but no metadata for either version. The destructive prune now waits until the whole `tmp_dir` commits successfully, independent of listdir enumeration order (#149, #150).
+
+### Changed
+- `mcp` dependency bumped 1.27.0 -> 1.28.1 (uv group, dependabot) (#152).
+- `wiki_classifier.py` and `wiki_axis_registry.py` split into cohesive collaborators (`wiki_axis_defaults.py`, `wiki_classifier_gates.py`, `wiki_classifier_patterns.py`, `wiki_kind_detection.py`, `wiki_title.py`) to bring both files under the repo's 500-line limit; no behaviour change (#134, #153).
+
+### Verified
+- Pre-tag guard on the exact release tree `4e3a202b` (`benchmarks/reproduce.sh --no-ablation` + 2× `--only locomo`, isolated ephemeral pgvector containers, `reranker_state: "loaded"` in all 3 MANIFESTs, same model sha256): LongMemEval-S MRR **0.9166** (floor 0.914, +0.0026 PASS) / R@10 **0.9820** (floor 0.982, +0.0000 PASS); LoCoMo 3-run mean MRR **0.7998** (reps 0.8013 / 0.7983 / 0.7997) / R@10 **0.9135** (reps 0.9142 / 0.9127 / 0.9137, floor 0.915 tol 0.005 PASS); BEAM-100K MRR **0.5417** (not gated, inside the documented 0.539–0.547 intra-day noise band). Evidence: `benchmarks/results/repro/20260717-v4.14.3-pretag/`.
+- Adjudication (LoCoMo MRR mean 0.7998 vs threshold 0.800 = floor 0.805 − tol 0.005, i.e. −0.0002): accepted as sampling noise by explicit maintainer decision (2026-07-17). Grounds: delta vs the v4.14.2 pre-tag mean (0.8009) is −0.0011, below the standard error of a 3-rep mean (~0.0013, single-rep stdev 0.0022 per the floors-rebaseline data); rep1 under the identical full-run protocol reads 0.8013 vs 4.14.2's 0.8015; the reranker is verified loaded in every run (FlashRank-absence signature excluded); and none of the 4 released commits is in the LoCoMo harness's dependency graph — ingestion goes through `BenchmarkDB`, not the #148 write path (`benchmarks/lib/bench_db.py`). Symmetric precedent: v4.14.1 released at +0.0002 above the same threshold. #150/#152/#153 do not touch the recall path reproduce.sh's floors exercise; #148 touches the write-gate (write path) — the empirical floor-gate result above is the actual non-regression evidence, not an import-closure argument.
+
 ## [4.14.2] - 2026-07-15
 
 ### Fixed
