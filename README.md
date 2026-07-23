@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/tests-3000+_passing-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/references-97_papers-orange.svg" alt="References">
-  <img src="https://img.shields.io/badge/version-4.13.1-brightgreen.svg" alt="Version 4.13.1">
+  <img src="https://img.shields.io/badge/version-4.15.0-brightgreen.svg" alt="Version 4.15.0">
 </p>
 
 <p align="center">
@@ -58,8 +58,10 @@ Want PostgreSQL + pgvector instead (for very large stores or a shared team datab
 **Claude Code plugin (marketplace):**
 ```bash
 claude plugin marketplace add cdeust/Cortex
-claude plugin install cortex
+claude plugin install hypermnesia-mcp
 ```
+> **Upgrading from the `cortex` plugin?** The plugin was renamed `hypermnesia-mcp` in v4.15.0 (a community-directory name collision with an unrelated `cortex` plugin): `claude plugin uninstall cortex && claude plugin install hypermnesia-mcp` — your memories and configuration are untouched, storage paths do not change.
+
 That is the whole install — zero configuration, no PostgreSQL, no system packages. The postInstall provisions Python dependencies and selects the local **SQLite** store (`~/.claude/methodology/memory.db`); the store schema auto-creates on first use. The embedding model is *not* downloaded at install time — it fetches lazily on first use (~100 MB, one-time; see [PRIVACY.md](PRIVACY.md)) and runs fully offline afterwards. The plugin path registers all lifecycle hooks (session-start context injection, per-prompt auto-recall, auto-capture, compaction checkpointing, the autonomous wiki cycle) and the `/cortex-setup-project` command.
 
 An **existing PostgreSQL install is never downgraded**: the installer detects a configured `DATABASE_URL`, a prior PostgreSQL backend marker, or a reachable local `cortex` database and keeps using it across plugin updates.
@@ -109,6 +111,94 @@ The server is published on PyPI as **`hypermnesia-mcp`** (registry name `io.gith
 **WSL / TLS client-cert / remote PostgreSQL:** See [deployment scenarios](docs/deployment-scenarios.md).
 
 </details>
+
+---
+
+## Use with other MCP hosts
+
+The MCP server is host-agnostic: any host that can launch a stdio process gets the full tool surface — `remember`, `recall`, the wiki, navigation, consolidation, all 50 tools — on the default local SQLite store. What is **not** portable are the 9 lifecycle hooks, which are Claude Code plugin machinery.
+
+**What works where (honest matrix):**
+
+| Capability | Claude Code (plugin) | Other MCP hosts (Gemini CLI, Codex, Cursor, Windsurf, VS Code, Agents SDK) |
+|---|---|---|
+| All 50 memory tools (`remember`, `recall`, wiki, navigation, consolidation, triggers, rules) | ✅ | ✅ |
+| SQLite default store / PostgreSQL opt-in | ✅ | ✅ |
+| Auto-capture of significant tool output | ✅ (PostToolUse hook) | ❌ — store explicitly with `remember` |
+| Session-start context injection | ✅ (SessionStart hook) | ❌ — call `recall` / `query_methodology` yourself |
+| Per-prompt auto-recall | ✅ | ❌ |
+| Compaction checkpoints | ✅ | ❌ |
+| Autonomous wiki cycle (headless worker) | ✅ | ❌ — run `consolidate` / `curate_wiki` manually |
+| Cognitive profiling (`query_methodology`) | ✅ | ⚠️ profiles are mined from Claude Code session logs under `~/.claude/`; without them the profile is empty |
+
+In one sentence: on Claude Code memory is **ambient** (hooks capture and inject automatically); on every other host memory is **manual-tool-driven** — the agent stores and retrieves when instructed, and nothing happens between prompts.
+
+The launch command on every host is the PyPI package (the `[sqlite]` extra enables sqlite-vec vector search; without it the store still works, with vector search disabled):
+
+```bash
+uvx --from "hypermnesia-mcp[sqlite]" hypermnesia-mcp
+```
+
+**Gemini CLI** — this repo ships a `gemini-extension.json`:
+
+```bash
+gemini extensions install https://github.com/cdeust/Cortex
+```
+
+Or add it to `~/.gemini/settings.json` directly:
+
+```json
+{
+  "mcpServers": {
+    "cortex": {
+      "command": "uvx",
+      "args": ["--from", "hypermnesia-mcp[sqlite]", "hypermnesia-mcp"]
+    }
+  }
+}
+```
+
+**OpenAI Codex CLI** (shared with the ChatGPT desktop app and Codex IDE extension via `~/.codex/config.toml`):
+
+```bash
+codex mcp add cortex -- uvx --from "hypermnesia-mcp[sqlite]" hypermnesia-mcp
+```
+
+```toml
+[mcp_servers.cortex]
+command = "uvx"
+args = ["--from", "hypermnesia-mcp[sqlite]", "hypermnesia-mcp"]
+```
+
+**Cursor** — `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global) — and **Windsurf** — `~/.codeium/windsurf/mcp_config.json` — take the same `mcpServers` block as Gemini above.
+
+**VS Code** — `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "cortex": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "hypermnesia-mcp[sqlite]", "hypermnesia-mcp"]
+    }
+  }
+}
+```
+
+**OpenAI Agents SDK (Python):**
+
+```python
+from agents.mcp import MCPServerStdio
+
+async with MCPServerStdio(
+    name="cortex",
+    params={"command": "uvx", "args": ["--from", "hypermnesia-mcp[sqlite]", "hypermnesia-mcp"]},
+) as server:
+    agent = Agent(name="Assistant", mcp_servers=[server])
+```
+
+`uvx` requires [uv](https://docs.astral.sh/uv/); `pip install "hypermnesia-mcp[sqlite]"` + the `hypermnesia-mcp` console script works identically. GUI hosts that don't inherit your shell `PATH` may need the absolute path from `which uvx`.
 
 ---
 
