@@ -8,102 +8,60 @@ Strategy (in priority order):
 
 The engine is lazy-loading: no model initialization until first encode() call.
 
+Structure (Cortex#173 — the file was split along three seams):
+  * ``embedding_provider.EmbeddingProvider`` — the interface consumers depend
+    on; ``EmbeddingEngine`` below is its neural implementation.
+  * ``embedding_model_lifecycle`` — device resolution + the explicit model-load
+    state machine (``ModelState``: package absent / model files absent / load
+    raised / loaded). See that module's docstring for the revision-pin history.
+  * this module — the concrete neural provider (encode path + LRU cache) and the
+    process-wide composition root (``get_embedding_engine``).
+
 Device selection:
   Default is "cpu" for embedding consistency (GPU float32 arithmetic produces
   bit-different vectors from CPU). GPU is opt-in via CORTEX_MEMORY_EMBEDDING_DEVICE
-  env var. Switching devices mid-deployment means new embeddings won't be
-  bit-identical to existing ones -- cosine similarity degradation is small
-  (~1e-7) but retrieval ranking can shift for borderline results.
-
-  If GPU inference fails at runtime (OOM, MPS reset after sleep), the engine
-  automatically falls back to CPU. If CPU also fails, it degrades to hash-based
-  fallback encoding. The engine never crashes on encode().
-
-Model revision pin (reproducibility gap closed 2026-07-11, incident i7d3):
-  ``huggingface_hub`` resolves an unpinned model name against the repo's
-  moving ``refs/main`` pointer. Root-cause investigation of a benchmark
-  regression found TWO snapshots cached locally for
-  ``sentence-transformers/all-MiniLM-L6-v2`` (``c9745ed1...`` from
-  2026-04-04 and ``1110a243...`` from 2026-06-09) — ``refs/main`` had moved
-  between them. In that specific incident the underlying
-  ``model.safetensors``/``config.json``/``tokenizer.json`` blobs were
-  confirmed BYTE-IDENTICAL across both snapshots (same SHA256 content
-  hash) by direct cache inspection, so it was not the cause of THAT
-  regression — but the gap itself is real and unbounded: nothing stops a
-  future upstream repo change (a genuine weight update, not just a
-  metadata/README commit) from silently altering embeddings for every
-  caller that resolves ``main`` at load time, with no signal in
-  ``uv.lock`` (which pins the Python package, not the HF model weights).
-  ``DEFAULT_MODEL_REVISION`` below pins the exact snapshot verified during
-  that investigation; ``EmbeddingEngine`` uses it whenever the caller does
-  not supply an explicit ``revision``. source: measured on 2026-07-11 via
-  ``~/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/refs/main``
-  and blob-hash comparison of the two cached snapshots.
+  env var. If GPU inference fails at runtime (OOM, MPS reset after sleep), the
+  engine automatically falls back to CPU; if CPU also fails, it degrades to
+  hash-based fallback encoding. The engine never crashes on encode().
 """
 
 from __future__ import annotations
 
 import hashlib
 import logging
-import os
 from collections import OrderedDict
 from typing import Any
 
 import numpy as np
 
+from mcp_server.infrastructure.embedding_model_lifecycle import (
+    DEFAULT_MODEL_REVISION,
+    ModelState,
+    _EmbeddingLifecycleMixin,
+    embedding_cache_dir,
+)
 from mcp_server.infrastructure.embedding_provider import (
     EmbeddingProvider,
     _EmbeddingMathMixin,
 )
-from mcp_server.shared.platform import cache_dir as _base_cache_dir
-
-# source: measured 2026-07-11 (incident i7d3) — see module docstring
-# "Model revision pin" section for the full derivation and the blob-hash
-# verification that this snapshot's weights are byte-identical to the
-# immediately-prior cached snapshot.
-DEFAULT_MODEL_REVISION = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
 
 logger = logging.getLogger(__name__)
 
+# Re-exported for backward compatibility: callers and tests import these names
+# from ``embedding_engine`` directly (they lived here before the Cortex#173
+# split). The definitions now live in ``embedding_model_lifecycle``.
 __all__ = [
     "DEFAULT_MODEL_REVISION",
     "EmbeddingEngine",
     "EmbeddingProvider",
+    "ModelState",
     "embedding_cache_dir",
     "get_embedding_engine",
     "reset_embedding_engine",
 ]
 
 
-def embedding_cache_dir() -> str | None:
-    """Resolve the ``cache_folder`` to pass to ``SentenceTransformer``.
-
-    Mirrors ``mcp_server.core.reranker.reranker_cache_dir`` (hardened
-    after the FlashRank /tmp incident, commit bb1c581f): same shared,
-    XDG-aware ``mcp_server.shared.platform.cache_dir()`` base, laid out
-    under ``huggingface/hub`` to match the directory
-    ``sentence-transformers``/``huggingface_hub`` already write
-    ``models--org--name`` snapshots into by default (``$HF_HOME/hub``).
-
-    Precedence, decided for consistency with how ``huggingface_hub``
-    itself resolves its cache (``cache_folder`` passed to
-    ``SentenceTransformer`` takes priority over both env vars inside the
-    library, so passing one unconditionally would silently override a
-    choice the user already made): if ``HF_HOME`` or
-    ``SENTENCE_TRANSFORMERS_HOME`` is set in the environment, return
-    ``None`` and let the library resolve its own default from that env
-    var. Otherwise return our durable, shared cache path so a caller who
-    set neither var still gets a deterministic, XDG-aware location
-    instead of depending entirely on ``huggingface_hub``'s built-in
-    resolution (issue #124 — the reranker was hardened this way in
-    bb1c581f; embeddings had no equivalent).
-    """
-    if os.environ.get("HF_HOME") or os.environ.get("SENTENCE_TRANSFORMERS_HOME"):
-        return None
-    return str(_base_cache_dir() / "huggingface" / "hub")
-
-
-# ── Process-wide singleton ────────────────────────────────────────────
+# ── Process-wide singleton (composition root) ─────────────────────────
 # One EmbeddingEngine per process. Handlers call get_embedding_engine()
 # instead of creating their own instances. This guarantees: one model,
 # one device, no mixed-device embeddings, ~5x memory savings.
@@ -127,13 +85,12 @@ def reset_embedding_engine() -> None:
     _singleton = None
 
 
-class EmbeddingEngine(_EmbeddingMathMixin):
-    """Lazy-loading embedding engine with graceful fallback.
+class EmbeddingEngine(_EmbeddingLifecycleMixin, _EmbeddingMathMixin):
+    """Lazy-loading neural embedding provider with graceful fallback.
 
-    Implements ``EmbeddingProvider`` (embedding_provider.py) and mixes in the
-    shared vector math (``_EmbeddingMathMixin``) so ``_cache_key`` /
-    ``similarity`` / ``to_list`` / ``from_list`` / ``_normalize`` stay on the
-    class exactly as before.
+    Implements ``EmbeddingProvider`` (embedding_provider.py). Composes the model
+    lifecycle (``_EmbeddingLifecycleMixin``) and shared vector math
+    (``_EmbeddingMathMixin``); this class owns the encode path and the LRU cache.
 
     Cache key discipline (ADR-0045 R5): the LRU cache is keyed by
     ``sha256(text)[:16]`` (16 hex chars = 8 bytes of entropy), never by
@@ -158,10 +115,11 @@ class EmbeddingEngine(_EmbeddingMathMixin):
         # revision=None means "resolve refs/main at load time" (the
         # pre-i7d3 unpinned behavior) — an explicit opt-out for callers
         # that pass a different model_name this pin was never verified
-        # against. See module docstring "Model revision pin".
+        # against. See embedding_model_lifecycle "Model revision pin".
         self._revision = revision
         self._model: Any = None
         self._unavailable = False
+        self._model_state: ModelState = ModelState.UNINITIALIZED
         # Cache keyed by sha256(text)[:16] — see class docstring / ADR-0045 R5.
         self._cache: OrderedDict[str, bytes] = OrderedDict()
         self._cache_max = 128
@@ -180,6 +138,11 @@ class EmbeddingEngine(_EmbeddingMathMixin):
         return self._dim
 
     @property
+    def model_state(self) -> ModelState:
+        """The current lifecycle state of the neural model load (Cortex#173)."""
+        return self._model_state
+
+    @property
     def available(self) -> bool:
         """Check if a real embedding model is available (without loading it)."""
         if self._model is not None:
@@ -192,175 +155,6 @@ class EmbeddingEngine(_EmbeddingMathMixin):
             return True
         except ImportError:
             return False
-
-    # ── Device detection ──────────────────────────────────────────────
-
-    @staticmethod
-    def _detect_device() -> str:
-        """Probe hardware: CUDA > MPS > CPU."""
-        try:
-            import torch
-
-            if torch.cuda.is_available():
-                logger.info("GPU auto-detect: CUDA available")
-                return "cuda"
-            if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-                logger.info("GPU auto-detect: MPS available")
-                return "mps"
-        except ImportError:
-            logger.debug("GPU auto-detect: torch not available, using cpu")
-        return "cpu"
-
-    def _resolve_device(self) -> str:
-        """Resolve and cache the target device. Called once per instance."""
-        if self._device is not None:
-            return self._device
-        requested = self._device_requested
-        if requested == "auto":
-            self._device = self._detect_device()
-        elif requested in ("cpu", "cuda", "mps"):
-            self._device = requested
-        else:
-            logger.warning("Unknown embedding device %r, using cpu", requested)
-            self._device = "cpu"
-        logger.info("Embedding device: %s (requested: %s)", self._device, requested)
-        return self._device
-
-    def _fallback_to_cpu(self) -> None:
-        """Reload model on CPU after GPU failure."""
-        logger.warning(
-            "GPU inference failed (device=%s) — reloading on CPU", self._device
-        )
-        self._device = "cpu"
-        self._model = None
-        self._ensure_model()
-
-    # ── Model loading ─────────────────────────────────────────────────
-
-    def _ensure_model(self) -> None:
-        if self._model is not None or self._unavailable:
-            return
-        try:
-            # Collect cache-miss exception types: OSError covers transformers'
-            # config loader; LocalEntryNotFoundError covers huggingface_hub
-            # (>=0.22) which raises a non-OSError on local-only cache miss.
-            _cache_miss: tuple[type[Exception], ...] = (OSError,)
-            try:
-                from huggingface_hub.errors import LocalEntryNotFoundError
-
-                _cache_miss = (OSError, LocalEntryNotFoundError)
-            except ImportError:
-                pass
-
-            device = self._resolve_device()
-            from sentence_transformers import SentenceTransformer
-
-            # cache_folder: explicit, XDG-aware default (mirrors the
-            # reranker's /tmp-incident hardening, bb1c581f) unless the
-            # user already set HF_HOME / SENTENCE_TRANSFORMERS_HOME, in
-            # which case we pass None and defer to their choice. See
-            # embedding_cache_dir() docstring for the full precedence
-            # rationale (issue #124).
-            cache_folder = embedding_cache_dir()
-
-            # local_files_only=True keeps the load hermetic (no HF Hub
-            # requests) whenever the model is already cached. It must be
-            # an explicit argument, not the HF_HUB_OFFLINE env var: hub
-            # freezes that env var into module constants at first import,
-            # so the previous unset-env-and-retry fallback still ran
-            # offline, leaving the download path unreachable on a fresh
-            # install (reproduced 2026-07-03, clean-env harness run).
-            # source: kwarg added in sentence-transformers v3.0.0
-            # (absent in v2.3.0 SentenceTransformer.py; pyproject floor
-            # raised to match).
-            try:
-                self._model = SentenceTransformer(
-                    self._model_name,
-                    device=device,
-                    local_files_only=True,
-                    revision=self._revision,
-                    cache_folder=cache_folder,
-                )
-            except _cache_miss:
-                # Model not in local cache (at all, or not at the pinned
-                # revision) — download it once. First use on the
-                # zero-config install path lands here by design: the
-                # plugin postInstall deliberately skips the eager
-                # pre-cache (scripts/setup.py SQLite mode). Size figure
-                # per PRIVACY.md "one-time model download" / the
-                # pre-cache step it replaces (scripts/setup.sh step 5).
-                logger.info(
-                    "Downloading embedding model %s (revision=%s) — "
-                    "~100 MB, one-time; cached under %s, then runs fully offline",
-                    self._model_name,
-                    self._revision or "refs/main",
-                    cache_folder or "$HF_HOME",
-                )
-                self._model = SentenceTransformer(
-                    self._model_name,
-                    device=device,
-                    revision=self._revision,
-                    cache_folder=cache_folder,
-                )
-
-            # sentence-transformers 5.x renamed get_sentence_embedding_dimension
-            # → get_embedding_dimension. Prefer the new name; fall back for <5.
-            get_dim = getattr(
-                self._model,
-                "get_embedding_dimension",
-                self._model.get_sentence_embedding_dimension,
-            )
-            actual_dim = get_dim()
-            if actual_dim != self._dim:
-                self._dim = actual_dim
-            logger.info(
-                "Loaded embedding model: %s (%dD, device=%s)",
-                self._model_name,
-                self._dim,
-                device,
-            )
-        except ImportError:
-            logger.warning(
-                "sentence-transformers not installed; using hash-based fallback "
-                "embeddings. Installing in background for next session..."
-            )
-            self._unavailable = True
-            self._trigger_background_install()
-
-    def _trigger_background_install(self) -> None:
-        """Install sentence-transformers in the background.
-
-        Runs pip install as a detached subprocess so it doesn't block
-        the current session. Next session will have real embeddings.
-        """
-        import subprocess
-        import sys
-
-        target = os.environ.get("CLAUDE_PLUGIN_DATA", "")
-        if target:
-            target = os.path.join(target, "deps")
-
-        cmd = [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "-q",
-            "sentence-transformers>=2.2.0,<4.0.0",
-        ]
-        if target:
-            cmd.extend(["--target", target])
-
-        try:
-            subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-            logger.info("Background install of sentence-transformers started")
-        except Exception as exc:
-            logger.debug("Background install failed to start: %s", exc)
 
     # ── Encoding ──────────────────────────────────────────────────────
 
