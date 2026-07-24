@@ -292,3 +292,88 @@ class TestFindBridges:
         )
         assert len(alpha_bridge["examples"]) <= 5
         assert alpha_bridge["edgeCount"] == 10
+
+
+def _scanner_memory_record(project: str, body: str = "") -> dict:
+    """A memory record in the exact 9-key shape emitted by the scanner.
+
+    Mirrors ``scanner._parse_memory_file`` — the production producer whose
+    list output reached ``find_bridges`` and blew up in issue #174.
+    """
+    return {
+        "file": "note.md",
+        "path": f"/home/u/.claude/projects/{project}/memory/note.md",
+        "project": project,
+        "name": "note",
+        "description": "",
+        "type": "note",
+        "body": body,
+        "modifiedAt": "2026-07-23T02:57:21.806511Z",
+        "createdAt": "2026-07-23T02:57:21.806511Z",
+    }
+
+
+class TestFindBridgesScannerListShape:
+    """Regression pin for issue #174.
+
+    ``discover_all_memories()`` returns a ``list`` of records, but
+    ``find_bridges`` fed it straight into ``dict.update``. A non-empty list of
+    records (each with 9 keys) raised ``ValueError: dictionary update sequence
+    element #0 has length 9; 2 is required``. Empty homes skipped the branch,
+    so CI stayed green while every real ``~/.claude`` failed.
+    """
+
+    def test_minimized_failing_input_no_longer_raises(self):
+        # source: minimized from the live-home stack captured on 2026-07-24
+        # (issue #174); a single 9-key scanner record is the smallest input
+        # that reproduces the ValueError.
+        profiles = _make_profiles({"alpha": _make_domain(projects=["proj-a"])})
+        memories = [_scanner_memory_record("proj-a")]
+
+        result = find_bridges(profiles, None, memories)
+
+        assert isinstance(result, dict)
+
+    def test_scanner_list_yields_analogical_bridge(self):
+        profiles = _make_profiles(
+            {
+                "alpha": _make_domain(projects=["proj-a"]),
+                "beta": _make_domain(projects=["proj-b"]),
+            }
+        )
+        memories = [
+            _scanner_memory_record(
+                "proj-a", body="the write gate works just as a free energy filter"
+            ),
+        ]
+
+        result = find_bridges(profiles, None, memories)
+
+        assert "alpha" in result
+        analog = next(b for b in result["alpha"] if b["toDomain"] == "text-analogy")
+        assert analog["pattern"] == "just as"
+
+    def test_scanner_list_and_brain_index_dict_merge(self):
+        profiles = _make_profiles(
+            {
+                "alpha": _make_domain(projects=["proj-a"]),
+                "beta": _make_domain(projects=["proj-b"]),
+            }
+        )
+        brain_index = {
+            "memories": {
+                "m1": {"projectId": "proj-a", "body": "", "crossRefs": ["m2"]},
+                "m2": {"projectId": "proj-b", "body": "", "crossRefs": []},
+            },
+            "conversations": {},
+        }
+        list_memories = [_scanner_memory_record("proj-a", body="")]
+
+        result = find_bridges(profiles, brain_index, list_memories)
+
+        assert "alpha" in result
+        assert any(b["pattern"] == "structural-edge" for b in result["alpha"])
+
+    def test_empty_list_is_noop(self):
+        profiles = _make_profiles({"alpha": _make_domain(projects=["proj-a"])})
+        assert find_bridges(profiles, None, []) == {}
