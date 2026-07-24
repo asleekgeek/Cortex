@@ -5,7 +5,7 @@
     "email": "admin@ai-architect.tools"
   },
   "metadata": {
-    "description": "Persistent memory and cognitive profiling plugins for Claude Code",
+    "description": "The Cortex family of Claude Code plugins: home of hypermnesia-mcp (the persistent-memory server formerly named cortex, renamed in v4.15.0 over a directory name collision), zetetic-team-subagents, and cortex-viz. The marketplace name stays cortex-plugins: it is the brand-level umbrella, while hypermnesia-mcp is one package inside it.",
     "version": "4.16.0"
   },
   "plugins": [
