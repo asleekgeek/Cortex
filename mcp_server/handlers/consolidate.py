@@ -15,6 +15,9 @@ from mcp_server.handlers.consolidation.cascade import run_cascade_advancement
 from mcp_server.handlers.consolidation.cls import run_cls_cycle
 from mcp_server.handlers.consolidation.compression import run_compression_cycle
 from mcp_server.handlers.consolidation.decay import run_decay_cycle
+from mcp_server.handlers.consolidation.embedding_upgrade import (
+    run_embedding_upgrade_cycle,
+)
 from mcp_server.handlers.consolidation.entity_merge import run_entity_merge_cycle
 from mcp_server.handlers.consolidation.forgetting import run_forgetting_cycle
 from mcp_server.handlers.consolidation.homeostatic import run_homeostatic_cycle
@@ -338,6 +341,14 @@ def _run_cycles(
 
     if args.get("cls", True):
         stats["cls"] = _timed(run_cls_cycle, store, settings, embeddings)
+
+    # Transparent #169 upgrade: re-embed memories written by the download-free
+    # fallback once the neural model is available, restamping them 'neural'.
+    # Runs with the compress phase (both re-embed on the current encoder).
+    if args.get("compress", True):
+        stats["embedding_upgrade"] = _timed(
+            run_embedding_upgrade_cycle, store, embeddings
+        )
 
     if args.get("memify", True):
         stats["memify"] = _timed(run_memify_cycle, store, None)

@@ -48,6 +48,10 @@ import logging
 import os
 from typing import Any
 
+from mcp_server.infrastructure.embedding_downloads import (
+    trigger_background_install,
+    trigger_background_model_download,
+)
 from mcp_server.shared.platform import cache_dir as _base_cache_dir
 
 # source: measured 2026-07-11 (incident i7d3) — see module docstring
@@ -197,34 +201,8 @@ class _EmbeddingLifecycleMixin:
             kwargs["local_files_only"] = True
         return SentenceTransformer(self._model_name, **kwargs)
 
-    def _download_model(self, device: str, cache_folder: str | None) -> None:
-        """MODEL_FILES_ABSENT → one-time download; LOAD_RAISED if it fails.
-
-        The zero-config install path lands here by design; behaviour is
-        preserved from the pre-split loader — a download failure propagates.
-        """
-        self._model_state = ModelState.MODEL_FILES_ABSENT
-        logger.info(
-            "Downloading embedding model %s (revision=%s) — "
-            "~100 MB, one-time; cached under %s, then runs fully offline",
-            self._model_name,
-            self._revision or "refs/main",
-            cache_folder or "$HF_HOME",
-        )
-        try:
-            self._model = self._construct_model(device, cache_folder, local=False)
-        except Exception:
-            self._model_state = ModelState.LOAD_RAISED
-            raise
-
-    def _load_model(self, device: str) -> None:
-        """Load the model, moving through the explicit lifecycle states."""
-        cache_folder = embedding_cache_dir()
-        try:
-            self._model = self._construct_model(device, cache_folder, local=True)
-        except self._cache_miss_types():
-            self._download_model(device, cache_folder)
-
+    def _finalize_loaded(self, device: str) -> None:
+        """Reconcile the model's real dimension and record the LOADED state."""
         # sentence-transformers 5.x renamed get_sentence_embedding_dimension →
         # get_embedding_dimension. Prefer the new name; fall back for <5.
         get_dim = getattr(
@@ -243,6 +221,37 @@ class _EmbeddingLifecycleMixin:
             device,
         )
 
+    def _load_model(self, device: str) -> None:
+        """Load the model, moving through the explicit lifecycle states.
+
+        Never blocks and never crashes the caller (issue #169): a cache miss
+        (MODEL_FILES_ABSENT) or an unexpected construction failure (LOAD_RAISED)
+        engages the download-free fallback for THIS session and kicks off a
+        background fetch so the next session is neural. Only ``ImportError``
+        (PACKAGE_ABSENT) escapes, handled by ``_ensure_model``.
+        """
+        cache_folder = embedding_cache_dir()
+        try:
+            self._model = self._construct_model(device, cache_folder, local=True)
+        except self._cache_miss_types():
+            # MODEL_FILES_ABSENT: package present, weights not cached yet.
+            self._engage_fallback(
+                ModelState.MODEL_FILES_ABSENT,
+                "embedding model files not cached; downloading in background",
+            )
+            trigger_background_model_download(
+                self._model_name, self._revision, cache_folder
+            )
+            return
+        except ImportError:
+            raise  # PACKAGE_ABSENT — handled by _ensure_model
+        except Exception as exc:  # corrupt cache / unexpected — do NOT crash
+            self._engage_fallback(
+                ModelState.LOAD_RAISED, f"embedding model load failed: {exc}"
+            )
+            return
+        self._finalize_loaded(device)
+
     def _ensure_model(self) -> None:
         if self._model is not None or self._unavailable:
             return
@@ -250,45 +259,27 @@ class _EmbeddingLifecycleMixin:
             self._load_model(self._resolve_device())
         except ImportError:
             # PACKAGE_ABSENT: sentence-transformers is not installed.
-            self._model_state = ModelState.PACKAGE_ABSENT
-            logger.warning(
-                "sentence-transformers not installed; using hash-based fallback "
-                "embeddings. Installing in background for next session..."
+            self._engage_fallback(
+                ModelState.PACKAGE_ABSENT, "sentence-transformers not installed"
             )
-            self._unavailable = True
-            self._trigger_background_install()
+            trigger_background_install()
 
-    def _trigger_background_install(self) -> None:
-        """Install sentence-transformers in the background.
+    def _engage_fallback(self, state: ModelState, reason: str) -> None:
+        """Record a non-LOADED lifecycle state and LOUDLY engage the fallback.
 
-        Runs pip install as a detached subprocess so it doesn't block
-        the current session. Next session will have real embeddings.
+        precondition: called from the load path when the neural model cannot be
+        served this session.
+        postcondition: ``model_state`` is ``state`` and ``_unavailable`` is True;
+        exactly one WARNING is logged (issue #169) so the degrade is never
+        silent — the factory then routes encode() to the algorithmic provider.
         """
-        import subprocess
-        import sys
-
-        target = os.environ.get("CLAUDE_PLUGIN_DATA", "")
-        if target:
-            target = os.path.join(target, "deps")
-
-        cmd = [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "-q",
-            "sentence-transformers>=2.2.0,<4.0.0",
-        ]
-        if target:
-            cmd.extend(["--target", target])
-
-        try:
-            subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-            logger.info("Background install of sentence-transformers started")
-        except Exception as exc:
-            logger.debug("Background install failed to start: %s", exc)
+        self._model_state = state
+        self._unavailable = True
+        logger.warning(
+            "Embedding fallback ENGAGED (%s): using deterministic download-free "
+            "algorithmic embeddings (issue #169) — lower fidelity than "
+            "sentence-transformers, upgrades automatically once the model is "
+            "present. Fallback vectors are tagged 'fallback' and never "
+            "cross-rank against neural vectors.",
+            reason,
+        )
