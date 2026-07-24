@@ -32,6 +32,8 @@ References (the user-quoted directives this module exists to satisfy):
 
 from __future__ import annotations
 
+from mcp_server.core.prose_redaction import REDACTION_CONVENTIONS
+
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -498,6 +500,7 @@ audience: [developer, ...]
 - Don't repeat what's already in [[reference/{domain}/architecture-overview]] — link to it.
 - Each diagram must add information that the table or prose cannot convey efficiently.
 - No phrases like "in this section we will" — just say it.
+{redaction_conventions}
 - Mandatory elements means *constraints*, not steps. A constraint says "MUST honour X"; a step says "did X".
 
 # The cluster
@@ -564,6 +567,7 @@ scope: {scope_name}
 5. **## Source files** — the files in the codebase a reader should open to verify what this page says. Full paths.
 
 # Conventions
+{redaction_conventions}
 
 - Walk the source tree if you need to ground the content; the wiki must reflect the codebase as it is, not as it was.
 - When a number is given, name its source.
@@ -650,6 +654,7 @@ def build_authoring_prompt(
     """
     today = today or "2026-05-18"
     return WIKI_AUTHORING_PROMPT.format(
+        redaction_conventions=REDACTION_CONVENTIONS,
         kind=cluster.suggested_kind,
         domain=cluster.domain,
         today=today,
@@ -685,6 +690,7 @@ def build_coverage_prompt(
     """
     today = today or "2026-05-18"
     return WIKI_COVERAGE_PROMPT.format(
+        redaction_conventions=REDACTION_CONVENTIONS,
         scope_name=scope_name,
         scope_title=scope_title,
         scope_description=scope_description,
@@ -740,6 +746,7 @@ Output ONLY the wiki page body, starting with YAML frontmatter, then the body. N
 ```
 
 # Conventions
+{redaction_conventions}
 
 - Same conventions as a fresh authoring job: authoritative declarative prose, citations with full paths, mermaid diagrams where dataflow benefits from one, no filler phrases.
 - "Refine and verify and update" means: cross-check claims against the current source. If a paragraph says "implemented via X" and X no longer exists, the paragraph is wrong — rewrite it from what actually exists.
@@ -807,6 +814,7 @@ def build_reauthor_prompt(
     summary = "\n".join(drift_lines) if drift_lines else "(none recorded)"
 
     return WIKI_REAUTHOR_PROMPT.format(
+        redaction_conventions=REDACTION_CONVENTIONS,
         drift_summary=summary,
         wiki_path=drift.wiki_path,
         kind=drift.kind or "explanation",

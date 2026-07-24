@@ -32,6 +32,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from mcp_server.core.prose_redaction import scan_prose, summarize_findings
 from mcp_server.core.wiki_frontmatter_validation import UnclosedFrontmatterError
 from mcp_server.core.wiki_layout import page_path
 from mcp_server.core.wiki_pages import (
@@ -310,7 +311,11 @@ async def write_governed_page(
 
     citations_written = _sync_page_and_cite(rel_path, content, memory_ids or [])
 
-    return {
+    # Advisory prose measurement (issue #166): generated pages carry an
+    # AI-writing-tell report so authoring quality is visible at write time.
+    # Never blocks the write; empty report is omitted to keep responses lean.
+    findings = scan_prose(content)
+    response: dict[str, Any] = {
         "path": result.path,
         "mode": result.mode,
         "created": result.created,
@@ -318,6 +323,9 @@ async def write_governed_page(
         "root": str(root),
         "citations_written": citations_written,
     }
+    if findings:
+        response["redaction_findings"] = summarize_findings(findings)
+    return response
 
 
 async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
