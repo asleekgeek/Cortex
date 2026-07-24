@@ -216,17 +216,46 @@ def _merge_analogical_bridges(
             )
 
 
+def _index_memories(memories: dict | list | None) -> dict[str, dict]:
+    """Coerce a memory collection into an id -> record map.
+
+    Two producers feed this function with different shapes:
+      - ``brain_index["memories"]`` is already an id-keyed ``dict``.
+      - ``scanner.discover_all_memories()`` returns a ``list`` of records
+        (``file``/``path``/``project``/``body``/... — see
+        ``scanner._parse_memory_file``). Passing that list straight into
+        ``dict.update`` raised ``ValueError: dictionary update sequence
+        element #0 has length 9; 2 is required`` whenever the live home held
+        real memory files (issue #174) — empty homes skipped the branch, so
+        the defect only surfaced against production data.
+
+    A ``dict`` is returned unchanged. A ``list`` is keyed by the record's
+    stable ``path`` (fallback ``file`` then ``name``); records that carry no
+    identifier are keyed by object identity so distinct records never collide.
+    """
+    if not memories:
+        return {}
+    if isinstance(memories, dict):
+        return memories
+    indexed: dict[str, dict] = {}
+    for record in memories:
+        if not isinstance(record, dict):
+            continue
+        key = record.get("path") or record.get("file") or record.get("name")
+        indexed[str(key) if key is not None else f"mem:{id(record)}"] = record
+    return indexed
+
+
 def find_bridges(
     profiles: dict | None,
     brain_index: dict | None,
-    memories: dict | None = None,
+    memories: dict | list | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """Find cross-domain bridges from structural edges and analogical text."""
-    all_memories = {}
+    all_memories: dict[str, dict] = {}
     if brain_index and brain_index.get("memories"):
         all_memories.update(brain_index["memories"])
-    if memories:
-        all_memories.update(memories)
+    all_memories.update(_index_memories(memories))
 
     all_conversations = (brain_index or {}).get("conversations") or {}
     project_domain_map = _build_project_domain_map(profiles)

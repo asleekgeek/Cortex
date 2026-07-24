@@ -239,7 +239,7 @@ def _apply_cross_domain_analysis(
     domain_conversations: dict[str, dict],
     conversations: list[dict],
     brain_index: dict | None,
-    memories: dict | None,
+    memories: dict | list[dict] | None,
 ) -> None:
     """Attach bridges, blind spots, features, and persistent features."""
     bridges = find_bridges(profiles, brain_index, memories)
@@ -280,7 +280,7 @@ def build_domain_profiles(
     *,
     existing_profiles: dict,
     conversations: list[dict],
-    memories: dict | None,
+    memories: dict | list[dict] | None,
     brain_index: dict | None,
     by_project: dict[str, list[dict]],
     target_domain: str | None = None,
