@@ -25,6 +25,7 @@ import numpy as np
 from mcp_server.infrastructure.sqlite_compat import PsycopgCompatConnection
 from mcp_server.infrastructure.sqlite_schema import (
     CURRENT_MEMORIES_VIEW_DDL,
+    MEMORIES_FTS_DDL,
     MEMORIES_VEC_DDL,
     MIGRATIONS,
     get_all_ddl,
@@ -50,6 +51,13 @@ logger = logging.getLogger(__name__)
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _fts_augment(content: str) -> str:
+    """Append identifier sub-tokens to FTS content (code-aware, issue #169)."""
+    from mcp_server.shared.code_tokenize import augment_content
+
+    return augment_content(content or "")
 
 
 # Parity with PgMemoryStore's supersede_atomic operational bounds (engineering,
@@ -115,6 +123,34 @@ class SqliteMemoryStore(
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
             except sqlite3.OperationalError:
                 pass
+        self._migrate_fts_code_tokenize()
+
+    def _migrate_fts_code_tokenize(self) -> None:
+        """One-shot: convert an external-content memories_fts to a self-content
+        table and reindex every memory with code-aware sub-tokens (issue #169).
+
+        Idempotent: a fresh DB (or an already-converted one) has no
+        ``content=`` option in its ``memories_fts`` DDL, so this is a no-op.
+        Only a legacy external-content table triggers the rebuild — required
+        because appended sub-tokens cannot be safely deleted from an
+        external-content index (see sqlite_schema.MEMORIES_FTS_DDL note).
+        """
+        row = self._conn.execute(
+            "SELECT sql FROM sqlite_master WHERE name = 'memories_fts'"
+        ).fetchone()
+        sql = (row["sql"] if row else None) or ""
+        if "content=" not in sql:
+            return  # already self-content (fresh DB or prior migration)
+        from mcp_server.shared.code_tokenize import augment_content
+
+        self._conn.execute("DROP TABLE IF EXISTS memories_fts")
+        self._conn.execute(MEMORIES_FTS_DDL)
+        rows = self._conn.execute("SELECT id, content FROM memories").fetchall()
+        for r in rows:
+            self._conn.execute(
+                "INSERT INTO memories_fts(rowid, content) VALUES (?, ?)",
+                (r["id"], augment_content(r["content"] or "")),
+            )
 
     def _migrate_homeostatic_state_write_class(self) -> None:
         """M-D3 (7.1): rebuild homeostatic_state with PK (domain, write_class).
@@ -337,16 +373,26 @@ class SqliteMemoryStore(
         memory_id = cur.lastrowid
         self._conn.execute(
             "INSERT INTO memories_fts(rowid, content) VALUES (?, ?)",
-            (memory_id, content),
+            (memory_id, _fts_augment(content)),
         )
         embedding = data.get("embedding")
-        if self._has_vec and embedding is not None:
-            vec = self._bytes_to_vector(embedding)
-            if vec is not None:
-                self._conn.execute(
-                    "INSERT INTO memories_vec(rowid, embedding) VALUES (?, ?)",
-                    (memory_id, vec.tobytes()),
-                )
+        if embedding is not None:
+            # Stamp provenance whenever an embedding was PRODUCED, independent of
+            # whether the vec0 store is present. The tag records which encoder
+            # made this memory's embedding ('neural'/'fallback'), not whether it
+            # was physically stored. Without this, a store built without the
+            # sqlite-vec extension (``_has_vec`` False — e.g. an install missing
+            # the [sqlite] extra) would leave embedding_model='' — a silent third
+            # state that hides the fallback and starves the re-embed worklist
+            # (issue #169, CI regression on the no-[sqlite] matrix legs).
+            self._stamp_embedding_model(memory_id, data.get("embedding_model"))
+            if self._has_vec:
+                vec = self._bytes_to_vector(embedding)
+                if vec is not None:
+                    self._conn.execute(
+                        "INSERT INTO memories_vec(rowid, embedding) VALUES (?, ?)",
+                        (memory_id, vec.tobytes()),
+                    )
         return memory_id  # type: ignore[return-value]
 
     def insert_memory(self, data: dict[str, Any]) -> int:
@@ -604,6 +650,85 @@ class SqliteMemoryStore(
         except Exception:
             pass
 
+    def _stamp_embedding_model(self, memory_id: int, model: str | None) -> None:
+        """Record which vector space a memory's embedding lives in (issue #169).
+
+        precondition: ``memory_id`` refers to a just-written vec row.
+        postcondition: ``memories.embedding_model`` is set to ``model`` when
+        given, else to the process-wide engine mode
+        (``current_embedding_mode``). This is the single tag the vector search
+        reads to keep 'neural' and 'fallback' vectors — incompatible geometries
+        — from cross-ranking. Best-effort: a missing column (pre-migration DB in
+        a race) is swallowed, same discipline as the vec insert it accompanies.
+        """
+        if not model:
+            from mcp_server.infrastructure.embedding_engine import (
+                current_embedding_mode,
+            )
+
+            model = current_embedding_mode()
+        # 'unknown' means no engine was constructed (e.g. a direct store test
+        # that inserts a raw vector); leave the column at its '' default rather
+        # than writing a misleading tag.
+        if model == "unknown":
+            return
+        try:
+            self._conn.execute(
+                "UPDATE memories SET embedding_model = ? WHERE id = ?",
+                (model, memory_id),
+            )
+        except sqlite3.OperationalError:
+            pass
+
+    def select_fallback_embeddings(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Return current memories whose vector was written in fallback mode.
+
+        precondition: ``limit`` > 0.
+        postcondition: returns up to ``limit`` ``{memory_id, content}`` dicts for
+        non-superseded memories tagged ``embedding_model='fallback'``, hottest
+        first — the re-embedding worklist that upgrades a store transparently
+        once the neural model becomes available (issue #169). Empty when the
+        column is absent or nothing is tagged fallback.
+        """
+        try:
+            rows = self._conn.execute(
+                "SELECT id, content FROM current_memories "
+                "WHERE embedding_model = 'fallback' "
+                "ORDER BY heat_base DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [{"memory_id": r["id"], "content": r["content"]} for r in rows]
+
+    def reembed_memory(self, memory_id: int, embedding: bytes | None) -> None:
+        """Replace a memory's stored vector and restamp its provider (issue #169).
+
+        precondition: ``embedding`` was produced by the current process encoder.
+        postcondition: the vec row is replaced (when the vec store is present)
+        and ``embedding_model`` is restamped to the current mode — so a
+        fallback-tagged memory becomes 'neural' once the model is available,
+        without touching content or the compression flags. No-op for a None
+        embedding. Commits.
+        """
+        if embedding is None:
+            return
+        if self._has_vec:
+            vec = self._bytes_to_vector(embedding)
+            if vec is not None:
+                try:
+                    self._conn.execute(
+                        "DELETE FROM memories_vec WHERE rowid = ?", (memory_id,)
+                    )
+                    self._conn.execute(
+                        "INSERT INTO memories_vec(rowid, embedding) VALUES (?, ?)",
+                        (memory_id, vec.tobytes()),
+                    )
+                except Exception:
+                    pass
+        self._stamp_embedding_model(memory_id, None)
+        self._conn.commit()
+
     def delete_memory(self, memory_id: int) -> bool:
         self._conn.execute("DELETE FROM memories_fts WHERE rowid = ?", (memory_id,))
         if self._has_vec:
@@ -668,22 +793,27 @@ class SqliteMemoryStore(
         self._conn.execute("DELETE FROM memories_fts WHERE rowid = ?", (memory_id,))
         self._conn.execute(
             "INSERT INTO memories_fts(rowid, content) VALUES (?, ?)",
-            (memory_id, content),
+            (memory_id, _fts_augment(content)),
         )
-        # Update vec
-        if self._has_vec and embedding is not None:
-            vec = self._bytes_to_vector(embedding)
-            if vec is not None:
-                try:
-                    self._conn.execute(
-                        "DELETE FROM memories_vec WHERE rowid = ?", (memory_id,)
-                    )
-                    self._conn.execute(
-                        "INSERT INTO memories_vec(rowid, embedding) VALUES (?, ?)",
-                        (memory_id, vec.tobytes()),
-                    )
-                except Exception:
-                    pass
+        # Re-embed restamps the vector's space: a compression/replay re-encode
+        # under the current engine upgrades a prior 'fallback' row to 'neural'
+        # transparently (issue #169). Stamp whenever an embedding was produced,
+        # even without the vec store present (see _insert_memory_rows).
+        if embedding is not None:
+            self._stamp_embedding_model(memory_id, None)
+            if self._has_vec:
+                vec = self._bytes_to_vector(embedding)
+                if vec is not None:
+                    try:
+                        self._conn.execute(
+                            "DELETE FROM memories_vec WHERE rowid = ?", (memory_id,)
+                        )
+                        self._conn.execute(
+                            "INSERT INTO memories_vec(rowid, embedding) VALUES (?, ?)",
+                            (memory_id, vec.tobytes()),
+                        )
+                    except Exception:
+                        pass
         self._conn.commit()
 
     # ── Row normalization ─────────────────────────────────────────────

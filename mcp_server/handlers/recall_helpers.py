@@ -10,6 +10,7 @@ from typing import Any
 
 from mcp_server.core import thermodynamics
 from mcp_server.core.enrichment import build_expanded_query
+from mcp_server.shared.code_tokenize import expand_fts_query
 from mcp_server.core.prospective import check_trigger
 from mcp_server.core.query_intent import QueryIntent
 from mcp_server.core.retrieval_signals import (
@@ -43,6 +44,17 @@ def compute_vector_fts(
         ids = {m for m, _ in fts}
         fts.extend(
             (m, s) for m, s in store.search_fts(query, limit=pool // 2) if m not in ids
+        )
+    # Code-aware discovery (issue #169): a camelCase/snake_case query term is
+    # expanded into its sub-tokens so a lowercase query ("payment") recalls a
+    # symbol memory ("normalizePaymentAmount") on the SQLite FTS path — and vice
+    # versa. Merge-in only (never removes a hit); the raw/expanded searches
+    # above stay primary, so this is additive on both backends.
+    code_q = expand_fts_query(query)
+    if code_q and code_q not in (query, expanded):
+        ids = {m for m, _ in fts}
+        fts.extend(
+            (m, s) for m, s in store.search_fts(code_q, limit=pool // 2) if m not in ids
         )
     return vec, fts, q_emb
 
