@@ -69,3 +69,4 @@ app-tauri/src-tauri/target/
 
 # Benchmark run logs (raw stdout/stderr) — transient artifacts, not release content
 benchmarks/results/**/*.log
+benchmarks/.reproduce.lock/
