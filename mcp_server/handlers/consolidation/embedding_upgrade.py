@@ -34,13 +34,10 @@ def run_embedding_upgrade_cycle(
 ) -> dict[str, Any]:
     """Re-embed up to ``_MAX_UPGRADE_PER_CYCLE`` fallback memories with neural.
 
-    precondition: ``embeddings`` is the process encoder; ``store`` may or may
-    not expose the #169 fallback worklist.
     postcondition: returns ``{"upgraded": n}`` (and a ``reason`` when it skips).
     Only runs when the encoder currently resolves to the neural model; each
-    upgraded memory's vector is replaced and its ``embedding_model`` restamped
-    'neural' via ``store.reembed_memory``. Non-fatal: any failure is logged and
-    reported as zero upgrades.
+    upgraded memory is re-embedded and restamped 'neural' via
+    ``store.reembed_memory``. Non-fatal: failures report zero upgrades.
     """
     if not hasattr(store, "select_fallback_embeddings") or not hasattr(
         store, "reembed_memory"
