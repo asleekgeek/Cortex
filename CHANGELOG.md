@@ -6,6 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.16.0] - 2026-07-25
+
+### Added
+- **Native prose-redaction pass for generated prose** (#166, #167): `core/prose_redaction.py` carries a 16-class mechanical inventory of AI-writing tells with per-pattern sources (Wikipedia "Signs of AI writing"; method prior art blader/humanizer and petergyang/no-ai-slop, MIT; house rules) — em dashes, banned vocabulary, weasel attribution, filler, -ing tack-on analyses, binary contrasts, negative listing, throat-clearing, faux insight, importance puffery, promotional language, fake-strong verbs, AI conversation artifacts, signposting, rhetorical setups, dramatic fragmentation. All three wiki-authoring prompts (topical, coverage, re-author) now embed `REDACTION_CONVENTIONS` so tells are avoided at generation time; `wiki_write` returns an advisory `redaction_findings` summary (never blocking, omitted when clean) so every generated page is measured at write time. Judgment-level tells (synonym cycling, rule of three, colon reveals in context) stay at prompt time by design; the mechanical set is FP-guarded by tests asserting ordinary technical prose stays silent. User-authored content is out of scope.
+
+
 ## [4.15.0] - 2026-07-22
 
 The plugin is renamed **`cortex` → `hypermnesia-mcp`** (a community-directory name collision with an unrelated `cortex` plugin; the new name matches the existing PyPI / MCP-registry identity). Existing users: `claude plugin uninstall cortex && claude plugin install hypermnesia-mcp` — memories and configuration are untouched, storage paths do not change. A minimal `cortex` deprecation shim (`plugins/cortex-deprecated/`) stays on the marketplace and announces the migration at session start.
