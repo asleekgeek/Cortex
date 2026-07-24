@@ -1,0 +1,115 @@
+"""Encoder-provider seam for the embedding subsystem (Cortex#173).
+
+This module defines the interface the rest of the system consumes to turn text
+into vectors, decoupled from *which* encoder produces them:
+
+  * ``EmbeddingProvider`` — the ``Protocol`` the store, handlers, and hooks
+    depend on. ``EmbeddingEngine`` (the neural encoder in
+    ``embedding_engine.py``) is its first and, today, only implementation. A
+    future download-free encoder (issue #169) plugs in here as a second
+    implementation without any consumer change.
+  * ``_EmbeddingMathMixin`` — the stateless vector arithmetic shared by any
+    provider (cache key, L2 normalize, cosine similarity, blob⇄list). Kept as a
+    mixin so ``EmbeddingEngine`` exposes these on the class exactly as before
+    (``EmbeddingEngine._cache_key`` etc. — the tests pin them there).
+
+Pure infrastructure: no model, no I/O. Split out of ``embedding_engine.py`` to
+bring that file under the 300-line cap and to make the provider boundary
+explicit. Behaviour is unchanged — the methods below are moved verbatim.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from typing import Protocol, runtime_checkable
+
+import numpy as np
+
+
+@runtime_checkable
+class EmbeddingProvider(Protocol):
+    """The text→vector interface consumers depend on (Cortex#173 seam).
+
+    Any implementation returns L2-normalized ``float32`` blobs of ``dimensions``
+    length (or ``None`` for empty text). ``EmbeddingEngine`` is the neural
+    implementation; the seam lets a second encoder be substituted without
+    touching a single caller.
+    """
+
+    @property
+    def dimensions(self) -> int:
+        """Vector dimension of the blobs this provider emits."""
+        ...
+
+    @property
+    def available(self) -> bool:
+        """Whether a real (neural) model backs this provider right now."""
+        ...
+
+    def encode(self, text: str) -> bytes | None:
+        """Encode one text to a float32 blob (``None`` for empty input)."""
+        ...
+
+    def encode_batch(self, texts: list[str]) -> list[bytes | None]:
+        """Encode a batch, preserving order and ``None`` for empty items."""
+        ...
+
+    def similarity(self, embedding_a: bytes, embedding_b: bytes) -> float:
+        """Cosine similarity between two blobs from this provider."""
+        ...
+
+
+class _EmbeddingMathMixin:
+    """Stateless vector arithmetic shared by every embedding provider.
+
+    A mixin (not free functions) so the concrete provider keeps exposing these
+    as class/instance methods — ``EmbeddingEngine._cache_key``,
+    ``engine.similarity``, ``engine.to_list`` — the exact surface the existing
+    tests exercise.
+    """
+
+    @staticmethod
+    def _cache_key(text: str) -> str:
+        """Return the SHA256[:16] cache key for ``text``.
+
+        precondition: ``text`` is a non-empty str.
+        postcondition: returns a 16-char lowercase hex string; the same
+        input always produces the same key; key length is independent of
+        ``len(text)``.
+
+        Source: ADR-0045 R5 — ``hashlib.sha256(text.encode()).hexdigest()[:16]``
+        is the mandated cache-key form for any memoization layer over
+        user-provided strings.
+        """
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+    @staticmethod
+    def _normalize(arr: np.ndarray) -> np.ndarray:
+        norm = np.linalg.norm(arr)
+        if norm > 0:
+            arr = arr / norm
+        return arr
+
+    def similarity(self, embedding_a: bytes, embedding_b: bytes) -> float:
+        """Cosine similarity between two embedding blobs."""
+        a = np.frombuffer(embedding_a, dtype=np.float32)
+        b = np.frombuffer(embedding_b, dtype=np.float32)
+        if len(a) != len(b):
+            return 0.0
+        dot = float(np.dot(a, b))
+        norm = float(np.linalg.norm(a) * np.linalg.norm(b))
+        if norm == 0:
+            return 0.0
+        return dot / norm
+
+    @staticmethod
+    def to_list(embedding: bytes) -> list[float]:
+        """Convert embedding blob to Python float list."""
+        arr = np.frombuffer(embedding, dtype=np.float32)
+        return arr.tolist()
+
+    @staticmethod
+    def from_list(values: list[float]) -> bytes:
+        """Convert float list to embedding blob."""
+        arr = np.asarray(values, dtype=np.float32)
+        return arr.tobytes()

@@ -4,7 +4,7 @@ Provides text -> vector encoding for semantic similarity search.
 
 Strategy (in priority order):
   1. sentence-transformers (if installed) -- best quality, 384D
-  2. Fallback: TF-IDF-like sparse-to-dense via Cortex's own text utilities
+  2. Fallback: hash-based sparse-to-dense encoding (no ML model)
 
 The engine is lazy-loading: no model initialization until first encode() call.
 
@@ -51,6 +51,10 @@ from typing import Any
 
 import numpy as np
 
+from mcp_server.infrastructure.embedding_provider import (
+    EmbeddingProvider,
+    _EmbeddingMathMixin,
+)
 from mcp_server.shared.platform import cache_dir as _base_cache_dir
 
 # source: measured 2026-07-11 (incident i7d3) — see module docstring
@@ -60,6 +64,15 @@ from mcp_server.shared.platform import cache_dir as _base_cache_dir
 DEFAULT_MODEL_REVISION = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "DEFAULT_MODEL_REVISION",
+    "EmbeddingEngine",
+    "EmbeddingProvider",
+    "embedding_cache_dir",
+    "get_embedding_engine",
+    "reset_embedding_engine",
+]
 
 
 def embedding_cache_dir() -> str | None:
@@ -114,8 +127,13 @@ def reset_embedding_engine() -> None:
     _singleton = None
 
 
-class EmbeddingEngine:
+class EmbeddingEngine(_EmbeddingMathMixin):
     """Lazy-loading embedding engine with graceful fallback.
+
+    Implements ``EmbeddingProvider`` (embedding_provider.py) and mixes in the
+    shared vector math (``_EmbeddingMathMixin``) so ``_cache_key`` /
+    ``similarity`` / ``to_list`` / ``from_list`` / ``_normalize`` stay on the
+    class exactly as before.
 
     Cache key discipline (ADR-0045 R5): the LRU cache is keyed by
     ``sha256(text)[:16]`` (16 hex chars = 8 bytes of entropy), never by
@@ -123,8 +141,7 @@ class EmbeddingEngine:
     100 KB of key bytes — at ``_cache_max = 128`` this bounds cache key
     memory to ~2 KB regardless of input size. A 16-char SHA256 prefix
     has 2^64 possible values; the birthday-bound collision probability
-    at 128 cached entries is ~4.6e-16 (negligible). See
-    ``_cache_key`` for the single point of truth.
+    at 128 cached entries is ~4.6e-16 (negligible).
     """
 
     def __init__(
@@ -148,23 +165,6 @@ class EmbeddingEngine:
         # Cache keyed by sha256(text)[:16] — see class docstring / ADR-0045 R5.
         self._cache: OrderedDict[str, bytes] = OrderedDict()
         self._cache_max = 128
-
-    # ── Cache key (ADR-0045 R5) ───────────────────────────────────────
-
-    @staticmethod
-    def _cache_key(text: str) -> str:
-        """Return the SHA256[:16] cache key for ``text``.
-
-        precondition: ``text`` is a non-empty str.
-        postcondition: returns a 16-char lowercase hex string; the same
-        input always produces the same key; key length is independent of
-        ``len(text)``.
-
-        Source: ADR-0045 R5 — ``hashlib.sha256(text.encode()).hexdigest()[:16]``
-        is the mandated cache-key form for any memoization layer over
-        user-provided strings.
-        """
-        return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
     @property
     def model_name(self) -> str:
@@ -223,18 +223,13 @@ class EmbeddingEngine:
         else:
             logger.warning("Unknown embedding device %r, using cpu", requested)
             self._device = "cpu"
-        logger.info(
-            "Embedding device: %s (requested: %s)",
-            self._device,
-            requested,
-        )
+        logger.info("Embedding device: %s (requested: %s)", self._device, requested)
         return self._device
 
     def _fallback_to_cpu(self) -> None:
         """Reload model on CPU after GPU failure."""
         logger.warning(
-            "GPU inference failed (device=%s) — reloading on CPU",
-            self._device,
+            "GPU inference failed (device=%s) — reloading on CPU", self._device
         )
         self._device = "cpu"
         self._model = None
@@ -326,8 +321,8 @@ class EmbeddingEngine:
             )
         except ImportError:
             logger.warning(
-                "sentence-transformers not installed; using hash-based fallback embeddings. "
-                "Installing in background for next session..."
+                "sentence-transformers not installed; using hash-based fallback "
+                "embeddings. Installing in background for next session..."
             )
             self._unavailable = True
             self._trigger_background_install()
@@ -338,7 +333,6 @@ class EmbeddingEngine:
         Runs pip install as a detached subprocess so it doesn't block
         the current session. Next session will have real embeddings.
         """
-        import os
         import subprocess
         import sys
 
@@ -441,37 +435,6 @@ class EmbeddingEngine:
             arr = self._normalize(np.asarray(v, dtype=np.float32))
             results.append(arr.tobytes())
         return results
-
-    def similarity(self, embedding_a: bytes, embedding_b: bytes) -> float:
-        """Cosine similarity between two embedding blobs."""
-        a = np.frombuffer(embedding_a, dtype=np.float32)
-        b = np.frombuffer(embedding_b, dtype=np.float32)
-        if len(a) != len(b):
-            return 0.0
-        dot = float(np.dot(a, b))
-        norm = float(np.linalg.norm(a) * np.linalg.norm(b))
-        if norm == 0:
-            return 0.0
-        return dot / norm
-
-    @staticmethod
-    def to_list(embedding: bytes) -> list[float]:
-        """Convert embedding blob to Python float list."""
-        arr = np.frombuffer(embedding, dtype=np.float32)
-        return arr.tolist()
-
-    @staticmethod
-    def from_list(values: list[float]) -> bytes:
-        """Convert float list to embedding blob."""
-        arr = np.asarray(values, dtype=np.float32)
-        return arr.tobytes()
-
-    @staticmethod
-    def _normalize(arr: np.ndarray) -> np.ndarray:
-        norm = np.linalg.norm(arr)
-        if norm > 0:
-            arr = arr / norm
-        return arr
 
     def _fallback_encode(self, text: str) -> bytes:
         """Hash-based deterministic embedding fallback.
