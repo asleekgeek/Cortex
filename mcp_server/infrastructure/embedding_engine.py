@@ -34,6 +34,10 @@ from typing import Any
 
 import numpy as np
 
+from mcp_server.infrastructure.embedding_factory import (
+    get_embedding_engine,
+    reset_embedding_engine,
+)
 from mcp_server.infrastructure.embedding_model_lifecycle import (
     DEFAULT_MODEL_REVISION,
     ModelState,
@@ -49,7 +53,9 @@ logger = logging.getLogger(__name__)
 
 # Re-exported for backward compatibility: callers and tests import these names
 # from ``embedding_engine`` directly (they lived here before the Cortex#173
-# split). The definitions now live in ``embedding_model_lifecycle``.
+# split). The definitions now live in the seam modules — ``embedding_provider``
+# (interface), ``embedding_model_lifecycle`` (revision pin + cache dir), and
+# ``embedding_factory`` (composition root / selection).
 __all__ = [
     "DEFAULT_MODEL_REVISION",
     "EmbeddingEngine",
@@ -59,30 +65,6 @@ __all__ = [
     "get_embedding_engine",
     "reset_embedding_engine",
 ]
-
-
-# ── Process-wide singleton (composition root) ─────────────────────────
-# One EmbeddingEngine per process. Handlers call get_embedding_engine()
-# instead of creating their own instances. This guarantees: one model,
-# one device, no mixed-device embeddings, ~5x memory savings.
-_singleton: EmbeddingEngine | None = None
-
-
-def get_embedding_engine() -> "EmbeddingEngine":
-    """Return the process-wide EmbeddingEngine singleton."""
-    global _singleton
-    if _singleton is None:
-        from mcp_server.infrastructure.memory_config import get_memory_settings
-
-        s = get_memory_settings()
-        _singleton = EmbeddingEngine(dim=s.EMBEDDING_DIM, device=s.EMBEDDING_DEVICE)
-    return _singleton
-
-
-def reset_embedding_engine() -> None:
-    """Clear singleton (for testing only)."""
-    global _singleton
-    _singleton = None
 
 
 class EmbeddingEngine(_EmbeddingLifecycleMixin, _EmbeddingMathMixin):
