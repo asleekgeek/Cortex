@@ -3,14 +3,30 @@
 from __future__ import annotations
 
 from mcp_server.core.prose_redaction import (
+    CATEGORY_AI_ARTIFACT,
     CATEGORY_BANNED_WORD,
+    CATEGORY_BINARY_CONTRAST,
+    CATEGORY_DRAMATIC_FRAGMENT,
     CATEGORY_EM_DASH,
+    CATEGORY_FAKE_VERB,
+    CATEGORY_FAUX_INSIGHT,
+    CATEGORY_FILLER,
     CATEGORY_ING_TACKON,
+    CATEGORY_NEGATIVE_LISTING,
+    CATEGORY_PROMOTIONAL,
+    CATEGORY_PUFFERY,
+    CATEGORY_RHETORICAL,
+    CATEGORY_SIGNPOST,
+    CATEGORY_THROAT_CLEARING,
     CATEGORY_WEASEL,
     REDACTION_CONVENTIONS,
     scan_prose,
     summarize_findings,
 )
+
+
+def _categories(text: str) -> list[str]:
+    return [f.category for f in scan_prose(text)]
 
 
 class TestScanProse:
@@ -64,6 +80,84 @@ class TestScanProse:
         long_line = "delve " + "x" * 300
         (finding,) = scan_prose(long_line)
         assert len(finding.excerpt) <= 80
+
+
+class TestExpandedInventory:
+    """The full mechanical set beyond the initial four classes (issue #166)."""
+
+    def test_binary_contrast_two_sentence_form(self):
+        assert _categories("It's not the model. It's the eval.") == [
+            CATEGORY_BINARY_CONTRAST
+        ]
+
+    def test_binary_contrast_not_just_but_form(self):
+        assert CATEGORY_BINARY_CONTRAST in _categories(
+            "This is not just retrieval, but a full memory system."
+        )
+
+    def test_negative_listing(self):
+        assert _categories("Not a cache. Not a database. A memory.") == [
+            CATEGORY_NEGATIVE_LISTING
+        ]
+
+    def test_throat_clearing(self):
+        assert _categories("Here's the thing about consolidation.") == [
+            CATEGORY_THROAT_CLEARING
+        ]
+
+    def test_faux_insight(self):
+        assert _categories("What nobody tells you about vector search.") == [
+            CATEGORY_FAUX_INSIGHT
+        ]
+
+    def test_puffery(self):
+        assert _categories("This marks a pivotal moment for the wiki.") == [
+            CATEGORY_PUFFERY
+        ]
+
+    def test_promotional(self):
+        assert CATEGORY_PROMOTIONAL in _categories(
+            "A vibrant ecosystem nestled in the heart of the repo."
+        )
+
+    def test_fake_strong_verb(self):
+        assert _categories("The handler serves as a centralized hub.") == [
+            CATEGORY_FAKE_VERB
+        ]
+
+    def test_ai_conversation_artifact(self):
+        assert _categories("I hope this helps with your setup.") == [
+            CATEGORY_AI_ARTIFACT
+        ]
+
+    def test_signposting(self):
+        assert _categories("In this section we will explore recall.") == [
+            CATEGORY_SIGNPOST
+        ]
+
+    def test_rhetorical_setup(self):
+        assert _categories("Plot twist: the cache was cold.") == [CATEGORY_RHETORICAL]
+
+    def test_dramatic_fragment(self):
+        assert _categories("That's it. That's the whole design.") == [
+            CATEGORY_DRAMATIC_FRAGMENT
+        ]
+
+    def test_filler_phrase(self):
+        assert _categories("At its core, the gate is a filter.") == [CATEGORY_FILLER]
+
+    def test_false_positive_guards_on_technical_prose(self):
+        # Ordinary technical sentences that brush against pattern shapes
+        # must stay silent — an inventory extension that fires here is a
+        # regression, not a catch.
+        clean = (
+            "The store is not thread-safe; callers hold the lock.\n"
+            "Serves requests from the read replica after failover.\n"
+            "The problem is the cache TTL, not the index.\n"
+            "We explore the graph via BFS from the seed entity.\n"
+            "In summary tables, counts are measured, not estimated.\n"
+        )
+        assert scan_prose(clean) == []
 
 
 class TestSummarizeFindings:
