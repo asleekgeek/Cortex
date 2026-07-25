@@ -34,6 +34,17 @@ coding write gates, causal graphs, and intent-aware retrieval.
   gate before consolidation ever advances the stage), not a bug — pass
   `--with-consolidation` for representative numbers.
 
+## Releasing
+
+A release is not shipped until its pins move. The tag/GitHub-release/PyPI
+steps deliver nothing to plugin installs by themselves — installs subscribe
+via `.claude-plugin/marketplace.json` pins. The release checklist therefore
+ENDS with: bump the marketplace pin(s) and `server.json`, and confirm
+`python3 scripts/check_marketplace_pins.py` exits 0. CI enforces this
+(marketplace-pins workflow: PR/push on the manifest + weekly cron), source:
+the 2026-07-25 incident where six zetetic-team-subagents releases and two
+cortex-viz releases shipped to zero installs (#179).
+
 ## Architecture
 
 Clean Architecture, concentric layers: `server → handlers → core ← shared`,

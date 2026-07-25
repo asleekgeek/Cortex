@@ -5,7 +5,7 @@
     "email": "admin@ai-architect.tools"
   },
   "metadata": {
-    "description": "Persistent memory and cognitive profiling plugins for Claude Code",
+    "description": "The Cortex family of Claude Code plugins: home of hypermnesia-mcp (the persistent-memory server formerly named cortex, renamed in v4.15.0 over a directory name collision), zetetic-team-subagents, and cortex-viz. The marketplace name stays cortex-plugins: it is the brand-level umbrella, while hypermnesia-mcp is one package inside it.",
     "version": "4.16.0"
   },
   "plugins": [
@@ -64,7 +64,7 @@
         "repo": "cdeust/cortex-viz"
       },
       "description": "Standalone visualization MCP for Cortex — a live neural-graph galaxy of every project, file, symbol, memory, discussion and wiki page, plus a per-session execution trace, a consolidation kanban, and a curated knowledge/wiki browser. Read-only bridge over Cortex's shared PostgreSQL store and the ~/.claude artifacts; it renders, it never remembers. Restores the open_visualization / get_methodology_graph / query_workflow_graph tools removed from Cortex 3.21.0; launch with /cortex-visualize.",
-      "version": "2.6.3",
+      "version": "2.7.1",
       "author": {
         "name": "Clement Deust",
         "email": "admin@ai-architect.tools"
@@ -89,7 +89,7 @@
         "repo": "cdeust/zetetic-team-subagents"
       },
       "description": "Zetetic agent team for Cortex — 97 genius reasoning patterns from history's greatest minds + 19 team specialists (architect, engineer, code-reviewer, refactorer, …), 63 skills, 24 commands, 18 tools, 17 hooks, under one epistemic standard none of them can bypass. Composes with Cortex memory: every agent recalls/remembers through the Cortex MCP and routes via /genius, /agent, /zetetic, /quality, /research commands.",
-      "version": "2.29.0",
+      "version": "2.34.0",
       "author": {
         "name": "Clement Deust",
         "email": "admin@ai-architect.tools"
