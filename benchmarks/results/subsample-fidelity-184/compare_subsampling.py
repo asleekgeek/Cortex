@@ -145,19 +145,26 @@ def main() -> None:
         print(f"[running] {name} over {len(dataset)} questions ...", flush=True)
         r = bench._eval_mode("fallback", dataset)
         out[name] = r
-        print(f"  {name}: MRR={r['mrr']:.4f} R@10={r['recall10']:.4f} "
-              f"elapsed={r['elapsed_s']}s", flush=True)
+        print(
+            f"  {name}: MRR={r['mrr']:.4f} R@10={r['recall10']:.4f} "
+            f"elapsed={r['elapsed_s']}s",
+            flush=True,
+        )
 
     print("\n=== issue #184 subsampling comparison (LongMemEval-S, n=50) ===")
     print(f"{'variant':<14}{'MRR':>10}{'Recall@10':>12}{'elapsed':>10}")
     for name in VARIANTS:
         r = out[name]
-        print(f"{name:<14}{r['mrr']:>10.4f}{r['recall10']:>11.1%}{r['elapsed_s']:>9.1f}s")
+        print(
+            f"{name:<14}{r['mrr']:>10.4f}{r['recall10']:>11.1%}{r['elapsed_s']:>9.1f}s"
+        )
     base = out["off"]
     for name in ("current", "faithful_a"):
         r = out[name]
-        print(f"{name} vs off: dMRR={r['mrr']-base['mrr']:+.4f} "
-              f"dR@10={r['recall10']-base['recall10']:+.1%}")
+        print(
+            f"{name} vs off: dMRR={r['mrr'] - base['mrr']:+.4f} "
+            f"dR@10={r['recall10'] - base['recall10']:+.1%}"
+        )
     (Path(__file__).parent / "on-off-faithful-3way.json").write_text(
         json.dumps(out, indent=2)
     )
