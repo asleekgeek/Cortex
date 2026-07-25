@@ -777,29 +777,90 @@ _CONSOLIDATE_TTL_HOURS: float = float(
 )
 
 
+def _spawn_consolidate_cycle() -> int | None:
+    """Spawn the detached ``consolidate_background`` worker; return its pid.
+
+    precondition: none. postcondition: a fully-detached subprocess (own
+    process group, stdio → ``consolidate.log``) is started and its pid
+    returned, or None if the spawn itself failed. The worker runs decay,
+    compression, CLS, memify, cascade, homeostatic, emergence cycles plus
+    autonomous wiki maintenance — this is the SAME cycle as before; #171
+    changes only WHO decides to start it, never what it does.
+    """
+    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT") or str(
+        Path(__file__).resolve().parents[2]
+    )
+    launcher = Path(plugin_root) / "scripts" / "launcher.py"
+    py = (
+        __import__("shutil").which("python3")
+        or __import__("shutil").which("python")
+        or sys.executable
+    )
+    if launcher.exists():
+        cmd = [py, str(launcher), "mcp_server.hooks.consolidate_background"]
+    else:
+        # Fall back to direct -m invocation (dev source is the package root).
+        cmd = [py, "-m", "mcp_server.hooks.consolidate_background"]
+
+    log_path = Path.home() / ".claude" / "methodology" / "consolidate.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    proc = subprocess.Popen(  # noqa: S603 — cmd built from trusted sources
+        cmd,
+        stdin=subprocess.DEVNULL,
+        stdout=open(log_path, "a"),
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+    _log(f"background consolidate spawned → {log_path}")
+    return proc.pid
+
+
 def _maybe_background_consolidate() -> None:
-    """Spawn a detached ``consolidate`` cycle when the stamp is stale.
+    """Ensure ONE consolidate cycle runs per period across N sessions (#171).
 
     The consolidate handler must NEVER be invoked manually by the user
-    (directive 2026-05-18). SessionStart owns the trigger: if the last
-    successful run was more than ``CORTEX_CONSOLIDATE_TTL_HOURS`` ago
-    (default 6h), spawn a detached subprocess that:
+    (directive 2026-05-18). SessionStart owns the trigger, but the trigger
+    is now session-counted, not per-session: this window registers with the
+    per-store ``GroomerCoordinator`` and asks it to ensure a cycle. The
+    coordinator writes the period stamp under a per-store lock BEFORE
+    spawning, so two concurrent sessions produce exactly one cycle per
+    ``CORTEX_CONSOLIDATE_TTL_HOURS`` window (default 6h) — fixing the old
+    ``"(in-flight)"``-marker race where a second session read the stamp as
+    never-run and spawned a duplicate.
 
-      * Runs decay, compression, CLS, memify, cascade, homeostatic,
-        emergence cycles.
-      * Runs autonomous wiki maintenance (stub purge + classifier-reject
-        purge + coverage / drift audit).
-      * Updates the stamp at ``~/.claude/methodology/.last_consolidate``.
-      * Logs to ``~/.claude/methodology/consolidate.log``.
+    Degrade honestly (#171): if the coordinator path raises for ANY reason,
+    fall back to the legacy per-session stamp spawn with a logged NOTICE —
+    never silently skip grooming entirely.
+    """
+    try:
+        from mcp_server.infrastructure.groomer_coordinator import (
+            GroomerCoordinator,
+            resolve_store_key,
+        )
 
-    Spawn is fully detached (own process group, stdio redirected to the
-    log) so SessionStart returns immediately. The user opens a session,
-    Cortex catches up silently in the background. The next session sees
-    the freshly-consolidated state.
+        coord = GroomerCoordinator(resolve_store_key())
+        coord.register(os.getpid())
+        outcome = coord.ensure_cycle(
+            period_hours=_CONSOLIDATE_TTL_HOURS,
+            spawn_fn=_spawn_consolidate_cycle,
+        )
+        _log(f"groomer coordinator: {outcome}")
+    except Exception as exc:
+        _log(
+            f"NOTICE: groomer coordinator unavailable ({exc}); falling back "
+            "to legacy per-session consolidate spawn"
+        )
+        _legacy_background_consolidate()
 
-    Failure is silent: a consolidate that crashes leaves the stamp
-    untouched so the next session retries. A persistent failure surfaces
-    in the log file (operators can `tail -f` it).
+
+def _legacy_background_consolidate() -> None:
+    """Pre-#171 per-session stamp spawn — the honest degrade path.
+
+    Kept as the fallback the coordinator degrades to (never a silent skip).
+    Spawns the cycle when the global ``.last_consolidate`` stamp is older
+    than the TTL. Retains the crude ``"(in-flight)"`` marker: under this
+    path (coordinator wholly unavailable) it is still strictly better than
+    no guard at all.
     """
     try:
         from mcp_server.hooks.consolidate_background import (
@@ -815,35 +876,6 @@ def _maybe_background_consolidate() -> None:
             if age_hours < _CONSOLIDATE_TTL_HOURS:
                 return  # Fresh enough; skip.
 
-        # Locate the launcher (same as background reanalyze).
-        plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT") or str(
-            Path(__file__).resolve().parents[2]
-        )
-        launcher = Path(plugin_root) / "scripts" / "launcher.py"
-        if not launcher.exists():
-            # Fall back to direct python invocation with PYTHONPATH —
-            # works when the dev source is the package root.
-            launcher = None
-
-        py = (
-            __import__("shutil").which("python3")
-            or __import__("shutil").which("python")
-            or sys.executable
-        )
-        if launcher is not None:
-            cmd = [
-                py,
-                str(launcher),
-                "mcp_server.hooks.consolidate_background",
-            ]
-        else:
-            cmd = [py, "-m", "mcp_server.hooks.consolidate_background"]
-
-        log_path = Path.home() / ".claude" / "methodology" / "consolidate.log"
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        # Touch the stamp so a *second* SessionStart racing this one
-        # doesn't spawn a duplicate worker. The background worker
-        # overwrites the stamp on its own completion.
         try:
             STAMP_PATH.parent.mkdir(parents=True, exist_ok=True)
             STAMP_PATH.write_text(
@@ -855,14 +887,7 @@ def _maybe_background_consolidate() -> None:
             )
         except OSError:
             pass
-        subprocess.Popen(  # noqa: S603 — cmd built from trusted sources
-            cmd,
-            stdin=subprocess.DEVNULL,
-            stdout=open(log_path, "a"),
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
-        _log(f"background consolidate spawned → {log_path}")
+        _spawn_consolidate_cycle()
     except Exception as exc:
         _log(f"background consolidate skipped: {exc}")
 

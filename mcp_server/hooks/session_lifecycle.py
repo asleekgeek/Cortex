@@ -34,6 +34,7 @@ Invariants
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from typing import Any
@@ -226,6 +227,29 @@ def _tombstone_session_registry() -> None:
         _log(f"session registry tombstone skipped (non-fatal): {exc}")
 
 
+def _deregister_groomer_coordinator() -> None:
+    """Best-effort SessionEnd deregistration for the shared groomer (#171).
+
+    precondition: called from a SessionEnd hook's python process — the same
+    process whose pid ``SessionStart`` registered via ``os.getpid()``.
+    postcondition: this session's registration is removed from the per-store
+    ``GroomerCoordinator``; if it was the LAST live session, the groomer's
+    single-instance marker is cleared (last-exit stop). Never raises — must
+    not block the profile update / consolidation that follows.
+    """
+    try:
+        from mcp_server.infrastructure.groomer_coordinator import (
+            GroomerCoordinator,
+            resolve_store_key,
+        )
+
+        coord = GroomerCoordinator(resolve_store_key())
+        if coord.stop_if_last(os.getpid()):
+            _log("groomer coordinator: last session exited, groomer stopped")
+    except Exception as exc:
+        _log(f"groomer coordinator deregister skipped (non-fatal): {exc}")
+
+
 def process_event(event: dict[str, Any] | None) -> None:
     """Process a single session lifecycle event.
 
@@ -271,6 +295,11 @@ def main() -> None:
     # Registry tombstone (T2-H2) runs first and unconditionally: the
     # window ended regardless of whether stdin carries a usable event.
     _tombstone_session_registry()
+
+    # Groomer coordinator deregistration (#171): decrement the session
+    # count; last exit stops the shared groomer. Also unconditional and
+    # independent of the event payload — the window ending is what matters.
+    _deregister_groomer_coordinator()
 
     if sys.stdin.isatty():
         _log("No stdin data (TTY mode), exiting")
