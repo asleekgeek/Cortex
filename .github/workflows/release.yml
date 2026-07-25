@@ -240,7 +240,7 @@ jobs:
           wc -l sbom-requirements.txt
           # cyclonedx-py ships in the cyclonedx-bom distribution.
           uv tool run --from cyclonedx-bom cyclonedx-py requirements \
-            sbom-requirements.txt --output-format json --outfile hypermnesia-mcp.cdx.json
+            sbom-requirements.txt --output-format JSON --output-file hypermnesia-mcp.cdx.json
           # Fail loudly if the ML stack is somehow absent — criterion 3 names it.
           for pkg in torch transformers scipy scikit-learn; do
             grep -q "\"name\": \"$pkg\"" hypermnesia-mcp.cdx.json \
