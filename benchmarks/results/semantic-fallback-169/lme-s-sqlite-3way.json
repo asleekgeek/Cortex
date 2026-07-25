@@ -1,26 +1,27 @@
 {
   "benchmark": "longmemeval_s_sqlite_fallback_169",
-  "git_sha": "8347944",
-  "date": "2026-07-24T21:53:11.821338+00:00",
+  "git_sha": "fix/embedding-subsampling-source-184",
+  "date": "2026-07-25T09:58:50.687745+00:00",
+  "note": "Re-run for issue #184: the algorithmic fallback embedder changed (frequent-token subsampling corrected to CBM-faithful per-token trigger / co-occurrence-only scope). Only the 'fallback' row moved; 'no-vector' and 'sentence-transformers' do not use the algorithmic embedder and are unchanged. Prior (#169) fallback row was mrr=0.3777399644043607, recall10=0.66.",
   "limit": 50,
   "n_questions": 50,
   "results": {
     "no-vector": {
       "mrr": 0.2754945322708481,
       "recall10": 0.46,
-      "elapsed_s": 5.2,
+      "elapsed_s": 5.1,
       "n": 50
     },
     "fallback": {
-      "mrr": 0.3777399644043607,
-      "recall10": 0.66,
-      "elapsed_s": 38.6,
+      "mrr": 0.3786153612297575,
+      "recall10": 0.68,
+      "elapsed_s": 62.9,
       "n": 50
     },
     "sentence-transformers": {
       "mrr": 0.6089621848739496,
       "recall10": 0.94,
-      "elapsed_s": 49.6,
+      "elapsed_s": 45.6,
       "n": 50
     }
   }

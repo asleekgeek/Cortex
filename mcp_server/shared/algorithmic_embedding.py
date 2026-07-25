@@ -27,10 +27,18 @@ kept:
     vectors of its neighbours within a symmetric window, distance-weighted
     ``1/d``. Two texts that use different but co-occurring vocabulary move
     closer, the synonym-bridging effect Sahlgren (2005) describes.
-  * Frequent-token subsampling — a token occurring more than
-    ``_MAX_OCCUR`` times in one document has its co-occurrence contribution
-    stride-subsampled, bounding cost on pathological inputs (word2vec/GloVe
-    frequent-word subsampling; Mikolov et al. 2013). Inert for normal memories.
+  * Frequent-token subsampling — a token whose within-document occurrence
+    count exceeds ``_MAX_OCCUR`` has *only its co-occurrence contribution*
+    stride-subsampled; its first-order term is always complete. This mirrors
+    CBM's ``cooccur_sparse_one_target`` (semantic.c:874): the trigger is the
+    per-token occurrence count and the scope is the co-occurrence pass alone.
+    It is *inspired by* word2vec/GloVe frequent-word subsampling (Mikolov et
+    al. 2013) — the motivation, dampening dominant tokens — but does NOT
+    implement their ``P(discard) = 1 - sqrt(t/f(w))`` formula: that needs a
+    corpus-relative frequency ``f(w)``, which this stateless per-text seam does
+    not have (same reason IDF is excluded below). Inert for normal memories: a
+    token must repeat >``_MAX_OCCUR`` times in ONE memory to trigger, which
+    conversational prose effectively never does.
 
   EXCLUDED (with reason)
   * IDF — needs a persistent corpus. The ``encode(text)`` seam is stateless and
@@ -62,8 +70,13 @@ _NONZERO_PER_TOKEN = 8
 # source: CBM_SEM_WINDOW = 5 (semantic.h:42) — co-occurrence window half-width.
 _WINDOW = 5
 
-# source: CBM_SEM_MAX_OCCUR = 512 (semantic.h:52) — frequent-token subsampling
-# cap; above this a token's co-occurrence pass is stride-sampled to ~this count.
+# source: CBM_SEM_MAX_OCCUR = 512 (semantic.h:52, applied in semantic.c:874
+# cooccur_sparse_one_target) — frequent-token subsampling cap. Trigger: a token
+# whose within-document occurrence count exceeds this. Scope: that token's
+# co-occurrence pass only (its occurrence positions are strided to ~this count);
+# the first-order term is untouched. Direction is preserved by the final L2
+# normalize. Verified equal-or-better to no-subsampling on LongMemEval-S:
+# source: benchmark benchmarks/results/subsample-fidelity-184/MANIFEST.md.
 _MAX_OCCUR = 512
 
 
@@ -129,6 +142,75 @@ def _tf_weights(tokens: list[str]) -> dict[str, float]:
     return {t: 1.0 + math.log(c) for t, c in counts.items()}
 
 
+def _accumulate_window(
+    acc: np.ndarray,
+    tokens: list[str],
+    cache: dict[str, np.ndarray],
+    center: int,
+    weight: float,
+) -> None:
+    """Add the distance-weighted (``1/d``) index vectors of ``center``'s
+    neighbours within ``±_WINDOW`` into ``acc`` in place.
+
+    precondition: ``acc`` is the caller's live accumulator (documented owner:
+    ``embed_text``); ``0 <= center < len(tokens)``.
+    postcondition: ``acc`` is incremented by ``sum_j (weight/|j-center|) *
+    cache[tokens[j]]`` over the window, excluding ``j == center``.
+    """
+    n = len(tokens)
+    lo = max(0, center - _WINDOW)
+    hi = min(n, center + _WINDOW + 1)
+    for j in range(lo, hi):
+        if j != center:
+            acc += (weight / abs(j - center)) * cache[tokens[j]]
+
+
+def _first_order_pass(
+    acc: np.ndarray,
+    tokens: list[str],
+    tf: dict[str, float],
+    cache: dict[str, np.ndarray],
+) -> None:
+    """Add each token's tf-weighted index vector into ``acc`` in place, once per
+    occurrence.
+
+    precondition: ``acc`` is the caller's live accumulator (owner:
+    ``embed_text``); ``tf`` and ``cache`` are keyed by every distinct token.
+    postcondition: ``acc`` is incremented by ``sum_i tf[tokens[i]] *
+    cache[tokens[i]]`` over ALL positions — never subsampled (CBM keeps a
+    token's own source vector intact; semantic.c:930 sem_target_init_from_src).
+    """
+    for tok in tokens:
+        acc += tf[tok] * cache[tok]
+
+
+def _cooccurrence_pass(
+    acc: np.ndarray,
+    tokens: list[str],
+    tf: dict[str, float],
+    cache: dict[str, np.ndarray],
+) -> None:
+    """Add distance-weighted co-occurrence enrichment into ``acc`` in place,
+    with CBM frequent-token subsampling.
+
+    precondition: ``acc`` is the caller's live accumulator (owner:
+    ``embed_text``); ``tf`` and ``cache`` are keyed by every distinct token.
+    postcondition: for each distinct token, its occurrence positions contribute
+    a windowed sum; a token occurring more than ``_MAX_OCCUR`` times has its
+    positions strided to ~``_MAX_OCCUR`` samples (its first-order term, added by
+    the caller, is untouched). source: CBM ``cooccur_sparse_one_target``
+    (semantic.c:874) — per-token trigger, co-occurrence scope only.
+    """
+    positions: dict[str, list[int]] = {}
+    for i, tok in enumerate(tokens):
+        positions.setdefault(tok, []).append(i)
+    for tok, occ in positions.items():
+        step = max(1, len(occ) // _MAX_OCCUR)
+        weight = tf[tok]
+        for i in occ[::step]:
+            _accumulate_window(acc, tokens, cache, i, weight)
+
+
 def embed_text(text: str, dim: int) -> np.ndarray:
     """Encode ``text`` into a deterministic, L2-normalized dense vector.
 
@@ -138,6 +220,9 @@ def embed_text(text: str, dim: int) -> np.ndarray:
     deterministic in ``(text, dim)`` and lies in the SAME vector-space contract
     (dimension) as the neural encoder, though NOT the same geometry — the two
     spaces are incomparable and callers must not cross-rank them.
+    invariant: every token contributes exactly one complete first-order term;
+    the co-occurrence pass is strided only for a token whose within-document
+    occurrence count exceeds ``_MAX_OCCUR`` (CBM ``cooccur_sparse_one_target``).
     """
     tokens = _tokenize(text)
     if not tokens:
@@ -149,24 +234,8 @@ def embed_text(text: str, dim: int) -> np.ndarray:
     cache: dict[str, np.ndarray] = {t: index_vector(t, dim) for t in tf}
 
     acc = np.zeros(dim, dtype=np.float32)
-    n = len(tokens)
-    # Frequent-token subsampling: on pathological inputs bound the window pass
-    # to ~_MAX_OCCUR positions via an even stride (direction preserved by the
-    # final L2 normalize). Normal memories fall far under the cap → stride 1.
-    stride = max(1, n // _MAX_OCCUR)
-    for i in range(0, n, stride):
-        tok = tokens[i]
-        w = tf[tok]
-        # first-order term
-        acc += w * cache[tok]
-        # co-occurrence bridging: distance-weighted neighbours in the window
-        lo = max(0, i - _WINDOW)
-        hi = min(n, i + _WINDOW + 1)
-        for j in range(lo, hi):
-            if j == i:
-                continue
-            dist = abs(j - i)
-            acc += (w / dist) * cache[tokens[j]]
+    _first_order_pass(acc, tokens, tf, cache)
+    _cooccurrence_pass(acc, tokens, tf, cache)
 
     norm = float(np.linalg.norm(acc))
     if norm > 0.0:
