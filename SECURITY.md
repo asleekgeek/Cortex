@@ -55,9 +55,10 @@ As of issue #178, every Cortex release ships with verifiable provenance
   side of the checksums, and it is what closes the risk — an attestation
   nobody checks changes nothing.
 
-- **Continuous analysis** — CodeQL (`security-and-quality`, Python) and
-  OpenSSF Scorecard run on a schedule (`codeql.yml`, `scorecard.yml`). The
-  Scorecard number is a recorded baseline, not a badge.
+- **Continuous analysis** — CodeQL runs on a schedule via GitHub's default
+  code-scanning setup (Python, JavaScript/TypeScript and Actions), and OpenSSF
+  Scorecard via `scorecard.yml`. The Scorecard number is a recorded baseline,
+  not a badge.
 
 **What this does NOT claim.** Provenance proves *who built the artifact and
 from which commit*, not that the source is free of defects; and it is worth
