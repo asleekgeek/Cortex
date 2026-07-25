@@ -41,57 +41,58 @@ def _pg_reachable() -> bool:
 class TestSessionStartHook:
     """Test session_start.py outputs correct context for different DB states."""
 
-    def _run_hook(self, env_overrides: dict | None = None) -> str:
-        """Run session_start.py as subprocess and capture stdout."""
-        hook_path = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "..",
-            "mcp_server",
-            "hooks",
-            "session_start.py",
-        )
-        hook_path = os.path.abspath(hook_path)
-        env = {**os.environ, **(env_overrides or {})}
-        result = subprocess.run(
-            [sys.executable, hook_path],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            env=env,
-        )
-        return result.stdout.strip()
+    def test_normal_session_with_memories(self, tmp_path, monkeypatch, capsys):
+        """When the store has memories, the banner injects context (not cold start).
 
-    def test_normal_session_with_memories(self):
-        """When DB has memories, hook should inject memory context."""
-        from mcp_server.handlers.remember import handler as remember
-        import asyncio
+        Hermetic (issue #174 family — hidden live-environment dependency).
+        The prior version ran ``session_start.py`` as a subprocess with the
+        inherited real environment: the SessionStart backend gate reads the
+        developer's live backend marker (``~/.claude/methodology/backend.json``),
+        the banner then reads the real ``~/.claude/methodology/memory.db`` (or a
+        live PostgreSQL), and the subprocess also spawned detached
+        background consolidate/reanalyze workers against the real HOME. The
+        in-process ``remember`` write landed in the per-process test DB while
+        the subprocess read a *different* live store, so the assertion outcome
+        depended on whose machine ran it — and the raw ``UPDATE ... NOW()`` seed
+        is PostgreSQL-only, silently mismatched under the SQLite default.
 
-        # Store a test memory
-        asyncio.run(
-            remember(
+        Rewritten to the canonical hermetic pattern already used by
+        ``tests_py/hooks/test_sqlite_hook_paths.py``: seed an ephemeral
+        ``SqliteMemoryStore`` in ``tmp_path`` and drive the SQLite banner path
+        (``_sqlite_context``) in-process, asserting the seeded memory is
+        injected and no PostgreSQL install guidance leaks in.
+        """
+        from mcp_server.hooks import session_start
+        from mcp_server.infrastructure.sqlite_store import SqliteMemoryStore
+
+        monkeypatch.setenv("CORTEX_MEMORY_STORE_BACKEND", "sqlite")
+        store = SqliteMemoryStore(db_path=str(tmp_path / "memory.db"))
+        try:
+            store.insert_memory(
                 {
                     "content": "Critical architecture: use PostgreSQL for all storage",
-                    "force": True,
+                    "heat": 1.0,
+                    "is_protected": True,
                     "tags": ["_anchor", "architecture"],
                 }
             )
-        )
-        # Mark it as protected/anchored
-        from mcp_server.infrastructure.memory_store import MemoryStore
+            monkeypatch.setattr(
+                "mcp_server.infrastructure.memory_store.get_shared_store",
+                lambda: store,
+            )
+            monkeypatch.setattr(session_start, "_print_external_sources", lambda: None)
 
-        store = MemoryStore()
-        store._conn.execute(
-            "UPDATE memories SET is_protected = TRUE, heat_base = 1.0, "
-            "heat_base_set_at = NOW() "
-            "WHERE content LIKE '%Critical architecture%'"
-        )
-        store.close()
+            session_start._sqlite_context(
+                {"transcript_path": str(tmp_path / "session.jsonl")}
+            )
+        finally:
+            store.close()
 
-        output = self._run_hook()
-        # Should contain memory context, not cold start message
+        output = capsys.readouterr().out
+        # Memory context injected, not a cold-start message.
         assert "Cortex" in output
-        # Should NOT contain setup instructions
+        assert "Critical architecture" in output
+        # And never the PostgreSQL install guidance.
         assert "brew install" not in output
 
     def test_empty_db_with_session_files_auto_backfills(self):
