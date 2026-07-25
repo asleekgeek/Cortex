@@ -41,6 +41,8 @@ except Exception:
 from fastmcp import FastMCP
 
 from mcp_server import (
+    mcp_prompts,
+    tool_profiles,
     tool_registry_advanced,
     tool_registry_core,
     tool_registry_ingest,
@@ -50,6 +52,7 @@ from mcp_server import (
     tool_registry_wiki,
 )
 from mcp_server.core import telemetry
+from mcp_server.tool_profile_middleware import ToolProfileMiddleware
 from mcp_server.core.wiki_axis_registry import configure_default_wiki_root
 from mcp_server.core.wiki_classifier import configure_user_rules_provider
 from mcp_server.handlers._tool_meta import apply_param_docs
@@ -80,20 +83,46 @@ configure_user_rules_provider(lambda: load_registry(WIKI_ROOT).rules)
 # for every existing deployment.
 telemetry.set_exporter(build_otel_exporter())
 
+# ── Active tool profile (issue #177) ───────────────────────────────────────
+#
+# Resolved once at startup from --profile / CORTEX_MCP_PROFILE, defaulting to
+# FULL. The default stays FULL because shrinking the advertised surface is a
+# breaking change (a client that called a now-hidden tool breaks) — this
+# diverges from #177 criterion 2 and is recorded in CHANGELOG.md, mirroring
+# automatised-pipeline's ToolProfile reasoning.
+ACTIVE_PROFILE = tool_profiles.resolve()
+
 # ── Server Instance ────────────────────────────────────────────────────────
 
 mcp = FastMCP(
     name="methodology-agent",
     version="1.0.0",
-    instructions=(
-        "Cortex cognitive profiling system for Claude Code. "
-        "Extracts reasoning signatures from session history and pre-loads them at session start. "
-        "Call query_methodology at the beginning of every session. "
-        "Use remember/recall for persistent thermodynamic memory across sessions."
-    ),
+    # Per-profile instructions: the server describes itself in the shape it was
+    # started in (issue #177 criterion 3). FULL keeps the historical onboarding
+    # line ("Call query_methodology…").
+    instructions=tool_profiles.instructions(ACTIVE_PROFILE),
 )
 
 # ── Tool Registration ──────────────────────────────────────────────────────
+
+
+def merged_schemas() -> dict[str, dict]:
+    """The tool-name → handler-schema map, merged across every registry.
+
+    Single source of truth for both ``apply_param_docs`` (client-visible
+    parameter docs) and ``mcp_prompts`` (prompt step summaries), so a prompt's
+    description of a tool cannot drift from the tool's own schema (#176
+    criterion 3, the #98 drift class).
+    """
+    return {
+        **tool_registry_core.SCHEMAS,
+        **tool_registry_memory.SCHEMAS,
+        **tool_registry_manage.SCHEMAS,
+        **tool_registry_nav.SCHEMAS,
+        **tool_registry_advanced.SCHEMAS,
+        **tool_registry_wiki.SCHEMAS,
+        **tool_registry_ingest.SCHEMAS,
+    }
 
 
 def register_all(mcp: FastMCP, *, codebase: bool, prd: bool) -> None:
@@ -119,18 +148,7 @@ def register_all(mcp: FastMCP, *, codebase: bool, prd: bool) -> None:
     # FastMCP derives input schemas from function signatures; project the
     # hand-written inputSchema parameter descriptions onto them so clients
     # (and registry graders) see documented parameters.
-    apply_param_docs(
-        mcp,
-        {
-            **tool_registry_core.SCHEMAS,
-            **tool_registry_memory.SCHEMAS,
-            **tool_registry_manage.SCHEMAS,
-            **tool_registry_nav.SCHEMAS,
-            **tool_registry_advanced.SCHEMAS,
-            **tool_registry_wiki.SCHEMAS,
-            **tool_registry_ingest.SCHEMAS,
-        },
-    )
+    apply_param_docs(mcp, merged_schemas())
 
 
 register_all(
@@ -138,6 +156,25 @@ register_all(
     codebase=codebase_upstream_available(),
     prd=prd_upstream_available(),
 )
+
+# ── Prompts + profile enforcement (issues #176, #177) ───────────────────────
+#
+# Prompts render their step summaries from the same schema map as tools/list
+# (no drift). ToolProfileMiddleware filters the advertised tool/prompt surface
+# to ACTIVE_PROFILE and REJECTS calls to tools the profile excludes — hiding a
+# destructive tool while still executing it on call would be a security hole,
+# not a token optimisation (#177 criterion 5). Under the default FULL profile
+# the middleware is a pass-through, so existing behaviour is unchanged.
+mcp_prompts.register_prompts(mcp, merged_schemas())
+mcp.add_middleware(ToolProfileMiddleware(ACTIVE_PROFILE))
+
+# resources/list interop shim (#176 criterion 4): FastMCP 3.2.4 already answers
+# resources/list and resources/templates/list with empty arrays and declares
+# the capability, so the -32601 failure some clients surface on connect
+# (CBM upstream #958) does not occur here — the framework provides the shim.
+# Verified 2026-07-25 by an in-memory Client round-trip:
+#   list_resources() -> []   list_resource_templates() -> []
+# No code is needed; recorded here per §8 rather than left implicit.
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────
 
