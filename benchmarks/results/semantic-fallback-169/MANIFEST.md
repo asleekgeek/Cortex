@@ -9,10 +9,15 @@ dataset loading + scoring functions verbatim: `session_to_memory_content`,
 `recall_at_k_binary`.)
 
 - Dataset: `longmemeval_s.json` (Wu et al., ICLR 2025), variant `s`.
-- Branch: `feat/semantic-fallback-169b`; run against commit `8347944` (this PR's
-  implementation commit — fresh numbers on the Phase B code, replacing the old
-  branch's figures).
-- Date: 2026-07-24 (UTC).
+- Branch: `fix/embedding-subsampling-source-184`; **re-run for issue #184**
+  (2026-07-25 UTC). The algorithmic fallback embedder changed: frequent-token
+  subsampling was corrected from document-length striding of the whole loop to
+  the CBM-faithful per-token trigger with co-occurrence-only scope
+  (`shared/algorithmic_embedding.py`). §8 requires re-recording the numbers a
+  changed embedder produces. Only the **fallback** row moved — `no-vector`
+  stores no embedding and `sentence-transformers` is the neural encoder, neither
+  touched by #184. Prior (#169, commit `8347944`, 2026-07-24) fallback row:
+  MRR 0.378, Recall@10 66.0%, 38.6 s.
 - Bounded run: `--limit 50` questions. Full floors are NOT required — the
   PostgreSQL / sentence-transformers production path is untouched by #169; this
   measures only the SQLite fallback path #169 introduces.
@@ -26,12 +31,21 @@ dataset loading + scoring functions verbatim: `session_to_memory_content`,
 
 | mode                      |   MRR | Recall@10 | elapsed |
 |---------------------------|------:|----------:|--------:|
-| (a) no-vector baseline    | 0.275 |     46.0% |   5.2 s |
-| (b) algorithmic fallback  | 0.378 |     66.0% |  38.6 s |
-| (c) sentence-transformers | 0.609 |     94.0% |  49.6 s |
+| (a) no-vector baseline    | 0.275 |     46.0% |   5.1 s |
+| (b) algorithmic fallback  | 0.379 |     68.0% |  62.9 s |
+| (c) sentence-transformers | 0.609 |     94.0% |  45.6 s |
 
-Fallback vs no-vector: **ΔMRR = +0.102, ΔRecall@10 = +20.0 pp** →
+Fallback vs no-vector: **ΔMRR = +0.103, ΔRecall@10 = +22.0 pp** →
 **fallback BEATS the no-vector baseline** (issue #169 adoption criterion met).
+
+The #184 correction slightly **improved** the fallback (66.0% → 68.0% Recall@10,
+0.378 → 0.379 MRR): the old document-length striding dropped first-order terms on
+~86% of LongMemEval-S memories (median 1622 tokens, >512 cap); the CBM-faithful
+version keeps them. See `../subsample-fidelity-184/` for the on/off/faithful
+head-to-head that drove the decision. The elapsed cost rose (38.6 → 62.9 s)
+because the co-occurrence pass is no longer strided on long prose — an
+acceptable trade for a per-call encode that is not a hot path and whose vectors
+upgrade to neural on the first consolidate once the model is present.
 
 ## Reading
 
