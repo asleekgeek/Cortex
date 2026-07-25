@@ -1,0 +1,48 @@
+name: CodeQL
+
+# Issue #178 criterion 5. Static analysis of the Python codebase on a
+# SCHEDULE, not only on PR: a new query pack (or a newly-recognised sink in
+# code that has not changed) lands out-of-band, and the weekly cron is what
+# catches it — inaction never opens a PR. The PR trigger keeps a change from
+# regressing what the schedule already cleared.
+#
+# Python only: this repo ships a Python MCP server. The browser-executed
+# JavaScript half of the ecosystem lives in cortex-viz and prd-spec-generator,
+# where CodeQL runs the javascript-typescript pack (their issues #37/#29).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 5 * * 1"   # Mondays 05:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (python)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # upload analysis SARIF to code scanning
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@4187e74d05793876e9989daffde9c3e66b4acd07 # v3
+        with:
+          languages: python
+          # security-and-quality widens coverage beyond the default security
+          # pack; Cortex's threat model (reads transcripts, writes agent config)
+          # justifies the extra queries over raw scan time.
+          queries: security-and-quality
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@4187e74d05793876e9989daffde9c3e66b4acd07 # v3
+        with:
+          category: "/language:python"
