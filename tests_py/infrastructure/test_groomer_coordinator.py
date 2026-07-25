@@ -28,6 +28,26 @@ from mcp_server.infrastructure.groomer_coordinator import (
     resolve_store_key,
 )
 
+
+def test_resolve_store_key_resolves_real_identity_not_default():
+    """The SQLite store key must be a real 16-hex hash of the store path, NOT
+    the ``"default"`` degrade sentinel. Guards the regression where an
+    invented import symbol made ``resolve_store_key`` raise ImportError and
+    silently collapse every store onto one shared ``"default"`` key."""
+    key = resolve_store_key({"CORTEX_MEMORY_STORE_BACKEND": "sqlite"})
+    assert key != "default"
+    assert len(key) == 16
+    assert all(c in "0123456789abcdef" for c in key)
+
+
+def test_resolve_store_key_distinct_pg_urls_distinct_keys():
+    """Two different PostgreSQL DATABASE_URLs resolve to different keys — the
+    per-store isolation the coordinator depends on."""
+    a = resolve_store_key({"DATABASE_URL": "postgresql://h/db_a"})
+    b = resolve_store_key({"DATABASE_URL": "postgresql://h/db_b"})
+    assert a != b and a != "default" and b != "default"
+
+
 _PERIOD_H = 6.0
 
 

@@ -14,11 +14,10 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-
-from mcp_server.shared.platform import IS_WINDOWS
 
 
 def pid_alive(pid: int) -> bool:
@@ -119,7 +118,11 @@ class decision_lock:
         self._fd = None
 
 
-if IS_WINDOWS:
+# Direct ``sys.platform`` comparison (not the ``IS_WINDOWS`` alias): the type
+# checker statically prunes the unreachable branch per its configured target
+# platform, so ``msvcrt``/``fcntl`` are each only analysed where they exist —
+# an imported bool alias would not enable that narrowing.
+if sys.platform == "win32":
     import msvcrt
 
     def _try_lock(fd: int) -> bool:

@@ -74,12 +74,18 @@ def resolve_store_key(env: dict[str, str] | None = None) -> str:
     e = env if env is not None else dict(os.environ)
     try:
         from mcp_server.infrastructure.backend_marker import effective_backend
-        from mcp_server.infrastructure.memory_config import MemoryConfig
+        from mcp_server.infrastructure.memory_config import get_memory_settings
 
+        settings = get_memory_settings()
+        # str(...) coercion: MemorySettings is a pydantic BaseSettings whose
+        # attributes the type checker resolves as Unknown; these values ARE
+        # strings, and coercing makes ``identity`` a definite ``str`` (never
+        # ``str | None``) so the hash below is well-typed. ``get(k) or dflt``
+        # (not ``get(k, dflt)``) keeps the same narrowing for the env case.
         if effective_backend(e) == "sqlite":
-            identity = MemoryConfig().SQLITE_FALLBACK_PATH
+            identity = str(settings.SQLITE_FALLBACK_PATH)
         else:
-            identity = e.get("DATABASE_URL", MemoryConfig().DATABASE_URL)
+            identity = e.get("DATABASE_URL") or str(settings.DATABASE_URL)
     except Exception:
         return "default"
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
@@ -274,7 +280,10 @@ class GroomerCoordinator:
     def _log_run(
         self, outcome: str, now: datetime, *, session_pid: int | None = None
     ) -> None:
-        rec = {"ts": now.isoformat(timespec="seconds"), "outcome": outcome}
+        rec: dict[str, object] = {
+            "ts": now.isoformat(timespec="seconds"),
+            "outcome": outcome,
+        }
         if session_pid is not None:
             rec["session_pid"] = int(session_pid)
         try:
