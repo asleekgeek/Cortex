@@ -1,0 +1,11 @@
+{
+  "issue": 170,
+  "generated_at": "2026-07-25T11:52:46Z",
+  "git_commit": "8817374cfc02bdf50e15810ca1409c8bd7a04e1e",
+  "method": "encode_within_budget(json) vs encode_within_budget(tabular) over recall-shaped memory dicts built from longmemeval haystack turns; size via response_budget.serialized_length; tokens via chars/4 (Claude Code host estimator).",
+  "script": "benchmarks/tabular_170/measure.py",
+  "script_sha256": "501e179e3ba80bd10fb8ba3fbd34f274f4bcbd50414cee467299dd47ff9ad621",
+  "fixture": "benchmarks/longmemeval/longmemeval_s.json",
+  "fixture_sha256": "08d8dad4be43ee2049a22ff5674eb86725d0ce5ff434cde2627e5e8e7e117894",
+  "result": "result.json"
+}

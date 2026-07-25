@@ -1,0 +1,56 @@
+{
+  "corpus": "longmemeval_s.json haystack turns as recall memory bodies",
+  "n_queries": 100,
+  "max_results": 10,
+  "fields_per_memory": 8,
+  "totals": {
+    "json_chars": 1146694,
+    "tabular_chars": 1086994,
+    "char_reduction_pct": 5.21,
+    "json_tokens_est": 286674,
+    "tabular_tokens_est": 271748,
+    "token_reduction_pct": 5.21
+  },
+  "decision_threshold_pct": 25.0,
+  "default": "json",
+  "per_query_reduction_pct_min": 3.37,
+  "per_query_reduction_pct_max": 12.2,
+  "sensitivity_by_content_length": [
+    {
+      "content_chars": 24,
+      "json_chars": 2248,
+      "tabular_chars": 1651,
+      "reduction_pct": 26.56
+    },
+    {
+      "content_chars": 48,
+      "json_chars": 2488,
+      "tabular_chars": 1891,
+      "reduction_pct": 24.0
+    },
+    {
+      "content_chars": 96,
+      "json_chars": 2968,
+      "tabular_chars": 2371,
+      "reduction_pct": 20.11
+    },
+    {
+      "content_chars": 192,
+      "json_chars": 3928,
+      "tabular_chars": 3331,
+      "reduction_pct": 15.2
+    },
+    {
+      "content_chars": 384,
+      "json_chars": 5848,
+      "tabular_chars": 5251,
+      "reduction_pct": 10.21
+    },
+    {
+      "content_chars": 768,
+      "json_chars": 9688,
+      "tabular_chars": 9091,
+      "reduction_pct": 6.16
+    }
+  ]
+}
