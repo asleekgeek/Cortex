@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **MCP prompts capability** (#176): `prompts/list` + `prompts/get` publish three guided workflows composed from Cortex's real tool surface — `session_recall` (query_methodology → recall → unified_search → recall_hierarchical → memory_stats), `promote_memories` (episodic→semantic CLS: consolidate → memory_stats → curate_distill → remember), and `curate_wiki` (unified_search → curate_wiki → wiki_write → wiki_verify). Prompt step summaries are pulled from the same handler-schema map (`merged_schemas()`) that `tools/list` is built from, so a prompt's description of a tool cannot drift from the tool's own schema (the #98 drift class). `mcp_server/mcp_prompts.py`.
+- **MCP tool profiles** (#177): a `full`/`lean` profile (`mcp_server/tool_profiles.py`) selected by `--profile` or `CORTEX_MCP_PROFILE`, enforced by `ToolProfileMiddleware`. `lean` advertises the 10-tool recall/onboarding surface (derived from `docs/mcp-tools.md` tiers + the common-session workflow); `full` keeps every tool. Per-profile `initialize.instructions`. Measured: `lean` cuts the per-session `initialize`+`tools/list` cost from ~29.9k to ~7.6k estimated tokens (74.6%), benchmark `benchmarks/mcp_profile_tokens.py`.
+
+### Security
+- Destructive tools (`forget`, `wiki_purge`, `wiki_migrate`) are **gated, not merely hidden** under `lean` (#177 criterion 5): excluded tools are absent from `tools/list` AND rejected on call by `ToolProfileMiddleware.on_call_tool`. Hiding a tool from the list while still executing it on call would be a hole, not a token optimisation. Asserted by `tests_py/test_tool_profiles.py::TestSurface::test_lean_hides_and_rejects_destructive_calls`.
+
+### Changed
+- **The default MCP tool profile is `full`** (behaviour preserved; H4 note). This diverges from #177 criterion 2's "default to the common-session profile": shrinking the default advertised surface is a breaking change (a client that called a now-hidden tool would break), so — mirroring `automatised-pipeline`'s `ToolProfile` reasoning and this wave's explicit decision — `full` stays the default and `lean` is opt-in. Existing sessions are unchanged; the middleware is a pass-through under `full`.
+
 ## [4.16.0] - 2026-07-25
 
 ### Added
