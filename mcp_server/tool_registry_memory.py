@@ -136,6 +136,7 @@ def _register_recall(mcp: FastMCP) -> None:
             max_results: int = 10,
             min_heat: float = 0.05,
             include_related: bool = False,
+            format: str = "json",
         ) -> dict:
             """Retrieve memories using multi-signal fusion."""
             return await safe_handler(
@@ -147,6 +148,7 @@ def _register_recall(mcp: FastMCP) -> None:
                     "max_results": max_results,
                     "min_heat": min_heat,
                     "include_related": include_related,
+                    "format": format,
                 },
                 tool_name="recall",
             )
@@ -165,6 +167,7 @@ def _register_recall(mcp: FastMCP) -> None:
         min_heat: float = 0.05,
         agent_topic: str | None = None,
         include_related: bool = False,
+        format: str = "json",
     ) -> dict:
         """Retrieve memories using multi-signal fusion."""
         return await safe_handler(
@@ -177,6 +180,7 @@ def _register_recall(mcp: FastMCP) -> None:
                 "min_heat": min_heat,
                 "agent_topic": agent_topic,
                 "include_related": include_related,
+                "format": format,
             },
             tool_name="recall",
         )

@@ -18,6 +18,11 @@ from mcp_server.core.knowledge_graph import extract_entities
 from mcp_server.core.pg_recall import recall as pg_recall
 from mcp_server.core.query_intent import QueryIntent, classify_query_intent
 from mcp_server.core.response_budget import ListTarget, bound_payload
+from mcp_server.core.tabular_encoding import (
+    encode_within_budget,
+    parse_format,
+    reserved_budget,
+)
 from mcp_server.handlers._tool_meta import NON_IDEMPOTENT_WRITE
 from mcp_server.handlers.injection_receipts import emit_injection_receipt
 from mcp_server.handlers.recall_helpers import (
@@ -47,38 +52,90 @@ schema = {
         "properties": {
             "memories": {
                 "type": "array",
-                "description": "Ranked list of matching memories. Best result is index 0.",
+                "description": (
+                    "Ranked list of matching memories. Best result is index 0. "
+                    'With ``format: "json"`` (default) each element is a '
+                    'memory object; with ``format: "tabular"`` each element '
+                    "is a cell array whose fields are named once in the "
+                    "sibling ``columns`` header (issue #170)."
+                ),
                 "items": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "string", "description": "Memory UUID."},
-                        "content": {"type": "string", "description": "Memory body."},
-                        "score": {
-                            "type": "number",
-                            "description": "Final fused + reranked score.",
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "description": "Memory UUID.",
+                                },
+                                "content": {
+                                    "type": "string",
+                                    "description": "Memory body.",
+                                },
+                                "score": {
+                                    "type": "number",
+                                    "description": "Final fused + reranked score.",
+                                },
+                                "heat": {
+                                    "type": "number",
+                                    "description": "Current thermodynamic heat [0,1].",
+                                },
+                                "domain": {"type": "string"},
+                                "tags": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "created_at": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                },
+                                "source": {"type": "string"},
+                                "truncated": {
+                                    "type": "boolean",
+                                    "description": (
+                                        "Present and true when content was cut "
+                                        "to fit the response budget. Fetch the "
+                                        "full body via the memory_id argument."
+                                    ),
+                                },
+                                "content_length": {
+                                    "type": "integer",
+                                    "description": (
+                                        "Original content size in chars (set "
+                                        "when truncated)."
+                                    ),
+                                },
+                            },
                         },
-                        "heat": {
-                            "type": "number",
-                            "description": "Current thermodynamic heat [0,1].",
-                        },
-                        "domain": {"type": "string"},
-                        "tags": {"type": "array", "items": {"type": "string"}},
-                        "created_at": {"type": "string", "format": "date-time"},
-                        "source": {"type": "string"},
-                        "truncated": {
-                            "type": "boolean",
+                        {
+                            "type": "array",
                             "description": (
-                                "Present and true when content was cut to fit "
-                                "the response budget. Fetch the full body via "
-                                "the memory_id argument."
+                                "Tabular row (format=tabular): cells in the "
+                                "order named by the ``columns`` header."
                             ),
                         },
-                        "content_length": {
-                            "type": "integer",
-                            "description": "Original content size in chars (set when truncated).",
-                        },
-                    },
+                    ],
                 },
+            },
+            "columns": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": (
+                    "Present only when ``format`` is ``tabular``: the field "
+                    "names, in order, that each row array in ``memories`` "
+                    "carries. Declared once so field names are not repeated "
+                    "per memory (issue #170)."
+                ),
+            },
+            "format": {
+                "type": "string",
+                "enum": ["json", "tabular"],
+                "description": (
+                    "The encoding applied to ``memories``: ``json`` (array of "
+                    "objects, default) or ``tabular`` (array of cell arrays + "
+                    "a ``columns`` header). Self-describes the response so a "
+                    "client reads rows correctly without guessing."
+                ),
             },
             "intent": {
                 "type": "string",
@@ -300,6 +357,23 @@ schema = {
                 "default": 0,
                 "minimum": 0,
             },
+            "format": {
+                "type": "string",
+                "enum": ["json", "tabular"],
+                "description": (
+                    "Wire encoding for the ``memories`` list. ``json`` "
+                    "(default) returns an array of memory objects. "
+                    "``tabular`` declares the field names once in a "
+                    "``columns`` header and returns each memory as a cell "
+                    "array in that order, which drops the per-item repetition "
+                    "of field names on homogeneous result sets (issue #170). "
+                    "No information is lost — every field is recoverable by "
+                    "column position, and ids stay present for fetch-by-id. "
+                    "Applied after the response-budget water-filling, so the "
+                    "same budget cap still holds."
+                ),
+                "default": "json",
+            },
         },
     },
 }
@@ -416,17 +490,23 @@ def _track_recall_replay(results: list[dict], store: Any) -> None:
         track_replay_event(mem_id, store)
 
 
-def _fetch_by_id(memory_id: int, content_offset: int) -> dict[str, Any]:
+def _fetch_by_id(
+    memory_id: int, content_offset: int, fmt: str = "json"
+) -> dict[str, Any]:
     """Fetch one memory by id — the retrieval path for truncated results.
 
     ``content_offset`` pages through contents larger than the response
     budget: the slice starts there, ``content_length`` carries the full
     size, and ``bound_payload`` marks the slice ``truncated`` if it
-    still overflows.
+    still overflows. ``fmt`` is honored for a self-describing response, but a
+    single-item list rarely benefits from tabular encoding — the budget
+    re-check in ``encode_within_budget`` keeps whichever form fits.
     """
     stored = _get_store().get_memory(memory_id)
     if stored is None:
-        return {"memories": [], "count": 0, "intent": "general"}
+        return encode_within_budget(
+            {"memories": [], "count": 0, "intent": "general"}, "memories", fmt
+        )
     # Copy before mutating: truncation must never write back into
     # whatever object the store handed us.
     memory = {**stored}
@@ -437,25 +517,29 @@ def _fetch_by_id(memory_id: int, content_offset: int) -> dict[str, Any]:
     memory["content_offset"] = content_offset
     resp = {"memories": [memory], "count": 1, "intent": "general"}
     settings = get_memory_settings()
-    return bound_payload(
-        resp, [ListTarget("memories", weight_key="score")], settings.MAX_RESPONSE_CHARS
+    # Bound against the RESERVED budget so appending the self-describing
+    # ``format`` field below cannot push the payload past the host cap.
+    resp = bound_payload(
+        resp,
+        [ListTarget("memories", weight_key="score")],
+        reserved_budget(settings.MAX_RESPONSE_CHARS),
     )
+    return encode_within_budget(resp, "memories", fmt, settings.MAX_RESPONSE_CHARS)
 
 
 async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     """Retrieve memories: pg_recall base + production enrichments."""
+    fmt = parse_format(args.get("format") if args else None)
     if args and args.get("memory_id") is not None:
         return _fetch_by_id(
-            int(args["memory_id"]), int(args.get("content_offset") or 0)
+            int(args["memory_id"]), int(args.get("content_offset") or 0), fmt
         )
     if not args or not args.get("query"):
         # Issue #46: even the early-return must satisfy the outputSchema's
         # required keys (`memories`).
-        return {
-            "memories": [],
-            "count": 0,
-            "intent": "semantic",
-        }
+        return encode_within_budget(
+            {"memories": [], "count": 0, "intent": "semantic"}, "memories", fmt
+        )
 
     query = args["query"]
     domain, directory = args.get("domain"), args.get("directory")
@@ -559,8 +643,13 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     # Bounded I/O: the host rejects tool results over its token cap
     # (core/response_budget.py docstring for the measured derivation).
     # Truncated items keep their id; full content via the memory_id arg.
+    # Bound against the RESERVED budget: the self-describing ``format`` field
+    # (and, in tabular mode, the ``columns`` header) is appended after this,
+    # so its worst-case cost is held out of the cap here (issue #170).
     resp = bound_payload(
-        resp, [ListTarget("memories", weight_key="score")], settings.MAX_RESPONSE_CHARS
+        resp,
+        [ListTarget("memories", weight_key="score")],
+        reserved_budget(settings.MAX_RESPONSE_CHARS),
     )
     resp["count"] = len(resp["memories"])
     # Blame path T1 (decision 4255039): the receipt is emitted AFTER
@@ -578,6 +667,12 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     )
     if receipt_id is not None:
         resp["receipt_id"] = receipt_id
+    # Tabular encoding (issue #170): compose AFTER bound_payload's
+    # selection/condensation and AFTER the receipt (which needs the memory
+    # objects to record ids), re-checking the SAME budget. On homogeneous
+    # sets this declares field names once instead of per memory; json is the
+    # default escape hatch. Truncated items keep their id in either encoding.
+    resp = encode_within_budget(resp, "memories", fmt, settings.MAX_RESPONSE_CHARS)
     return resp
 
 
