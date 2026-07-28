@@ -59,6 +59,12 @@ _EVENT_RE = re.compile(
 )
 
 
+# Snippet truncation cap (chars) for decision/event summaries.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+_SNIPPET_MAX_CHARS = 150
+
+
 # ── Content Cleanup ──────────────────────────────────────────────────────
 
 _TOOL_HEADER_RE = re.compile(
@@ -107,8 +113,8 @@ def extract_decisions(memories: list[dict[str, Any]]) -> list[str]:
         )
         if is_decision:
             cleaned = _clean_auto_captured(content)
-            text = cleaned[:150].strip()
-            if len(cleaned) > 150:
+            text = cleaned[:_SNIPPET_MAX_CHARS].strip()
+            if len(cleaned) > _SNIPPET_MAX_CHARS:
                 text += "..."
             decisions.append(text)
 
@@ -133,8 +139,13 @@ def extract_events(
         is_event = importance >= importance_threshold or bool(_EVENT_RE.search(content))
         if is_event:
             cleaned = _clean_auto_captured(content)
-            text = cleaned[:150].strip()
-            if len(content) > 150:
+            text = cleaned[:_SNIPPET_MAX_CHARS].strip()
+            # Gate the ellipsis on the CLEANED length — what was truncated —
+            # not the raw content: a stripped tool header used to trigger a
+            # spurious "..." with nothing cut (latent bug surfaced by the
+            # #197 family-3 constant extraction; extract_decisions was
+            # already correct).
+            if len(cleaned) > _SNIPPET_MAX_CHARS:
                 text += "..."
             events.append(text)
 
