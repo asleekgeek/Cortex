@@ -13,7 +13,26 @@ from __future__ import annotations
 
 import pytest
 
-from mcp_server.infrastructure.pg_store import PgMemoryStore
+
+# psycopg ships in the optional [postgresql] extra, absent from the
+# SQLite-default install. The mcp_server import below pulls it in, so
+# without this guard the module raises ModuleNotFoundError at COLLECTION
+# time — an error, not a skip, which fails the whole run (#220). Skip the
+# module cleanly instead; the PG gate below still applies when it is present.
+pytest.importorskip("psycopg", reason="psycopg not installed ([postgresql] extra)")
+
+from mcp_server.infrastructure.pg_store import PgMemoryStore  # noqa: E402
+from tests_py.conftest import _USE_PG  # type: ignore  # noqa: E402
+
+# These construct PgMemoryStore() directly and exercise the psycopg pools, so
+# they need a live PostgreSQL — they had NO gate and therefore errored on any
+# run without one. Harmless while CI's SQLite job ran a single file; broadening
+# that job to the full suite (#220) made it a hard failure, 27 errors + 1
+# failure. Gated on reachability, which is the right question for a test whose
+# subject IS the PG connection pool.
+pytestmark = pytest.mark.skipif(
+    not _USE_PG, reason="PostgreSQL not available — pool tests need a live DB"
+)
 
 
 @pytest.fixture

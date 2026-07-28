@@ -2,10 +2,10 @@
 
 Drop-in replacement for PgMemoryStore when PostgreSQL is unavailable.
 Mirrors the PG public API for every method the handlers/hooks call on
-the shared store (117 shared methods; 18 PG-only remain — pool
-acquisition, ingest progress, decay iteration, procedural skills,
-tag-vector search — measured 2026-07-22 via an inspect.getmembers diff
-of the two classes; the prior "all 89 methods" claim here was stale).
+the shared store (119 shared methods; 16 PG-only remain — ingest
+progress, decay iteration, procedural skills, tag-vector search — measured
+2026-07-22 via an inspect.getmembers diff of the two classes; the prior
+"all 89 methods" claim here was stale).
 
 WRRF fusion and spread activation are computed client-side
 (vs server-side PL/pgSQL in the PG backend).

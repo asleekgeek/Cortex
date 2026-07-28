@@ -31,14 +31,31 @@ from __future__ import annotations
 
 import pytest
 
-from mcp_server.handlers.admission import DEFAULT_SEMAPHORE
-from mcp_server.handlers.latency_class import (
+
+# psycopg ships in the optional [postgresql] extra, absent from the
+# SQLite-default install. The mcp_server import below pulls it in, so
+# without this guard the module raises ModuleNotFoundError at COLLECTION
+# time — an error, not a skip, which fails the whole run (#220). Skip the
+# module cleanly instead; the PG gate below still applies when it is present.
+pytest.importorskip("psycopg", reason="psycopg not installed ([postgresql] extra)")
+
+from mcp_server.handlers.admission import DEFAULT_SEMAPHORE  # noqa: E402
+from mcp_server.handlers.latency_class import (  # noqa: E402
     LatencyClass,
     _LATENCY_CLASS,
     classify,
 )
-from mcp_server.infrastructure.memory_config import get_memory_settings
-from mcp_server.infrastructure.pg_store import PgMemoryStore
+from mcp_server.infrastructure.memory_config import get_memory_settings  # noqa: E402
+from mcp_server.infrastructure.pg_store import PgMemoryStore  # noqa: E402
+from tests_py.conftest import _USE_PG  # type: ignore  # noqa: E402
+
+# Constructs PgMemoryStore() directly, so it needs a live PostgreSQL. It had no
+# gate and therefore errored on any PG-less run — invisible while CI's SQLite
+# job ran a single file, a hard failure once that job runs the full suite
+# (#220). Gated on reachability: the subject of these tests IS the PG backend.
+pytestmark = pytest.mark.skipif(
+    not _USE_PG, reason="PostgreSQL not available — this suite needs a live DB"
+)
 
 
 @pytest.fixture
