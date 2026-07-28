@@ -96,10 +96,10 @@ def submodular_select(
                 continue
 
             # Marginal relevance = score - λ * max sim to already-selected
-            if not selected_embs or embeddings[i] is None:
+            emb = embeddings[i]
+            if not selected_embs or emb is None:
                 penalty = 0.0
             else:
-                emb = embeddings[i]
                 sims = [
                     float(
                         np.dot(emb, s)
@@ -118,8 +118,9 @@ def submodular_select(
         if best_i < 0:
             break  # No candidate fits budget
         selected.append(best_i)
-        if embeddings[best_i] is not None:
-            selected_embs.append(embeddings[best_i])
+        best_emb = embeddings[best_i]
+        if best_emb is not None:
+            selected_embs.append(best_emb)
         used_tokens += token_counts[best_i]
 
     # Return in original ranking order for readability

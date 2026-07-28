@@ -10,19 +10,19 @@ Kept in its own mixin so ``pg_store_entities.py`` stays under the 300-line cap.
 
 from __future__ import annotations
 
+from mcp_server.infrastructure.pg_store_host import PgStoreHost
+
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    import psycopg
+    pass
 
 # source: structural — the id-lookup fetches exactly the survivor + alias pair
 _MERGE_PAIR_COUNT = 2
 
 
-class PgEntityMergeMixin:
+class PgEntityMergeMixin(PgStoreHost):
     """Atomic entity collapse on PostgreSQL."""
-
-    _conn: psycopg.Connection
 
     def merge_entities(self, survivor_id: int, alias_id: int) -> dict[str, Any]:
         """Collapse ``alias_id`` into ``survivor_id`` in one transaction.

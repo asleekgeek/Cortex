@@ -16,6 +16,8 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -415,6 +417,10 @@ class SqliteMemoryStore(
             ),
         )
         memory_id = cur.lastrowid
+        if memory_id is None:
+            # An INSERT always assigns a rowid; None means the statement did
+            # not execute as an INSERT — a broken contract, not a data state.
+            raise sqlite3.ProgrammingError("memory INSERT produced no lastrowid")
         self._conn.execute(
             "INSERT INTO memories_fts(rowid, content) VALUES (?, ?)",
             (memory_id, _fts_augment(content)),
@@ -437,7 +443,7 @@ class SqliteMemoryStore(
                         "INSERT INTO memories_vec(rowid, embedding) VALUES (?, ?)",
                         (memory_id, vec.tobytes()),
                     )
-        return memory_id  # type: ignore[return-value]
+        return memory_id
 
     def insert_memory(self, data: dict[str, Any]) -> int:
         """Insert a memory into memories + FTS5 + vec tables."""
@@ -584,7 +590,7 @@ class SqliteMemoryStore(
         if row is None:
             return 1.0
         try:
-            return float(row["factor"] if hasattr(row, "__getitem__") else row[0])
+            return float(row["factor"])
         except (KeyError, TypeError, IndexError):
             return 1.0
 
@@ -696,6 +702,117 @@ class SqliteMemoryStore(
             # `extinction_strength` column absent (pre-migration store) —
             # documented no-op per the docstring above.
             pass
+
+    # ── Connection acquisition (PgMemoryStore parity) ─────────────────
+    #
+    # PgMemoryStore splits connections across an interactive pool and a batch
+    # pool so long-running jobs cannot starve the hot path. SQLite has no
+    # such split to make: the store owns exactly one WAL-mode connection, and
+    # a second competing connection is what produces `database is locked` /
+    # stale-read failures under WAL. Both accessors therefore yield the same
+    # persistent connection — the identical shape PgMemoryStore itself yields
+    # when POOL_DISABLED is set (pg_store.py acquire_* kill-switch path).
+    #
+    # These exist so handlers stay backend-agnostic: anchor.py, get_rules.py,
+    # the codebase_analyze/backfill/consolidation writers all call
+    # `store.acquire_*()` unconditionally. Without them a SQLite-backed
+    # install raised AttributeError — an LSP break, not a missing feature,
+    # since the handler cannot know which store it was handed (issue #220).
+
+    @contextmanager
+    def acquire_interactive(self) -> Iterator[PsycopgCompatConnection]:
+        """Yield the store's connection for a short-lived hot-path operation."""
+        yield self._conn
+
+    @contextmanager
+    def acquire_batch(self) -> Iterator[PsycopgCompatConnection]:
+        """Yield the store's connection for long-running batch work."""
+        yield self._conn
+
+    def _execute(self, query: str, params: Any = None) -> Any:
+        """PgMemoryStore-parity passthrough to the translating connection.
+
+        PG-flavored SQL a caller sends here (``%s`` placeholders, ``NOW()``,
+        ``= ANY(...)``) is translated by ``PsycopgCompatConnection``; a
+        construct SQLite cannot express (e.g. ``@>`` jsonb containment)
+        raises ``sqlite3.OperationalError``, which the callers' documented
+        mechanism boundaries treat as the degraded mode — previously the
+        same sites raised ``AttributeError`` before the query even ran
+        (issue #220).
+        """
+        return self._conn.execute(query, params)
+
+    def search_newer_neighbors(
+        self,
+        query_embedding: bytes,
+        after: str,
+        exclude_id: int,
+        top_k: int = 10,
+    ) -> list[tuple[float, float]]:
+        """Vector neighbors created strictly after ``after``, nearest first.
+
+        PgMemoryStore parity (see ``pg_store.py::search_newer_neighbors``):
+        returns ``(similarity, age_hours)`` per newer neighbor. SQLite has no
+        ``<=>`` operator, so the candidate rows are scored with the same
+        numpy cosine the fallback vector search uses.
+        """
+        if not self._has_vec:
+            # Without sqlite-vec no vectors are persisted at all, so there is
+            # no interference signal to compute — same empty result the PG
+            # query yields for a corpus with NULL embeddings.
+            return []
+        query_vec = self._bytes_to_vector(query_embedding)
+        if query_vec is None:
+            return []
+        q_norm = float(np.linalg.norm(query_vec))
+        if q_norm == 0.0:
+            return []
+        # Embeddings live in the memories_vec virtual table; join client-side
+        # per the established idiom (sqlite_store_search.get_hot_embeddings):
+        # fetch candidate rows, then the vector per rowid.
+        rows = self._conn.execute(
+            "SELECT id, created_at FROM memories "
+            "WHERE created_at > ? AND id != ? AND is_stale = 0",
+            (after, exclude_id),
+        ).fetchall()
+        now = datetime.now(timezone.utc)
+        scored: list[tuple[float, float]] = []
+        for r in rows:
+            vec_row = self._conn.execute(
+                "SELECT embedding FROM memories_vec WHERE rowid = ?",
+                (int(r["id"]),),
+            ).fetchone()
+            if vec_row is None:
+                continue
+            vec = self._bytes_to_vector(vec_row["embedding"])
+            if vec is None or vec.shape != query_vec.shape:
+                continue
+            denom = q_norm * float(np.linalg.norm(vec))
+            if denom == 0.0:
+                continue
+            similarity = float(np.dot(query_vec, vec)) / denom
+            try:
+                created = datetime.fromisoformat(str(r["created_at"]))
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=timezone.utc)
+                age_hours = (now - created).total_seconds() / 3600.0
+            except ValueError:
+                age_hours = float("inf")
+            scored.append((similarity, age_hours))
+        scored.sort(key=lambda pair: pair[0], reverse=True)
+        return scored[:top_k]
+
+    def update_forgetting_pressure_accum(self, memory_id: int, accum: float) -> None:
+        """Persist the permanent-circuit leaky-integrator state for one memory.
+
+        PgMemoryStore parity — see ``pg_store.py`` for the rationale
+        (source: mcp_server/core/active_forgetting.py, update_pressure_accum).
+        """
+        self._conn.execute(
+            "UPDATE memories SET forgetting_pressure_accum = ? WHERE id = ?",
+            (accum, memory_id),
+        )
+        self._conn.commit()
 
     def _stamp_embedding_model(self, memory_id: int, model: str | None) -> None:
         """Record which vector space a memory's embedding lives in (issue #169).
