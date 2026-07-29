@@ -42,10 +42,36 @@ def normalize_source_path(raw: str) -> str | None:
     """
     if not raw or not isinstance(raw, str):
         return None
-    text = raw.strip().replace("\\", "/")
-    while text.startswith("./"):
-        text = text[2:]
-    text = text.lstrip("/")
+    text = raw.replace("\\", "/")
+    # Strip surrounding whitespace, "./" and "/" prefixes to a fixed point,
+    # alternating — every one of the three inside the loop.
+    #
+    # This used to strip "./" in a loop and THEN lstrip("/") exactly once,
+    # which is not a canonicalisation: removing the leading slashes can
+    # expose a "./" the loop has already walked past. ".//./x" came out as
+    # "./x" and "/./z" as "./z" — both still carrying the prefix this
+    # function exists to remove, in violation of the post-condition above.
+    #
+    # Making the two PREFIX strips a fixed point left whitespace outside it,
+    # which is the same defect one layer up: strip() ran once, before the
+    # loop, so removing a leading "/" re-exposed whitespace nothing stripped
+    # again. "/\n?" came out as "\n?", which normalises further to "?" — a
+    # result that is not its own normal form. Fuzzing found 300 such inputs
+    # over a 7-character alphabet at length <= 4.
+    #
+    # The cost was silent: extract_document_paths promises every entry is
+    # canonical and dedupes on that basis, so one document reachable by two
+    # spellings counted as two documents, and any caller comparing
+    # normalised paths for equality saw a mismatch. Found by fuzzing this
+    # post-condition (fuzz/fuzz_source_path.py); regression pinned in
+    # tests_py/shared/test_wiki_source_paths.py.
+    previous = None
+    while text != previous:
+        previous = text
+        text = text.strip()
+        while text.startswith("./"):
+            text = text[2:]
+        text = text.lstrip("/")
     return text or None
 
 

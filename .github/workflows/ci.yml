@@ -27,7 +27,7 @@ jobs:
       DATABASE_URL: postgresql://cortex:cortex@localhost:5432/cortex
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -67,7 +67,7 @@ jobs:
           PGPASSWORD=cortex psql -h localhost -U cortex -d cortex -c "SELECT version();"
 
       - name: Cache pip
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
@@ -75,7 +75,7 @@ jobs:
             ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
       - name: Cache HuggingFace models
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/huggingface
           key: ${{ runner.os }}-hf-all-MiniLM-L6-v2
@@ -89,13 +89,18 @@ jobs:
       # whole suite at 300s, while every other leg happened to download fine.
       # Cache the model so the fetch happens once, not once per leg.
       - name: Cache FlashRank reranker model
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/flashrank
           key: ${{ runner.os }}-flashrank-ms-marco-MiniLM-L-12-v2
 
       - name: Install dependencies
-        run: pip install -e ".[dev,postgresql,codebase]"
+        # Hash-pinned from uv.lock (scripts/generate_pip_constraints.py).
+        # --no-deps on the project install because the file above IS the
+        # complete dependency graph; re-resolving here would be unpinned.
+        run: |
+          pip install --require-hashes -r requirements/ci-postgresql.txt
+          pip install --no-deps -e .
 
       # Populate the HuggingFace cache before the (offline) test run. A transient
       # huggingface.co blip must not leave the cache empty — that surfaced as 58
@@ -180,7 +185,7 @@ jobs:
 
       - name: Upload coverage
         if: matrix.python-version == '3.12'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-report
           path: coverage.xml
@@ -199,7 +204,7 @@ jobs:
       CORTEX_MEMORY_STORE_BACKEND: sqlite
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -207,7 +212,7 @@ jobs:
           python-version: "3.12"
 
       - name: Cache pip
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-3.12-sqlite-${{ hashFiles('pyproject.toml') }}
@@ -215,7 +220,7 @@ jobs:
             ${{ runner.os }}-pip-3.12-sqlite-
 
       - name: Cache HuggingFace models
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/huggingface
           key: ${{ runner.os }}-hf-all-MiniLM-L6-v2
@@ -226,7 +231,12 @@ jobs:
       # codebase-analysis regression could reach the default backend unseen.
       # Measured 2026-07-28 locally: 8 skips from tree-sitter, 1 from leidenalg.
       - name: Install dependencies (no postgresql extra)
-        run: pip install -e ".[dev,sqlite,codebase]"
+        # Hash-pinned from uv.lock (scripts/generate_pip_constraints.py).
+        # --no-deps on the project install because the file above IS the
+        # complete dependency graph; re-resolving here would be unpinned.
+        run: |
+          pip install --require-hashes -r requirements/ci-sqlite.txt
+          pip install --no-deps -e .
 
       # Retry-with-backoff, fail-loudly: see the `test` job's pre-download step
       # for the root-cause rationale (CI run 28495801728, 2026-07-01).
@@ -288,7 +298,7 @@ jobs:
       CORTEX_MEMORY_STORE_BACKEND: sqlite
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -296,13 +306,18 @@ jobs:
           python-version: "3.12"
 
       - name: Cache HuggingFace models
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/huggingface
           key: ${{ runner.os }}-hf-all-MiniLM-L6-v2
 
       - name: Install dependencies (no postgresql extra)
-        run: pip install -e ".[dev,sqlite]"
+        # Hash-pinned from uv.lock (scripts/generate_pip_constraints.py).
+        # --no-deps on the project install because the file above IS the
+        # complete dependency graph; re-resolving here would be unpinned.
+        run: |
+          pip install --require-hashes -r requirements/ci-sqlite-min.txt
+          pip install --no-deps -e .
 
       # Import smoke: the modules that previously crashed at load on Windows
       # (fcntl import) or silently misbehaved. If any fails to import, the
@@ -372,7 +387,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -383,7 +398,7 @@ jobs:
         # Pinned: ruff's formatter output changes across minor versions
         # (0.15.6 vs 0.15.20 divergence broke Lint on PR #83). The repo is
         # formatted with 0.15.20; bump this pin and reformat together.
-        run: pip install ruff==0.15.20
+        run: pip install --require-hashes -r requirements/lint.txt
 
       - name: Check formatting
         run: ruff format --check .
@@ -408,11 +423,32 @@ jobs:
       - name: Check committed badges
         run: python scripts/generate_repo_badges.py --check
 
+      # The requirements/ files are the ONLY thing standing between a pip
+      # install and an unpinned one, and they are generated — so a lock
+      # change that is not re-exported leaves them describing dependencies
+      # nobody resolved. Checked here, on every push and PR, because that
+      # drift is introduced at commit time. Static: reads uv.lock, installs
+      # nothing.
+      # uv arrives via the SHA-pinned action, not `pip install uv==0.11.3`:
+      # Scorecard scores a bare version specifier as "pipCommand not pinned
+      # by hash" (an `==` resolves to whatever bytes the index serves under
+      # that version today), so installing the pinning tool with pip would
+      # have minted the 22nd Pinned-Dependencies alert in the very commit
+      # that closes the other 21 — and the policy clears the check only at
+      # score 10. Same form as release.yml's SBOM job.
+      - name: Install uv (pinned)
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.3"
+
+      - name: Check hash-pinned requirements match uv.lock
+        run: python scripts/generate_pip_constraints.py --check
+
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -430,11 +466,11 @@ jobs:
       - name: Create .venv with the full type-check environment
         run: |
           python -m venv .venv
-          .venv/bin/pip install -U pip
-          .venv/bin/pip install -e ".[dev,postgresql,sqlite,codebase,otel]" flashrank
+          .venv/bin/pip install --require-hashes -r requirements/ci-typecheck.txt
+          .venv/bin/pip install --no-deps -e .
           # Pin pyright — diagnostic output drifts between releases, so a
           # zero-diagnostic tree is only comparable against the pinned version.
-          .venv/bin/pip install pyright==1.1.410
+          .venv/bin/pip install --require-hashes -r requirements/typecheck-tool.txt
 
       # pyright IS the gate: the backlog was burned to zero (issue #197,
       # 568 baselined diagnostics -> 0 measured 2026-07-28), so ANY
@@ -449,7 +485,7 @@ jobs:
     name: Build Package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -457,16 +493,80 @@ jobs:
           python-version: "3.12"
 
       - name: Install build tools
-        run: pip install build
+        run: pip install --require-hashes -r requirements/packaging.txt
 
       - name: Build sdist and wheel
         run: python -m build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist
           path: dist/
+
+  # The two images below had NO CI build at all until this change, so a
+  # regression in either was invisible until someone built it by hand. That
+  # is not hypothetical: docker/Dockerfile copied a python3.12 site-packages
+  # path against a python:3.14 base and could not build, and nothing said so.
+  #
+  # These build only — no smoke run. docker/Dockerfile brings up PostgreSQL
+  # and pre-caches models, and .devcontainer/Dockerfile is opened by the Dev
+  # Containers CLI; asserting their runtime behaviour is a separate job with
+  # separate services. The claim here is narrow and worth making on its own:
+  # the image still builds, and its hash-pinned installs still resolve.
+  docker-runtime-build:
+    name: Docker Build (runtime image)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # This image carries PostgreSQL 17, Node 22, torch and a pre-cached
+      # embedding model. A stock runner has ~14GB free, which the build can
+      # exhaust; the preinstalled toolchains below are worth ~10GB and are
+      # not used by it.
+      - name: Free runner disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo rm -rf /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
+          df -h /
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build docker/Dockerfile
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          tags: cortex-runtime:ci
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  devcontainer-build:
+    name: Docker Build (devcontainer image)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Free runner disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo rm -rf /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
+          df -h /
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build .devcontainer/Dockerfile
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: ./.devcontainer/Dockerfile
+          tags: cortex-devcontainer:ci
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   docker-smoke:
     name: Docker Smoke (bare-container DB-less contract)
@@ -480,7 +580,7 @@ jobs:
     # the production image; nothing else runs the image with psycopg absent
     # and no DATABASE_URL. continue-on-error is intentionally NOT set.
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
@@ -495,7 +595,7 @@ jobs:
       # (https://github.com/docker/build-push-action#cache-backend-api),
       # type=gha is the documented zero-config option for GHA runners.
       - name: Build image (buildx, GHA layer cache)
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: ./Dockerfile
