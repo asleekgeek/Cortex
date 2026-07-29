@@ -148,39 +148,6 @@ def parse_date(date_str: str) -> datetime | None:
     return _try_parse_named_date(date_str)
 
 
-# source: structural — "YYYY-MM-DDTHH:MM:SS" is 19 characters, so an ISO
-# string at least this long already carries a time component.
-_ISO_DATETIME_MIN_LEN = 19
-
-
-def normalize_date_to_iso(raw: str) -> str | None:
-    """Normalize a free-form date string to ISO 8601 for storage.
-
-    Handles formats like '1:56 pm on 8 May, 2023' (LoCoMo),
-    '8 May 2023', 'May 8, 2023', ISO strings, and other common formats.
-    Falls back to dateutil for complex formats with time components.
-
-    Returns ISO string or None if unparseable.
-    """
-    if not raw or not raw.strip():
-        return None
-    raw = raw.strip()
-    # Already ISO with time — pass through
-    if "T" in raw and len(raw) >= _ISO_DATETIME_MIN_LEN:
-        return raw
-    # Try our fast built-in parsers first
-    dt = parse_date(raw)
-    if dt:
-        return dt.isoformat()
-    # Fall back to dateutil for complex formats (e.g. "1:56 pm on 8 May, 2023")
-    try:
-        from dateutil import parser as dateutil_parser  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
-
-        return dateutil_parser.parse(raw).isoformat()
-    except (ValueError, OverflowError, ImportError):
-        return None
-
-
 def compute_date_distance_score(
     doc_date_str: str,
     target_date_hints: list[str],
