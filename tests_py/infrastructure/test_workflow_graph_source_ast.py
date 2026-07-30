@@ -19,6 +19,7 @@ from __future__ import annotations
 import pytest
 
 from mcp_server.errors import McpConnectionError
+from mcp_server.infrastructure import ap_sync_loop
 from mcp_server.infrastructure import workflow_graph_source_ast as mod
 from mcp_server.infrastructure.workflow_graph_source_ast import (
     WorkflowGraphASTSource,
@@ -44,10 +45,11 @@ class _RecordingBridge:
     returns a fixed row list per query. ``calls_at_yield`` lets a test assert
     how many queries had been issued at the moment the consumer pulled item k.
 
-    Each ``query_graph`` returns rows in AP's ``{columns, rows}`` shape so the
-    real ``_as_list`` path is exercised. Symbol queries get one synthetic
-    symbol per label; edge queries get rows only for the first rel-table so we
-    can keep the fixture small while still streaming many (mostly empty) ones.
+    Each ``query_graph`` returns rows in AP's ``{columns, rows}`` shape so
+    the real ``workflow_graph_ast_response.as_list`` path is exercised.
+    Symbol queries get one synthetic symbol per label; edge queries get
+    rows only for the first rel-table so we can keep the fixture small
+    while still streaming many (mostly empty) ones.
     """
 
     def __init__(self, rows_per_query: int = 1) -> None:
@@ -167,12 +169,19 @@ class TestNoFullMaterialization:
 
 
 class TestBoundedWaitTimeout:
-    def test_run_raises_on_wedged_loop(self, monkeypatch):
+    def test_run_raises_on_wedged_loop(self, monkeypatch, capfd):
         """A coroutine that never completes must raise McpConnectionError via
         the bounded cross-loop wait — not hang forever. Uses a tiny TEST
         timeout (a test constant, not production) and a REAL sleep (never a
-        mocked asyncio.sleep — that would busy-spin the idle loop)."""
+        mocked asyncio.sleep — that would busy-spin the idle loop).
+
+        Regression test for issue #258: closing the loop right after this
+        timeout must not race the cancelled task's own finalization — the
+        acceptance criterion is literally zero 'Task was destroyed but it
+        is pending!' lines on stderr, so this asserts that directly rather
+        than only the McpConnectionError."""
         import asyncio
+        import gc
 
         # Tiny timeout for the test only — production default is 3900 s.
         monkeypatch.setenv("CORTEX_MEMORY_AP_SYNC_RESULT_TIMEOUT_S", "0.2")
@@ -188,16 +197,26 @@ class TestBoundedWaitTimeout:
                 await asyncio.sleep(30)
                 return "unreachable"
 
-            with pytest.raises(McpConnectionError):
+            with pytest.raises(McpConnectionError) as exc_info:
                 loop_owner.run(_never())
+            # Exact match (not a substring/type-only check): pins the
+            # wording AND the interpolated ceiling, so a mutant that
+            # garbles or blanks the message is caught too.
+            assert str(exc_info.value) == (
+                "AP reader-thread call exceeded 0s — subprocess presumed wedged"
+            )
         finally:
             loop_owner.close()
 
-    def test_run_iter_raises_on_wedged_step(self, monkeypatch):
+        gc.collect()  # force the finalizer of any still-PENDING task now
+        assert "Task was destroyed but it is pending" not in capfd.readouterr().err
+
+    def test_run_iter_raises_on_wedged_step(self, monkeypatch, capfd):
         """A streaming step that wedges raises McpConnectionError, and batches
         already yielded before the wedge are real (not silently truncated to a
-        full list)."""
+        full list). Regression test for issue #258 (see docstring above)."""
         import asyncio
+        import gc
 
         monkeypatch.setenv("CORTEX_MEMORY_AP_SYNC_RESULT_TIMEOUT_S", "0.2")
         from mcp_server.infrastructure import memory_config
@@ -214,13 +233,256 @@ class TestBoundedWaitTimeout:
                 yield [5, 6]
 
             got: list = []
-            with pytest.raises(McpConnectionError):
+            with pytest.raises(McpConnectionError) as exc_info:
                 for batch in loop_owner.run_iter(_agen()):
                     got.append(batch)
+            # Exact match — same rationale as the ``run()`` wedge test above.
+            assert str(exc_info.value) == (
+                "AP reader-thread step exceeded 0s — subprocess presumed wedged"
+            )
             # The two pre-wedge batches were really delivered.
             assert got == [[1, 2], [3, 4]]
         finally:
             loop_owner.close()
+
+        gc.collect()
+        assert "Task was destroyed but it is pending" not in capfd.readouterr().err
+
+    def test_run_iter_forwards_a_legitimately_yielded_none_item(self):
+        """``run_iter``'s internal stop-sentinel must be a private ``object()``
+        instance, never a value a real async generator could legitimately
+        yield (``None`` included) — otherwise a source that ever yields
+        ``None`` would have the stream silently truncated there instead of
+        forwarding it. Pins that ``None`` flows through like any other item."""
+        loop_owner = _SyncLoop()
+        try:
+
+            async def _agen():
+                yield 1
+                yield None
+                yield 3
+
+            assert list(loop_owner.run_iter(_agen())) == [1, None, 3]
+        finally:
+            loop_owner.close()
+
+
+class TestDrainPendingTasks:
+    """Direct tests of ``_SyncLoop._drain_pending_tasks`` — the primitive
+    ``close()`` relies on to avoid the issue #258 race. Each test pins one
+    branch of its contract so a mutation on that branch is caught even
+    though the higher-level ``close()``/``run()`` tests above only assert
+    the observable absence of the GC warning."""
+
+    def test_drain_cancels_and_awaits_a_genuinely_wedged_task(self):
+        """postcondition: after ``_drain_pending_tasks()`` returns, a task
+        that was mid-``asyncio.sleep(30)`` on the pinned loop has reached a
+        terminal (cancelled) state — not left ``PENDING`` — and the call
+        itself returns almost immediately (well under the shutdown-drain
+        ceiling), proving it does not busy-wait for the full timeout."""
+        import asyncio
+        import time
+
+        loop_owner = _SyncLoop()
+        try:
+            loop = loop_owner._ensure_loop()
+
+            async def _never():
+                await asyncio.sleep(30)
+
+            task_future = asyncio.run_coroutine_threadsafe(_never(), loop)
+            time.sleep(0.05)  # let the task actually start on the loop thread
+
+            t0 = time.monotonic()
+            loop_owner._drain_pending_tasks()
+            elapsed = time.monotonic() - t0
+
+            assert task_future.done()
+            assert task_future.cancelled()
+            # Cancelling a sleep() completes in well under a second; bound
+            # generously below the 2 s shutdown-drain ceiling so a mutant
+            # that skips cancellation (and forces the full timeout) fails.
+            assert elapsed < 1.0
+        finally:
+            loop_owner.close()
+
+    def test_drain_is_a_noop_when_loop_was_never_initialized(self):
+        """precondition guard: ``self._loop is None`` (a ``_SyncLoop`` that
+        never ran anything) must return immediately without error."""
+        owner = _SyncLoop()
+        owner._drain_pending_tasks()  # must not raise
+        assert owner._loop is None
+
+    def test_drain_is_a_noop_for_a_non_asyncio_loop(self):
+        """Guard: a test double standing in for ``self._loop`` (not a real
+        ``asyncio.AbstractEventLoop``) is never scheduled against — doing so
+        would leave the drain coroutine permanently unawaited (a real
+        regression this test caught: see ``_drain_pending_tasks``'s
+        docstring). Returns near-instantly rather than timing out."""
+        import time
+        from unittest.mock import MagicMock
+
+        owner = _SyncLoop.__new__(_SyncLoop)
+        loop = MagicMock()
+        loop.is_closed.return_value = False
+        owner._loop = loop
+        owner._thread = MagicMock()
+
+        t0 = time.monotonic()
+        owner._drain_pending_tasks()  # must not raise, must not schedule
+        assert time.monotonic() - t0 < 0.5
+
+    def test_drain_is_a_noop_when_the_loop_thread_already_exited(self):
+        """Guard: the pinned loop is real and not yet closed, but its
+        ``run_forever()`` thread has already returned — nothing can drive a
+        scheduled drain coroutine, so skip rather than block for the full
+        shutdown-drain ceiling waiting on a callback that will never run."""
+        import time
+
+        loop_owner = _SyncLoop()
+        try:
+            loop = loop_owner._ensure_loop()
+            loop.call_soon_threadsafe(loop.stop)
+            loop_owner._thread.join(timeout=2.0)
+            assert not loop_owner._thread.is_alive()
+            assert not loop.is_closed()
+
+            t0 = time.monotonic()
+            loop_owner._drain_pending_tasks()
+            assert time.monotonic() - t0 < 0.5
+        finally:
+            loop.close()
+            loop_owner._loop = None
+            loop_owner._thread = None
+
+    def test_drain_times_out_and_logs_when_a_task_is_slow_to_cancel(
+        self, monkeypatch, caplog
+    ):
+        """postcondition (timeout branch): a task that takes LONGER than
+        the shutdown-drain ceiling to actually honor its cancellation must
+        not block ``_drain_pending_tasks()`` past that ceiling — it logs
+        the actionable, correctly-worded message and returns. Pins both
+        the bound (``_SHUTDOWN_DRAIN_TIMEOUT_S``, not an unbounded wait)
+        and the message content, since a garbled/blank log line here is
+        the only signal an operator gets for a genuinely wedged task."""
+        import asyncio
+        import time
+
+        # Tiny ceiling for the test only — shrinks the real 2.0s constant.
+        # Patched on ``ap_sync_loop`` (where ``_drain_pending_tasks`` actually
+        # resolves the bare name at call time), not on the ``mod`` re-export —
+        # a re-exported alias is a separate module attribute that the
+        # defining function's global lookup never reads.
+        monkeypatch.setattr(ap_sync_loop, "_SHUTDOWN_DRAIN_TIMEOUT_S", 0.05)
+
+        loop_owner = _SyncLoop()
+        try:
+            loop = loop_owner._ensure_loop()
+
+            async def _slow_to_cancel():
+                try:
+                    await asyncio.sleep(30)
+                except asyncio.CancelledError:
+                    # Simulates real (slower-than-the-ceiling) cleanup —
+                    # still honors cancellation, just not within 0.05s.
+                    await asyncio.sleep(0.3)
+                    raise
+
+            asyncio.run_coroutine_threadsafe(_slow_to_cancel(), loop)
+            time.sleep(0.05)  # let the task actually start
+
+            with caplog.at_level(
+                "DEBUG", logger="mcp_server.infrastructure.ap_sync_loop"
+            ):
+                t0 = time.monotonic()
+                loop_owner._drain_pending_tasks()
+                elapsed = time.monotonic() - t0
+
+            # Returned at the (monkeypatched) ceiling, not after the
+            # task's slower real cancellation ~0.3s later.
+            assert elapsed < 0.2
+            # Exact match (not a substring check): the log line is the
+            # only signal an operator gets for a genuinely wedged task,
+            # so both the wording AND the interpolated ceiling value must
+            # be correct — a substring check alone can't distinguish
+            # "wrapped/garbled text that still contains the phrase" or
+            # "the %.1fs placeholder left un-interpolated" from the real
+            # message.
+            expected = (
+                "AP sync-loop drain exceeded "
+                f"{ap_sync_loop._SHUTDOWN_DRAIN_TIMEOUT_S:.1f}s "
+                "— leaving residual task(s) for interpreter-exit cleanup"
+            )
+            assert any(r.getMessage() == expected for r in caplog.records)
+
+            # Let the task actually finish before teardown so close()'s
+            # own drain call (same monkeypatched ceiling) finds nothing
+            # pending — otherwise the loop would be closed on top of a
+            # still-running task, which is exactly the #258 shape this
+            # test is not meant to also exercise.
+            time.sleep(0.4)
+        finally:
+            loop_owner.close()
+
+
+class TestSyncLoopConstruction:
+    """Pins ``_SyncLoop``'s construction + lazy-init contract directly —
+    ``close()`` unconditionally resets ``_thread``/``_loop`` to ``None`` at
+    the end of its own body, which masks a mutated initial value if the
+    only assertion runs post-``close()`` (as the existing close() tests
+    do). These assert BEFORE any ``close()`` call."""
+
+    def test_fresh_instance_has_no_thread_yet(self):
+        """postcondition: ``__init__`` sets ``self._thread`` to ``None`` —
+        not any other falsy value — before ``_ensure_loop`` ever runs."""
+        owner = _SyncLoop()
+        assert owner._thread is None
+
+    def test_ensure_loop_names_and_daemonizes_the_worker_thread(self):
+        """postcondition: the spawned worker thread is named exactly
+        ``"ap-sync-loop"`` (the name every log/introspection site — and a
+        human debugging a thread dump — relies on to identify it) and is a
+        daemon (so a leaked ``_SyncLoop`` never blocks interpreter exit)."""
+        loop_owner = _SyncLoop()
+        try:
+            loop_owner._ensure_loop()
+            assert loop_owner._thread.name == "ap-sync-loop"
+            assert loop_owner._thread.daemon is True
+        finally:
+            loop_owner.close()
+
+
+class TestSyncLoopCloseRealLoop:
+    """``close()`` tests against a genuine pinned loop (as opposed to the
+    ``MagicMock``-based error-swallowing tests in
+    ``test_s110_sweep_infrastructure.py``): these pin the actual
+    stop/join/close sequence's observable effect."""
+
+    def test_close_on_never_initialized_loop_is_a_noop(self):
+        """Guard: a fresh ``_SyncLoop`` that never ran anything has
+        ``self._loop is None`` — ``close()`` must short-circuit before
+        touching ``self._loop.is_closed()`` (which would raise
+        ``AttributeError`` on ``None``), not attempt it."""
+        owner = _SyncLoop()
+        owner.close()  # must not raise
+        assert owner._loop is None
+        assert owner._thread is None
+
+    def test_close_on_real_loop_actually_stops_and_closes_it(self):
+        """postcondition: ``close()`` on a genuinely running pinned loop
+        leaves the loop closed and both instance attributes reset to
+        ``None`` (not merely falsy) — the observable proof that
+        ``loop.stop()`` was actually invoked (not just scheduled and
+        ignored) and the loop's thread actually exited before
+        ``loop.close()`` ran."""
+        loop_owner = _SyncLoop()
+        loop = loop_owner._ensure_loop()
+
+        loop_owner.close()
+
+        assert loop.is_closed()
+        assert loop_owner._loop is None
+        assert loop_owner._thread is None
 
 
 class TestSingleReaderOwnership:
