@@ -80,8 +80,7 @@ class _RecordingBridge:
 
 
 def _make_source(bridge) -> WorkflowGraphASTSource:
-    src = WorkflowGraphASTSource(bridge=bridge)
-    return src
+    return WorkflowGraphASTSource(bridge=bridge)
 
 
 class TestIncrementalYield:
@@ -93,7 +92,7 @@ class TestIncrementalYield:
         try:
             seen_query_counts: list[int] = []
             batch_count = 0
-            for batch in src.iter_symbols(["/abs/pkg/mod.py"]):
+            for _batch in src.iter_symbols(["/abs/pkg/mod.py"]):
                 # At the moment we receive a batch, the number of queries
                 # issued so far is recorded. If the source fetched everything
                 # up-front, this would equal the TOTAL query count on the very

@@ -57,25 +57,25 @@ def load_longmemeval(seed: int) -> tuple[list[SubsampleItem], list[QueryProbe]]:
     seen: dict[str, SubsampleItem] = {}
     probes: list[QueryProbe] = []
     for item in dataset:
+        # strict=True: parallel per-record fields, correspond 1:1 by index.
         for sess, sid, date_str in zip(
             item["haystack_sessions"],
             item["haystack_session_ids"],
             item["haystack_dates"],
+            strict=True,
         ):
             if sid in seen:
                 continue
             content, user_content = session_to_memory_content(sess, sid)
             iso = parse_longmemeval_date(date_str)
-            seen[sid] = SubsampleItem(
-                memory={
-                    "content": content,
-                    "user_content": user_content,
-                    "created_at": iso,
-                    "source": sid,
-                    "tags": ["longmemeval"],
-                },
-                source_key=sid,
-            )
+            mem = {
+                "content": content,
+                "user_content": user_content,
+                "created_at": iso,
+                "source": sid,
+                "tags": ["longmemeval"],
+            }
+            seen[sid] = SubsampleItem(memory=mem, source_key=sid)
         probes.append(
             QueryProbe(
                 query=item["question"], target_source_keys=item["answer_session_ids"]
@@ -155,7 +155,7 @@ def load_beam_100k(seed: int) -> tuple[list[SubsampleItem], list[QueryProbe]]:
             items.append(SubsampleItem(memory=mem, source_key=key))
         raw_pq = conversation.get("probing_questions", "{}")
         questions = parse_probing_questions(raw_pq)
-        for ability, qs in questions.items():
+        for _ability, qs in questions.items():
             qs_list = qs if isinstance(qs, list) else [qs]
             for q in qs_list:
                 if not isinstance(q, dict):

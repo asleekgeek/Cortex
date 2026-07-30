@@ -162,7 +162,12 @@ def parse_rules_table(body: str) -> list[ClassifierRule]:
         cells = [c.strip() for c in row.split("|")]
         if len(cells) != len(header_cells):
             continue
-        r = dict(zip(header_cells, cells))
+        # strict=True: the length check immediately above already guarantees
+        # equal lengths here. Documented equivalent mutant
+        # (coding-standards.md §12.1): the `continue` on the preceding line
+        # makes a mismatch unreachable at this point, so strict=True vs
+        # strict=False/None is not observable.
+        r = dict(zip(header_cells, cells, strict=True))
         if not r.get("pattern") or not r.get("kind"):
             continue
         target = r.get("target") or None
