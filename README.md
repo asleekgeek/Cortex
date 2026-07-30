@@ -9,8 +9,7 @@
   <a href="LICENSE"><img src="assets/badge-license.svg" alt="License: MIT"></a>
   <img src="assets/badge-python.svg" alt="Python 3.10+">
   <img src="assets/badge-tests.svg" alt="tests passing">
-  <img src="assets/badge-references.svg" alt="97 referenced papers">
-  <img src="assets/badge-version.svg" alt="Version 4.16.0">
+  <img src="assets/badge-references.svg" alt="97 referenced papers">  <img src="assets/badge-version.svg" alt="Version 4.16.0">
   <a href="https://www.bestpractices.dev/projects/13836"><img src="https://www.bestpractices.dev/projects/13836/badge" alt="OpenSSF Best Practices"></a>
   <a href="https://mcptoplist.com/server/io.github.cdeust%2Fhypermnesia-mcp"><img src="assets/badge-mcp-toplist.svg" alt="MCP Toplist: Top 1.2% of 81,919 tracked MCP servers, July 2026"></a>
 </p>
@@ -527,8 +526,7 @@ Cortex is **local-first**: your memories, conversations, and profiles stay on yo
 
 ```bash
 pytest                    # full suite (see assets/badge-tests.svg for the current count)
-ruff check .              # Lint
-ruff format --check .     # Format
+ruff check .              # Lintruff format --check .     # Format
 python scripts/check_doc_claims.py   # advertised counts must match the repo
 ```
 

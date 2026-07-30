@@ -131,7 +131,6 @@ Actions) on every push and pull request plus weekly, currently 0 open alerts;
 OpenSSF Scorecard via `.github/workflows/scorecard.yml`; and the full automated
 test suite (`assets/badge-tests.svg` carries the current count) runs on four
 Python versions, two backends and Windows.
-
 ## 6. What this assurance case does NOT claim
 
 - **It does not claim freedom from defects.** Provenance proves who built an
