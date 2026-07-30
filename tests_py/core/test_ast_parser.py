@@ -3,9 +3,19 @@
 Tests adapt to the environment:
 - With tree-sitter: verifies full AST extraction (imports, classes, methods, etc.)
 - Without tree-sitter: verifies regex fallback produces valid FileAnalysis
+
+The fake-Node direct unit tests for `_extract_module_doc`/`_node_text`
+(`TestExtractModuleDoc`, `TestNodeText`, `_FakeNode`) live in the sibling
+`test_ast_parser_node_extraction.py` — split out to keep this file, which
+grew with the Go/Swift/Rust wrapper classes below, under the repo's
+300-line/file cap (CLAUDE.md, Code Style).
 """
 
 from __future__ import annotations
+
+import sys
+
+import pytest
 
 from mcp_server.core.ast_parser import is_available, parse_file_ast
 
@@ -107,6 +117,42 @@ def standalone_func(x: int) -> str:
         assert r.language == "python"
         assert r.line_count >= 2
 
+    def test_content_hash_length(self) -> None:
+        r = parse_file_ast("a.py", b"def foo(): pass")
+        assert len(r.content_hash) == 16
+
+    def test_calls_per_function_populated(self) -> None:
+        r = parse_file_ast("auth/middleware.py", self.SAMPLE)
+        if _HAS_TREE_SITTER:
+            assert "AuthMiddleware.authenticate" in r.calls_per_function
+            assert "verify_jwt" in r.calls_per_function["AuthMiddleware.authenticate"]
+        else:
+            assert r.calls_per_function == {}
+
+    def test_decodes_malformed_utf8_without_raising(self) -> None:
+        """`errors="replace"` must survive a resolver swap, per issue #249."""
+        r = parse_file_ast("bad.py", b"\xff\xfe def foo(): pass")
+        assert isinstance(r.line_count, int)
+
+
+def test_is_available_reflects_installed_tree_sitter() -> None:
+    """Pins is_available()'s True branch — a mutant flipping it to False
+    would still leave every _HAS_TREE_SITTER-gated assertion above passing
+    trivially (the gated branch is simply skipped)."""
+    if not _HAS_TREE_SITTER:
+        pytest.skip("tree-sitter not installed")
+    assert is_available() is True
+
+
+def test_is_available_false_when_tree_sitter_import_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pins the except-ImportError branch, unreachable when tree-sitter IS
+    installed (this environment): forcing the import to fail is the only
+    way to exercise it directly."""
+    monkeypatch.setitem(sys.modules, "tree_sitter_language_pack", None)
+    assert is_available() is False
+
 
 class TestParseFileTypeScript:
     SAMPLE = b"""import { Request } from 'express';
@@ -169,3 +215,9 @@ class TestFallbackForUnsupported:
         r = parse_file_ast("readme.md", b"# Hello")
         assert r.language == "unknown"
         assert r.definitions == []
+
+
+# TestParseFileGo/TestParseFileSwift/TestParseFileRust live in the sibling
+# test_ast_parser_extra_langs.py — split out to keep this file under the
+# repo's 300-line/file cap once those three classes were added (issue #249
+# mutation-testing pass).

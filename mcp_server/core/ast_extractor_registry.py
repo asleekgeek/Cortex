@@ -1,6 +1,6 @@
 """Registry for the extra-language tree-sitter extractors.
 
-Builds the (imports, definitions, calls) extractor callables for the JVM,
+Builds the (imports, definitions) extractor callables for the JVM,
 C-family, and scripting language groups and merges them into one dict for
 ast_parser._EXTRACTORS. Split out so ast_parser.py stays under 300 lines.
 
@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable
 
 from mcp_server.core.codebase_parser import ImportInfo, SymbolDef
-from mcp_server.core.ast_extractors import extract_calls_generic
 from mcp_server.core.ast_extractors_clike import (
     extract_c_definitions,
     extract_c_imports,
@@ -37,27 +36,30 @@ if TYPE_CHECKING:
     from tree_sitter import Node
     from tree_sitter_language_pack import SupportedLanguage
 
-Extractor = Callable[
-    ["Node", bytes], tuple[list[ImportInfo], list[SymbolDef], list[str]]
-]
+Extractor = Callable[["Node", bytes], tuple[list[ImportInfo], list[SymbolDef]]]
 
 
 def _make_extractor(
     imports_fn: Callable[["Node", bytes], list[ImportInfo]],
     defs_fn: Callable[["Node", bytes], list[SymbolDef]],
 ) -> Extractor:
-    """Compose an extractor from an imports fn, a defs fn, and generic calls."""
+    """Compose an extractor from an imports fn and a defs fn.
 
-    def _extract(
-        root: Node,
-        source: bytes,
-    ) -> tuple[list[ImportInfo], list[SymbolDef], list[str]]:
+    Precondition: `imports_fn`/`defs_fn` are pure (no I/O), taking the same
+    `(root, source)` pair.
+    Postcondition: returns a callable producing `(imports, definitions)` —
+    the flat per-file call list this used to also return was computed via
+    `extract_calls_generic(root, source)` and then discarded by every
+    caller (`parse_file_ast` only reads the `calls_per_function` map,
+    populated separately via `extract_calls_per_function`); the tuple
+    element was removed as dead code (issue #249 boy-scout pass). With
+    this the only production call site gone, `extract_calls_generic` had
+    no caller left but its own direct unit test — deleted from
+    `ast_extractors.py` rather than kept for a hypothetical future one.
+    """
 
-        return (
-            imports_fn(root, source),
-            defs_fn(root, source),
-            extract_calls_generic(root, source),
-        )
+    def _extract(root: Node, source: bytes) -> tuple[list[ImportInfo], list[SymbolDef]]:
+        return imports_fn(root, source), defs_fn(root, source)
 
     return _extract
 
