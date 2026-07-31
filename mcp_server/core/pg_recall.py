@@ -490,11 +490,11 @@ def recall(
     # preference memories from being drowned out by episodic memories.
     # Reserves 2 slots for tag-matched memories when intent matches.
     # Validated approach (BEAM 0.546 overall — see README ablation log).
-    _TYPE_INTENTS = {
+    _type_intents = {
         QueryIntent.INSTRUCTION: "instruction",
         QueryIntent.PREFERENCE: "preference",
     }
-    tag_for_intent = _TYPE_INTENTS.get(intent)
+    tag_for_intent = _type_intents.get(intent)
     if tag_for_intent and store and q_emb and hasattr(store, "search_by_tag_vector"):
         existing_ids = {c["memory_id"] for c in candidates}
         typed = store.search_by_tag_vector(
@@ -513,12 +513,12 @@ def recall(
     # training pairs but doesn't generalize to BEAM evaluation queries —
     # 32% of real relevant passages get filtered as irrelevant.
     # Critically: it does NOT improve abstention category (still 0.100).
-    # Re-enable when v0.2 ships with cross-validated training data.
-    # Code path preserved for future use:
-    # from mcp_server.core.abstention_gate import filter_by_abstention
-    # filtered, _ = filter_by_abstention(
-    #     query, candidates, threshold=0.45, keep_at_least=1)
-    # candidates = filtered
+    # Re-enable when v0.2 ships with cross-validated training data (the
+    # abstention_gate module and its tests stay in the tree for that;
+    # see mcp_server/core/abstention_gate.py — ERA001 (issue #239):
+    # a disabled call site is not the same as dead code, but the call
+    # is not currently wired, so no commented-out invocation is kept
+    # here — re-enabling means writing the real call, not uncommenting.
 
     # 8. MMR diversity reranking — DISABLED after ablation (see above).
     # Carbonell & Goldstein (SIGIR 1998) MMR trades precision for coverage.
