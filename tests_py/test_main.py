@@ -7,7 +7,14 @@ from unittest.mock import patch
 import pytest
 from fastmcp import FastMCP
 
-from mcp_server.__main__ import main, _shutdown, mcp, register_all, run_stdio_drained
+from mcp_server.__main__ import (
+    fastmcp,
+    main,
+    _shutdown,
+    mcp,
+    register_all,
+    run_stdio_drained,
+)
 
 
 # The 3 upstream-integration tools, conditionally registered by upstream
@@ -41,6 +48,7 @@ class TestMain:
         with (
             patch("mcp_server.__main__.signal.signal") as mock_signal,
             patch("mcp_server.__main__.anyio.run") as mock_anyio_run,
+            patch.object(fastmcp.settings, "check_for_updates", "stable"),
         ):
             main()
 
@@ -53,6 +61,9 @@ class TestMain:
             # Should drive stdio via the drain-safe wrapper, not
             # mcp.run(transport="stdio") directly.
             mock_anyio_run.assert_called_once_with(run_stdio_drained, mcp)
+            # Preserve the banner path while disabling only its pre-handshake
+            # PyPI lookup, regardless of FastMCP's ambient default.
+            assert fastmcp.settings.check_for_updates == "off"
 
     def test_standalone_baseline_is_52_tools(self):
         """With no upstream available, exactly the 52 standalone tools register.

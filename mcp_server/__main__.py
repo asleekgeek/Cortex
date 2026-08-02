@@ -44,6 +44,7 @@ except Exception as _preload_exc:  # noqa: BLE001 — failure is reported to std
     )
 
 import anyio
+import fastmcp
 from fastmcp import FastMCP
 
 from mcp_server import (
@@ -201,6 +202,15 @@ def main() -> None:
     # the exact upstream race + citations). run_stdio_drained is a drop-in
     # replacement with the same banner/lifespan/init-options behavior that
     # additionally drains in-flight handlers before shutdown.
+    # A stdio MCP process must initialize without network access. Preserve the
+    # FastMCP banner (and FASTMCP_SHOW_SERVER_BANNER resolution), but disable
+    # only its PyPI update lookup: that non-essential request can raise before
+    # ``initialize`` when the host exports a SOCKS proxy and ``httpx[socks]``
+    # is absent. Version discovery belongs in an explicit maintenance/doctor
+    # path, never in the protocol handshake.
+    # source: fastmcp==3.4.5 settings.check_for_updates +
+    # utilities/version_check.py::check_for_newer_version.
+    fastmcp.settings.check_for_updates = "off"
     anyio.run(run_stdio_drained, mcp)
 
 

@@ -6,6 +6,37 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Hook-free MCP protocol and host-configuration gates.** CI now starts the
+  installed production stdio entry point under representative Claude, Gemini,
+  and Codex client identities, completes the MCP lifecycle for both the full
+  and exact 10-tool lean profiles, and executes a real SQLite-backed
+  `memory_stats` call.
+  Separate pinned vendor CLIs parse the Claude plugin, Gemini extension, and
+  recommended Codex configuration. These are protocol/configuration contracts,
+  not a claim of authenticated model-turn E2E coverage in each vendor UI.
+
+### Changed
+
+- Claude's wiki-groomer agent now lives in a Claude-specific manifest path,
+  preventing Gemini CLI from auto-loading Claude-only agent frontmatter while
+  preserving the Claude plugin behavior and tool list.
+- The documented PyPI policy changes from a deprecated legacy channel to the
+  best-effort hook-free compatibility channel for local stdio hosts, while
+  Claude Code's marketplace integration remains primary. The README also
+  distinguishes those local hosts from ChatGPT web and documents Codex CLI's
+  shared local configuration.
+
+### Fixed
+
+- FastMCP's banner-time network update probe can no longer abort stdio startup
+  before MCP `initialize` when a SOCKS proxy is configured without optional
+  HTTP SOCKS support. The diagnostic banner and its existing user setting are
+  preserved; only network version discovery moves outside the runtime
+  handshake. Cortex and its dependencies remain explicitly upgradeable through
+  the package manager and reproducible through `uv.lock`.
+
 ## [4.17.2] - 2026-08-02
 
 ### Fixed
