@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.17.2] - 2026-08-02
+
 ### Fixed
 
 - **The ML stack never installed on current pip, silently degrading recall to
