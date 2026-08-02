@@ -8,6 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Native Codex local plugin packaging.** A dedicated
+  `cortex-codex-plugins` repository marketplace now exposes an isolated,
+  MCP-only Codex package backed by the published PyPI stdio server on the
+  exact 10-tool `lean` profile. Its 180-second startup ceiling is backed by a
+  clean-cache `uvx` lifecycle measured at 110.46 seconds locally (macOS 26.5.1
+  arm64, uv 0.8.19) and 23.87 seconds on `ubuntu-latest` CI. This is additive:
+  Claude Code remains the primary integration and keeps its complete profile,
+  lifecycle hooks, custom agent, marketplace, and installation path unchanged.
 - **Hook-free MCP protocol and host-configuration gates.** CI now starts the
   installed production stdio entry point under representative Claude, Gemini,
   and Codex client identities, completes the MCP lifecycle for both the full
@@ -19,6 +27,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Benchmark provenance now requires the date, environment, exact command, code
+  revision, and experimental conditions alongside before/after measurements.
 - Claude's wiki-groomer agent now lives in a Claude-specific manifest path,
   preventing Gemini CLI from auto-loading Claude-only agent frontmatter while
   preserving the Claude plugin behavior and tool list.
