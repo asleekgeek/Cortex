@@ -14,8 +14,26 @@ adheres to [Semantic Versioning](https://semver.org/).
   exact 10-tool `lean` profile. Its 180-second startup ceiling is backed by a
   clean-cache `uvx` lifecycle measured at 110.46 seconds locally (macOS 26.5.1
   arm64, uv 0.8.19) and 23.87 seconds on `ubuntu-latest` CI. This is additive:
-  Claude Code remains the primary integration and keeps its complete profile,
-  lifecycle hooks, custom agent, marketplace, and installation path unchanged.
+  Claude Code remains the primary integration and keeps its primary plugin
+  manifest, complete profile, lifecycle hooks, custom agent, and installation
+  path unchanged. Its shared marketplace catalog changes only for the
+  visualization-plugin migration described below.
+- **Breaking visualization-plugin publication rename, with migration shim.**
+  The canonical Claude Code publication is
+  `hypermnesia-mcp-viz@cortex-plugins` 3.0.0, sourced from the unchanged
+  `cdeust/cortex-viz` repository at exact commit
+  `1c1940e278979f35cdecea6146d7fb5f749907e9`. Existing installs must uninstall
+  `cortex-viz@cortex-plugins`, refresh `cortex-plugins`, and install
+  `hypermnesia-mcp-viz@cortex-plugins`. The former identity remains as a
+  frozen 2.8.0 migration shim that only prints those instructions; it
+  registers no MCP server or tools. Claude's composed tool names also change:
+  `mcp__plugin_cortex-viz_cortex-viz__open_visualization` becomes
+  `mcp__plugin_hypermnesia-mcp-viz_hypermnesia-mcp-viz__open_visualization`,
+  and `mcp__plugin_cortex-viz_cortex-viz__get_methodology_graph` becomes
+  `mcp__plugin_hypermnesia-mcp-viz_hypermnesia-mcp-viz__get_methodology_graph`.
+  Current companion tables, MCP examples, and API/module documentation now use
+  `hypermnesia-mcp-viz` and `ai-architect-mcp-spec`; retired names remain only
+  in explicit migration or historical material.
 - **Hook-free MCP protocol and host-configuration gates.** CI now starts the
   installed production stdio entry point under representative Claude, Gemini,
   and Codex client identities, completes the MCP lifecycle for both the full
