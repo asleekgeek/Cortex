@@ -141,7 +141,7 @@ SETS: tuple[ConstraintSet, ...] = (
     ),
     ConstraintSet(
         filename="release.txt",
-        consumers=(".github/workflows/ci.yml — release-deps",),
+        consumers=(".github/workflows/release.yml — verification job",),
         extras=("dev", "postgresql"),
     ),
     ConstraintSet(
