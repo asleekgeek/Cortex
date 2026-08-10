@@ -77,26 +77,53 @@ separate **cortex-viz** MCP (reads this same store read-only).
 
 - 300 lines max per file; 40 lines max per method — a local tightening of
   coding-standards.md §4.1/§4.2 (≤500/≤50; CONTRIBUTING.md § Code Style
-  cites the same 300/40 numbers). Enforced by code review today; no
-  automated pre-commit hook checks this yet (issue #276 corrected the
-  prior claim of a "craftsmanship-checker" hook — none exists in
-  `.git/hooks/` or a `.pre-commit-config.yaml`).
-- Import rule: `core/` imports only `shared/` + stdlib; `infrastructure/`
-  never imports core/handlers. Verify both directions before every PR —
-  `grep -rn "from mcp_server.infrastructure" mcp_server/core/` and
-  `grep -rn "from mcp_server\.core\." mcp_server/infrastructure/*.py` —
-  both currently return nothing (re-verified 2026-08-10 while fixing
-  issue: `wiki_store.py`/`wiki_schema_reader.py` importing `core/`,
-  PR #409 round 3). The three violations this line used to name
-  (`wiki_axis_registry.py`, `wiki_classifier.py`, `wiki_schema_loader.py`,
-  found 2026-07-14 during #114) no longer exist: `wiki_schema_loader.py`
-  moved `core/` → `shared/` in the same fix, and the other two do not
-  import `infrastructure/` as of this measurement. Treat a future zero
-  as the standard, not as evidence the check is unnecessary — re-run the
-  greps, don't assume they still pass.
+  cites the same 300/40 numbers).
+- Import rule: a TRUE whitelist per layer, all eight rows of
+  `docs/module-inventory.md` § Dependency Rules — `shared/` and `core/`
+  are pure (no third-party imports at all; `core/` additionally bans
+  `os`/`pathlib` even though they are stdlib, since it is zero-I/O
+  business logic); `infrastructure/`, `validation/`, `handlers/`,
+  `server/`, `hooks/` are boundary/adapter layers where third-party
+  imports are the point, but their `mcp_server.<layer>` cross-references
+  are still checked against the table's named whitelist, not a blacklist
+  of a few forbidden ones. This replaces the former manual-grep
+  verification step (`grep -rn "from mcp_server.infrastructure"
+  mcp_server/core/`, etc.) — the craftsmanship gate below runs it, in
+  both directions, across all eight layers, on every push and PR, so
+  "re-run the greps before every PR" is no longer the standard: the gate
+  is.
 - No invented constants: every hardcoded number carries a `# source:`
   comment (paper, committed benchmark, or dated measurement naming the
-  environment and conditions). A number without one blocks the diff in review.
+  environment and conditions).
+- **Enforced by `scripts/check_craftsmanship.py`**, run in CI on every push
+  and PR (`.github/workflows/ci.yml`, `craftsmanship` job) and locally via
+  `python scripts/check_craftsmanship.py`. It checks the four rules above,
+  by AST, on the files a diff touches — never the whole repository. The
+  layer whitelist is *parsed* from `docs/module-inventory.md`'s own table
+  at run time (`scripts/craftsmanship_layer_table.py`), never a second
+  hardcoded copy that could silently diverge from it.
+  The comparison baseline is read via `git show <base-ref>:.craftsmanship-baseline.json`
+  — the PR's BASE ref, immutable to the PR's own commits — never the
+  working tree: a working-tree-only baseline is self-service (add a
+  violation, run `--write-baseline` in the same tree, the gate would pass
+  on it — this exact exploit is reproduced and closed in
+  `tests_py/scripts/test_check_craftsmanship.py::SneakyLimitExploitTests`).
+  The gate fails the diff on: any violation absent from that base-ref
+  baseline (new debt); any base-ref-baselined entry whose violation no
+  longer reproduces (fixed but not pruned); or any entry present in the
+  working-tree `.craftsmanship-baseline.json` but absent from the base
+  ref's (the file may only SHRINK within a PR — an addition is refused
+  outright, matched or not, because debt discovered mid-PR gets fixed at
+  the source, not grandfathered). Regenerate with
+  `python scripts/check_craftsmanship.py --write-baseline` only to prune
+  entries whose violations you actually fixed. Previously "enforced by
+  code review today; no automated pre-commit hook checks this yet" (issue
+  #276 corrected an earlier, false claim of a "craftsmanship-checker"
+  hook) — that gap is what this gate closes. Historical import-rule
+  violations once tracked ad hoc in this section (`wiki_axis_registry.py`,
+  `wiki_classifier.py`, `wiki_schema_loader.py`, found 2026-07-14 during
+  #114) now live in the baseline like any other pre-existing debt, not as
+  separate prose here.
 
 ## What NOT to do
 
