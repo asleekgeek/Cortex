@@ -25,6 +25,12 @@ signal, and defines no drain phase, so this is the SDK honouring the protocol,
 not violating it. The correction therefore belongs to the client: read your
 answers first, close stdin second. That is what `scripts/mcp_host_client.py`
 does and what `test_drain_then_shutdown_answers_every_request` pins.
+
+`_server`/`_GatedWriteStream`/`_collect` are reused (not duplicated) by
+`test_docker_smoke_stdio_eof_drain.py`, which pins the identical mechanism
+for `scripts/docker_smoke_client.py`'s own request id/method — kept in a
+sibling module rather than appended here to stay under this file's own
+300-line cap.
 """
 
 from __future__ import annotations
@@ -111,14 +117,20 @@ def _request_ids() -> set[int]:
 
 
 async def _collect(
-    reader: object, answered: dict[int, object], done: anyio.Event
+    reader: object,
+    answered: dict[int, object],
+    done: anyio.Event,
+    expected_ids: set[int] | None = None,
 ) -> None:
+    """Collect response frames until ``expected_ids`` (default: this
+    module's own ``_request_ids()``) is fully answered."""
+    awaited = _request_ids() if expected_ids is None else expected_ids
     async with reader:  # type: ignore[attr-defined]
         async for item in reader:  # type: ignore[attr-defined]
             message = item.message
             if isinstance(message, (types.JSONRPCResponse, types.JSONRPCError)):
                 answered[message.id] = message
-                if _request_ids() <= answered.keys():
+                if awaited <= answered.keys():
                     done.set()
 
 
