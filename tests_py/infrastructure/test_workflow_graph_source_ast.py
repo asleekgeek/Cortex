@@ -167,60 +167,91 @@ class TestNoFullMaterialization:
             src.close()
 
 
-class TestBoundedWaitTimeout:
-    def test_run_raises_on_wedged_loop(self, monkeypatch, capfd):
-        """A coroutine that never completes must raise McpConnectionError via
-        the bounded cross-loop wait — not hang forever. Uses a tiny TEST
-        timeout (a test constant, not production) and a REAL sleep (never a
-        mocked asyncio.sleep — that would busy-spin the idle loop).
+def _kill_loop_thread(loop_owner) -> None:
+    """Stop the pinned loop so its thread exits (dead-loop scenario)."""
+    loop = loop_owner._loop
+    assert loop is not None
+    loop.call_soon_threadsafe(loop.stop)
+    assert loop_owner._thread is not None
+    loop_owner._thread.join(timeout=5)
 
-        Regression test for issue #258: closing the loop right after this
-        timeout must not race the cancelled task's own finalization — the
-        acceptance criterion is literally zero 'Task was destroyed but it
-        is pending!' lines on stderr, so this asserts that directly rather
-        than only the McpConnectionError."""
+
+def _close_quietly(loop_owner) -> None:
+    """close() a dead-loop _SyncLoop, silencing the expected "coroutine
+    was never awaited" RuntimeWarning its queued-but-never-run callbacks
+    emit on destruction (the dead loop can never drive them)."""
+    import gc
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        loop_owner.close()
+        gc.collect()
+
+
+class TestDeadLoopThreadDetection:
+    """The cross-loop wait has NO wall-clock ceiling (PR #431): a live call
+    outlives any probe interval, and only a dead pinned-loop THREAD fails
+    the wait (a wedged AP child is failed in-loop by mcp_client's silence
+    watchdog, whose McpConnectionError propagates through future.result())."""
+
+    def test_run_survives_a_call_longer_than_the_probe_interval(self, monkeypatch):
+        """A slow-but-live coroutine spanning several probe expiries must
+        complete normally — elapsed time alone never fails the wait. Uses a
+        REAL sleep (never a mocked asyncio.sleep — that would busy-spin)."""
         import asyncio
-        import gc
 
-        # Tiny timeout for the test only — production default is 3900 s.
-        monkeypatch.setenv("CORTEX_MEMORY_AP_SYNC_RESULT_TIMEOUT_S", "0.2")
-        from mcp_server.infrastructure import memory_config
-
-        memory_config.get_memory_settings.cache_clear()
+        monkeypatch.setattr(ap_sync_loop, "_AP_SYNC_PROBE_INTERVAL_S", 0.05)
 
         loop_owner = _SyncLoop()
         try:
 
-            async def _never():
-                # Real sleep, far longer than the 0.2 s wait ceiling.
-                await asyncio.sleep(30)
-                return "unreachable"
+            async def _slow():
+                await asyncio.sleep(0.3)  # ~6 probe expiries
+                return "done"
 
-            with pytest.raises(McpConnectionError) as exc_info:
-                loop_owner.run(_never())
-            # Exact match (not a substring/type-only check): pins the
-            # wording AND the interpolated ceiling, so a mutant that
-            # garbles or blanks the message is caught too.
-            assert str(exc_info.value) == (
-                "AP reader-thread call exceeded 0s — subprocess presumed wedged"
-            )
+            assert loop_owner.run(_slow()) == "done"
         finally:
             loop_owner.close()
 
-        gc.collect()  # force the finalizer of any still-PENDING task now
-        assert "Task was destroyed but it is pending" not in capfd.readouterr().err
-
-    def test_run_iter_raises_on_wedged_step(self, monkeypatch, capfd):
-        """A streaming step that wedges raises McpConnectionError, and batches
-        already yielded before the wedge are real (not silently truncated to a
-        full list). Regression test for issue #258 (see docstring above)."""
+    def test_run_raises_when_the_loop_thread_dies(self, monkeypatch):
+        """A dead pinned-loop thread means nothing can ever resolve the
+        future — the probe must raise McpConnectionError, not hang."""
         import asyncio
-        import gc
 
-        monkeypatch.setenv("CORTEX_MEMORY_AP_SYNC_RESULT_TIMEOUT_S", "0.2")
-        from mcp_server.infrastructure import memory_config
+        monkeypatch.setattr(ap_sync_loop, "_AP_SYNC_PROBE_INTERVAL_S", 0.05)
 
-        memory_config.get_memory_settings.cache_clear()
+        loop_owner = _SyncLoop()
+        try:
+            loop = loop_owner._ensure_loop()
+
+            async def _never():
+                await asyncio.sleep(30)
+                return "unreachable"
+
+            # Kill the loop thread out from under the call: the scheduled
+            # coroutine is never driven again.
+            future = asyncio.run_coroutine_threadsafe(_never(), loop)
+            _kill_loop_thread(loop_owner)
+
+            with pytest.raises(McpConnectionError) as exc_info:
+                loop_owner._result_or_wedged(future, "call")
+            # Exact match: pins the wording so a mutant that garbles or
+            # blanks the message is caught too.
+            assert str(exc_info.value) == (
+                "AP reader-thread call abandoned: the pinned loop thread "
+                "is no longer running, so the call can never complete"
+            )
+        finally:
+            _close_quietly(loop_owner)
+
+    def test_run_iter_raises_when_the_loop_thread_dies_mid_stream(self, monkeypatch):
+        """A stream whose loop thread dies mid-iteration raises
+        McpConnectionError at the failed step, and batches already yielded
+        before the failure are real (not silently truncated)."""
+        import asyncio
+
+        monkeypatch.setattr(ap_sync_loop, "_AP_SYNC_PROBE_INTERVAL_S", 0.05)
 
         loop_owner = _SyncLoop()
         try:
@@ -228,24 +259,24 @@ class TestBoundedWaitTimeout:
             async def _agen():
                 yield [1, 2]
                 yield [3, 4]
-                await asyncio.sleep(30)  # wedge on the third step
+                await asyncio.sleep(30)  # third step never completes
                 yield [5, 6]
 
             got: list = []
             with pytest.raises(McpConnectionError) as exc_info:
                 for batch in loop_owner.run_iter(_agen()):
                     got.append(batch)
-            # Exact match — same rationale as the ``run()`` wedge test above.
+                    if len(got) == 2:
+                        # Kill the loop thread before step 3 is awaited.
+                        _kill_loop_thread(loop_owner)
             assert str(exc_info.value) == (
-                "AP reader-thread step exceeded 0s — subprocess presumed wedged"
+                "AP reader-thread step abandoned: the pinned loop thread "
+                "is no longer running, so the call can never complete"
             )
-            # The two pre-wedge batches were really delivered.
+            # The two pre-failure batches were really delivered.
             assert got == [[1, 2], [3, 4]]
         finally:
-            loop_owner.close()
-
-        gc.collect()
-        assert "Task was destroyed but it is pending" not in capfd.readouterr().err
+            _close_quietly(loop_owner)
 
     def test_run_iter_forwards_a_legitimately_yielded_none_item(self):
         """``run_iter``'s internal stop-sentinel must be a private ``object()``
@@ -482,6 +513,45 @@ class TestSyncLoopCloseRealLoop:
         assert loop.is_closed()
         assert loop_owner._loop is None
         assert loop_owner._thread is None
+
+    def test_close_on_alive_loop_with_pending_task_logs_no_gc_warning(self, capfd):
+        """End-to-end regression test for issue #258, restored (round-1
+        review flagged its removal in commit b617d64d — see
+        ``TestDrainPendingTasks`` for the direct unit coverage this
+        complements, and the removal was: the OLD version of this test
+        wedged via a wall-clock ceiling that no longer exists post-F3, so
+        it was rewritten to kill the loop THREAD first, at which point
+        ``_drain_pending_tasks`` is a guaranteed no-op by its own
+        ``_loop_is_drainable`` guard — leaving nothing that exercises
+        ``close()`` draining a task on a loop whose thread is still ALIVE,
+        the actual #258 shape (task cancelled scheduled via
+        ``loop.stop()``, delivery needs one more iteration the stopped
+        loop never reaches, GC finds it PENDING).
+
+        Reproduced directly here instead: schedule a genuinely
+        long-running task on the pinned loop (bypassing ``run()``, whose
+        wait has no ceiling of its own post-F3 — nothing there would ever
+        time out and trigger a drain), then close() the STILL-ALIVE loop.
+        If ``_drain_pending_tasks()`` were ever removed from ``close()``,
+        this reproduces the exact GC warning on stderr."""
+        import asyncio
+        import gc
+        import time
+
+        loop_owner = _SyncLoop()
+        loop = loop_owner._ensure_loop()
+
+        async def _long_running():
+            await asyncio.sleep(30)
+
+        task_future = asyncio.run_coroutine_threadsafe(_long_running(), loop)
+        time.sleep(0.05)  # let the task actually start on the loop thread
+
+        loop_owner.close()
+
+        assert task_future.cancelled()
+        gc.collect()  # force the finalizer of any still-PENDING task now
+        assert "Task was destroyed but it is pending" not in capfd.readouterr().err
 
 
 class TestSingleReaderOwnership:
