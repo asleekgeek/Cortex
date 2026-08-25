@@ -12,6 +12,7 @@
   <img src="assets/badge-references.svg" alt="97 referenced papers">  <img src="assets/badge-version.svg" alt="Version 4.17.1">
   <a href="https://www.bestpractices.dev/projects/13836"><img src="https://www.bestpractices.dev/projects/13836/badge" alt="OpenSSF Best Practices"></a>
   <a href="https://mcptoplist.com/server/io.github.cdeust%2Fhypermnesia-mcp"><img src="assets/badge-mcp-toplist.svg" alt="MCP Toplist: Top 1.2% of 81,919 tracked MCP servers, July 2026"></a>
+  <a href="https://hol.org/registry/plugins/cdeust%2FCortex"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fhol.org%2Fapi%2Fregistry%2Fbadges%2Fplugin%3Fslug%3Dcdeust%252FCortex%26metric%3Dtrust%26style%3Dflat&label=HOL%20Trust%20Score" alt="HOL Registry Trust Score — owner verified"></a>
 </p>
 
 <p align="center">
