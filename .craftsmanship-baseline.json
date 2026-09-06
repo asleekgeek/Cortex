@@ -3320,16 +3320,6 @@
     {
       "file": "mcp_server/core/write_gate.py",
       "kind": "method-size",
-      "detail": "apply_goal_maintenance"
-    },
-    {
-      "file": "mcp_server/core/write_gate.py",
-      "kind": "method-size",
-      "detail": "apply_habituation"
-    },
-    {
-      "file": "mcp_server/core/write_gate.py",
-      "kind": "method-size",
       "detail": "determine_bypass"
     },
     {
@@ -4406,11 +4396,6 @@
       "file": "mcp_server/handlers/remember_helpers.py",
       "kind": "method-size",
       "detail": "compute_template_normalized_similarities"
-    },
-    {
-      "file": "mcp_server/handlers/remember_helpers.py",
-      "kind": "method-size",
-      "detail": "evaluate_gate"
     },
     {
       "file": "mcp_server/handlers/remember_helpers.py",

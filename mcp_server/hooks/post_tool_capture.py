@@ -6,7 +6,7 @@ Filters: tool kind (high-value vs light-value vs conditional), output
 length, content-signal keywords. High-value tools (Edit/Write/Bash/
 MultiEdit/NotebookEdit) store the full truncated output; light-value
 tools (Read/NotebookRead/Glob/Grep) record only the input reference to
-keep writes <200ms. Invariants: non-blocking, idempotent via the
+reduce payload size. Invariants: idempotent via the
 predictive-coding write gate, stderr-only logging.
 
 Install via ``~/.claude/settings.json``'s PostToolUse hook pointed at
@@ -40,12 +40,12 @@ _HIGH_VALUE_TOOLS = {
 }
 
 # Tools we capture for graph visibility only. We record the input
-# reference (file_path / pattern / command / URL) but NOT the tool output
-# — that keeps the write <200ms even on read-heavy loops and sidesteps
-# the embedding-model timeout concern that previously excluded Read /
-# Glob / Grep entirely. The workflow graph wants to see every file
-# Claude touched, not just the ones it modified; this makes that
-# practical for live sessions, not only historical JSONL.
+# reference (file_path / pattern / command / URL), omitting the tool output.
+# This reduces the payload; model startup and write-gate work still
+# contribute to latency. W2 launcher measurements observed seconds of CPU
+# in a cold capture even for Read; a short payload alone cannot bound it.
+# The workflow graph uses these references to record every file touched,
+# including files that were only read during a live session.
 _LIGHT_VALUE_TOOLS = {
     "Read",
     "NotebookRead",
@@ -150,7 +150,7 @@ def _build_memory_content(
     cwd: str,
 ) -> str:
     """Build a structured memory string. Light-value tools record only
-    the input reference to keep writes <200ms.
+    the input reference to reduce the stored payload.
 
     2026-05-17: ``_normalize_output`` now returns Markdown-ready text
     for dict tool responses (with its own fenced ``stdout:`` /

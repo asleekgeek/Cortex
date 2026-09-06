@@ -33,6 +33,12 @@ from mcp_server.core.predictive_coding_flat import (
 )
 from mcp_server.core.predictive_coding_gate import gate_decision
 from mcp_server.handlers import validate_memory
+from mcp_server.handlers.remember_preflight import (
+    GateObservation,
+    GateOptions,
+    GateRequest,
+    modulate_score,
+)
 from mcp_server.handlers.remember_response import build_response
 from mcp_server.infrastructure.embedding_engine import EmbeddingEngine
 from mcp_server.infrastructure.memory_config import get_memory_settings
@@ -178,43 +184,6 @@ def _hierarchical_novelty_score(
     return prediction.novelty_score
 
 
-def _compute_gate_decision(
-    score: float,
-    force: bool,
-    content: str,
-    tags: list[str],
-    domain: str = "",
-    write_class: str = "",
-    origin: str = capture_origin.ORIGIN_UNKNOWN,
-) -> tuple[bool, str, float]:
-    """Determine whether to store based on novelty score and bypass rules.
-
-    Returns (should_store, gate_reason, effective_threshold). The threshold
-    is the calibration-adjusted value for the domain (Taleb AF-5 feedback
-    loop); callers that observe the decision should feed it back via
-    ``write_gate_calibration.record`` so the EMA converges to the target
-    acceptance rate.
-
-    ``write_class`` (issue #147 fix): threaded into ``determine_bypass`` so
-    a resolved ``deliberate`` write is never rejected for low novelty, per
-    the tool's documented contract.
-    """
-    bypass, bypass_reason = write_gate.determine_bypass(
-        force, content, tags, write_class=write_class, origin=origin
-    )
-    settings = get_memory_settings()
-    base_threshold = settings.WRITE_GATE_THRESHOLD
-    # Calibrated threshold overrides the static setting once the per-domain
-    # EMA has enough samples (see write_gate_calibration.effective_threshold).
-    threshold = write_gate_calibration.effective_threshold(
-        domain, default_threshold=base_threshold
-    )
-    should_store, gate_reason = gate_decision(score, threshold=threshold, bypass=bypass)
-    if bypass_reason:
-        gate_reason = bypass_reason
-    return should_store, gate_reason, threshold
-
-
 def evaluate_gate(
     content: str,
     tags: list[str],
@@ -246,96 +215,131 @@ def evaluate_gate(
             never novelty-rejected; near-duplicates are still merged/
             linked/superseded by ``try_curation`` afterward).
     """
-    importance = thermodynamics.compute_importance(content, tags)
-    sims, vec_hits = compute_similarities(embedding, store, emb_engine)
-    # i7d3 pivot: template-normalized re-scoring feeds ONLY this novelty
-    # signal — `sims`/`vec_hits` above (and the `embedding` written to
-    # storage by the caller) are untouched raw-content vectors. See
-    # compute_template_normalized_similarities's docstring.
-    norm_sims = compute_template_normalized_similarities(
-        content, vec_hits, store, emb_engine
+    request = GateRequest(
+        content, tags, store, GateOptions(force, domain, write_class, origin)
     )
-    emb_nov = compute_embedding_novelty(norm_sims if norm_sims is not None else sims)
-    extracted, ent_names, known, ent_nov = compute_entity_info(content, store)
-    temp_nov = write_gate.compute_temporal_novelty(sims, vec_hits, store.get_memory)
-    # heads_only: structural novelty against current knowledge (same
-    # rationale as compute_similarities above).
-    # M-D1 §7.3: shape features are compared on the template-normalized
-    # text — a corpus at 92% auto-captures of near-identical structural
-    # shape (same header, same reference-line kind, same fence pattern)
-    # was flooring structural novelty for the whole traffic class. The
-    # stored `recent` contents are read-only here; nothing is mutated.
+    return evaluate_observed_gate(request, None, embedding, emb_engine)
+
+
+def observe_gate(request: GateRequest) -> GateObservation:
+    """Read embedding-independent evidence once for both bound and fallback."""
+    content, store = request.content, request.store
+    importance = thermodynamics.compute_importance(content, request.tags)
+    extracted, names, known, entity = compute_entity_info(content, store)
+    # source: evaluate_gate at a284e473, the existing current-knowledge window.
     recent = store.get_hot_memories(min_heat=0.0, limit=10, heads_only=True)
-    struct_nov = compute_structural_novelty(
+    structural = compute_structural_novelty(
         capture_template_normalize(content),
         [capture_template_normalize(m["content"]) for m in recent if m.get("content")],
     )
-    score = compute_novelty_score(emb_nov, ent_nov, temp_nov, struct_nov)
-    if get_memory_settings().WRITE_GATE_HIERARCHICAL:
-        score = _hierarchical_novelty_score(content, ent_names, known, recent)
-    # E1 habituation & sensitization: damp the novelty of a repeated identical
-    # low-salience input toward rejection (exponential response decrement,
-    # Rankin 2009), and transiently amplify it just after a salient event
-    # (dishabituation / sensitization). Non-fatal, behavior-preserving on a
-    # first-seen signature, and ablatable via CORTEX_ABLATE_HABITUATION=1.
-    score, habituation_info = write_gate.apply_habituation(
-        score, content, importance, store
+    modulations = (
+        write_gate.prepare_habituation(content, importance, store),
+        write_gate.prepare_goal_maintenance(content, names, store),
     )
-    # A3 goal / task-set maintenance: while a goal (promoted from active
-    # prospective triggers) is in play, favor goal-relevant inputs at the gate
-    # with a small multiplicative novelty gain (Miller & Cohen 2001 task-set
-    # biasing). No active goal / off-task input => gain 1.0 => score unchanged.
-    # Non-fatal, ablatable via CORTEX_ABLATE_GOAL_MAINTENANCE=1. DESIGN
-    # INFERENCE — a keyword/entity goal-match nudge, not a learned PFC controller.
-    score, goal_info = write_gate.apply_goal_maintenance(
-        score, content, ent_names, store
+    default = get_memory_settings().WRITE_GATE_THRESHOLD
+    threshold = write_gate_calibration.effective_threshold(
+        request.options.domain,
+        default_threshold=default,
     )
-    should_store, gate_reason, threshold = _compute_gate_decision(
-        score,
-        force,
-        content,
-        tags,
-        domain=domain,
-        write_class=write_class,
-        origin=origin,
+    return GateObservation(
+        {
+            "importance": importance,
+            "extracted": extracted,
+            "ent_names": names,
+            "known": known,
+            "ent_nov": entity,
+            "struct_nov": structural,
+            "recent": recent,
+        },
+        modulations,
+        (threshold, default),
     )
-    # AF-5 feedback: record non-bypass decisions to drive the EMA. Bypasses
-    # (force, error, decision, important_tag, deliberate write_class) carry
-    # no calibration signal because the gate didn't actually decide on
-    # novelty.
-    settings = get_memory_settings()
-    is_bypass = gate_reason in {
-        "bypass",
-        "forced",
-        "bypass_error",
-        "bypass_decision",
-        "bypass_important_tag",
-        "bypass_write_class_deliberate",
-    }
-    if not is_bypass:
+
+
+def _observed_decision(
+    request: GateRequest, score: float, observed: GateObservation
+) -> tuple[bool, str]:
+    options = request.options
+    bypass, bypass_reason = write_gate.determine_bypass(
+        options.force,
+        request.content,
+        request.tags,
+        write_class=options.write_class,
+        origin=options.origin,
+    )
+    should_store, reason = gate_decision(
+        score, threshold=observed.thresholds[0], bypass=bypass
+    )
+    if bypass_reason:
+        reason = bypass_reason
+    if not bypass:
         write_gate_calibration.record(
-            domain,
+            options.domain,
             accepted=should_store,
-            default_threshold=settings.WRITE_GATE_THRESHOLD,
+            default_threshold=observed.thresholds[1],
         )
+    return should_store, reason
+
+
+def _finish_observed_gate(
+    request: GateRequest, observed: GateObservation, vector_signals: dict
+) -> dict[str, Any]:
+    signals = {k: v for k, v in observed.signals.items() if k != "recent"}
+    signals.update(vector_signals)
+    score = compute_novelty_score(
+        signals["emb_nov"],
+        signals["ent_nov"],
+        signals["temp_nov"],
+        signals["struct_nov"],
+    )
+    if get_memory_settings().WRITE_GATE_HIERARCHICAL:
+        score = _hierarchical_novelty_score(
+            request.content,
+            signals["ent_names"],
+            signals["known"],
+            observed.signals["recent"],
+        )
+    score, habituation_info, goal_info = modulate_score(score, observed)
+    should_store, reason = _observed_decision(request, score, observed)
     return {
-        "importance": importance,
-        "sims": sims,
-        "vec_hits": vec_hits,
-        "emb_nov": emb_nov,
-        "extracted": extracted,
-        "ent_names": ent_names,
-        "known": known,
-        "ent_nov": ent_nov,
-        "temp_nov": temp_nov,
-        "struct_nov": struct_nov,
+        **signals,
         "score": score,
         "should_store": should_store,
-        "gate_reason": gate_reason,
-        "gate_threshold": threshold,
+        "gate_reason": reason,
+        "gate_threshold": observed.thresholds[0],
         "habituation": habituation_info,
         "goal_maintenance": goal_info,
     }
+
+
+def evaluate_observed_gate(
+    request: GateRequest,
+    observed: GateObservation | None,
+    embedding: Any,
+    emb_engine: EmbeddingEngine,
+) -> dict[str, Any]:
+    """Compute actual vector signals; reuse any preflight evidence unchanged."""
+    content, store = request.content, request.store
+    sims, hits = compute_similarities(embedding, store, emb_engine)
+    normalized = compute_template_normalized_similarities(
+        content, hits, store, emb_engine
+    )
+    embedding_novelty = compute_embedding_novelty(
+        normalized if normalized is not None else sims
+    )
+    if observed is None:
+        observed = observe_gate(request)
+    temporal = write_gate.compute_temporal_novelty(sims, hits, store.get_memory)
+    return _finish_observed_gate(
+        request,
+        observed,
+        {
+            "sims": sims,
+            "vec_hits": hits,
+            "emb_nov": embedding_novelty,
+            "temp_nov": temporal,
+        },
+    )
 
 
 def apply_modulations(

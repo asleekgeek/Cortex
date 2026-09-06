@@ -20,6 +20,7 @@ from mcp_server.core import (
     thermodynamics,
 )
 from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
+from mcp_server.core.novelty_modulation import NoveltyModulation, apply_modulation
 from mcp_server.core.emotional_tagging import tag_memory_emotions
 from mcp_server.core.neurogenesis import compute_interference_score
 from mcp_server.core.predictive_coding_flat import (
@@ -137,7 +138,7 @@ def determine_bypass(
     REJECT verdict, it does not skip curation, which reads ``force``
     independently). ``write_class`` defaults to ``""`` (no bypass) so the
     unit tests exercising the content/tag/force bypass paths in isolation
-    are unaffected; the real call site (``remember_helpers._compute_gate_decision``)
+    are unaffected; the real call site (``remember_helpers._observed_decision``)
     always passes the already-resolved class (never ``""`` — see
     ``core/write_class.classify_write_class``'s postcondition: the return
     value is always one of ``ALL_WRITE_CLASSES``).
@@ -426,12 +427,26 @@ def apply_goal_maintenance(
     overlap re-weight promoted from the prospective trigger surface, not a
     learned PFC task-set controller (see goal_maintenance module docstring).
     """
-    if is_mechanism_disabled(Mechanism.GOAL_MAINTENANCE):
+    try:
+        return apply_modulation(
+            novelty_score,
+            prepare_goal_maintenance(content, entity_names, store, directory),
+        )
+    except Exception as exc:  # noqa: BLE001 — preserve the existing non-fatal modulation boundary
+        silent_failure.note("write_gate.goal_maintenance", exc)
         return novelty_score, None
+
+
+def prepare_goal_maintenance(
+    content: str, entity_names: list[str], store: Any, directory: str = ""
+) -> NoveltyModulation:
+    """Observe A3 once; preserve its raw gain and identity on errors/ablation."""
+    if is_mechanism_disabled(Mechanism.GOAL_MAINTENANCE):
+        return NoveltyModulation()
     try:
         goal = read_active_goal(store)
         if not goal_maintenance.goal_vector_is_active(goal):
-            return novelty_score, None
+            return NoveltyModulation()
         relevance = goal_maintenance.goal_relevance(
             goal, content, entities=entity_names, directory=directory
         )
@@ -439,19 +454,18 @@ def apply_goal_maintenance(
             goal, content, entities=entity_names, directory=directory
         )
         if gain == 1.0:
-            # Goal active but this input is off-task (relevance 0) — no effect,
-            # so this is a no-op indistinguishable from having no goal at all.
-            return novelty_score, None
-        modulated = max(0.0, min(1.0, novelty_score * gain))
-        return modulated, {
-            "goal": goal_maintenance.goal_vector_as_dict(goal),
-            "relevance": round(relevance, 4),
-            "gain": round(gain, 4),
-            "modulated_novelty": round(modulated, 4),
-        }
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_gate.goal_maintenance")
+            return NoveltyModulation()
+        return NoveltyModulation(
+            gain,
+            {
+                "goal": goal_maintenance.goal_vector_as_dict(goal),
+                "relevance": round(relevance, 4),
+                "gain": round(gain, 4),
+            },
+        )
+    except Exception as exc:  # noqa: BLE001 — mechanism boundary; errors preserve identity and remain observable
         silent_failure.note("write_gate.goal_maintenance", exc)
-        return novelty_score, None
+        return NoveltyModulation()
 
 
 def apply_habituation(
@@ -476,30 +490,42 @@ def apply_habituation(
     Non-fatal: any error in the store read or computation returns the input
     novelty untouched. Disabled via CORTEX_ABLATE_HABITUATION=1.
     """
-    if is_mechanism_disabled(Mechanism.HABITUATION):
+    try:
+        return apply_modulation(
+            novelty_score, prepare_habituation(content, importance, store)
+        )
+    except Exception as exc:  # noqa: BLE001 — preserve the existing non-fatal modulation boundary
+        silent_failure.note("write_gate.habituation", exc)
         return novelty_score, None
+
+
+def prepare_habituation(
+    content: str, importance: float, store: Any
+) -> NoveltyModulation:
+    """Observe E1 once; never reconstruct the raw gain from rounded diagnostics."""
+    if is_mechanism_disabled(Mechanism.HABITUATION):
+        return NoveltyModulation()
     try:
         signature = habituation.stimulus_signature(content)
         repeat_count, hours_since_last = 0, None
         salience, hours_since_salient = 0.0, None
         if hasattr(store, "signature_repeat_stats"):
             repeat_count, hours_since_last = store.signature_repeat_stats(signature)
-        # The current write's own importance is the salience source: a salient
-        # write dishabituates itself and briefly sensitizes related inputs
-        # (Rankin criteria 8/9). hours_since_salient=0.0 = the event is now.
         if habituation.is_salient(importance):
             salience, hours_since_salient = importance, 0.0
+        # source: habituate_novelty returns its unclipped combined_gain;
+        # this unit input is an observation probe, not a measured novelty.
         outcome = habituation.habituate_novelty(
-            novelty_score,
+            1.0,
             content,
             repeat_count=repeat_count,
             hours_since_last=hours_since_last,
             salience=salience,
             hours_since_salient=hours_since_salient,
         )
-        return outcome.modulated_novelty, habituation.habituation_outcome_as_dict(
-            outcome
-        )
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_gate.habituation")
+        details = habituation.habituation_outcome_as_dict(outcome)
+        del details["modulated_novelty"]
+        return NoveltyModulation(outcome.combined_gain, details)
+    except Exception as exc:  # noqa: BLE001 — mechanism boundary; errors preserve identity and remain observable
         silent_failure.note("write_gate.habituation", exc)
-        return novelty_score, None
+        return NoveltyModulation()

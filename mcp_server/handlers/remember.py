@@ -20,6 +20,8 @@ from mcp_server.core.global_detector import detect_global
 from mcp_server.handlers.remember_helpers import (
     apply_modulations,
     evaluate_gate,
+    evaluate_observed_gate,
+    observe_gate,
     insert_and_post_process,
     try_block_replica_upsert,
     try_curation,
@@ -27,6 +29,12 @@ from mcp_server.handlers.remember_helpers import (
     validate_supersede_target,
 )
 from mcp_server.handlers.remember_response import build_merge_response
+from mcp_server.handlers.remember_preflight import (
+    GateOptions,
+    GateRequest,
+    bound_rejection,
+    prepare_gate,
+)
 from mcp_server.handlers.remember_schema import schema
 from mcp_server.handlers import wiki_memory_sync
 from mcp_server.infrastructure.config import WIKI_ROOT
@@ -171,7 +179,7 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
         {"write_class": write_class_arg, "source": source}
     )
 
-    store, emb_engine = _get_store(), get_embedding_engine()
+    store = _get_store()
 
     # Explicit supersession target (PRD dual-access increment 1, item ①):
     # fail fast before any embedding/gate work when the target is missing
@@ -183,16 +191,6 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
         return supersede_rejection
 
     domain = _resolve_domain(directory, args.get("domain", ""))
-    # i7d3 pivot (2026-07-11): the STORED embedding is raw content —
-    # unchanged from pre-M-D1 behavior. Template normalization is scoped
-    # to the write-gate's novelty DECISION only (evaluate_gate, below),
-    # never to what lands in the `embedding` column or the recall vector
-    # space. See core/capture_template_normalize.py's module docstring
-    # for the incident that narrowed the scope from "normalize the
-    # stored embedding" to "normalize the novelty signal only".
-    embedding = emb_engine.encode(content)
-    valence = thermodynamics.compute_valence(content)
-
     # issue #365: the CHANNEL the content arrived through, resolved from the
     # producing tool name the caller reports out-of-band — never inferred from
     # the content, which an off-machine payload controls. Governs only whether
@@ -220,17 +218,43 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     if not origin_tool and resolved_write_class == write_class_module.DELIBERATE:
         resolved_origin = capture_origin.ORIGIN_DELIBERATE
 
-    gate = evaluate_gate(
+    request = GateRequest(
         content,
         tags,
-        embedding,
-        force,
         store,
-        emb_engine,
-        domain=domain,
-        write_class=resolved_write_class,
-        origin=resolved_origin,
+        GateOptions(force, domain, resolved_write_class, resolved_origin),
     )
+    observed = prepare_gate(request, observe_gate)
+    if observed is not None:
+        rejection = bound_rejection(request, observed)
+        if rejection is not None:
+            return rejection
+
+    emb_engine = get_embedding_engine()
+    # i7d3 pivot (2026-07-11): the STORED embedding is raw content —
+    # unchanged from pre-M-D1 behavior. Template normalization is scoped
+    # to the write-gate's novelty DECISION only (evaluate_gate, below),
+    # never to what lands in the `embedding` column or the recall vector
+    # space. See core/capture_template_normalize.py's module docstring
+    # for the incident that narrowed the scope from "normalize the
+    # stored embedding" to "normalize the novelty signal only".
+    embedding = emb_engine.encode(content)
+    valence = thermodynamics.compute_valence(content)
+
+    if observed is not None:
+        gate = evaluate_observed_gate(request, observed, embedding, emb_engine)
+    else:
+        gate = evaluate_gate(
+            content,
+            tags,
+            embedding,
+            force,
+            store,
+            emb_engine,
+            domain=domain,
+            write_class=resolved_write_class,
+            origin=resolved_origin,
+        )
     if not gate["should_store"]:
         return write_gate.build_rejection_response(
             gate["emb_nov"],
