@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 from mcp_server.hooks import capture_worker_policy as policy
+from mcp_server.hooks._capture_mode import HIGH_VALUE_TOOLS
 from mcp_server.infrastructure.capture_transport import encode
 
 
@@ -79,7 +80,7 @@ class TestCapturePolicy(unittest.TestCase):
     def test_tool_vocabulary_and_limits_match_existing_contracts(self):
         root = Path(__file__).resolve().parents[2]
         tree = ast.parse((root / "mcp_server/hooks/post_tool_capture.py").read_text())
-        names = {"_HIGH_VALUE_TOOLS", "_LIGHT_VALUE_TOOLS", "_CONDITIONAL_TOOLS"}
+        names = {"_LIGHT_VALUE_TOOLS", "_CONDITIONAL_TOOLS"}
         values = [
             ast.literal_eval(node.value)
             for node in tree.body
@@ -87,7 +88,7 @@ class TestCapturePolicy(unittest.TestCase):
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id in names
         ]
-        self.assertEqual(set.union(*values), policy.CAPTURE_TOOLS)
+        self.assertEqual(HIGH_VALUE_TOOLS | set.union(*values), policy.CAPTURE_TOOLS)
         self.assertLessEqual(max(map(len, policy.CAPTURE_TOOLS)), len("NotebookEdit"))
 
     def test_metadata_limits_are_reconciled_with_remember_schema(self):
