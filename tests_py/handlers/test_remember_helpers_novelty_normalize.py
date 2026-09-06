@@ -7,6 +7,8 @@ keep the unit boundary pure and fast.
 
 from __future__ import annotations
 
+import unittest
+
 from mcp_server.handlers.remember_helpers import (
     compute_template_normalized_similarities,
 )
@@ -37,8 +39,11 @@ class FakeEmbEngine:
     def similarity(self, a, b) -> float:
         return 1.0 if a == b else 0.3
 
+    def encode_batch(self, texts):
+        return [self.encode(text) for text in texts]
 
-class TestSkipsNonTemplateContent:
+
+class TestSkipsNonTemplateContent(unittest.TestCase):
     def test_returns_none_for_deliberate_content(self):
         store = FakeStore({})
         emb = FakeEmbEngine()
@@ -56,7 +61,7 @@ class TestSkipsNonTemplateContent:
         assert result == []
 
 
-class TestRescoresAutoCaptureContent:
+class TestRescoresAutoCaptureContent(unittest.TestCase):
     def test_normalizes_new_content_and_neighbor_before_similarity(self):
         store = FakeStore(
             {
@@ -88,7 +93,7 @@ class TestRescoresAutoCaptureContent:
         assert result == [1.0]
 
 
-class TestGracefulDegradation:
+class TestGracefulDegradation(unittest.TestCase):
     def test_missing_neighbor_content_is_skipped_not_raised(self):
         store = FakeStore({1: "# Tool: Read\n**Read:** `/a/b.py`"})
         emb = FakeEmbEngine()
@@ -111,7 +116,7 @@ class TestGracefulDegradation:
         assert result is None
 
 
-class TestNeverTouchesStorage:
+class TestNeverTouchesStorage(unittest.TestCase):
     def test_store_has_no_write_methods_called(self):
         """FakeStore only implements get_memory — if the function under
         test tried to write anything, it would raise AttributeError."""

@@ -87,57 +87,30 @@ def compute_template_normalized_similarities(
     store: MemoryStore,
     emb_engine: EmbeddingEngine,
 ) -> list[float] | None:
-    """Re-score embedding-novelty candidates on template-normalized text.
+    """Re-score the same raw-space candidates in one normalized-text batch.
 
-    Pivot (i7d3, 2026-07-11 — narrowed from M-D1's original 3-point scope
-    after a benchmark regression whose root cause was NOT this code but a
-    shared bench-container concurrency hole; the pivot is kept anyway
-    because it is strictly safer and now provably bench-neutral by
-    construction — see module docstring and the incident note in
-    core/capture_template_normalize.py). NEVER touches the ``embedding``
-    column or any stored vector: this recomputes similarity purely to
-    feed the write gate's ``emb_nov`` signal, using content re-fetched
-    from ``store`` (already fetched by ``compute_similarities`` above,
-    re-fetched here to keep this function pure of the caller's
-    embedding-fetch loop) and encoded on the fly. The extra ``encode()``
-    calls (up to 5, one per top-5 neighbor) are skipped entirely unless
-    ``content`` actually matches the auto-capture or derived-fact
-    template — for the ~92%/8% traffic split documented in the design
-    (auto-capture / deliberate), this keeps the added latency scoped to
-    exactly the class where template collision was measured (i6d2:
-    0.95-0.99 cosine on DISTINCT auto-captured facts).
-
-    Contract:
-      pre:  ``content`` is the new memory's raw content; ``vec_hits`` is
-            the (id, distance) list ``compute_similarities`` already
-            retrieved via HNSW against the RAW stored embedding space
-            (unaffected by this function — candidate retrieval stays on
-            the untouched vector space).
-      post: returns None when ``content`` does not match either template
-            (the caller falls back to the raw ``sims`` from
-            ``compute_similarities`` — normalization would be a no-op,
-            so skipping it saves the extra encode() calls entirely).
-            Otherwise returns one normalized-space cosine similarity per
-            neighbor whose content could be fetched and encoded
-            (silently drops a neighbor on fetch/encode failure — a
-            missing signal degrades gracefully to fewer samples, never
-            raises).
+    source: core/capture_template_normalize.py's i7d3 pivot — normalization
+    belongs only to gate novelty, never to retrieval or stored embeddings.
+    Changed normalized text needs its own vector, separate from the raw input.
+    Preserve candidate order and omit missing/empty neighbor content, as in
+    the scalar path. An absent input vector returns None; absent neighbor
+    vectors contribute no similarity. Encoder/store exceptions still propagate.
+    The normalizer keeps nonempty input nonempty; filtering empty contents
+    preserves scalar encode's None result instead of neural-encoding them.
     """
     if not (is_auto_capture_template(content) or is_derived_fact_template(content)):
         return None
     new_norm = capture_template_normalize(content)
-    new_emb = emb_engine.encode(new_norm)
-    if not new_emb:
-        return None
-    norm_sims: list[float] = []
+    texts = [new_norm]
     for mid, _d in vec_hits:
         mem = store.get_memory(mid)
         if not mem or not mem.get("content"):
             continue
-        neighbor_emb = emb_engine.encode(capture_template_normalize(mem["content"]))
-        if neighbor_emb:
-            norm_sims.append(emb_engine.similarity(new_emb, neighbor_emb))
-    return norm_sims
+        texts.append(capture_template_normalize(mem["content"]))
+    new_emb, *neighbors = emb_engine.encode_batch(texts)
+    if not new_emb:
+        return None
+    return [emb_engine.similarity(new_emb, other) for other in neighbors if other]
 
 
 def compute_entity_info(
@@ -519,7 +492,7 @@ def try_curation(
                 # divergence) — no new constants introduced here.
                 if curation.detect_contradictions(content, [cand]):
                     return "supersede", cand_id
-                _do_merge(cand, cand_id, content, tags, heat, store, emb_engine)
+                _do_merge(cand, cand_id, content, embedding, heat, store, emb_engine)
                 return "merge", cand_id
             if action == "link":
                 return "link", cand_id
@@ -532,7 +505,7 @@ def _do_merge(
     cand: dict,
     cand_id: int,
     content: str,
-    tags: list[str],
+    embedding: Any,
     heat: float,
     store: MemoryStore,
     emb_engine: EmbeddingEngine,
@@ -542,7 +515,10 @@ def _do_merge(
     # i7d3 pivot: the stored embedding stays raw content, same as
     # remember.py's write path — see that module's comment for the
     # incident/decision this reverted.
-    new_emb = emb_engine.encode(merged)
+    # Reuse only this write's raw vector for byte-for-byte identical text.
+    # A changed merge still needs its own encode; an older candidate vector
+    # may belong to a different model/fallback and is not interchangeable.
+    new_emb = embedding if merged == content else emb_engine.encode(merged)
     store.update_memory_compression(
         cand_id, merged, new_emb, cand.get("compression_level", 0)
     )

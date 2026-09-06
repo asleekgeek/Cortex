@@ -4395,11 +4395,6 @@
     {
       "file": "mcp_server/handlers/remember_helpers.py",
       "kind": "method-size",
-      "detail": "compute_template_normalized_similarities"
-    },
-    {
-      "file": "mcp_server/handlers/remember_helpers.py",
-      "kind": "method-size",
       "detail": "insert_and_post_process"
     },
     {
