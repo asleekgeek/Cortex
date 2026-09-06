@@ -19,6 +19,7 @@ import logging
 from typing import Any, Protocol, runtime_checkable
 
 from mcp_server.infrastructure.embedding_engine import EmbeddingEngine
+from mcp_server.infrastructure.embedding_batch import encode_items
 from mcp_server.infrastructure.memory_store import MemoryStore
 
 logger = logging.getLogger(__name__)
@@ -66,12 +67,13 @@ def run_embedding_upgrade_cycle(
         return {"upgraded": 0}
 
     upgraded = 0
-    for item in candidates:
+    for encoded in encode_items(candidates, "content", embeddings):
+        item = encoded.item
         content = item.get("content")
         if not content:
             continue
         try:
-            emb = embeddings.encode(content)
+            emb = encoded.value()
             if emb:
                 store.reembed_memory(item["memory_id"], emb)
                 upgraded += 1

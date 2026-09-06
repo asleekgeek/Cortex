@@ -10,6 +10,7 @@ import logging
 
 from mcp_server.core.sleep_phases import run_two_phase_consolidation
 from mcp_server.infrastructure.embedding_engine import EmbeddingEngine
+from mcp_server.infrastructure.embedding_batch import encode_items
 from mcp_server.infrastructure.memory_store import MemoryStore
 
 logger = logging.getLogger(__name__)
@@ -90,10 +91,11 @@ def _apply_dream_replay(
 ) -> list[int]:
     """Update enriched content for replayed memories; return the IDs replayed."""
     replayed: list[int] = []
-    for upd in replay_updates:
+    for encoded in encode_items(replay_updates, "enriched_content", embeddings):
+        upd = encoded.item
         try:
             new_content = upd["enriched_content"]
-            new_emb = embeddings.encode(new_content)
+            new_emb = encoded.value()
             store.update_memory_compression(
                 upd["memory_id"],
                 new_content,
@@ -120,12 +122,13 @@ def _fix_stale_embeddings(
     """
     count = 0
     with store.acquire_batch() as conn:
-        for item in stale_items:
+        for encoded in encode_items(stale_items, "content", embeddings):
+            item = encoded.item
             try:
                 content = item["content"]
                 if not content:
                     continue
-                new_emb = embeddings.encode(content)
+                new_emb = encoded.value()
                 if new_emb:
                     conn.execute(
                         "UPDATE memories SET embedding = %s WHERE id = %s",

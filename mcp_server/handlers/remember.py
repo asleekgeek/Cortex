@@ -36,6 +36,7 @@ from mcp_server.handlers.remember_preflight import (
     prepare_gate,
 )
 from mcp_server.handlers.remember_schema import schema
+from mcp_server.handlers.remember_prepared import PreparedEncoding, PreparedWrite
 from mcp_server.handlers import wiki_memory_sync
 from mcp_server.infrastructure.config import WIKI_ROOT
 from mcp_server.infrastructure.embedding_engine import get_embedding_engine
@@ -128,26 +129,89 @@ def _parse_args(
     )
 
 
-async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Store a memory with thermodynamic properties and predictive coding gate."""
+def _harden_args(args: dict[str, Any] | None) -> bool:
+    """Preserve ingestion hardening and connection-rooted scope before validation."""
     if not args or not args.get("content"):
-        return {"stored": False, "action": "rejected", "reason": "no_content"}
-
-    # Phase 7: harden user-controlled content at the ingestion boundary
-    # (NFC normalization, control/bidi strip, byte cap).
-
+        return False
     args["content"] = harden_content(args["content"])
     if not args["content"]:
+        return False
+    root = root_agent_topic()
+    if root is not None:
+        args["agent_topic"] = root
+    return True
+
+
+def _validated_write_class(args: dict[str, Any]) -> str:
+    """M-D2: explicit invalid classes fail; omitted classes use source fallback."""
+    try:
+        write_class_module.validate_write_class(args.get("write_class"))
+    except ValueError as exc:
+        raise ValidationError(
+            str(exc), {"tool": "remember", "field": "write_class"}
+        ) from exc
+    return write_class_module.classify_write_class(
+        {"write_class": args.get("write_class"), "source": args.get("source", "user")}
+    )
+
+
+def _resolved_origin(args: dict[str, Any], write_class: str) -> str:
+    """Issue #365: trust the producing channel, never attacker-controlled content.
+
+    Only an absent tool name on a deliberate write is promoted to deliberate.
+    Named but unknown tools keep UNKNOWN; auto captures cannot claim this bypass.
+    """
+    origin_tool = str(args.get("origin_tool") or "").strip()
+    origin = capture_origin.classify_capture_origin(origin_tool)
+    if not origin_tool and write_class == write_class_module.DELIBERATE:
+        return capture_origin.ORIGIN_DELIBERATE
+    return origin
+
+
+def _prepare_request(args: dict, store: MemoryStore, write_class: str) -> GateRequest:
+    domain = _resolve_domain(args.get("directory", ""), args.get("domain", ""))
+    origin = _resolved_origin(args, write_class)
+    return GateRequest(
+        args["content"],
+        args.get("tags", []),
+        store,
+        GateOptions(args.get("force", False), domain, write_class, origin),
+    )
+
+
+def prepare_write(args: dict[str, Any] | None) -> PreparedWrite | dict:
+    """Run the original pre-encode phase in order; never construct the encoder."""
+    if not _harden_args(args):
         return {"stored": False, "action": "rejected", "reason": "no_content"}
+    assert args is not None  # established by ingestion hardening above
+    parsed = _parse_args(args)
+    write_class = _validated_write_class(args)
+    store = _get_store()
+    supersedes_id, rejection = validate_supersede_target(
+        args.get("supersedes_id"), store
+    )
+    if rejection is not None:
+        return rejection
+    request = _prepare_request(args, store, write_class)
+    observed = prepare_gate(request, observe_gate)
+    if observed is not None:
+        rejection = bound_rejection(request, observed)
+        if rejection is not None:
+            return rejection
+    return PreparedWrite(parsed, request, observed, supersedes_id)
 
-    # Connection-rooted scoping: a server launched with
-    # CORTEX_ROOT_AGENT_TOPIC forces that scope on every write, so the
-    # model cannot store into (or omit) another agent's scope. Mirrors
-    # the recall-side force; covers all callers, not just the tool surface.
-    _root = root_agent_topic()
-    if _root is not None:
-        args["agent_topic"] = _root
 
+async def _handler_impl(
+    args: dict[str, Any] | None = None,
+    prepared_encoding: PreparedEncoding | None = None,
+) -> dict[str, Any]:
+    """Store a memory, optionally continuing an explicitly prepared internal write."""
+    if prepared_encoding is not None:
+        prepared = prepared_encoding.checked()
+    else:
+        prepared = prepare_write(args)
+    if isinstance(prepared, dict):
+        return prepared
     (
         content,
         tags,
@@ -158,87 +222,23 @@ async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
         is_global,
         created_at,
         initial_heat,
-        write_class_arg,
-    ) = _parse_args(args)
-
-    # M-D2 (7.4) write-time contract: an explicit write_class the caller
-    # provided is VALIDATED here, at the composition root — never silently
-    # reinterpreted (mandate, user 2026-07-11). `validate_write_class` is
-    # pure core/ logic that raises plain ValueError; this handler layer is
-    # the one allowed to import errors/ (Clean Architecture dependency
-    # rule: core/ -> shared/ only), so it re-raises as ValidationError.
-    # Omitted (None) is accepted — resolved below via the same single
-    # choke point (classify_write_class), source-fallback to 'deliberate'.
-    try:
-        write_class_module.validate_write_class(write_class_arg)
-    except ValueError as exc:
-        raise ValidationError(
-            str(exc), {"tool": "remember", "field": "write_class"}
-        ) from exc
-    resolved_write_class = write_class_module.classify_write_class(
-        {"write_class": write_class_arg, "source": source}
+        _write_class_arg,
+    ) = prepared.parsed
+    request, observed = prepared.request, prepared.observed
+    store, supersedes_id = request.store, prepared.supersedes_id
+    domain = request.options.domain
+    resolved_write_class, resolved_origin = (
+        request.options.write_class,
+        request.options.origin,
     )
-
-    store = _get_store()
-
-    # Explicit supersession target (PRD dual-access increment 1, item ①):
-    # fail fast before any embedding/gate work when the target is missing
-    # or already superseded — an existing chain is never forked silently.
-    supersedes_id, supersede_rejection = validate_supersede_target(
-        args.get("supersedes_id"), store
-    )
-    if supersede_rejection is not None:
-        return supersede_rejection
-
-    domain = _resolve_domain(directory, args.get("domain", ""))
-    # issue #365: the CHANNEL the content arrived through, resolved from the
-    # producing tool name the caller reports out-of-band — never inferred from
-    # the content, which an off-machine payload controls. Governs only whether
-    # the content-derived write-gate bypasses may be claimed.
-    origin_tool = str(args.get("origin_tool") or "").strip()
-    resolved_origin = capture_origin.classify_capture_origin(origin_tool)
-    # A `remember` carrying NO producing tool at all is the user or agent
-    # asking for this in so many words: ORIGIN_DELIBERATE, the highest-trust
-    # value and — until this — the only one nothing ever produced.
-    #
-    # It matters because the bypass rule is an allowlist: without this a direct
-    # `remember` resolves UNKNOWN and loses the content-derived bypass it has
-    # always had.
-    #
-    # The condition is the ABSENCE of a tool name, not an UNKNOWN
-    # classification. Those differ exactly where it counts: a tool that was
-    # named but is not in the table (a future off-machine tool, a rename) also
-    # classifies UNKNOWN, and promoting that to DELIBERATE would reinstate the
-    # fail-open the allowlist just removed. Named-but-unrecognised stays
-    # UNKNOWN and stays refused.
-    #
-    # Gated additionally on the write class, which the auto-capture hook pins
-    # to "auto" out-of-band, so hook-captured content cannot reach DELIBERATE
-    # even if it somehow omitted its tool name.
-    if not origin_tool and resolved_write_class == write_class_module.DELIBERATE:
-        resolved_origin = capture_origin.ORIGIN_DELIBERATE
-
-    request = GateRequest(
-        content,
-        tags,
-        store,
-        GateOptions(force, domain, resolved_write_class, resolved_origin),
-    )
-    observed = prepare_gate(request, observe_gate)
-    if observed is not None:
-        rejection = bound_rejection(request, observed)
-        if rejection is not None:
-            return rejection
-
-    emb_engine = get_embedding_engine()
-    # i7d3 pivot (2026-07-11): the STORED embedding is raw content —
-    # unchanged from pre-M-D1 behavior. Template normalization is scoped
-    # to the write-gate's novelty DECISION only (evaluate_gate, below),
-    # never to what lands in the `embedding` column or the recall vector
-    # space. See core/capture_template_normalize.py's module docstring
-    # for the incident that narrowed the scope from "normalize the
-    # stored embedding" to "normalize the novelty signal only".
-    embedding = emb_engine.encode(content)
+    if prepared_encoding is None or prepared_encoding.outcome.encoded is None:
+        emb_engine = get_embedding_engine()
+        embedding = emb_engine.encode(content)
+    else:
+        emb_engine = prepared_encoding.outcome.engine
+        embedding = prepared_encoding.outcome.encoded.value()
+    # i7d3/W3-2: stored vectors encode the exact hardened raw content;
+    # normalization remains scoped to the novelty gate, evaluated below.
     valence = thermodynamics.compute_valence(content)
 
     if observed is not None:

@@ -37,6 +37,7 @@ from typing import Any
 
 import numpy as np
 
+from mcp_server.infrastructure.embedding_cache import _EmbeddingCacheMixin
 from mcp_server.infrastructure.embedding_factory import (
     current_embedding_mode,
     get_embedding_engine,
@@ -76,7 +77,9 @@ __all__ = [
 ]
 
 
-class EmbeddingEngine(_EmbeddingLifecycleMixin, _EmbeddingMathMixin):
+class EmbeddingEngine(
+    _EmbeddingLifecycleMixin, _EmbeddingMathMixin, _EmbeddingCacheMixin
+):
     """Lazy-loading neural embedding provider with graceful fallback.
 
     Implements ``EmbeddingProvider`` (embedding_provider.py). Composes the model
@@ -117,7 +120,9 @@ class EmbeddingEngine(_EmbeddingLifecycleMixin, _EmbeddingMathMixin):
         self._fallback_provider = AlgorithmicEmbeddingProvider(dim)
         # Cache keyed by sha256(text)[:16] — see class docstring / ADR-0045 R5.
         self._cache: OrderedDict[str, bytes] = OrderedDict()
+        # Existing capacity retained pending W3-4 session hit-rate measurement.
         self._cache_max = 128
+        self._cache_hits = self._cache_misses = self._batch_reuses = 0
 
     @property
     def model_name(self) -> str:
@@ -211,8 +216,10 @@ class EmbeddingEngine(_EmbeddingLifecycleMixin, _EmbeddingMathMixin):
 
         key = self._cache_key(text)
         if key in self._cache:
+            self._cache_hits += 1
             self._cache.move_to_end(key)
             return self._cache[key]
+        self._cache_misses += 1
 
         self._ensure_model()
 
@@ -223,13 +230,11 @@ class EmbeddingEngine(_EmbeddingLifecycleMixin, _EmbeddingMathMixin):
         else:
             result = self._encode_vec(text)
 
-        if len(self._cache) >= self._cache_max:
-            self._cache.popitem(last=False)  # evict LRU entry
-        self._cache[key] = result
+        self._cache_store(key, result)
         return result
 
-    def encode_batch(self, texts: list[str]) -> list[bytes | None]:
-        """Batch encode for efficiency."""
+    def _encode_batch_uncached(self, texts: list[str]) -> list[bytes | None]:
+        """Preserve the neural/fallback batch encoding and device retry paths."""
         self._ensure_model()
         if self._serve_fallback():
             return self._fallback_provider.encode_batch(texts)
@@ -278,14 +283,7 @@ class EmbeddingEngine(_EmbeddingLifecycleMixin, _EmbeddingMathMixin):
         )
         if not to_encode:
             return
-        vecs = self.encode_batch(to_encode)
-        for text, vec in zip(to_encode, vecs, strict=True):
-            if vec is None:
-                continue
-            key = self._cache_key(text)
-            if len(self._cache) >= self._cache_max:
-                self._cache.popitem(last=False)  # evict LRU entry
-            self._cache[key] = vec
+        self.encode_batch(to_encode)
 
     def _fallback_encode(self, text: str) -> bytes:
         """Delegate to the algorithmic fallback provider (issue #169).

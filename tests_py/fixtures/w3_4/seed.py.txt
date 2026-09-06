@@ -1,0 +1,36 @@
+async def _store_discoveries(
+    discoveries: list[dict],
+    root: Path,
+    domain: str,
+) -> tuple[int, int, list[int]]:
+    """Store discoveries via remember handler. Returns (stored, skipped, ids)."""
+    stored = 0
+    skipped = 0
+    memory_ids: list[int] = []
+    store = _get_store()
+
+    for disc in discoveries:
+        disc_tags = disc.get("tags", []) + ["seeded"]
+        initial_heat = heat_for_tags(disc_tags)
+        result = await remember_handler(
+            {
+                "content": disc["content"],
+                "tags": disc_tags,
+                "directory": str(root),
+                "domain": domain,
+                "source": "seed_project",
+                # M-D2 (7.4): a one-shot codebase-bootstrap discovery pass.
+                "write_class": "mechanical",
+                "force": True,
+            }
+        )
+        if result.get("stored"):
+            stored += 1
+            mid = result.get("memory_id")
+            if mid:
+                memory_ids.append(mid)
+                store.update_memory_heat(mid, initial_heat)
+        else:
+            skipped += 1
+
+    return stored, skipped, memory_ids

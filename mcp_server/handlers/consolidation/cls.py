@@ -18,6 +18,7 @@ from mcp_server.core.causal_graph import (
 from mcp_server.core.consolidation_engine import plan_cls_consolidation
 from mcp_server.core.dual_store_cls_abstraction import cluster_by_similarity
 from mcp_server.infrastructure.embedding_engine import EmbeddingEngine
+from mcp_server.infrastructure.embedding_batch import encode_items
 from mcp_server.infrastructure.memory_store import MemoryStore
 from mcp_server.observability import silent_failure
 import json as _json
@@ -353,20 +354,16 @@ def _create_semantic_memories(
 ) -> int:
     """Create new semantic memories from the consolidation plan."""
     created = 0
-    for semantic in plan["new_semantics"]:
+    for encoded in encode_items(plan["new_semantics"], "schema", embeddings):
+        semantic = encoded.item
         try:
-            emb = embeddings.encode(semantic["schema"])
-            # C1 read-side: a promotion the confabulation gate flagged (INFERRED
-            # cluster, no perceptual grounding) is STILL created — non-fatal — but
-            # tagged so the crystallized-confabulation risk is durable and
-            # queryable (cortex-viz sv-* stat, curation review). No tag when the
-            # gate passed the promotion or was ablated.
+            emb = encoded.value()
+            # C1: keep flagged promotions with durable confabulation tags for review.
             tags = list(semantic["tags"])
             if semantic.get("confabulation_risk") and "confabulation-risk" not in tags:
                 tags.append("confabulation-risk")
             tags = _with_source_provenance(tags, semantic["source_memory_ids"])
-            # mem_id is not needed here: provenance is embedded in `tags`
-            # above, written atomically with the row at insert time.
+            # Source provenance is written atomically with the row, inside tags.
             store.insert_memory(
                 {
                     "content": semantic["schema"],

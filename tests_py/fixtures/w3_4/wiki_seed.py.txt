@@ -1,0 +1,83 @@
+async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
+    args = args or {}
+    repo_root = Path(args.get("repo_root") or Path.cwd()).resolve()
+    max_files = int(args.get("max_files", 50))
+    max_bytes = int(args.get("max_bytes_per_file", 8192))
+    dry_run = bool(args.get("dry_run", False))
+    run_pipeline = bool(args.get("run_pipeline", True))
+
+    files = _collect_files(repo_root, max_files, max_bytes)
+    if not files:
+        return {
+            "files_found": 0,
+            "imported": 0,
+            "note": "no seed-eligible markdown found in this repo",
+            "dry_run": dry_run,
+        }
+
+    if dry_run:
+        return {
+            "files_found": len(files),
+            "preview": [
+                {"path": rel, "kind": _kind_for(rel), "size": p.stat().st_size}
+                for p, rel in files
+            ],
+            "dry_run": True,
+        }
+
+    imported = 0
+    errors: list[str] = []
+    for p, rel in files:
+        try:
+            content = p.read_text(encoding="utf-8", errors="replace")
+            if len(content) > max_bytes:
+                content = content[:max_bytes] + "\n\n[...truncated]"
+            domain = repo_root.name or "seed"
+            kind = _kind_for(rel)
+            # ADR-2244 Phase 6.2: emit ``kind`` as a registered tag alias
+            # (``adr`` / ``rfc`` / ``explanation``) so the classifier
+            # actually routes the page; emit ``imported`` so provenance
+            # resolves to ``imported`` (these are bulk-imported markdown
+            # files, not human-authored fresh in the wiki).
+            result = await h_remember(
+                {
+                    "content": content,
+                    "tags": [
+                        "seed:codebase",
+                        "imported",
+                        kind,
+                        f"file:{rel}",
+                    ],
+                    "domain": domain,
+                    "source": f"seed:{rel}",
+                    # M-D2 (7.4): a one-shot bulk codebase-to-wiki seed pass.
+                    "write_class": "mechanical",
+                    "force": True,
+                }
+            )
+            if result.get("stored") or result.get("memory_id"):
+                imported += 1
+        except Exception as e:  # noqa: BLE001 — per-file batch isolation — failure is reported in the returned errors list
+            errors.append(f"{rel}: {e}")
+
+    summary: dict[str, Any] = {
+        "files_found": len(files),
+        "imported": imported,
+        "errors": errors[:10],
+        "error_count": len(errors),
+        "dry_run": False,
+    }
+
+    if run_pipeline and imported > 0:
+        try:
+            pipe = await h_pipeline({"limit_per_stage": 1000})
+            summary["pipeline"] = {
+                "claims_inserted": pipe.get("claims_inserted", 0),
+                "concepts_inserted": pipe.get("concepts_inserted", 0),
+                "drafts_approved": pipe.get("drafts_approved", 0),
+                "pages_published": pipe.get("pages_published", 0),
+            }
+        except Exception as e:  # noqa: BLE001 — optional pipeline step — failure is returned as summary['pipeline']['error']
+            summary["pipeline"] = {"error": str(e)}
+
+    return summary

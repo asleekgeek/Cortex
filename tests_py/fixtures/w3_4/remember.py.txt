@@ -1,0 +1,274 @@
+async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Store a memory with thermodynamic properties and predictive coding gate."""
+    if not args or not args.get("content"):
+        return {"stored": False, "action": "rejected", "reason": "no_content"}
+
+    # Phase 7: harden user-controlled content at the ingestion boundary
+    # (NFC normalization, control/bidi strip, byte cap).
+
+    args["content"] = harden_content(args["content"])
+    if not args["content"]:
+        return {"stored": False, "action": "rejected", "reason": "no_content"}
+
+    # Connection-rooted scoping: a server launched with
+    # CORTEX_ROOT_AGENT_TOPIC forces that scope on every write, so the
+    # model cannot store into (or omit) another agent's scope. Mirrors
+    # the recall-side force; covers all callers, not just the tool surface.
+    _root = root_agent_topic()
+    if _root is not None:
+        args["agent_topic"] = _root
+
+    (
+        content,
+        tags,
+        directory,
+        source,
+        force,
+        agent_topic,
+        is_global,
+        created_at,
+        initial_heat,
+        write_class_arg,
+    ) = _parse_args(args)
+
+    # M-D2 (7.4) write-time contract: an explicit write_class the caller
+    # provided is VALIDATED here, at the composition root — never silently
+    # reinterpreted (mandate, user 2026-07-11). `validate_write_class` is
+    # pure core/ logic that raises plain ValueError; this handler layer is
+    # the one allowed to import errors/ (Clean Architecture dependency
+    # rule: core/ -> shared/ only), so it re-raises as ValidationError.
+    # Omitted (None) is accepted — resolved below via the same single
+    # choke point (classify_write_class), source-fallback to 'deliberate'.
+    try:
+        write_class_module.validate_write_class(write_class_arg)
+    except ValueError as exc:
+        raise ValidationError(
+            str(exc), {"tool": "remember", "field": "write_class"}
+        ) from exc
+    resolved_write_class = write_class_module.classify_write_class(
+        {"write_class": write_class_arg, "source": source}
+    )
+
+    store = _get_store()
+
+    # Explicit supersession target (PRD dual-access increment 1, item ①):
+    # fail fast before any embedding/gate work when the target is missing
+    # or already superseded — an existing chain is never forked silently.
+    supersedes_id, supersede_rejection = validate_supersede_target(
+        args.get("supersedes_id"), store
+    )
+    if supersede_rejection is not None:
+        return supersede_rejection
+
+    domain = _resolve_domain(directory, args.get("domain", ""))
+    # issue #365: the CHANNEL the content arrived through, resolved from the
+    # producing tool name the caller reports out-of-band — never inferred from
+    # the content, which an off-machine payload controls. Governs only whether
+    # the content-derived write-gate bypasses may be claimed.
+    origin_tool = str(args.get("origin_tool") or "").strip()
+    resolved_origin = capture_origin.classify_capture_origin(origin_tool)
+    # A `remember` carrying NO producing tool at all is the user or agent
+    # asking for this in so many words: ORIGIN_DELIBERATE, the highest-trust
+    # value and — until this — the only one nothing ever produced.
+    #
+    # It matters because the bypass rule is an allowlist: without this a direct
+    # `remember` resolves UNKNOWN and loses the content-derived bypass it has
+    # always had.
+    #
+    # The condition is the ABSENCE of a tool name, not an UNKNOWN
+    # classification. Those differ exactly where it counts: a tool that was
+    # named but is not in the table (a future off-machine tool, a rename) also
+    # classifies UNKNOWN, and promoting that to DELIBERATE would reinstate the
+    # fail-open the allowlist just removed. Named-but-unrecognised stays
+    # UNKNOWN and stays refused.
+    #
+    # Gated additionally on the write class, which the auto-capture hook pins
+    # to "auto" out-of-band, so hook-captured content cannot reach DELIBERATE
+    # even if it somehow omitted its tool name.
+    if not origin_tool and resolved_write_class == write_class_module.DELIBERATE:
+        resolved_origin = capture_origin.ORIGIN_DELIBERATE
+
+    request = GateRequest(
+        content,
+        tags,
+        store,
+        GateOptions(force, domain, resolved_write_class, resolved_origin),
+    )
+    observed = prepare_gate(request, observe_gate)
+    if observed is not None:
+        rejection = bound_rejection(request, observed)
+        if rejection is not None:
+            return rejection
+
+    emb_engine = get_embedding_engine()
+    # i7d3 pivot (2026-07-11): the STORED embedding is raw content —
+    # unchanged from pre-M-D1 behavior. Template normalization is scoped
+    # to the write-gate's novelty DECISION only (evaluate_gate, below),
+    # never to what lands in the `embedding` column or the recall vector
+    # space. See core/capture_template_normalize.py's module docstring
+    # for the incident that narrowed the scope from "normalize the
+    # stored embedding" to "normalize the novelty signal only".
+    embedding = emb_engine.encode(content)
+    valence = thermodynamics.compute_valence(content)
+
+    if observed is not None:
+        gate = evaluate_observed_gate(request, observed, embedding, emb_engine)
+    else:
+        gate = evaluate_gate(
+            content,
+            tags,
+            embedding,
+            force,
+            store,
+            emb_engine,
+            domain=domain,
+            write_class=resolved_write_class,
+            origin=resolved_origin,
+        )
+    if not gate["should_store"]:
+        return write_gate.build_rejection_response(
+            gate["emb_nov"],
+            gate["ent_nov"],
+            gate["temp_nov"],
+            gate["struct_nov"],
+            gate["score"],
+            gate["gate_reason"],
+            gate["importance"],
+        )
+
+    # Baseline heat defaults to 1.0. Callers may pass an explicit initial_heat
+    # to set a different baseline; age-based decay is NOT applied here — it is
+    # the read-time job of effective_heat() via the heat_base_set_at anchor
+    # (A3 decay clock), keeping a single canonical age-decay path. Surprise
+    # boost applies on top.
+    baseline_heat = initial_heat if initial_heat is not None else 1.0
+    heat = thermodynamics.apply_surprise_boost(
+        baseline_heat, gate["score"], get_memory_settings().SURPRISE_BOOST
+    )
+    mod = apply_modulations(
+        content,
+        tags,
+        heat,
+        gate["importance"],
+        valence,
+        domain,
+        gate["ent_names"],
+        gate["known"],
+        store,
+    )
+    _enrich_mod_with_gate(mod, gate)
+
+    # Auto-detect global when not explicitly set
+    if not is_global:
+        is_global, _global_score, global_reason = detect_global(content, tags)
+    else:
+        global_reason = "explicit"
+
+    mid: int | None
+    if supersedes_id is not None:
+        # Explicit supersession: the caller's intent overrides automatic
+        # curation (no merge/link second-guessing) and the block-replica
+        # upsert. force=True composes with it — the gate was bypassed
+        # above, yet the edge is still posted below (sovereign human
+        # correction; previously force and supersede were exclusive
+        # because force early-returned "create" inside try_curation).
+        action, mid = "supersede", supersedes_id
+    else:
+        # Block-replica upsert: if the incoming memory is a system-memory block
+        # snapshot (tagged 'memory-replica' + 'vpath:…'), refresh the existing row
+        # in-place rather than inserting a new one (one row per block file).
+        # Normal writes are completely unaffected — this branch exits early on
+        # any write that isn't a replica.
+        # contract: zetetic-team-subagents memory/contract.md §8b
+        upserted, upsert_id = try_block_replica_upsert(
+            content, embedding, tags, source, store
+        )
+        if upserted and upsert_id is not None:
+            return {
+                "stored": True,
+                "memory_id": upsert_id,
+                "action": "stored",
+                "reason": "block-replica-refreshed",
+            }
+
+        action, mid = try_curation(
+            content, embedding, force, store, emb_engine, tags, mod["heat"]
+        )
+        if action == "merge":
+            # Mood signal still updates on merge — the user authored the content,
+            # whether we keep it as a new row or fold it into an existing one.
+            update_user_mood_ema(content, source, store)
+            return build_merge_response(mid, domain, mod, gate)
+
+    result = insert_and_post_process(
+        content,
+        embedding,
+        tags,
+        source,
+        domain,
+        directory,
+        action,
+        mid,
+        gate["sims"],
+        gate["vec_hits"],
+        gate["ent_names"],
+        gate["extracted"],
+        mod,
+        gate["score"],
+        store,
+        emb_engine,
+        agent_context=agent_topic,
+        is_global=is_global,
+        created_at=created_at,
+        write_class=resolved_write_class,
+        origin=resolved_origin,
+    )
+    if is_global and result.get("stored"):
+        result["is_global"] = True
+        result["global_reason"] = global_reason
+
+    # MOOD_CONGRUENT_RERANK signal-feed (Bower 1981 mood-congruent recall):
+    # EMA-update user_mood.valence from VADER compound on user-authored
+    # content. Non-user sources are ignored to keep the signal faithful
+    # to the user's affective state. See remember_helpers.update_user_mood_ema
+    # for the contract and source-discipline notes.
+    if result.get("stored"):
+        update_user_mood_ema(content, source, store)
+
+    # Promote decision-shaped memories to the authored wiki layer.
+    #
+    # Contract (E8, post-Taleb fragility audit):
+    #   - On success: ``result["wiki_page"]`` is the relative path.
+    #   - On classifier rejection: no field added (memory didn't qualify).
+    #   - On wiki I/O failure: memory write is already committed; we log
+    #     the failure to ``result["warnings"]`` so the caller can observe
+    #     the partial failure rather than silently losing the signal.
+    #
+    # The store write has succeeded by this point; a failure here is a
+    # partial-failure, not a total one. Documented in the schema.
+    if result.get("stored") and result.get("memory_id") is not None:
+        try:
+            wiki_path = wiki_memory_sync.sync_memory_strict(
+                WIKI_ROOT,
+                memory_id=result["memory_id"],
+                content=content,
+                tags=tags,
+                domain=domain,
+            )
+            if wiki_path:
+                result["wiki_page"] = wiki_path
+        except Exception as exc:  # noqa: BLE001 — partial-failure boundary — wiki-sync failure is surfaced in result['warnings'] with type+message
+            # Partial failure — memory is stored but wiki sync failed.
+            # Surfacing the exception type + message preserves the ability
+            # to diagnose recurring failures (e.g., disk full, path escape).
+            warnings = result.setdefault("warnings", [])
+            warnings.append(
+                {
+                    "scope": "wiki_sync",
+                    "memory_id": result["memory_id"],
+                    "error_type": type(exc).__name__,
+                    "message": str(exc),
+                }
+            )
+
+    return result
