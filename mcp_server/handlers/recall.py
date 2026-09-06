@@ -518,7 +518,10 @@ def _fetch_by_id(
     re-check in ``encode_within_budget`` keeps whichever form fits.
     """
     stored = _get_store().get_memory(memory_id)
-    if stored is None:
+    # Connection-rooted fetch must not disclose another agent's content or ID.
+    # Unlike search's existing agent boost, this new ID surface enforces scope.
+    root = root_agent_topic()
+    if stored is None or (root is not None and stored.get("agent_context") != root):
         return encode_within_budget(
             {"memories": [], "count": 0, "intent": "general"}, "memories", fmt
         )

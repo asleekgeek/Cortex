@@ -143,6 +143,8 @@ def _register_recall(mcp: MCPServer) -> None:
             min_heat: float = 0.05,
             include_related: bool = False,
             format: str = "json",
+            memory_id: int | None = None,
+            content_offset: int = 0,
         ) -> dict[str, Any]:
             """Retrieve memories using multi-signal fusion."""
             return await safe_handler(
@@ -155,6 +157,8 @@ def _register_recall(mcp: MCPServer) -> None:
                     "min_heat": min_heat,
                     "include_related": include_related,
                     "format": format,
+                    "memory_id": memory_id,
+                    "content_offset": content_offset,
                 },
                 tool_name="recall",
             )
@@ -174,6 +178,8 @@ def _register_recall(mcp: MCPServer) -> None:
         agent_topic: str | None = None,
         include_related: bool = False,
         format: str = "json",
+        memory_id: int | None = None,
+        content_offset: int = 0,
     ) -> dict[str, Any]:
         """Retrieve memories using multi-signal fusion."""
         return await safe_handler(
@@ -187,6 +193,8 @@ def _register_recall(mcp: MCPServer) -> None:
                 "agent_topic": agent_topic,
                 "include_related": include_related,
                 "format": format,
+                "memory_id": memory_id,
+                "content_offset": content_offset,
             },
             tool_name="recall",
         )

@@ -24,6 +24,9 @@ from mcp_server.infrastructure.memory_store import get_shared_store
 
 logger = logging.getLogger(__name__)
 
+# source: hooks/session_start.py::_SQLITE_NOISE_TAGS, memory contract §8b.
+_CONTEXT_NOISE_TAGS = frozenset({"auto-captured", "memory-replica"})
+
 schema = {
     "title": "Query methodology",
     "annotations": READ_ONLY,
@@ -107,10 +110,16 @@ def _normalize_tags(tags: Any) -> list:
         return tags
     if isinstance(tags, str):
         try:
-            return json.loads(tags)
+            decoded = json.loads(tags)
+            return decoded if isinstance(decoded, list) else []
         except (ValueError, TypeError):
             return []
     return []
+
+
+def _is_noise_memory(memory: dict) -> bool:
+    tags = _normalize_tags(memory.get("tags", []))
+    return any(tag in _CONTEXT_NOISE_TAGS for tag in tags if isinstance(tag, str))
 
 
 def _get_hot_memories(
@@ -142,6 +151,7 @@ def _get_hot_memories(
                 "created_at": m.get("created_at", ""),
             }
             for m in mems
+            if not _is_noise_memory(m)
         ]
     except Exception as e:  # noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
         logger.debug("Failed to retrieve hot memories: %s", e)
