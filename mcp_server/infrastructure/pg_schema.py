@@ -95,6 +95,14 @@ CREATE TABLE IF NOT EXISTS memories (
 );
 """
 
+# source: green-remediation W3-5/F6 explicitly selects 0.05 from the existing
+# 0.2 setting (3,140 HOT / 24,838 updates). PostgreSQL ALTER TABLE SET is
+# idempotent and preserves other reloptions. fillfactor awaits calibration;
+# no value is inferred from the HOT ratio alone.
+MEMORIES_STORAGE_OPTIONS_DDL = """
+ALTER TABLE memories SET (autovacuum_vacuum_scale_factor = 0.05);
+"""
+
 # Supersession read-path layer (PR "read-path supersession"). The invariant
 # "chain head = current version" is defined exactly ONCE, here: a row is
 # current iff nothing has superseded it (superseded_by_id IS NULL,
@@ -2523,6 +2531,7 @@ def get_all_ddl() -> list[LiteralString]:
         # MIGRATIONS_DDL runs BEFORE INDEXES_DDL so the heat→heat_base
         # rename lands before indexes on heat_base are created.
         MIGRATIONS_DDL,
+        MEMORIES_STORAGE_OPTIONS_DDL,
         # CURRENT_MEMORIES_VIEW_DDL runs AFTER MIGRATIONS_DDL so databases
         # predating the supersession columns gain superseded_by_id before
         # the view referencing it is (re)created.
