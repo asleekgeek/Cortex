@@ -16,7 +16,9 @@ Install via ``~/.claude/settings.json``'s PostToolUse hook pointed at
 from __future__ import annotations
 
 import json
+import os
 import sys
+from collections.abc import Callable
 from typing import Any
 
 from mcp_server.core.gist_extraction import (
@@ -25,7 +27,7 @@ from mcp_server.core.gist_extraction import (
     format_artifact_pointer,
     needs_gist,
 )
-from mcp_server.infrastructure.hook_cascade_counter import advance_after_tool
+from mcp_server.hooks._capture_mode import capture_skip_reason
 from mcp_server.shared.redaction import scrub_secrets
 
 _LOG_PREFIX = "[cortex-post-tool-capture]"
@@ -368,14 +370,41 @@ def _run_cascade() -> None:
 def _maybe_run_cascade(event: dict[str, Any]) -> None:
     """Count every tool call across hook processes; preserve pending work."""
     try:
+        from mcp_server.infrastructure.hook_cascade_counter import advance_after_tool  # noqa: PLC0415 — W3-1b: excluded tools must return before importing infrastructure
+
         if advance_after_tool(event.get("transcript_path"), _run_cascade) == "pending":
             _log("cascade pending: execution lock busy or unavailable")
     except Exception as exc:  # noqa: BLE001 — hook boundary; the cause is logged and capture continues
         _log(f"cascade failed (non-fatal): {exc}")
 
 
+def _capture_enabled(event: dict[str, Any]) -> bool:
+    """Apply the explicit mode before output processing or cadence I/O."""
+    # source: owner decision, green-remediation W3-1b: full when unset.
+    mode = os.environ.get("CORTEX_CAPTURE_MODE", "full")
+    reason = capture_skip_reason(mode, event.get("tool_name", ""), _HIGH_VALUE_TOOLS)
+    if reason is not None:
+        _log(reason)
+        return False
+    return True
+
+
+def _dispatch_with_store_cleanup(event: dict[str, Any]) -> None:
+    """CLI lifecycle scope starts only after the mode admits this event."""
+    if not _capture_enabled(event):
+        return
+    from mcp_server.hooks._store_lifecycle import close_shared_store_on_exit  # noqa: PLC0415 — W3-1b: no teardown store import for excluded events
+
+    # issue #398: close every store before interpreter finalization, including
+    # exceptions/SystemExit, only when this event could construct a store.
+    with close_shared_store_on_exit():
+        process_event(event)
+
+
 def process_event(event: dict[str, Any]) -> None:
     """Process a PostToolUse event and optionally store a memory."""
+    if not _capture_enabled(event):
+        return
     tool_name = event.get("tool_name", "")
     tool_input = event.get("tool_input") or {}
     cwd = event.get("cwd", "")
@@ -412,8 +441,8 @@ def process_event(event: dict[str, Any]) -> None:
         _log(f"capture failed (non-fatal): {exc}")
 
 
-def main() -> None:
-    """Entry point — read JSON event from stdin and process it."""
+def main(dispatch: Callable[[dict[str, Any]], None] | None = None) -> None:
+    """Read a JSON event; the CLI supplies cleanup for admitted events."""
     if sys.stdin.isatty():
         _log("No stdin data (TTY mode), exiting")
         return
@@ -429,7 +458,7 @@ def main() -> None:
         _log(f"Failed to parse event JSON: {exc}")
         return
 
-    process_event(event)
+    (dispatch or process_event)(event)
 
 
 if __name__ == "__main__":
@@ -439,13 +468,6 @@ if __name__ == "__main__":
     from mcp_server.hooks._headless_guard import (
         exit_if_headless_authoring_child,
     )
-    from mcp_server.hooks._store_lifecycle import close_shared_store_on_exit
 
     exit_if_headless_authoring_child()
-    # issue #398: closes the store before this one-shot process exits
-    # (see _store_lifecycle.py for the verified mechanism -- psycopg pool
-    # threads are daemon threads; the fragile path is __del__'s
-    # finalization-time join, which close() pre-empts by setting
-    # _closed=True while the interpreter is still alive).
-    with close_shared_store_on_exit():
-        main()
+    main(_dispatch_with_store_cleanup)
