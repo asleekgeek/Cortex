@@ -28,18 +28,10 @@ from mcp_server.core.gist_extraction import (
     needs_gist,
 )
 from mcp_server.hooks._capture_mode import capture_skip_reason
+from mcp_server.hooks._capture_mode import HIGH_VALUE_TOOLS as _HIGH_VALUE_TOOLS
 from mcp_server.shared.redaction import scrub_secrets
 
 _LOG_PREFIX = "[cortex-post-tool-capture]"
-
-# Tools whose FULL output (truncated to _MAX_OUTPUT_LENGTH) is stored.
-_HIGH_VALUE_TOOLS = {
-    "Edit",
-    "Write",
-    "Bash",
-    "MultiEdit",
-    "NotebookEdit",
-}
 
 # Tools we capture for graph visibility only. We record the input
 # reference (file_path / pattern / command / URL), omitting the tool output.

@@ -124,6 +124,16 @@ def main() -> None:
         if p not in sys.path:
             sys.path.insert(0, p)
 
+    if (
+        module == "mcp_server.hooks.post_tool_capture"
+        and not install_deps
+        and os.environ.get("CORTEX_CAPTURE_MODE", "full") != "full"
+    ):
+        from launcher_capture import skip_capture  # noqa: PLC0415 — only non-full capture needs the stdlib preflight; plugin path is now established
+
+        if skip_capture():
+            return
+
     # Persisted-backend resolution: translate the installer's
     # ~/.claude/methodology/backend.json marker (SQLite zero-config
     # default vs --postgres opt-in) into CORTEX_MEMORY_STORE_BACKEND.

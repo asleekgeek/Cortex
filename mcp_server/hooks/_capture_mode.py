@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Collection
 
+# source: post_tool_capture's existing full-output tools, moved without changes.
+HIGH_VALUE_TOOLS = {"Edit", "Write", "Bash", "MultiEdit", "NotebookEdit"}
+
 
 def capture_skip_reason(
     mode: str, tool_name: str, write_tools: Collection[str]
