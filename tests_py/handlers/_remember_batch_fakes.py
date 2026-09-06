@@ -45,6 +45,9 @@ class BatchStore(Store):
     def get_memory(self, memory_id):
         return self.rows.get(memory_id)
 
+    def get_memories_by_ids(self, memory_ids):
+        return {mid: self.rows[mid] for mid in memory_ids if mid in self.rows}
+
     def search_vectors(self, embedding, **kwargs):
         self.searches.append((embedding, kwargs))
         return [(mid, 0.0) for mid in self.rows][: kwargs["top_k"]]

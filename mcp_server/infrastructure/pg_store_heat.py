@@ -25,6 +25,20 @@ class PgHeatMixin(PgStoreHost):
             return None
         return self._normalize_memory_row(row)
 
+    def get_memories_by_ids(self, memory_ids: list[int]) -> dict[int, dict[str, Any]]:
+        """Read complete rows once, with exactly the get_memory normalization.
+
+        Missing IDs are omitted; callers replay their own order and duplicates.
+        The statement mirrors get_embeddings_for_memories's bound ANY query.
+        """
+        if not memory_ids:
+            return {}
+        rows = self._execute(
+            "SELECT * FROM memories WHERE id = ANY(%s::int[])",
+            (memory_ids,),
+        ).fetchall()
+        return {row["id"]: self._normalize_memory_row(row) for row in rows}
+
     def update_memory_heat(self, memory_id: int, heat: float) -> None:
         """Canonical A3 single-row heat writer. Delegates to bump_heat_raw.
 

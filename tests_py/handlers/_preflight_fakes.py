@@ -17,6 +17,13 @@ class Store:
 
     def get_memory(self, memory_id):
         self.calls["get_memory"] += 1
+        return self._memory_row()
+
+    def get_memories_by_ids(self, memory_ids):
+        self.calls["get_memories_by_ids"] += 1
+        return {mid: self._memory_row() for mid in memory_ids}
+
+    def _memory_row(self):
         return {
             "content": self.content,
             "embedding": b"neighbor",

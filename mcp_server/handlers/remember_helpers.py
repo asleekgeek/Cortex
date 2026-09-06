@@ -24,6 +24,7 @@ from mcp_server.core.capture_template_normalize import (
     is_derived_fact_template,
 )
 from mcp_server.shared.vader import vader_compound
+from mcp_server.shared.memory_rows import MemoryReader, MemoryRows
 from mcp_server.core.dual_store_cls import classify_memory
 from mcp_server.core.predictive_coding_flat import (
     compute_embedding_novelty,
@@ -65,8 +66,17 @@ def compute_similarities(
     emb_engine: EmbeddingEngine,
 ) -> tuple[list[float], list[tuple]]:
     """Compute vector similarities for the top-5 nearest neighbors."""
+    sims, hits, _rows = _similarities_with_rows(embedding, store, emb_engine)
+    return sims, hits
+
+
+def _similarities_with_rows(
+    embedding: Any, store: MemoryStore, emb_engine: EmbeddingEngine
+) -> tuple[list[float], list[tuple], MemoryRows]:
+    """Observe complete neighbors once for raw, normalized and temporal signals."""
     sims: list[float] = []
     vec_hits: list[tuple] = []
+    memories = MemoryRows({})
     if embedding:
         # heads_only: novelty must be scored against CURRENT knowledge —
         # against a dead superseded version, a legitimate re-write of the
@@ -74,17 +84,18 @@ def compute_similarities(
         vec_hits = store.search_vectors(
             embedding, top_k=5, min_heat=0.0, heads_only=True
         )
+        memories = MemoryRows.read(store, [mid for mid, _d in vec_hits])
         for mid, _d in vec_hits:
-            mem = store.get_memory(mid)
-            if mem and mem.get("embedding"):
-                sims.append(emb_engine.similarity(embedding, mem["embedding"]))
-    return sims, vec_hits
+            emb = (memories.get_memory(mid) or {}).get("embedding")
+            if emb is not None and len(emb):
+                sims.append(emb_engine.similarity(embedding, emb))
+    return sims, vec_hits, memories
 
 
 def compute_template_normalized_similarities(
     content: str,
     vec_hits: list[tuple],
-    store: MemoryStore,
+    store: MemoryReader,
     emb_engine: EmbeddingEngine,
 ) -> list[float] | None:
     """Re-score the same raw-space candidates in one normalized-text batch.
@@ -293,16 +304,16 @@ def evaluate_observed_gate(
 ) -> dict[str, Any]:
     """Compute actual vector signals; reuse any preflight evidence unchanged."""
     content, store = request.content, request.store
-    sims, hits = compute_similarities(embedding, store, emb_engine)
+    sims, hits, memories = _similarities_with_rows(embedding, store, emb_engine)
     normalized = compute_template_normalized_similarities(
-        content, hits, store, emb_engine
+        content, hits, memories, emb_engine
     )
     embedding_novelty = compute_embedding_novelty(
         normalized if normalized is not None else sims
     )
     if observed is None:
         observed = observe_gate(request)
-    temporal = write_gate.compute_temporal_novelty(sims, hits, store.get_memory)
+    temporal = write_gate.compute_temporal_novelty(sims, hits, memories.get_memory)
     return _finish_observed_gate(
         request,
         observed,

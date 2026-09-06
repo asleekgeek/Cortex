@@ -18,6 +18,17 @@ class SqliteQueryMixin:
         """Provided by SqliteMemoryStore."""
         return dict(row)
 
+    def get_memories_by_ids(self, memory_ids: list[int]) -> dict[int, dict[str, Any]]:
+        """Bulk counterpart of get_memory; no synthetic embedding from memories_vec."""
+        if not memory_ids:
+            return {}
+        placeholders = ",".join("?" for _ in memory_ids)
+        rows = self._conn.execute(
+            f"SELECT * FROM memories WHERE id IN ({placeholders})",  # noqa: S608 — only generated placeholders; every ID is a bound parameter
+            memory_ids,
+        ).fetchall()
+        return {row["id"]: self._normalize_memory_row(row) for row in rows}
+
     def get_memories_for_domain(
         self,
         domain: str,
