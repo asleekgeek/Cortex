@@ -306,35 +306,21 @@ def _load_remember():
 
 
 def _store_memory(tool_name: str, content: str, tags: list[str], cwd: str) -> None:
-    """Store a memory via the remember handler."""
-    asyncio, remember_handler = _load_remember()
-    result = asyncio.run(
-        remember_handler(
-            {
-                "content": content,
-                "tags": tags,
-                "directory": cwd,
-                "source": "post_tool_capture",
-                # issue #365: the producing tool, so the handler can resolve
-                # the capture ORIGIN out-of-band. Network-origin content is
-                # refused the content-derived write-gate bypasses, which is
-                # what stopped a fetched page from installing itself by
-                # looking like a decision.
-                "origin_tool": tool_name,
-                # M-D2 (7.4): this hook IS the auto-capture pathway — no
-                # need to let `remember` re-derive the class from source.
-                "write_class": "auto",
-                "force": False,
-            }
-        )
-    )
-    if result.get("stored"):
-        _log(
-            f"captured {tool_name} → memory_id={result.get('memory_id')} "
-            f"(surprise={result.get('surprise', 0):.3f})"
-        )
-    else:
-        _log(f"gated {tool_name}: {result.get('reason', 'below_threshold')}")
+    """Admit the unchanged remember payload to the resident worker."""
+    from mcp_server.hooks.capture_dispatch import dispatch  # noqa: PLC0415 — hook filtering precedes all worker infrastructure imports
+
+    payload: dict[str, object] = {
+        "content": content,
+        "tags": tags,
+        "directory": cwd,
+        "source": "post_tool_capture",
+        # The producing tool remains out-of-band provenance (issue #365).
+        "origin_tool": tool_name,
+        "write_class": "auto",
+        "force": False,
+    }
+    if dispatch(payload):
+        _log(f"queued {tool_name} for resident capture (persistence pending)")
 
 
 # ── Periodic cascade advancement ──────────────────────────────────────
