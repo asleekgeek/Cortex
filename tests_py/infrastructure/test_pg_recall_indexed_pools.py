@@ -117,6 +117,13 @@ def test_trigram_between_point_one_and_session_default(conn):
     assert float(conn.execute("SHOW pg_trgm.similarity_threshold").fetchone()[0]) == 0.3
 
 
+def test_function_plan_policy_does_not_change_the_callers_setting(conn):
+    insert(conn, content="needle", embedding=None)
+    conn.execute("SET LOCAL plan_cache_mode = force_generic_plan")
+    equivalent(conn, p_w_vector=0.0)
+    assert conn.execute("SHOW plan_cache_mode").fetchone()[0] == "force_generic_plan"
+
+
 def test_filters_precede_top_k_and_agent_is_only_a_boost(conn):
     for i in range(12):
         insert(conn, embedding=embedding(100, i), domain="excluded")

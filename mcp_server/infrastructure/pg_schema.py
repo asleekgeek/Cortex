@@ -1548,6 +1548,12 @@ BEGIN
     LIMIT p_max_results * 3;
 END;
 $$ LANGUAGE plpgsql STABLE
+-- source: PostgreSQL 16 runtime-config-query.html#GUC-PLAN-CACHE-MODE and
+-- sql-prepare.html; W4-1 30k-row experiment 2026-09-07: automatic generic
+-- plans stop using HNSW after the first five calls (16k versus 8.6k buffers).
+-- These selective pools depend on actual query/filter values. Keep replanning
+-- local to this function; caller settings and ANN parameters are preserved.
+SET plan_cache_mode = 'force_custom_plan'
 -- source: existing strict similarity > 0.1 cutoff above; pg_trgm % is
 -- indexable but otherwise inherits a caller's potentially stricter setting.
 SET pg_trgm.similarity_threshold = '0.1';

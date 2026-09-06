@@ -10,6 +10,7 @@ import pytest
 
 from benchmarks.pg_recall_plans.evidence import (
     compare_rows,
+    json_records,
     parse_plans,
     summarize_group,
 )
@@ -158,6 +159,27 @@ def test_nested_bitmap_index_evidence_and_outer_buffer_accounting():
 def test_missing_nested_plan_is_not_reported_as_a_pass():
     with pytest.raises(ValueError, match="no labelled"):
         parse_plans("ordinary psql output")
+
+
+def test_postgresql_multiline_json_agg_preserves_all_rows_and_text():
+    # Observed psql output from the 30,000-row W4-1 experiment (2026-09-07).
+    raw = (
+        '{"case":"before","rows":[{"memory_id":1,"content":"line\\n{body}"},\n'
+        ' {"memory_id":2}]}\n{"case":"after","rows":[]}\n'
+    )
+    assert json_records(raw) == [
+        {
+            "case": "before",
+            "rows": [{"memory_id": 1, "content": "line\n{body}"}, {"memory_id": 2}],
+        },
+        {"case": "after", "rows": []},
+    ]
+
+
+@pytest.mark.parametrize("raw", ['{"rows":[', '{"rows":[]}\ntruncated', "[]"])
+def test_invalid_or_incomplete_psql_json_is_not_silently_omitted(raw):
+    with pytest.raises(ValueError):
+        json_records(raw)
 
 
 def test_exact_comparison_preserves_provenance_and_nan_semantics():

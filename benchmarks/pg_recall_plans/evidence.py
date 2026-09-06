@@ -83,7 +83,19 @@ def observations(raw: str) -> dict[str, list[dict]]:
 
 
 def json_records(raw: str) -> list[dict]:
-    return [json.loads(line) for line in raw.splitlines() if line.startswith("{")]
+    """Read successive JSON values; PostgreSQL json_agg may span physical lines."""
+    decoder = json.JSONDecoder()
+    records = []
+    offset = 0
+    while offset < len(raw):
+        if raw[offset].isspace():
+            offset += 1
+            continue
+        value, offset = decoder.raw_decode(raw, offset)
+        if not isinstance(value, dict):
+            raise ValueError("expected a PostgreSQL JSON object")
+        records.append(value)
+    return records
 
 
 def measurement_context(raw: str) -> dict:
