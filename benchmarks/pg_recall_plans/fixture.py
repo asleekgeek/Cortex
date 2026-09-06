@@ -45,14 +45,17 @@ ANALYZE homeostatic_state;
 """  # noqa: S608 — validated integer rows; embedding is a fixed fixture expression
 
 
-def recall_sql(name: str, scoped: bool = False) -> str:
+def recall_sql(name: str, scoped: bool = False, exact_witness: bool = False) -> str:
     """Fixed query grammar; caller supplies only a validated function name."""
     if name not in {"recall_memories", "recall_memories_reference"}:
         raise ValueError("unexpected recall function")
     domain = "'plans'" if scoped else "NULL"
     directory = "'/fixture/a'" if scoped else "NULL"
+    # The guaranteed row i=MIN_ROWS has a unique MD5 token. The broad normal
+    # query has equal lexical scores at LIMIT; membership there is unspecified.
+    query = f"md5('{MIN_ROWS}')" if exact_witness else "'needle target'"
     return f"""SELECT * FROM {name}(
-        'needle target', {vector_sql()}, p_domain => {domain},
+        {query}, {vector_sql()}, p_domain => {domain},
         p_directory => {directory}, p_agent_topic => 'fixture-agent',
         p_trusted_origins => ARRAY['user_explicit'], p_untrusted_factor => 0.0
     )"""  # noqa: S608 — function allowlist, fixed scope literals and vector expression

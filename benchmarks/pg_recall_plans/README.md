@@ -58,6 +58,24 @@ normal index scans and with index/bitmap scans disabled solely for the
 exact semantic control. No HNSW tuning is applied. Versions and GUCs are
 recorded, including pgvector's iterative-scan availability when present.
 
+Normal plan measurements use `needle target` as before. Exact controls use
+the unique MD5 token of fixture row 30,000 in both functions. The broad query
+has equal full-text scores at the inner top-K cutoff: changing a plan can select
+a different tied pool member, which can subsequently change the final result.
+That is not merely a permutation of final rows. The original broad-query
+experiment is retained in the W4-1 measurement report, including its differences;
+the deterministic witness does not prove equivalence for every tied query.
+Full retrieval floors remain mandatory. The 30,000 anchor is the plan's minimum
+fixture size, so that row exists for every accepted `--rows` value.
+
+The function now requests a custom plan locally. The first measured automatic
+run switched to a generic plan after five calls, lost HNSW and exceeded the
+buffer budget. PostgreSQL documents that heuristic in
+[PREPARE](https://www.postgresql.org/docs/16/sql-prepare.html) and its override in
+[plan_cache_mode](https://www.postgresql.org/docs/16/runtime-config-query.html#GUC-PLAN-CACHE-MODE).
+The isolated ablation records the overhead and index use across all repetitions;
+the setting restores the caller's policy on return and leaves ANN parameters alone.
+
 The review applies the four-repetition/first-discarded protocol from
 the remediation plan's [§3](../../../tasks/codex-green-remediation-plan.md#3-méthodes-de-mesure-réutilisées-par-plusieurs-items)
 to these PG measurements (the original four-repetition bullet describes hook

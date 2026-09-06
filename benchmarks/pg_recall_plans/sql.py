@@ -42,7 +42,7 @@ def phase_sql(phase: str) -> str:
         scan = "on" if mode == "normal" else "off"
         statements.append(f"SET LOCAL enable_indexscan = {scan};")
         statements.append(f"SET LOCAL enable_bitmapscan = {scan};")
-        query = recall_sql(function, scope == "scoped")
+        query = recall_sql(function, scope == "scoped", exact_witness=mode == "exact")
         statements.append(
             f"SELECT json_build_object('case', '{label}', 'rows', "  # noqa: S608 — phase allowlist, fixed mode/scope and query grammar
             f"COALESCE(json_agg(r), '[]'::json)) FROM ({query}) r;"
