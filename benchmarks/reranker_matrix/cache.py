@@ -52,23 +52,50 @@ def archive_path(root: Path, pin: ModelPin) -> Path:
     return archive
 
 
+def checked_path(member: zipfile.ZipInfo) -> PurePosixPath:
+    path = PurePosixPath(member.filename)
+    if (
+        not path.parts
+        or "\\" in member.filename
+        or path.is_absolute()
+        or ".." in path.parts
+    ):
+        raise ValueError(f"unsafe archive path: {member.filename}")
+    if stat.S_ISLNK(member.external_attr >> 16):
+        raise ValueError(f"archive symlink refused: {member.filename}")
+    return path
+
+
+def paired_metadata(path: PurePosixPath, names: set[str], model: str) -> bool:
+    # source: verified TinyBERT archive SHA752eddf1... contains six __MACOSX
+    # ._ companions of its directory and five model files. Keep the archive
+    # intact, but do not extract metadata as model inputs. Unpaired paths fail.
+    if (
+        not path.parent.parts
+        or path.parts[0] != "__MACOSX"
+        or not path.name.startswith("._")
+        or path.name == "._"
+    ):
+        return False
+    target = PurePosixPath(*path.parts[1:]).with_name(path.name.removeprefix("._"))
+    return target.parts[0] == model and (
+        str(target) in names or str(target) + "/" in names
+    )
+
+
 def checked_members(archive: zipfile.ZipFile, pin: ModelPin) -> list[zipfile.ZipInfo]:
-    members = archive.infolist()
-    names = [member.filename for member in members]
-    if len(names) != len(set(names)):
+    entries = archive.infolist()
+    names = {member.filename for member in entries}
+    if len(names) != len(entries):
         raise ValueError("duplicate archive members")
-    for member in members:
-        path = PurePosixPath(member.filename)
-        if (
-            not path.parts
-            or "\\" in member.filename
-            or path.is_absolute()
-            or ".." in path.parts
-            or path.parts[0] != pin.name
-        ):
+    members = []
+    for member in entries:
+        path = checked_path(member)
+        if paired_metadata(path, names, pin.name):
+            continue
+        if path.parts[0] != pin.name:
             raise ValueError(f"unsafe archive path: {member.filename}")
-        if stat.S_ISLNK(member.external_attr >> 16):
-            raise ValueError(f"archive symlink refused: {member.filename}")
+        members.append(member)
     # source: FlashRank 0.2.10 Ranker._get_tokenizer required filenames.
     required = (
         pin.filename,
@@ -106,12 +133,14 @@ def verify(root: Path, pin: ModelPin) -> dict:
         }
         if actual != expected:
             raise ValueError("unverified extra files in the model cache")
+        omitted = sorted(set(archive.namelist()) - {m.filename for m in members})
     return {
         "model": pin.name,
         "revision": REVISION,
         "archive_sha256": pin.archive_sha256,
         "onnx_sha256": digest_file(root / pin.name / pin.filename),
         "cache_root": str(root),
+        "metadata_members_retained_only_in_archive": omitted,
     }
 
 

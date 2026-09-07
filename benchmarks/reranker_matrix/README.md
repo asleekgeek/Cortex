@@ -65,10 +65,19 @@ separately declare Apache-2.0. Retain upstream provenance with downloaded files.
 | l2 | ms-marco-TinyBERT-L-2-v2.zip | 752eddf1c5ece3c5e6115e9ab52eb3b16436bbf9b3a091cbb62b5b8eadc47105 | 3421983 |
 | l12 | ms-marco-MiniLM-L-12-v2.zip | bdd3772b651ffc34f70e414049285bb55ccc6d1b8e29d0640f836d44f70ec77a | 22696961 |
 
-No weight was downloaded or run while preparing this patch. A read-only
-inventory found L-12 in `/Users/cdeust/.cache/flashrank`; L-2 was absent in
-that durable cache. Existing unpinned extracted files cannot establish the
-archive/tokenizer provenance and are not silently accepted for a cell.
+Both pinned archives were downloaded and verified on 2026-09-07 in the
+experimental durable cache below. L-2 ONNX SHA256 is
+`a2b09fb0de692c052a55f4165c9461377b4a31115673b7adb428503d69109196`;
+L-12 ONNX SHA256 is
+`d3dd7b09fcf06b0c070081d6819b5effbb40b667bcad78b2d7543400271141d1`.
+Every extracted file was compared against its pinned archive. The archives
+contain six (L-2) and seven (L-12) `__MACOSX/._*` companion entries. These
+metadata entries stay in the verified archive and are reported explicitly;
+they are not extracted into the model tree. A companion must correspond to
+a real model member. Traversal, symlinks, unrelated or unpaired paths still
+fail before extraction. Thirty-three targeted tests pass, including both
+directory and file companions. No inference or quality result is implied by
+successful cache provisioning.
 
 The experimental cache is `$XDG_CACHE_HOME/flashrank-matrix/<revision>/`,
 falling back to `~/.cache/flashrank-matrix/<revision>/` via the existing
