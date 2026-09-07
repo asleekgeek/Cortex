@@ -83,6 +83,9 @@ def fetch_stage(multiplier: int, observations: dict):
             "_wrrf_fetch": fetched(original, multiplier, observations["fetches"]),
         }
     )
+    source_function(
+        "mcp_server/core/pg_recall_context.py", "_observe_candidate_embeddings", ns
+    )
     return source_function(
         "mcp_server/core/pg_recall_context.py", "fetch_and_triage", ns
     )
@@ -125,7 +128,9 @@ def handler_globals(multiplier: int, observations: dict) -> dict:
         "mcp_server/core/pg_recall.py",
         "recall",
         {
-            "RecallContext": SimpleNamespace,
+            "RecallContext": lambda **fields: SimpleNamespace(
+                candidate_embeddings=None, **fields
+            ),
             "run_recall_pipeline": pipeline(multiplier, observations),
         },
     )
