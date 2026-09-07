@@ -23,7 +23,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 from mcp_server.handlers.remember import handler as h_remember
-from mcp_server.handlers.wiki_seed_batch import SeedOptions, import_files
 from mcp_server.handlers.wiki_pipeline import handler as h_pipeline
 
 
@@ -230,9 +229,40 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
             "dry_run": True,
         }
 
-    imported, errors = await import_files(
-        files, SeedOptions(repo_root, max_bytes, _kind_for, h_remember)
-    )
+    imported = 0
+    errors: list[str] = []
+    for p, rel in files:
+        try:
+            content = p.read_text(encoding="utf-8", errors="replace")
+            if len(content) > max_bytes:
+                content = content[:max_bytes] + "\n\n[...truncated]"
+            domain = repo_root.name or "seed"
+            kind = _kind_for(rel)
+            # ADR-2244 Phase 6.2: emit ``kind`` as a registered tag alias
+            # (``adr`` / ``rfc`` / ``explanation``) so the classifier
+            # actually routes the page; emit ``imported`` so provenance
+            # resolves to ``imported`` (these are bulk-imported markdown
+            # files, not human-authored fresh in the wiki).
+            result = await h_remember(
+                {
+                    "content": content,
+                    "tags": [
+                        "seed:codebase",
+                        "imported",
+                        kind,
+                        f"file:{rel}",
+                    ],
+                    "domain": domain,
+                    "source": f"seed:{rel}",
+                    # M-D2 (7.4): a one-shot bulk codebase-to-wiki seed pass.
+                    "write_class": "mechanical",
+                    "force": True,
+                }
+            )
+            if result.get("stored") or result.get("memory_id"):
+                imported += 1
+        except Exception as e:  # noqa: BLE001 — per-file batch isolation — failure is reported in the returned errors list
+            errors.append(f"{rel}: {e}")
 
     summary: dict[str, Any] = {
         "files_found": len(files),

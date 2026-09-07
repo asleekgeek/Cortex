@@ -22,8 +22,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 from mcp_server.handlers.remember import handler as remember_handler
-from mcp_server.handlers.remember_bulk import prepare_bulk, store_prepared
-from mcp_server.handlers.remember_prepared import InputFailure
 
 logger = logging.getLogger(__name__)
 
@@ -159,25 +157,15 @@ async def _try_store_lesson_candidates(
     """
 
     stored = 0
-    inputs = _lesson_inputs(suggestions, session_id, domain_id, cwd)
-    for item in prepare_bulk(inputs):
-        item.raise_input_abort()
-        try:
-            result = await store_prepared(item)
-            if result.get("stored"):
-                stored += 1
-        except Exception as e:  # noqa: BLE001 — preserve per-suggestion isolation and diagnostic
-            logger.debug("Failed to store lesson-candidate suggestion: %s", e)
-    return stored
-
-
-def _lesson_inputs(suggestions: list[str], session_id: str, domain_id: str, cwd: str):
     for suggestion in suggestions:
-        # Keep strip errors outside the original per-remember exception boundary.
         text = (suggestion or "").strip()
         if not text:
             continue
         try:
-            yield _build_lesson_candidate_args(text, session_id, domain_id, cwd)
-        except Exception as exc:  # noqa: BLE001 — preserve a build failure at this suggestion before continuing
-            yield InputFailure(exc)
+            args = _build_lesson_candidate_args(text, session_id, domain_id, cwd)
+            result = await remember_handler(args)
+            if result.get("stored"):
+                stored += 1
+        except Exception as e:  # noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
+            logger.debug("Failed to store lesson-candidate suggestion: %s", e)
+    return stored
