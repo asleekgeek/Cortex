@@ -1,4 +1,4 @@
-"""Compare normalized batching to the former scalar path using fixed vectors."""
+"""Keep strict scalar scoring after rejecting the numerically different batch."""
 
 from __future__ import annotations
 
@@ -57,22 +57,19 @@ class NormalizedBatch(unittest.TestCase):
         self.assertEqual(actual, expected)
         self.assertEqual(len(actual), 5)
         self.assertEqual(old.encode.call_count, 6)
-        new.encode.assert_not_called()
-        new.encode_batch.assert_called_once_with(
-            [capture_template_normalize(self.content)]
-            + [capture_template_normalize(row["content"]) for row in self.rows.values()]
-        )
+        self.assertEqual(new.encode.call_args_list, old.encode.call_args_list)
+        new.encode_batch.assert_not_called()
 
-    def test_float64_model_outputs_have_identical_float32_bytes(self):
-        texts = list(self.vectors)
-        scalar, batch = make_engine(self.vectors), make_engine(self.vectors)
-        expected = [scalar.encode(text) for text in texts]
-        actual = batch.encode_batch(texts)
-        self.assertEqual(actual, expected)
-        for vector in actual:
-            self.assertIsInstance(vector, bytes)
-            self.assertEqual(len(vector), 3 * np.dtype(np.float32).itemsize)
-            self.assertEqual(np.frombuffer(vector, dtype=np.float32).shape, (3,))
+    def test_batch_numerical_differences_cannot_enter_strict_scoring(self):
+        old, new = make_engine(self.vectors), make_engine(self.vectors)
+        new.encode_batch = Mock(side_effect=AssertionError("batch changes scores"))
+        self.assertEqual(
+            helpers.compute_template_normalized_similarities(
+                self.content, self.hits, self.store, new
+            ),
+            scalar_reference(self.content, self.hits, self.store, old),
+        )
+        new.encode_batch.assert_not_called()
 
     def test_missing_empty_and_skeleton_only_neighbors_keep_survivors(self):
         self.rows.update({6: {"content": ""}, 7: {"content": "# Tool: Read"}})
@@ -85,8 +82,8 @@ class NormalizedBatch(unittest.TestCase):
             ),
             scalar_reference(self.content, hits, self.store, old),
         )
-        self.assertEqual(len(new.encode_batch.call_args.args[0]), 4)
-        self.assertNotIn("", new.encode_batch.call_args.args[0])
+        self.assertEqual(new.encode.call_count, 4)
+        self.assertNotIn("", [call.args[0] for call in new.encode.call_args_list])
 
     def test_skeleton_only_input_keeps_the_normalizers_raw_fallback(self):
         self.vectors["# Tool: Read"] = (1, 1, 1)
@@ -95,18 +92,18 @@ class NormalizedBatch(unittest.TestCase):
             "# Tool: Read", self.hits, self.store, engine
         )
         self.assertEqual(len(result), 5)
-        self.assertEqual(engine.encode_batch.call_args.args[0][0], "# Tool: Read")
-        engine.encode.assert_not_called()
+        self.assertEqual(engine.encode.call_args_list[0].args[0], "# Tool: Read")
+        engine.encode_batch.assert_not_called()
 
-    def test_absent_batch_vectors_preserve_none_and_skip_semantics(self):
+    def test_absent_scalar_vectors_preserve_none_and_skip_semantics(self):
         engine = make_engine(self.vectors)
-        engine.encode_batch = Mock(return_value=[None, blob((1, 0, 0))])
+        engine.encode = Mock(return_value=None)
         self.assertIsNone(
             helpers.compute_template_normalized_similarities(
                 self.content, [(1, 0.0)], self.store, engine
             )
         )
-        engine.encode_batch.return_value = [blob((1, 0, 0)), None, blob((1, 0, 0))]
+        engine.encode.side_effect = [blob((1, 0, 0)), None, blob((1, 0, 0))]
         self.assertEqual(
             helpers.compute_template_normalized_similarities(
                 self.content, [(2, 0.0), (1, 0.0)], self.store, engine
@@ -114,14 +111,15 @@ class NormalizedBatch(unittest.TestCase):
             [1.0],
         )
 
-    def test_batch_failure_propagates_without_scalar_retry(self):
+    def test_scalar_failure_propagates_without_batch_retry(self):
         engine = make_engine(self.vectors)
-        engine.encode_batch = Mock(side_effect=RuntimeError("fixture encode failure"))
+        engine.encode = Mock(side_effect=RuntimeError("fixture encode failure"))
         with self.assertRaisesRegex(RuntimeError, "fixture encode failure"):
             helpers.compute_template_normalized_similarities(
                 self.content, self.hits, self.store, engine
             )
-        engine.encode.assert_not_called()
+        engine.encode.assert_called_once()
+        engine.encode_batch.assert_not_called()
 
 
 class MergeVectorReuse(unittest.TestCase):
