@@ -229,8 +229,12 @@ two-vector batches, but changed raw float32 bytes by up to
 `1.3969838619232178e-7` in every retained pair. Nonvector fields and write order
 match. This experiment is rejected; the complete original compression module
 is restored from `1b497a61`. No tolerance is introduced and its measured batch
-timing is not claimed as an accepted improvement. The restored scalar path
-requires its final neural identity replay before acceptance.
+timing is not claimed as an accepted improvement. The restored scalar path passes its final neural identity replay at
+`e5b5ddfeb25c2265101b8c02910002eade7b386f`: every vector byte, archive/update
+field and event matches exactly in all three retained pairs. Both variants
+make 64 scalar calls, no batch. CPU median 225.319 / 224.709 ms; wall median
+190.727 / 190.349 ms. This restores identity and demonstrates no useful
+compression speedup. Proof: `/private/tmp/cortex-green-w3-4-compression-restored-final.json`.
 
 Proofs: `/private/tmp/cortex-green-w3-4-real-remaining-callers-final.json` and
 `/private/tmp/cortex-green-w3-4-real-direct-writers-final.json`; execution
