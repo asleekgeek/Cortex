@@ -65,8 +65,8 @@ Raw records:
 A failed initial serializer attempt produced no accepted result; its corrected
 replay explicitly serializes FileAnalysis dataclasses with their type and fields.
 These finite fixtures are evidence for the retained path, not a universal
-floating-point equivalence guarantee. Corrected-engine replay and final gates
-remain required before publication.
+floating-point equivalence guarantee. Corrected-engine replay is recorded below; final repository gates and retrieval
+quality remain separate requirements.
 
 ## Preserved preparation and sequential behavior
 
@@ -111,3 +111,38 @@ executable differential evidence. NumPy/provider doubles verify API and ordering
 contracts but cannot prove neural scalar/batch equivalence. Full retrieval floors
 and repository gates are separate acceptance checks; baseline floor failures
 are not waived by these local comparisons.
+
+## Corrected-source replay and final codebase timing
+
+Source `4a224e70d9c3aa85f6d5283188c1997c3d9a8e86`, same pinned model and
+protocol. All eight original/corrected caller comparisons pass with exactly
+identical raw vectors, full outcomes, non-vector fields and event/read order.
+Seed/lessons/wiki/CLS/replay/stale/upgrade now use their original scalar calls;
+codebase keeps one batch. No gain is claimed for the restored scalar callers.
+All eight cache API scenarios also match exactly, with capacity128 on both sides.
+Execution report: `/private/tmp/cortex-green-w3-4-corrected-real-proofs.json`.
+
+The corrected codebase path passes the actual-parser64-text fixture and the
+empty-file/docstring boundary. Its final64-file timing uses the actual production
+parser and content builder, observed public texts as module docstrings, real
+MiniLM, and doubled storage/metadata/entity collaborators. Four paired runs,
+first discarded; original caller fixtures are compared with the corrected caller.
+
+| 64 files | Scalar API calls | Batch API calls | Median CPU ms | Median wall ms |
+|---|---:|---:|---:|---:|
+| Original | 64 | 0 | 346.133 | 280.398 |
+| Corrected | 0 | 1 | 180.961 | 103.642 |
+
+Every retained vector byte, row/result and event matches; no quality or physical
+energy extrapolation. Final report
+`/private/tmp/cortex-green-w3-4-final-host-codebase.json`; command and snapshots
+`/private/tmp/cortex-green-w3-4-final-host-codebase-proof.json`.
+`uptime`08:10, load3.50/4.50/4.99→3.26/4.42/4.95 for10cores;
+`df -h /`38Gi available before/after. The command is the closed isolated wrapper,
+root `.venv/bin/python`, and `/private/tmp/cortex-green-w3-4-final-host-codebase.py`.
+
+Seven restored writer modules, including the earlier compression fix, are
+byte-identical to1b497a61; `/private/tmp/cortex-green-w3-4-restore-source-proof.json`
+records their hashes. The targeted boundary suite passes62tests with zero skips
+in1.58s; Ruff/format and craftsmanship pass. The retained general preparation
+helpers are exercised by codebase; the removed wiki batch helper has no caller.
