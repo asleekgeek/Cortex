@@ -72,6 +72,21 @@ exceptions pour tableaux invalides ; imports modèle/DB interdits pendant ce tes
 
 ## Conformité
 
+La mesure complète après restauration du scoring scalaire compare
+`03cbb29c18231858d8683a958d5c579adc6bb66f` à
+`68de3e04e8ea35904abd10c2f6ffc1077c6aef60` : moteur neural réel,
+`PgMemoryStore._execute` réel, 20 mémoires synthétiques de confiance et une
+base UUID distincte par variante dans un conteneur PostgreSQL isolé.
+Le recall complet avec `momentum_state={}` passe de 36 à 27 énoncés ;
+le remember automatique testé passe de 16 à 6. Les réponses sont strictement
+identiques. Ce remember est rejeté sous le seuil existant, ce n'est pas une
+preuve du chemin d'insertion. Les 20 mises à jour d'accès du recall restent
+présentes : la cible globale de cinq énoncés n'est pas atteinte.
+Chaque variante passe 26 tests PG, zéro ignoré. Preuve :
+`/private/tmp/cortex-green-w4-3-count-final-v3-comparison.json` ; identité et
+nettoyage du conteneur/volumes, tunnels et bases UUID :
+`/private/tmp/cortex-green-w4-counts-v3-container/manifest.json`.
+
 Aucun seuil changé ; top-5/top-10 proviennent des appels remplacés. Les nouveaux
 modules respectent 300 lignes, 40 lignes/fonction, quatre paramètres et trois
 niveaux. Les imports ajoutés dans core sont limités à shared. Aucun ajout de
@@ -86,9 +101,9 @@ intégration, sans attribuer sa correction à W4-3.
   backend ; W4-3 conserve cet état et ne choisit pas une activation implicite.
 - L'ancien alignement compacté `sims`/`hits` en présence de voisins sans vecteur
   est conservé pour le signal temporel ; le corriger serait un autre changement.
-- Les recherches par entité en phase 2 et les autres mécanismes de recall
-  peuvent effectuer d'autres requêtes. La cible globale ≤5 après fusion doit
-  être mesurée dans le profil réel, pas déduite des seuls compteurs ci-dessus.
+- Les 20 mises à jour d'accès et les autres requêtes du recall complet
+  empêchent d'atteindre la cible globale ≤5. Leur regroupement dépasse les
+  remplacements de lectures W4-3 ; aucune correction annexe n'est ajoutée.
 
 ## Runbook
 
