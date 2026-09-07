@@ -28,3 +28,13 @@ command: root `.venv/bin/python` plus that script's `--checkout` pointing to
 `/private/tmp/cortex-green-w3-2-final` at the measured revision, and `--output`
 pointing to a new file. Historical measurements describe the rejected batch,
 not the restored scalar implementation. Full retrieval floors remain separate.
+
+The restored helper was measured at `fa39ca53f944d293edd4bf2ef4aca5d86b4f1eab`
+against the same `4407e5e7` reference on Python 3.13.7, with the actual pinned
+neural engine and the same five-neighbor fixture. Four paired repetitions,
+first discarded: all seven vectors, every score and neighbor read order are
+exactly identical in all three retained pairs (maximum difference zero).
+Seven scalar API encodes remain on each side. CPU medians are 17.282/17.392 ms;
+wall medians are 16.337/16.476 ms. There is no general scoring speedup claim.
+Proof: `/private/tmp/cortex-green-w3-2-strict-neural-final.json`;
+exact command and elapsed run: `/private/tmp/cortex-green-final-probes-execution.json`.
