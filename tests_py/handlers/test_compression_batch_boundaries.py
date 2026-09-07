@@ -47,7 +47,7 @@ class CompressionBoundaries(unittest.TestCase):
         self.assertEqual(before[0].updates, after[0].updates)
         self.assertEqual(before[2:], after[2:])
 
-    def test_missing_gist_vector_batches_only_the_uncommitted_second_phase(self):
+    def test_missing_gist_vector_preserves_scalar_encodes_and_write_order(self):
         def setup(engine, memory):
             memory["created_at"] = "2000-01-01T00:00:00+00:00"
             scalar = engine.encode
@@ -63,8 +63,8 @@ class CompressionBoundaries(unittest.TestCase):
         old, new = run_compression(True, setup), run_compression(setup=setup)
         self.assert_same(old, new)
         self.assertEqual(len(old[1].scalars), 3)
-        self.assertEqual(len(new[1].scalars), 1)
-        self.assertEqual(len(new[1].batches), 1)
+        self.assertEqual(new[1].scalars, old[1].scalars)
+        self.assertEqual(new[1].batches, [])
         self.assertEqual([row[3] for row in new[0].updates], [1, 2])
 
     def test_tag_runtime_error_keeps_prior_gist_archive_and_update(self):
