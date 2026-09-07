@@ -52,6 +52,7 @@ from mcp_server.infrastructure.embedding_downloads import (
     trigger_background_install,
     trigger_background_model_download,
 )
+from mcp_server.infrastructure.embedding_prefix import BertPrefix
 from mcp_server.shared.platform import cache_dir as _base_cache_dir
 
 # source: measured 2026-07-11 (incident i7d3) — see module docstring
@@ -111,6 +112,7 @@ class _EmbeddingLifecycleMixin:
     """
 
     _model: Any
+    _prefix_guard: BertPrefix | None
     _model_name: str
     _dim: int
     _revision: str | None
@@ -213,6 +215,7 @@ class _EmbeddingLifecycleMixin:
         actual_dim = get_dim()
         if actual_dim != self._dim:
             self._dim = actual_dim
+        self._prefix_guard = BertPrefix.for_model(self._model)
         self._model_state = ModelState.LOADED
         logger.info(
             "Loaded embedding model: %s (%dD, device=%s)",
