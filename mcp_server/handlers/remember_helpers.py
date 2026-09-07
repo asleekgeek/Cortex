@@ -98,30 +98,27 @@ def compute_template_normalized_similarities(
     store: MemoryReader,
     emb_engine: EmbeddingEngine,
 ) -> list[float] | None:
-    """Re-score the same raw-space candidates in one normalized-text batch.
+    """Preserve the scalar normalized-space scoring contract exactly.
 
-    source: core/capture_template_normalize.py's i7d3 pivot — normalization
-    belongs only to gate novelty, never to retrieval or stored embeddings.
-    Changed normalized text needs its own vector, separate from the raw input.
-    Preserve candidate order and omit missing/empty neighbor content, as in
-    the scalar path. An absent input vector returns None; absent neighbor
-    vectors contribute no similarity. Encoder/store exceptions still propagate.
-    The normalizer keeps nonempty input nonempty; filtering empty contents
-    preserves scalar encode's None result instead of neural-encoding them.
+    source: docs/provenance/green-w3-2-encoding-identity.md — the measured
+    neural batch changes scores, so it fails the strict W3-2 contract.
+    Normalization belongs only to gate novelty; stored vectors remain raw.
+    Preserve candidate order, absent-vector behavior and exception propagation.
     """
     if not (is_auto_capture_template(content) or is_derived_fact_template(content)):
         return None
-    new_norm = capture_template_normalize(content)
-    texts = [new_norm]
+    new_emb = emb_engine.encode(capture_template_normalize(content))
+    if not new_emb:
+        return None
+    norm_sims: list[float] = []
     for mid, _d in vec_hits:
         mem = store.get_memory(mid)
         if not mem or not mem.get("content"):
             continue
-        texts.append(capture_template_normalize(mem["content"]))
-    new_emb, *neighbors = emb_engine.encode_batch(texts)
-    if not new_emb:
-        return None
-    return [emb_engine.similarity(new_emb, other) for other in neighbors if other]
+        neighbor_emb = emb_engine.encode(capture_template_normalize(mem["content"]))
+        if neighbor_emb:
+            norm_sims.append(emb_engine.similarity(new_emb, neighbor_emb))
+    return norm_sims
 
 
 def compute_entity_info(
