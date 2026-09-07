@@ -15,21 +15,15 @@ Spawn = Callable[[socket.socket, int], None]
 
 def _connect_or_spawn(runtime: Path, deadline: float, spawn: Spawn) -> socket.socket:
     path = runtime / "socket"
-    try:
-        return endpoint.connect(path, remaining(deadline))
-    except (FileNotFoundError, ConnectionRefusedError):
-        # Absence before sending is the only safe point for a restart attempt.
-        return _launch(runtime, deadline, spawn)
-
-
-def _launch(runtime: Path, deadline: float, spawn: Spawn) -> socket.socket:
-    path = runtime / "socket"
+    # Serialize inspection with bind/chmod/listen, including warm connections.
+    # A socket pathname exists before its owner-only permissions are ready.
     with endpoint.lease(runtime / "launch.lock", deadline):
         try:
             return endpoint.connect(path, remaining(deadline))
         except (FileNotFoundError, ConnectionRefusedError):
+            # Absence before sending is the only safe restart point.
             _start_worker(runtime, deadline, spawn)
-    return endpoint.connect(path, remaining(deadline))
+        return endpoint.connect(path, remaining(deadline))
 
 
 def _start_worker(runtime: Path, deadline: float, spawn: Spawn) -> None:
