@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import sys
 import threading
-from concurrent.futures import Future
+from concurrent.futures import Future, TimeoutError as FutureTimeoutError
 
 from mcp_server.infrastructure.capture_transport import remaining
 
@@ -42,7 +42,9 @@ def wait_for_lock(descriptor: int, deadline: float) -> None:
         raise
     try:
         result.result(timeout=remaining(deadline))
-    except TimeoutError:
+    # FutureTimeoutError became a builtin TimeoutError alias only in Python 3.11.
+    # remaining() can also expire before Future.result() starts waiting.
+    except (FutureTimeoutError, TimeoutError):
         if result.cancel():
             raise TimeoutError("capture launch lock deadline exceeded") from None
         # RUNNING means flock already returned: only publication remains.
