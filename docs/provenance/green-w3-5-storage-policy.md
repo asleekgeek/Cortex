@@ -77,21 +77,45 @@ vacuum diagnostics. [Statistics semantics](https://www.postgresql.org/docs/16/mo
 
 ## Preuve
 
-Eight local stdlib tests pass in 0.004 s on Python 3.14.4 (root integration, 2026-09-06). They check DDL
-dispatch/order, its narrow parameter scope,
-generation of the two-application catalog assertion, identifier validation,
-the database guard, clone-only mutations, generated-column handling and the
-migration-only CLI. The SQL generator was exercised without connecting to any
-database. These tests do **not** prove live PostgreSQL idempotence or HOT gains.
-The generated SQL supplies those checks for the orchestrator's isolated run.
+Final calibration on 2026-09-07, source
+`2a7b78b21c872a1f140fb7800bf55953b9cb2618`, after the final main rebase:
+PG16.15 ARM64 / pgvector0.8.6; 30,000 public LongMemEval turns, real 384D
+vectors, 28,735 distinct untruncated contents. All stored content and vector
+bytes were read back and matched. Median physical row size was 2,780 bytes.
+This is a controlled public fixture, not a measured production traffic mix.
 
-No container, model, DB, vacuum or pg_repack operation was started during this
-preparation. PostgreSQL acceptance and calibration remain to run after W3-4.
-Ruff, formatting and craftsmanship checks cover all modified Python files.
+The 24 independent clones use four repetitions per workload/candidate and
+one UPDATE pass; repetition zero is discarded. Total run: 1,120.827 s;
+host load 3.20→2.44; free space 41.605→34.009 GB. Retained medians:
+
+| Writer | fillfactor | HOT % | Execution ms | WAL bytes | Heap before | Total after VACUUM |
+|---|---:|---:|---:|---:|---:|---:|
+| eligible | 100 | 0.930 | 14522.213 | 614573949 | 39657472 | 312049664 |
+| eligible | 90 | 17.127 | 12813.265 | 569785465 | 44072960 | 315129856 |
+| eligible | 80 | 25.133 | 11236.398 | 473679913 | 49913856 | 314261504 |
+| indexed | 100 | 0.000 | 14803.618 | 624916066 | 39657472 | 312811520 |
+| indexed | 90 | 0.000 | 15220.108 | 658408553 | 44072960 | 318849024 |
+| indexed | 80 | 0.000 | 15372.534 | 635429690 | 49913856 | 319627264 |
+
+All twelve indexed-heat trials had zero HOT. Lower fillfactor improves the
+eligible writer, but indexed writes have larger final storage and longer median
+execution here. No production weighting is available, so no lower fillfactor
+is selected. Applying the exact autovacuum DDL twice preserved fillfactor100
+and identical reloptions after the first application. No production maintenance
+was performed; the owned container and its anonymous volume were removed after
+all measurements completed and no client backend remained.
+
+Evidence: `/private/tmp/cortex-green-w3-5-dense-calibration-final/` contains
+manifest, generated SQL, complete stdout/stderr and summary; SQL SHA-256
+`50094bb5605ac8f604ca59d65ee343c49069a01e82ec7774f34258997d4b0518`.
+The dense fixture manifest/readback proof remains under
+`/private/tmp/cortex-green-w3-5-dense-fixture/`. No calibration SQL, schema
+storage DDL or fixture bytes changed in the subsequent scalar-scoring merge.
+Full retrieval floors are not established by these storage measurements.
 
 ## Conformité
 
-Integration base: `f8be1866c69688e40ea1b2dbbef2b44e0ebf3117`. Only the targeted schema block,
+Final integration base: `6ec76a0e0f9851893c39396a5f59ddaa329abfd5`. Only the targeted schema block,
 calibration generator, tests and this runbook change. The existing large schema
 file and `get_all_ddl` method remain declared debt; no baseline entry is added.
 No partial index is introduced before W4-1. No lower fillfactor is chosen.
