@@ -6,8 +6,8 @@ This supplements W3-4's direct-encoder/cache patch. It does not complete W3-4.
 Reference: `d0f7c19bf64a2d994b2e9a2a9818244c994bc972`, followed by W3-1a,
 W3-2 and the first W3-4 patch, in that order. The supplemental diff excludes
 those prerequisites. No model, dimensions, normalization rule or cache capacity
-changes here. Real-model quality, host timings and the empirical LRU decision
-remain open.
+changes here. Full retrieval quality remains open. Caller timings and the observed
+working-set capacity are measured below and in embedding-cache-capacity.md.
 
 The differential fixtures in `tests_py/fixtures/w3_4/*.py.txt` contain eleven
 original function bodies, copied before this supplement. Their ASTs match the
@@ -61,7 +61,6 @@ Best-effort callers retain their per-item catch and continue policy.
 | `record_session_end_memory._try_store_lesson_candidates` | One for valid nonempty suggestions | Original strip/drop, exact summary prefix, deliberate provenance, per-suggestion catch/count |
 | `codebase_analyze._process_files` | One when source reads are independent of writer state | Missing/incrementally unchanged files excluded; metadata then entities/relationships after each write |
 | `wiki_seed_codebase.handler` via `wiki_seed_batch.import_files` | One when source reads are independent of writer state | Existing text truncation/tags; per-file errors/counts; pipeline only after imports |
-| `compression._compress_to_tag_from_gist` legacy missing-gist/vector phase | One for its gist and tag | Only the phase whose two encodes have no intervening archive/update |
 
 One batch means one public `encode_batch` for these raw vectors, not one batch
 for the whole remember operation. W3-2's normalized-neighbor comparisons and
@@ -80,6 +79,7 @@ occur for an aborting caller.
 
 | Remaining path | Executed evidence | Guarantee preserved by leaving it scalar |
 |---|---|---|
+| Legacy compression missing-gist/vector phase | Real MiniLM on 32 public texts: batching changes raw vectors by up to 1.3969838619232178e-7 in all three retained pairs | Original scalar function restored exactly; both encodes precede its first write, with original errors and archive/update order |
 | `import_sessions._process_session_items` / `_store_memory` | `test_bulk_gate_dependencies`: two identical entries yield one store/one bounded rejection with live observations; freezing the first observation yields two stores | Earlier insertion changes habituation; bounded rejection performs no encode |
 | `consolidation.memify_derive._derive_one` | Same module: live results are created/rejected; frozen results are created/created, with source IDs changing from 1 to 2 | Gate, provenance IDs, idempotence markers and counters follow prior writes |
 | Codebase/wiki inputs aliasing writer state | `test_bulk_file_boundaries`: a store double writes a plain text state file; its later source alias sees the new text. Forcing preparation sees stale text; guarded execution matches the original | Reads remain interleaved with writes for state paths and aliases |
@@ -196,8 +196,50 @@ Proof with all row/vector bytes, code and fixture hashes, load and disk:
 `/private/tmp/cortex-green-final-probes-execution.json`. No physical energy or
 production corpus extrapolation follows from these two caller fixtures.
 
-Pending: other real-model bulk-caller comparisons, full retrieval floors,
-and the explicitly scalar boundaries above.
+The other eligible real-model callers are now measured below. Full retrieval
+floors and final repository gates remain pending; the scalar boundaries above
+remain explicit.
 W4-4's official API token-count calibration over 100 captured handler payloads
 and the BEAM floors are still pending separate work; this supplement provides
 no evidence that those criteria have passed.
+
+
+### Final real-neural file and direct consolidation callers
+
+At `0fe187b73fdc8386527584d99a82d46ebc7935ce`, four pairs per caller, first
+discarded, use 32 public energy-workload texts, the same pinned MiniLM and a
+cleared cache before each variant. Stores/connections and the file parser are
+deterministic doubles. Actual original function bodies (committed fixtures
+for file callers, Git AST from `1b497a61` for direct writers) are compared with
+the integrated bodies. All response fields, metadata, source IDs, write/read
+events and raw vector bytes are retained; serialization preserves sets,
+analysis objects, tuple/list distinctions and JSON boolean/numeric types.
+
+| Caller | Scalar calls before | Batch calls after | CPU median before/after (ms) | Wall median before/after (ms) | Vector/row identity |
+|---|---:|---:|---:|---:|---|
+| Codebase files | 32 | 1 | 129.897 / 53.814 | 112.143 / 37.516 | Exact, zero delta |
+| Wiki files | 32 | 1 | 117.056 / 38.849 | 106.275 / 26.978 | Exact, zero delta |
+| CLS semantic writes | 32 | 1 | 103.568 / 27.869 | 91.107 / 14.895 | Exact, zero delta |
+| Dream replay writes | 32 | 1 | 103.335 / 27.746 | 90.991 / 14.681 | Exact, zero delta |
+| Stale embeddings | 32 | 1 | 102.652 / 28.482 | 90.240 / 14.853 | Exact, zero delta |
+| Fallback upgrades | 32 | 1 | 114.643 / 28.503 | 102.939 / 16.432 | Exact, zero delta |
+
+The separate legacy compression experiment reduced 64 scalar encodes to 32
+two-vector batches, but changed raw float32 bytes by up to
+`1.3969838619232178e-7` in every retained pair. Nonvector fields and write order
+match. This experiment is rejected; the complete original compression module
+is restored from `1b497a61`. No tolerance is introduced and its measured batch
+timing is not claimed as an accepted improvement. The restored scalar path passes its final neural identity replay at
+`e5b5ddfeb25c2265101b8c02910002eade7b386f`: every vector byte, archive/update
+field and event matches exactly in all three retained pairs. Both variants
+make 64 scalar calls, no batch. CPU median 225.319 / 224.709 ms; wall median
+190.727 / 190.349 ms. This restores identity and demonstrates no useful
+compression speedup. Proof: `/private/tmp/cortex-green-w3-4-compression-restored-final.json`.
+
+Proofs: `/private/tmp/cortex-green-w3-4-real-remaining-callers-final.json` and
+`/private/tmp/cortex-green-w3-4-real-direct-writers-final.json`; execution
+`/private/tmp/cortex-green-after-baseline-bulk-probes-v3.json`. Two prior
+harness attempts failed to serialize fixture result types and are excluded;
+the serializer was checked with model-free source fixtures before the valid
+measurements. No production database, physical-energy saving or general
+corpus extrapolation is asserted.
