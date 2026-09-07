@@ -20,7 +20,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from mcp_server.handlers.remember_bulk import prepare_bulk, store_prepared
+from mcp_server.handlers.remember import handler as remember_handler
 from mcp_server.handlers.seed_project_stages import (
     collect_all_discoveries,
     heat_for_tags,
@@ -124,46 +124,41 @@ def _parse_args(args: dict[str, Any] | None) -> tuple[Path, str, int, bool]:
     return root, domain, max_kb * 1024, dry_run
 
 
-def _discovery_inputs(discoveries: list[dict], root: Path, domain: str, heats: list):
-    """Prepare already-harvested text; defer a later malformed discovery error."""
-    for disc in discoveries:
-        disc_tags = disc.get("tags", []) + ["seeded"]
-        heats.append(heat_for_tags(disc_tags))
-        yield {
-            "content": disc["content"],
-            "tags": disc_tags,
-            "directory": str(root),
-            "domain": domain,
-            "source": "seed_project",
-            # M-D2 (7.4): one-shot bootstrap, explicitly bypassed.
-            "write_class": "mechanical",
-            "force": True,
-        }
-
-
 async def _store_discoveries(
     discoveries: list[dict],
     root: Path,
     domain: str,
 ) -> tuple[int, int, list[int]]:
-    """Batch raw embeddings, then store/heat each discovery in original order."""
-    stored, skipped = 0, 0
+    """Store discoveries via remember handler. Returns (stored, skipped, ids)."""
+    stored = 0
+    skipped = 0
     memory_ids: list[int] = []
     store = _get_store()
-    heats: list[float] = []
-    pending = prepare_bulk(
-        _discovery_inputs(discoveries, root, domain, heats), stop_on_error=True
-    )
-    for index, item in enumerate(pending):
-        result = await store_prepared(item)
+
+    for disc in discoveries:
+        disc_tags = disc.get("tags", []) + ["seeded"]
+        initial_heat = heat_for_tags(disc_tags)
+        result = await remember_handler(
+            {
+                "content": disc["content"],
+                "tags": disc_tags,
+                "directory": str(root),
+                "domain": domain,
+                "source": "seed_project",
+                # M-D2 (7.4): a one-shot codebase-bootstrap discovery pass.
+                "write_class": "mechanical",
+                "force": True,
+            }
+        )
         if result.get("stored"):
             stored += 1
             mid = result.get("memory_id")
             if mid:
                 memory_ids.append(mid)
-                store.update_memory_heat(mid, heats[index])
+                store.update_memory_heat(mid, initial_heat)
         else:
             skipped += 1
+
     return stored, skipped, memory_ids
 
 

@@ -65,13 +65,13 @@ class RememberBulk(unittest.TestCase):
         self.assertEqual(before[1].store.read_versions, after[1].store.read_versions)
         self.assertEqual(before[1].telemetry.call_count, after[1].telemetry.call_count)
 
-    def test_seed_one_batch_exact_raw_vectors_and_sequential_reads_heat_ids(self):
+    def test_seed_scalar_exact_raw_vectors_and_sequential_reads_heat_ids(self):
         items = [{"content": text} for text in ("  raw text  ", "next\nline", "")]
         old, new = seed_scenario(items, True), seed_scenario(items)
         self.assert_same(old, new)
         self.assertEqual(new[0], (2, 1, [1, 2]))
-        self.assertEqual(new[1].engine.scalars, [])
-        self.assertEqual(new[1].engine.batches, [["  raw text  ", "next\nline"]])
+        self.assertEqual(new[1].engine.scalars, old[1].engine.scalars)
+        self.assertEqual(new[1].engine.batches, [])
         self.assertEqual(new[1].store.read_versions, [0, 1])
 
     def test_seed_invalid_n_keeps_prior_writes_and_never_encodes_invalid_or_later(self):
@@ -79,7 +79,8 @@ class RememberBulk(unittest.TestCase):
         old, new = seed_scenario(items, True), seed_scenario(items)
         self.assert_same(old, new)
         self.assertEqual(len(new[1].store.rows), 1)
-        self.assertEqual(new[1].engine.batches, [["first"]])
+        self.assertEqual(new[1].engine.batches, [])
+        self.assertEqual(new[1].engine.scalars, ["first"])
 
     def test_seed_input_construction_failure_keeps_prior_write_and_telemetry(self):
         items = [{"content": "first"}, {"content": "bad", "tags": None}]
@@ -97,22 +98,19 @@ class RememberBulk(unittest.TestCase):
             seed_scenario(items, True, fault), seed_scenario(items, fault=fault)
         )
 
-    def test_seed_ordinary_encoder_failure_preserves_prefix_and_reports_recovery(self):
+    def test_seed_ordinary_encoder_failure_preserves_prefix(self):
         items = [{"content": text} for text in ("first", "bad", "later")]
 
         def fault(env):
             env.engine.failures["bad"] = RuntimeError("encode failure")
 
         old = seed_scenario(items, True, fault)
-        with self.assertLogs(
-            "mcp_server.infrastructure.embedding_batch", level="ERROR"
-        ):
-            new = seed_scenario(items, fault=fault)
+        new = seed_scenario(items, fault=fault)
         self.assert_same(old, new)
-        self.assertEqual(len(new[1].engine.batches), 1)
-        self.assertEqual(new[1].engine.scalars, ["first", "bad", "later"])
+        self.assertEqual(new[1].engine.batches, [])
+        self.assertEqual(new[1].engine.scalars, ["first", "bad"])
 
-    def test_interrupt_is_propagated_and_prefix_difference_is_explicit(self):
+    def test_interrupt_is_propagated_with_the_same_write_prefix(self):
         items = [{"content": text} for text in ("first", "interrupt")]
 
         def fault(env):
@@ -122,15 +120,15 @@ class RememberBulk(unittest.TestCase):
         self.assertEqual(old[0], new[0])
         self.assertEqual(old[0][0], KeyboardInterrupt)
         self.assertEqual(len(old[1].store.rows), 1)
-        self.assertEqual(new[1].store.rows, [])
+        self.assert_same(old, new)
 
-    def test_lessons_strip_skip_batch_and_counters_match_original(self):
+    def test_lessons_strip_skip_scalar_and_counters_match_original(self):
         inputs = ["  first  ", "", None, "second"]
         old, new = lesson_scenario(inputs, True), lesson_scenario(inputs)
         self.assert_same(old, new)
         self.assertEqual(new[0], 2)
-        self.assertEqual(len(new[1].engine.batches), 1)
-        self.assertEqual(new[1].engine.scalars, [])
+        self.assertEqual(new[1].engine.batches, [])
+        self.assertEqual(new[1].engine.scalars, old[1].engine.scalars)
 
     def test_lessons_strip_failure_aborts_after_same_prefix(self):
         old, new = lesson_scenario(["first", 7], True), lesson_scenario(["first", 7])

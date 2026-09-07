@@ -1,245 +1,113 @@
-# W3-4: remaining raw-vector batch boundaries
+# W3-4: measured batch boundaries and rejected conversions
 
-## 1. Scope and reference
+W3-4 retains batching only for independent codebase-file imports. Seed, lessons,
+wiki imports, CLS, dream replay, stale-vector repair, embedding upgrade and
+compression retain their original scalar paths. Their real-model counterexamples
+violate the strict vector-identity requirement; their measured batch speedups
+are rejected. Ordinary batches also keep their own inference context and do
+not populate or read the scalar cache; see `embedding-cache-capacity.md`.
+The one-batch-for-every-writer acceptance target is not met.
 
-This supplements W3-4's direct-encoder/cache patch. It does not complete W3-4.
-Reference: `d0f7c19bf64a2d994b2e9a2a9818244c994bc972`, followed by W3-1a,
-W3-2 and the first W3-4 patch, in that order. The supplemental diff excludes
-those prerequisites. No model, dimensions, normalization rule or cache capacity
-changes here. Full retrieval quality remains open. Caller timings and the observed
-working-set capacity are measured below and in embedding-cache-capacity.md.
+## Measurement conditions and outcomes
 
-The differential fixtures in `tests_py/fixtures/w3_4/*.py.txt` contain eleven
-original function bodies, copied before this supplement. Their ASTs match the
-reference bodies exactly. Tests execute them with the same storage/encoder
-doubles as the new bodies; these are source fixtures, not replacement handlers.
+On 2026-09-07, original committed function fixtures and integrated handlers were
+executed with the real CPU MiniLM revision
+`1110a243fdf4706b3f48f1d95db1a4f5529b4d41`, Python3.13.7,
+SentenceTransformers5.6.1, Torch2.13.0 and NumPy2.5.1. Four pairs per caller,
+first discarded, model already warm and raw cache cleared before each variant.
+Row stores and metadata/entity collaborators are deterministic doubles. Exact
+serialization distinguishes JSON types and compares all vector bytes, caller
+outcomes, row fields, read/write order and telemetry counts. No tolerance,
+physical-energy claim or production workload extrapolation is made.
 
-| Fixture | Original module under `mcp_server/handlers/` | Original source SHA-256 |
-|---|---|---|
-| `remember` | `remember.py` | `9805012140cf787aae77dce1e744c313e68ac5dbf11530445256a7338c77a87c` |
-| `seed` | `seed_project.py` | `6a09efe88f0e7eb2bd60cc34ab9fa89ea63b838c4846a7797a077bf0f849723b` |
-| `lessons` | `record_session_end_memory.py` | `3ad45053a5ada8f20205affaf5c81ae5a54824752a477ac5b315bad60c7c245e` |
-| `compression` | `consolidation/compression.py` | `3183c81e3a7246e8fe56cbe8461013df23216b5d182265f0d5305770b76a64a6` |
-| `codebase` | `codebase_analyze.py` | `8ad8b2f40500457a61a5786381dd18d1c0d1e3660aa701eee5ac70c1a1839445` |
-| `wiki_seed` | `wiki_seed_codebase.py` | `1835ad61c3ade58e521ccbe23bff0a358eebe01b031f3d35be325a8df8174a42` |
+The first fixture used 32 public energy-workload texts. It passed for eight
+callers, but compression differed by up to1.3969838619232178e-7. That original
+compression module was restored and a real replay confirmed zero delta in all
+three retained pairs, with 64 scalar calls on both sides and no useful gain.
+A transferred pair of already observed texts then exposed the other failures:
 
-## 2. Preparation contract and invariants
+| Caller | Maximum raw float32 delta, all retained pairs | Final decision |
+|---|---:|---|
+| Seed | 1.0617077350616455e-7 | Original scalar caller restored |
+| Lessons | 9.313225746154785e-8 | Original scalar caller restored |
+| Wiki seed | 1.0617077350616455e-7 | Original scalar caller restored |
+| CLS | 1.0617077350616455e-7 | Original scalar caller restored |
+| Dream replay | 1.0617077350616455e-7 | Original scalar caller restored |
+| Stale-vector repair | 1.0617077350616455e-7 | Original scalar caller restored |
+| Embedding upgrade | 1.0617077350616455e-7 | Original scalar caller restored |
+| Codebase, transferred pair | 0 | Further checks below |
 
-`remember.prepare_write` extracts the original pre-encode phase, in order:
-content hardening, connection root, argument defaults, write-class validation,
-store lookup, supersession validation, domain resolution, producing-channel
-classification, then the W3-1a preflight. The ordinary public handler uses the
-same phase. No public MCP payload parameter changes.
+All non-vector fields and event order matched on these completed counterexample
+runs. Candidate source: `0454cb4ea7f6cb122e0fd9dde7ac4e806237d9a3`;
+pre-W3-4 reference: `1b497a61a57e566f033eb26f9f15bf7fd2f1c1e4`.
+Raw records: `/private/tmp/cortex-green-w3-4-counterexample-bulk-final.json`,
+`/private/tmp/cortex-green-w3-4-counterexample-direct-final.json` and the
+execution manifest `/private/tmp/cortex-green-w3-counterexamples-after-stop.json`.
 
-`remember_bulk.prepare_bulk` accepts only explicitly forced or deliberate
-writes, refuses supersession inputs and refuses a prepared gate observation.
-It retains rejection/error positions and batches only valid hardened raw text.
-`PreparedEncoding` explicitly carries preparation, engine/result and start
-time; there is no proxy, global rendezvous, ContextVar or scheduled task.
+## Retained codebase batch
 
-The allowed callers do not modify the process environment, git metadata or
-cognitive profile files between their writes. Domain resolution still reads
-git first, then an explicit hint or the original profile fallback. Profile
-loading/migration, where needed, remains in entry order. Remember's continuation
-writes memory, triggers, entities, heat and mood; it does not save profiles or
-change root scope. Provenance grading, novelty observation, curation and every
-post-encode store read remain in their original sequential continuation.
-This is a single-process contract, not isolation against an external writer
-changing configuration or files during the call.
+The original 32-text codebase fixture used32 scalar calls; the candidate used
+one batch. Median CPU129.897→53.814ms, wall112.143→37.516ms; every vector,
+row, result and event matched. That source was
+`0fe187b73fdc8386527584d99a82d46ebc7935ce`; raw record:
+`/private/tmp/cortex-green-w3-4-real-remaining-callers-final.json`.
+These timings describe that candidate, before the shared-cache correction.
 
-Ordinary input, validation and encoding errors are delivered at the original
-item. Abort-on-error callers stop preparing after a validation/input failure;
-the invalid entry and later entries are not encoded. Prior successful writes,
-IDs, counters and heat updates occur before the error is raised during replay.
-Best-effort callers retain their per-item catch and continue policy.
+Three additional source-0454 comparisons preserve exact results in all retained
+pairs: the transferred pair,64 observed compression strings through the file
+loop, and those64 strings represented as valid Python module docstrings through
+the actual production parser and `build_memory_content`. A real-parser boundary
+case with an empty Python file and a documented file also matches exactly.
+The real-parser runs keep only storage and metadata/entity collaborators doubled.
+Raw records:
+`/private/tmp/cortex-green-w3-4-counterexample-codebase-real-parser.json` and
+`/private/tmp/cortex-green-w3-4-counterexample-codebase-empty-docstring.json`.
+A failed initial serializer attempt produced no accepted result; its corrected
+replay explicitly serializes FileAnalysis dataclasses with their type and fields.
+These finite fixtures are evidence for the retained path, not a universal
+floating-point equivalence guarantee. Corrected-engine replay and final gates
+remain required before publication.
 
-## 3. Implemented paths
+## Preserved preparation and sequential behavior
 
-| Caller | Nominal raw-vector batch | Retained boundary |
-|---|---|---|
-| `seed_project._store_discoveries` | One for validated harvested discoveries | Add `seeded`; original heat policy and success IDs after each write; abort at the same error item |
-| `record_session_end_memory._try_store_lesson_candidates` | One for valid nonempty suggestions | Original strip/drop, exact summary prefix, deliberate provenance, per-suggestion catch/count |
-| `codebase_analyze._process_files` | One when source reads are independent of writer state | Missing/incrementally unchanged files excluded; metadata then entities/relationships after each write |
-| `wiki_seed_codebase.handler` via `wiki_seed_batch.import_files` | One when source reads are independent of writer state | Existing text truncation/tags; per-file errors/counts; pipeline only after imports |
+Codebase batching uses `remember.prepare_write`, `remember_bulk.prepare_bulk`
+and explicit `PreparedEncoding` values. The public remember API is unchanged.
+Only forced/deliberate writes without supersession or frozen gate observations
+are eligible. Hardened raw text is batched; actual normalized comparisons or
+new merge text can still encode separately. Empty lots load no engine.
 
-One batch means one public `encode_batch` for these raw vectors, not one batch
-for the whole remember operation. W3-2's normalized-neighbor comparisons and
-actual new merge texts can still encode separately. An empty eligible lot
-does not initialize an engine or call either encoder.
+Preparation retains validation, root/domain resolution, producing channel and
+W3-1a preflight order. Each continuation retains live provenance, novelty,
+curation and store reads, memory insertion, triggers, entities, heat and mood.
+Input/validation failures keep their original positions. Ordinary batch errors
+log and retry scalar entries with the original per-entry handling. Store failures
+retain the caller's existing partial-write/continue behavior.
 
-After a whole-batch ordinary error, `embedding_batch` logs ERROR and retries
-each eligible text scalarly, retaining the original per-item errors. Thus the
-recovery branch makes one failed batch plus N scalar calls. If engine lookup
-itself fails, its first item receives that error and subsequent continuations
-retry lookup/scalar encoding at their original item. Extra speculative model
-work can occur for valid entries beyond a later store failure; no later writes
-occur for an aborting caller.
+File reads are prepared only when independent of writer state. Resolved paths
+under configured database/CLAUDE_DIR/WIKI_ROOT, aliases and multiple hard links
+retain sequential reads. An executed file-backed store double proves that the
+first write can change a later source read; the guarded path matches the original.
+The existing source tag classifier prevents codebase/imported/seeded producer
+memories from publishing wiki pages. This does not provide isolation against an
+external process changing files/configuration during the operation.
 
-## 4. Executed counterexamples and remaining scalar paths
+Remember telemetry includes each entry's own preparation and waiting through
+its continuation. Intervals can overlap and must not be summed as CPU time.
+No event-loop yield or global rendezvous is added. KeyboardInterrupt propagates;
+preparation/batch interruption may precede all continuations and does not promise
+the scalar path's partial-write prefix. The overall operation measurement must
+account for abandoned work. No atomicity claim is made.
 
-| Remaining path | Executed evidence | Guarantee preserved by leaving it scalar |
-|---|---|---|
-| Legacy compression missing-gist/vector phase | Real MiniLM on 32 public texts: batching changes raw vectors by up to 1.3969838619232178e-7 in all three retained pairs | Original scalar function restored exactly; both encodes precede its first write, with original errors and archive/update order |
-| `import_sessions._process_session_items` / `_store_memory` | `test_bulk_gate_dependencies`: two identical entries yield one store/one bounded rejection with live observations; freezing the first observation yields two stores | Earlier insertion changes habituation; bounded rejection performs no encode |
-| `consolidation.memify_derive._derive_one` | Same module: live results are created/rejected; frozen results are created/created, with source IDs changing from 1 to 2 | Gate, provenance IDs, idempotence markers and counters follow prior writes |
-| Codebase/wiki inputs aliasing writer state | `test_bulk_file_boundaries`: a store double writes a plain text state file; its later source alias sees the new text. Forcing preparation sees stale text; guarded execution matches the original | Reads remain interleaved with writes for state paths and aliases |
-| `compression.run_compression_cycle` and `_compress_memory` across memories | `test_compression_batch_boundaries`: the actual schedule crosses the existing 168-hour threshold during a fake encoder advance; live schedule compresses IDs 1/2, a frozen schedule only ID 1 | Current clock-dependent schedule, protected/semantic skips, chunk order and MVCC read strategy |
-| Normal compression 0→2 | Late tag RuntimeError and KeyboardInterrupt tests both retain the previously committed gist archive/update | Gist is committed before tag generation/encoding; no artificial atomicity |
-| Compression 0→1 and 1→2 | Their one-vector phase has no independent second vector; cross-memory regrouping has the schedule counterexample above | Original archive/update and statistics order |
+## Other scalar boundaries
 
-The file counterexample uses a plain file and a store double, not a real
-database or a production observation. `file_reads_are_independent` resolves
-paths/symlinks and excludes CLAUDE_DIR, WIKI_ROOT and both configured database
-parent directories. Multiple hard links also keep the scalar route, since
-another name may address mutable state. Resolution/settings errors retain the
-scalar route and emit a debug diagnostic. This is deliberately conservative.
-[Python's `os.stat_result.st_nlink`](https://docs.python.org/3.13/library/os.html#os.stat_result)
-defines link multiplicity; the check is structural, not a tuned threshold.
+Session imports and memify derivation retain live gate observations because
+prior insertions affect later decisions and source IDs. Compression's clock and
+multi-stage archive/update schedule remains unchanged; a late tag error cannot
+undo an earlier gist write. All originally restored writer modules are compared
+against1b497a61, and their tests retain metadata, order and error assertions.
 
-An earlier suspected wiki-publication counterexample was disproved:
-`wiki_classifier_patterns.AUDIT_TAGS` rejects `seeded`, `codebase` and
-`imported` before user classification rules. A test invokes the real
-`wiki_sync.build_from_memory` and proves that these producer tags yield no
-page, even alongside `adr`. The file-state counterexample above does not claim
-that these paths publish wiki pages.
-
-## 5. Timing and interruption semantics
-
-Each eligible entry records `perf_counter()` immediately before its own
-remember preparation. The timestamp passes to the optional fourth parameter
-of `_telemetry_wrap.instrument`. A success or failure in `store_prepared`
-records elapsed time from that timestamp, including its preparation, later
-preparations, batch work/recovery and preceding continuations. The intervals
-overlap: `remember_ms` describes per-entry latency and must not be summed as
-CPU consumption. No average allocation of batch duration is invented.
-
-Caller-specific file reading, parsing or argument construction stays outside
-the remember timing boundary, as in the original callers. Input-construction
-failures emit no remember sample. Ordinary validation, engine lookup, encoding
-and store failures do emit a failed sample when replay reaches their entry.
-The default telemetry wrapper still starts a fresh clock on every public call
-and records BaseException from a continuation before propagating it.
-
-An interruption during preparation/batching occurs before continuations:
-`KeyboardInterrupt` is not caught or downgraded. Its partial write prefix can
-differ from the scalar reference (tested: one prior scalar write versus zero
-batch writes). Entries never continued, including abandoned entries, emit no
-completed remember sample. This does not promise interruption equivalence or
-atomicity. The enclosing operation/process measurement remains necessary to
-account for abandoned batch work.
-
-## 6. Lightweight proof and review constraints
-
-The supplemental runner passes 105 targeted tests with stdlib unittest and
-NumPy float32 doubles. It blocks SQLite/psycopg connections and imports of
-torch, sentence_transformers, flashrank and onnxruntime. The suite includes
-W3-1a, W3-2, the first W3-4 cache/direct paths and the supplemental boundaries.
-This is neither a model-quality proof nor a performance benchmark.
-
-New timing tests use a simulated clock and assert exact per-entry intervals
-for success, validation, getter, batch recovery and store failures. Default
-wrapper behavior, continuation interruption, caller abandonment and absence
-of extra event-loop yields are also checked. Source fixtures preserve the
-eleven reference bodies rather than reimplementing expected behavior.
-
-New files are below 300 lines; new functions stay within 40 lines, four
-parameters and three control-flow nesting levels. Existing long function
-spans do not grow: remember's main body shrinks, codebase's existing
-six-parameter loop keeps its span. New batching helpers live in the bounded
-`codebase_analyze_batch` module, with explicit callbacks and no import of the
-caller. The existing codebase module grows from 461 to 485 lines for wiring
-and shared argument/continuation helpers; its existing file-size violation
-remains, with no craftsmanship baseline additions.
-
-## 7. Integration and measurements still required
-
-Integrate after W3-1a, W3-2 and the direct W3-4 patch, then run repository
-gates. Reproduce the targeted suite using the archived isolated runner and
-locked Python; no production state or model download is required.
-
-For actual scalar→batch proof, replay the same authorized isolated fixture
-against the original and integrated bodies, preserving raw text/order and
-recording each code/fixture SHA, model revision, lockfile and backend. Use the
-project §3 protocol (four runs, first discarded), one heavy run at a time.
-Compare full caller outcomes, row/vector IDs, archive/update order and all
-float32 vectors before reporting timing deltas; invoke the project's isolated
-quality reproduction for the existing floors, without inventing tolerances.
-Report enclosing user+sys CPU, wall and peak RSS; do not sum overlapping
-remember latencies. Include encoding call counts and recovery diagnostics.
-
-The previously delivered `scripts/measure_embedding_cache.py` separately
-compares disabled/default capacity and cold/warm session replay with fixture
-and code hashes. Keep the existing durable model cache and zero-download
-guards. Its capacity experiment does not replace this before/after caller
-comparison. The final capacity measurements justify eight entries on the
-observed test session; see `embedding-cache-capacity.md`. They do not establish
-a capacity optimum or replace the separate bulk-caller measurements.
-
-### Final real-neural seed and lesson callers
-
-At `3ec76b597d95f020f34b30cabc8118764d4a7303`, the original committed caller/
-remember fixtures and the integrated seed/lesson callers were executed with
-the real pinned MiniLM engine. The row store and other collaborators remained
-deterministic doubles. Inputs were 32 public texts from the existing energy
-workload. Four pairs per caller, first discarded; cache cleared before each.
-All retained pairs preserve caller results, row contents/metadata, event and
-read order, telemetry counts and every raw float32 vector byte (zero delta).
-
-| Caller, 32 texts | Scalar calls before | Batch calls after | CPU median before/after | Wall median before/after |
-|---|---:|---:|---:|---:|
-| Seed | 32 | 1 | 117.659 / 34.391 ms | 105.798 / 23.381 ms |
-| Lessons | 32 | 1 | 138.759 / 57.006 ms | 125.292 / 40.059 ms |
-
-Python 3.13.7, CPU, MiniLM revision `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`.
-Proof with all row/vector bytes, code and fixture hashes, load and disk:
-`/private/tmp/cortex-green-w3-4-real-bulk-callers-final.json`; exact command:
-`/private/tmp/cortex-green-final-probes-execution.json`. No physical energy or
-production corpus extrapolation follows from these two caller fixtures.
-
-The other eligible real-model callers are now measured below. Full retrieval
-floors and final repository gates remain pending; the scalar boundaries above
-remain explicit.
-W4-4's official API token-count calibration over 100 captured handler payloads
-and the BEAM floors are still pending separate work; this supplement provides
-no evidence that those criteria have passed.
-
-
-### Final real-neural file and direct consolidation callers
-
-At `0fe187b73fdc8386527584d99a82d46ebc7935ce`, four pairs per caller, first
-discarded, use 32 public energy-workload texts, the same pinned MiniLM and a
-cleared cache before each variant. Stores/connections and the file parser are
-deterministic doubles. Actual original function bodies (committed fixtures
-for file callers, Git AST from `1b497a61` for direct writers) are compared with
-the integrated bodies. All response fields, metadata, source IDs, write/read
-events and raw vector bytes are retained; serialization preserves sets,
-analysis objects, tuple/list distinctions and JSON boolean/numeric types.
-
-| Caller | Scalar calls before | Batch calls after | CPU median before/after (ms) | Wall median before/after (ms) | Vector/row identity |
-|---|---:|---:|---:|---:|---|
-| Codebase files | 32 | 1 | 129.897 / 53.814 | 112.143 / 37.516 | Exact, zero delta |
-| Wiki files | 32 | 1 | 117.056 / 38.849 | 106.275 / 26.978 | Exact, zero delta |
-| CLS semantic writes | 32 | 1 | 103.568 / 27.869 | 91.107 / 14.895 | Exact, zero delta |
-| Dream replay writes | 32 | 1 | 103.335 / 27.746 | 90.991 / 14.681 | Exact, zero delta |
-| Stale embeddings | 32 | 1 | 102.652 / 28.482 | 90.240 / 14.853 | Exact, zero delta |
-| Fallback upgrades | 32 | 1 | 114.643 / 28.503 | 102.939 / 16.432 | Exact, zero delta |
-
-The separate legacy compression experiment reduced 64 scalar encodes to 32
-two-vector batches, but changed raw float32 bytes by up to
-`1.3969838619232178e-7` in every retained pair. Nonvector fields and write order
-match. This experiment is rejected; the complete original compression module
-is restored from `1b497a61`. No tolerance is introduced and its measured batch
-timing is not claimed as an accepted improvement. The restored scalar path passes its final neural identity replay at
-`e5b5ddfeb25c2265101b8c02910002eade7b386f`: every vector byte, archive/update
-field and event matches exactly in all three retained pairs. Both variants
-make 64 scalar calls, no batch. CPU median 225.319 / 224.709 ms; wall median
-190.727 / 190.349 ms. This restores identity and demonstrates no useful
-compression speedup. Proof: `/private/tmp/cortex-green-w3-4-compression-restored-final.json`.
-
-Proofs: `/private/tmp/cortex-green-w3-4-real-remaining-callers-final.json` and
-`/private/tmp/cortex-green-w3-4-real-direct-writers-final.json`; execution
-`/private/tmp/cortex-green-after-baseline-bulk-probes-v3.json`. Two prior
-harness attempts failed to serialize fixture result types and are excluded;
-the serializer was checked with model-free source fixtures before the valid
-measurements. No production database, physical-energy saving or general
-corpus extrapolation is asserted.
+Original function bodies remain in `tests_py/fixtures/w3_4/*.py.txt` as
+executable differential evidence. NumPy/provider doubles verify API and ordering
+contracts but cannot prove neural scalar/batch equivalence. Full retrieval floors
+and repository gates are separate acceptance checks; baseline floor failures
+are not waived by these local comparisons.
