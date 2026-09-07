@@ -23,6 +23,7 @@ def fixture_archive(root: Path, extra: str | None = None) -> ModelPin:
     ]
     archive = root / "fixture.zip"
     with zipfile.ZipFile(archive, "w") as target:
+        target.writestr("fixture/", b"")
         for name in names:
             target.writestr("fixture/" + name, b"synthetic fixture, not a model")
         if extra:
@@ -69,12 +70,36 @@ def test_unverified_optional_vocab_is_rejected(tmp_path):
         verify(tmp_path, pin)
 
 
-@pytest.mark.parametrize("path", ["../escaped", "/escaped", "elsewhere/file"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "../escaped",
+        "/escaped",
+        "elsewhere/file",
+        "__MACOSX/fixture/._absent",
+        "__MACOSX/../._model.onnx",
+        "__MACOSX/fixture/._",
+        "__MACOSX/elsewhere/._model.onnx",
+    ],
+)
 def test_archive_paths_are_checked_before_writing(tmp_path, path):
     pin = fixture_archive(tmp_path, path)
     with pytest.raises(ValueError, match="unsafe archive path"):
         prepare(tmp_path, pin)
     assert not (tmp_path / "fixture").exists()
+
+
+@pytest.mark.parametrize(
+    "name", ["__MACOSX/fixture/._model.onnx", "__MACOSX/._fixture"]
+)
+def test_paired_metadata_stays_in_archive_without_becoming_model_input(tmp_path, name):
+    pin = fixture_archive(tmp_path, name)
+    metadata = prepare(tmp_path, pin)
+    assert metadata["metadata_members_retained_only_in_archive"] == [name]
+    assert not (tmp_path / "__MACOSX").exists()
+    assert verify(tmp_path, pin) == metadata
+    with zipfile.ZipFile(tmp_path / "fixture.zip") as archive:
+        assert name in archive.namelist()
 
 
 def test_cache_under_tmp_is_explicitly_refused(tmp_path):
