@@ -30,8 +30,8 @@ class NeighborReadTests(unittest.TestCase):
         )
         self.assertEqual(actual, expected)
         self.assertEqual(
-            new_engine.encode_batch.call_args_list,
-            old_engine.encode_batch.call_args_list,
+            new_engine.encode.call_args_list,
+            old_engine.encode.call_args_list,
         )
         self.assertEqual(
             new_engine.similarity.call_args_list, old_engine.similarity.call_args_list
@@ -41,7 +41,8 @@ class NeighborReadTests(unittest.TestCase):
     def test_five_neighbors_drop_twelve_statements_to_two(self):
         old, new, engine, _result = self.compare(rows_fixture())
         self.assertEqual((old._execute.call_count, new._execute.call_count), (12, 2))
-        self.assertEqual(len(engine.encode_batch.call_args.args[0]), 6)
+        self.assertEqual(engine.encode.call_count, 6)
+        engine.encode_batch.assert_not_called()
         self.assertIn("WHERE id = ANY", new._execute.call_args_list[1].args[0])
 
     def test_duplicates_missing_ids_null_vectors_and_empty_content(self):
@@ -63,7 +64,7 @@ class NeighborReadTests(unittest.TestCase):
         _old, new, engine, result = self.compare(rows, hits)
         self.assertEqual(new._execute.call_count, 2)
         self.assertEqual(result["vec_hits"], hits)
-        texts = engine.encode_batch.call_args.args[0]
+        texts = [call.args[0] for call in engine.encode.call_args_list]
         self.assertEqual(texts.count(capture_template_normalize(rows[5]["content"])), 2)
 
     def test_complete_normalized_content_is_used_and_source_rows_do_not_mutate(self):
@@ -73,7 +74,7 @@ class NeighborReadTests(unittest.TestCase):
         _old, new, engine, _result = self.compare(rows)
         self.assertEqual(new.rows, original)
         self.assertTrue(
-            engine.encode_batch.call_args.args[0][-1].endswith("unique suffix")
+            engine.encode.call_args_list[-1].args[0].endswith("unique suffix")
         )
         # Normalized vectors are separately encoded, never old stored vectors.
         self.assertTrue(
@@ -88,6 +89,7 @@ class NeighborReadTests(unittest.TestCase):
             rows_fixture(), content="A deliberate fact"
         )
         self.assertEqual((old._execute.call_count, new._execute.call_count), (7, 2))
+        engine.encode.assert_not_called()
         engine.encode_batch.assert_not_called()
 
     def test_missing_raw_embedding_does_not_read_and_retains_normalized_input(self):
@@ -100,9 +102,10 @@ class NeighborReadTests(unittest.TestCase):
         )
         store._execute.assert_not_called()
         self.assertEqual(result["sims"], [])
-        engine.encode_batch.assert_called_once_with(
-            [capture_template_normalize(request.content)]
+        engine.encode.assert_called_once_with(
+            capture_template_normalize(request.content)
         )
+        engine.encode_batch.assert_not_called()
 
     def test_empty_vector_search_does_not_issue_a_row_query(self):
         store, engine = SqlSpy({}), Engine()
@@ -118,12 +121,8 @@ class NeighborReadTests(unittest.TestCase):
         ):
             with self.subTest(vectors=vectors):
                 old_engine, new_engine = Engine(), Engine()
-                old_engine.encode_batch.side_effect = (
-                    new_engine.encode_batch.side_effect
-                ) = None
-                old_engine.encode_batch.return_value = (
-                    new_engine.encode_batch.return_value
-                ) = vectors
+                old_engine.encode.side_effect = list(vectors)
+                new_engine.encode.side_effect = list(vectors)
                 content = "# Tool: Read\n**Read:** `/new.py`"
                 expected = old_gate_signals(
                     SimpleNamespace(store=SqlSpy(rows_fixture()), content=content),
@@ -136,7 +135,7 @@ class NeighborReadTests(unittest.TestCase):
                 self.assertEqual(actual, expected)
 
     def test_store_and_encoder_errors_propagate_without_retry(self):
-        for target in ("store", "similarity", "encode_batch"):
+        for target in ("store", "similarity", "encode"):
             with self.subTest(target=target):
                 store, engine = SqlSpy(rows_fixture()), Engine()
                 request = SimpleNamespace(

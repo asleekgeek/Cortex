@@ -70,6 +70,7 @@ def measure_gate(root):
     output = functions.evaluate_observed_gate(request, object(), b"raw", engine)
     result = result_record(store, output)
     result["normalized_batches"] = engine.encode_batch.call_count
+    result["normalized_scalar_encodes"] = engine.encode.call_count
     return result
 
 

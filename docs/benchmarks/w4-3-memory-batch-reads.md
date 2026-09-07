@@ -33,7 +33,9 @@ rejouent leurs candidats, doublons compris. Aucun repli vers N lectures unitaire
 Titans et l'assemblage exploitent ces lignes complètes ; **la projection
 `SELECT *` reste présente**. Le gain porte sur les transactions supprimées.
 Le gate partage une vue locale `MemoryRows` entre les trois signaux : similarité
-brute, réencodage batch des textes normalisés W3-2, et temporalité. Les lignes,
+brute, réencodage scalaire des textes normalisés, et temporalité. Le batch
+W3-2 a été rejeté après différence numérique réelle : voir
+`docs/provenance/green-w3-2-encoding-identity.md`. Les lignes,
 le vecteur brut et les observations/calibrations W3-1a ne sont pas modifiés.
 Le résultat public de `compute_similarities` reste le couple `(sims, hits)`.
 

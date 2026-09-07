@@ -113,11 +113,15 @@ class Engine:
     """Deterministic bytes distinguish normalized text from stored vectors."""
 
     def __init__(self):
+        self.encode = Mock(side_effect=self._scalar)
         self.encode_batch = Mock(side_effect=self._batch)
         self.similarity = Mock(side_effect=self._similarity)
 
+    def _scalar(self, text):
+        return b"normalized:" + text.encode() if text else None
+
     def _batch(self, texts):
-        return [b"normalized:" + text.encode() if text else None for text in texts]
+        return [self._scalar(text) for text in texts]
 
     def _similarity(self, first, second):
         return float(len(first) + len(second))
@@ -174,7 +178,7 @@ def rows_fixture(count=5):
 
 
 def old_gate_signals(request, engine):
-    """Frozen d0f7c19b + W3-1a/W3-2 read sequence: 1 + 5 + 5 + 1 SQL."""
+    """Pre-W4-3 read sequence with current scalar scoring: 1 + 5 + 5 + 1 SQL."""
     store, content = request.store, request.content
     hits = store.search_vectors(b"raw", top_k=5, min_heat=0.0, heads_only=True)
     sims = []
