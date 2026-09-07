@@ -173,10 +173,31 @@ and code hashes. Keep the existing durable model cache and zero-download
 guards. Its capacity experiment does not replace this before/after caller
 comparison. The final capacity measurements justify eight entries on the
 observed test session; see `embedding-cache-capacity.md`. They do not establish
-a capacity optimum or replace the pending bulk-caller measurements.
+a capacity optimum or replace the separate bulk-caller measurements.
 
-Pending: real-model numerical/quality verification, measured host delta,
-measured LRU sizing/removal, and the explicitly scalar boundaries above.
+### Final real-neural seed and lesson callers
+
+At `3ec76b597d95f020f34b30cabc8118764d4a7303`, the original committed caller/
+remember fixtures and the integrated seed/lesson callers were executed with
+the real pinned MiniLM engine. The row store and other collaborators remained
+deterministic doubles. Inputs were 32 public texts from the existing energy
+workload. Four pairs per caller, first discarded; cache cleared before each.
+All retained pairs preserve caller results, row contents/metadata, event and
+read order, telemetry counts and every raw float32 vector byte (zero delta).
+
+| Caller, 32 texts | Scalar calls before | Batch calls after | CPU median before/after | Wall median before/after |
+|---|---:|---:|---:|---:|
+| Seed | 32 | 1 | 117.659 / 34.391 ms | 105.798 / 23.381 ms |
+| Lessons | 32 | 1 | 138.759 / 57.006 ms | 125.292 / 40.059 ms |
+
+Python 3.13.7, CPU, MiniLM revision `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`.
+Proof with all row/vector bytes, code and fixture hashes, load and disk:
+`/private/tmp/cortex-green-w3-4-real-bulk-callers-final.json`; exact command:
+`/private/tmp/cortex-green-final-probes-execution.json`. No physical energy or
+production corpus extrapolation follows from these two caller fixtures.
+
+Pending: other real-model bulk-caller comparisons, full retrieval floors,
+and the explicitly scalar boundaries above.
 W4-4's official API token-count calibration over 100 captured handler payloads
 and the BEAM floors are still pending separate work; this supplement provides
 no evidence that those criteria have passed.
