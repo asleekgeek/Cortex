@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 from mcp_server.handlers.remember_bulk import file_reads_are_independent, prepare_bulk
+from mcp_server.handlers.remember_prepared import InputFailure
 
 
 @dataclass
@@ -17,7 +19,9 @@ class FileOperations:
     args: Callable
 
 
-def prepare_file_jobs(paths: list[Path], context: dict, operations: FileOperations):
+def prepare_file_jobs(
+    paths: list[Path], context: dict, operations: FileOperations
+) -> Iterable[dict | InputFailure]:
     jobs = _file_jobs(paths, context, operations)
     if not file_reads_are_independent(paths):
         return jobs
@@ -47,17 +51,19 @@ def _file_job(path: Path, context: dict, operations: FileOperations) -> dict:
     return job
 
 
-def _file_jobs(paths: list[Path], context: dict, operations: FileOperations):
+def _file_jobs(
+    paths: list[Path], context: dict, operations: FileOperations
+) -> Iterator[dict | InputFailure]:
     for path in paths:
         try:
             yield _file_job(path, context, operations)
         except Exception as exc:  # noqa: BLE001 — defer fatal parse/preparation error until preceding writes finish
-            yield {"error": exc}
+            yield InputFailure(exc, abort=True)
             return
 
 
-def _attach_file_embeddings(jobs: list[dict]) -> None:
-    eligible = [job for job in jobs if "args" in job]
+def _attach_file_embeddings(jobs: list[dict | InputFailure]) -> None:
+    eligible = [job for job in jobs if isinstance(job, dict) and "args" in job]
     pending = prepare_bulk((job["args"] for job in eligible), stop_on_error=True)
     # A validation error ends preparation; the same error aborts replay at that
     # item, so later jobs deliberately receive no embedding or model work.
