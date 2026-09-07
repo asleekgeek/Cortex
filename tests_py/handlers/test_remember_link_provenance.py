@@ -16,6 +16,8 @@ from __future__ import annotations
 import asyncio
 
 from mcp_server.handlers.remember import handler
+from mcp_server.handlers.remember_prepared import ObservedNeighbors
+from mcp_server.shared.memory_rows import MemoryRows
 from mcp_server.handlers.remember_helpers import (
     _with_link_provenance,
     insert_and_post_process,
@@ -112,8 +114,7 @@ class TestInsertAndPostProcessLinkAction:
             directory="",
             action="link",
             merged_id=target_id,
-            sims=[],
-            vec_hits=[],
+            neighbors=ObservedNeighbors([], [], MemoryRows({})),
             ent_names=[],
             extracted=[],
             mod=_MOD,

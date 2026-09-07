@@ -414,8 +414,8 @@ class _CurationFakeStore:
     def search_vectors(self, _embedding, top_k=3, min_heat=0.0):
         return [(self._cand["id"], 0.05)]
 
-    def get_memory(self, mem_id):
-        return self._cand if mem_id == self._cand["id"] else None
+    def get_memories_by_ids(self, ids):
+        return {self._cand["id"]: self._cand} if self._cand["id"] in ids else {}
 
     def update_memory_compression(self, *_a, **_k):
         self.merged = True

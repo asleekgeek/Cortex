@@ -95,7 +95,7 @@ def apply_recollection_pipeline(
     candidates = hopfield_complete(
         candidates,
         ctx.q_emb,
-        ctx.store,
+        ctx.candidate_embeddings if ctx.candidate_embeddings is not None else ctx.store,
         embedding_dim=ctx.embeddings.dimensions if ctx.embeddings else 0,
     )
     candidates = hdc_rerank(candidates, ctx.query)

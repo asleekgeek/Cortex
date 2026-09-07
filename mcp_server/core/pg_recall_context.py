@@ -20,11 +20,13 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Any
 
+from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 from mcp_server.core.capture_origin import trusted_origins_at_read
 from mcp_server.core.pg_recall_weights import compute_pg_weights
 from mcp_server.core.query_intent import classify_query_intent
 from mcp_server.core.recall_pipeline import familiarity_triage
 from mcp_server.core.retrieval_dispatch import UNTRUSTED_ORIGIN_FACTOR
+from mcp_server.shared.memory_embeddings import MemoryEmbeddings
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +80,7 @@ class RecallContext:
     # unset (None) on the context recall() constructs.
     intent: Any = None
     q_emb: Any = None
+    candidate_embeddings: MemoryEmbeddings | None = None
 
 
 def fetch_and_triage(ctx: RecallContext) -> tuple[list[dict], RecallContext, bool]:
@@ -102,10 +105,34 @@ def fetch_and_triage(ctx: RecallContext) -> tuple[list[dict], RecallContext, boo
     if not candidates:
         return [], ctx, True
 
+    ctx = _observe_candidate_embeddings(ctx, candidates)
     triage = familiarity_triage(
-        candidates, q_emb, ctx.store, allow_shortcut=ctx.familiarity_shortcut
+        candidates,
+        q_emb,
+        ctx.candidate_embeddings if ctx.candidate_embeddings is not None else ctx.store,
+        allow_shortcut=ctx.familiarity_shortcut,
     )
     return triage.candidates, ctx, triage.shortcut
+
+
+def _observe_candidate_embeddings(
+    ctx: RecallContext, candidates: list[dict]
+) -> RecallContext:
+    """Familiarity and Hopfield are consecutive and perform no writes.
+
+    source: the native W4-3 trace reads the same twenty IDs twice; the
+    recollection stage starts with Hopfield, before reconsolidation writes.
+    Leave the existing non-bulk store path and ablation guards unchanged.
+    """
+    if ctx.q_emb is None or not hasattr(ctx.store, "get_embeddings_for_memories"):
+        return ctx
+    if all(
+        is_mechanism_disabled(mechanism)
+        for mechanism in (Mechanism.DUAL_PROCESS, Mechanism.HOPFIELD)
+    ):
+        return ctx
+    snapshot = MemoryEmbeddings.read(ctx.store, [c["memory_id"] for c in candidates])
+    return replace(ctx, candidate_embeddings=snapshot)
 
 
 def _wrrf_fetch(ctx: RecallContext, weights: dict) -> list[dict]:

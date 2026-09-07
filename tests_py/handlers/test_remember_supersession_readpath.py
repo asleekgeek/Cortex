@@ -8,7 +8,7 @@ superseded_by_id is set — no signal is lost because the chain head, near-
 identical in embedding, stays in the candidate set.
 
 Stub store/engine: try_curation only consumes store.search_vectors,
-store.get_memory, emb_engine.similarity and the pure curation module, so the
+store.get_memories_by_ids, emb_engine.similarity and the pure curation module, so the
 head-check is testable without a live backend.
 """
 
@@ -53,8 +53,8 @@ class _StubStore:
         # Superseded row ranked FIRST — the buggy path merged into it.
         return [(1, 0.01), (2, 0.02)]
 
-    def get_memory(self, mid):
-        return self._rows.get(mid)
+    def get_memories_by_ids(self, ids):
+        return {mid: self._rows[mid] for mid in ids if mid in self._rows}
 
     def update_memory_compression(self, mid, *args, **kwargs):  # noqa: ARG002
         self.merged_into.append(mid)

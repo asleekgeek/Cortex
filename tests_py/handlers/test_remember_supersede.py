@@ -17,6 +17,8 @@ deterministically through the public handler.
 import asyncio
 
 from mcp_server.handlers.remember import handler
+from mcp_server.handlers.remember_prepared import ObservedNeighbors
+from mcp_server.shared.memory_rows import MemoryRows
 from mcp_server.handlers.remember_helpers import (
     insert_and_post_process,
     validate_supersede_target,
@@ -177,8 +179,7 @@ def _run_conflict(store: _ConflictStore) -> dict:
         directory="",
         action="supersede",
         merged_id=42,
-        sims=[],
-        vec_hits=[],
+        neighbors=ObservedNeighbors([], [], MemoryRows({})),
         ent_names=[],
         extracted=[],
         mod=_MOD,

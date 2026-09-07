@@ -7,6 +7,16 @@ from typing import Any
 
 from mcp_server.handlers.remember_preflight import GateObservation, GateRequest
 from mcp_server.infrastructure.embedding_batch import EncodedItem
+from mcp_server.shared.memory_rows import MemoryRows
+
+
+@dataclass(frozen=True)
+class ObservedNeighbors:
+    """Vector hits and rows observed by the gate, reused before insertion."""
+
+    similarities: list[float]
+    hits: list[tuple]
+    rows: MemoryRows
 
 
 @dataclass
