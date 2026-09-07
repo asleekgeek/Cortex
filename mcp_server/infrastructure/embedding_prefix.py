@@ -57,6 +57,8 @@ class BertPrefix:
         if getattr(model, "default_prompt_name", None) is not None:
             return None
         tokenizer = getattr(model, "tokenizer", None)
+        if tokenizer is None:
+            return None
         backend = getattr(tokenizer, "backend_tokenizer", None)
         limit = getattr(model, "max_seq_length", None)
         if backend is None or type(limit) is not int or limit <= 0:
