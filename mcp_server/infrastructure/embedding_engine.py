@@ -118,8 +118,8 @@ class EmbeddingEngine(
         self._fallback_provider = AlgorithmicEmbeddingProvider(dim)
         # Cache keyed by sha256(text)[:16] — see class docstring / ADR-0045 R5.
         self._cache: OrderedDict[str, bytes] = OrderedDict()
-        # source: docs/provenance/embedding-cache-capacity.md — measured session.
-        self._cache_max = 8
+        # source: docs/provenance/embedding-cache-capacity.md — eviction counterexample.
+        self._cache_max = 128
         self._cache_hits = self._cache_misses = self._batch_reuses = 0
 
     @property
@@ -231,8 +231,8 @@ class EmbeddingEngine(
         self._cache_store(key, result)
         return result
 
-    def _encode_batch_uncached(self, texts: list[str]) -> list[bytes | None]:
-        """Preserve the neural/fallback batch encoding and device retry paths."""
+    def encode_batch(self, texts: list[str]) -> list[bytes | None]:
+        """Preserve the batch context; scalar-cache substitution changes vectors."""
         self._ensure_model()
         if self._serve_fallback():
             return self._fallback_provider.encode_batch(texts)
@@ -281,7 +281,10 @@ class EmbeddingEngine(
         )
         if not to_encode:
             return
-        self.encode_batch(to_encode)
+        vecs = self.encode_batch(to_encode)
+        for text, vec in zip(to_encode, vecs, strict=True):
+            if vec is not None:
+                self._cache_store(self._cache_key(text), vec)
 
     def _fallback_encode(self, text: str) -> bytes:
         """Delegate to the algorithmic fallback provider (issue #169).

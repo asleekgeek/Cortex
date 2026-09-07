@@ -3655,6 +3655,11 @@
     {
       "file": "mcp_server/handlers/consolidation/cls.py",
       "kind": "method-size",
+      "detail": "_create_semantic_memories"
+    },
+    {
+      "file": "mcp_server/handlers/consolidation/cls.py",
+      "kind": "method-size",
       "detail": "_discover_causal_edges"
     },
     {

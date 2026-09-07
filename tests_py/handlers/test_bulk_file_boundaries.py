@@ -77,7 +77,7 @@ class FileBoundaries(unittest.TestCase):
         self.assert_same(old, new)
         self.assertEqual(len(new[1].store.rows), 1)
 
-    def test_wiki_batch_preserves_read_errors_and_imported_counter(self):
+    def test_wiki_scalar_preserves_read_errors_and_imported_counter(self):
         paths = self.files(("README.md", "docs/second.md"))
         paths.insert(1, self.root / "docs/disappeared.md")
         old = file_scenario("wiki", paths, self.root, {"reference": True})
@@ -85,7 +85,8 @@ class FileBoundaries(unittest.TestCase):
         self.assert_same(old, new)
         self.assertEqual(new[0]["imported"], 2)
         self.assertEqual(new[0]["error_count"], 1)
-        self.assertEqual(len(new[1].engine.batches), 1)
+        self.assertEqual(new[1].engine.batches, [])
+        self.assertEqual(new[1].engine.scalars, old[1].engine.scalars)
 
     def test_resolved_symlink_to_writer_tree_prevents_preparing_live_reads(self):
         root = self.root / "writer"
@@ -135,7 +136,10 @@ class FileBoundaries(unittest.TestCase):
         second.parent.mkdir(parents=True, exist_ok=True)
         second.symlink_to(target)
         observations = []
-        for options in ({"reference": True}, {}, {"force_batch": True}):
+        variants = [{"reference": True}, {}]
+        if mode == "codebase":
+            variants.append({"force_batch": True})
+        for options in variants:
             target.write_text("stale contents before the first remember")
             observations.append(
                 file_scenario(
@@ -145,10 +149,11 @@ class FileBoundaries(unittest.TestCase):
         self.assert_same(observations[0], observations[1])
         self.assertEqual(observations[1][1].engine.batches, [])
         live_text = observations[1][1].store.rows[1][0]
-        frozen_text = observations[2][1].store.rows[1][0]
         self.assertIn("persisted row 1", live_text)
-        self.assertIn("stale contents", frozen_text)
-        self.assertNotEqual(live_text, frozen_text)
+        if mode == "codebase":
+            frozen_text = observations[2][1].store.rows[1][0]
+            self.assertIn("stale contents", frozen_text)
+            self.assertNotEqual(live_text, frozen_text)
 
 
 if __name__ == "__main__":
