@@ -32,6 +32,7 @@ from mcp_server.handlers.codebase_analyze_helpers import (
 )
 from mcp_server.handlers.remember import handler as remember_handler
 from mcp_server.handlers.remember_bulk import store_prepared
+from mcp_server.handlers.remember_prepared import InputFailure
 from mcp_server.handlers.codebase_analyze_batch import (
     FileOperations,
     prepare_file_jobs,
@@ -308,8 +309,8 @@ async def _process_files(
     context.update(existing=existing, incremental=incremental)
     jobs = _selected_file_jobs(source_files, context)
     for job in jobs:
-        if "error" in job:
-            raise job["error"]
+        if isinstance(job, InputFailure):
+            raise job.error
         rel_path, content = job["relative"], job["content"]
         seen_paths.add(rel_path)
         if content is None:
