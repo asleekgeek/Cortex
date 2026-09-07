@@ -77,10 +77,12 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # no new ones. _transfer_anchor_on's docstring (pg_store_supersede.py)
     # still explains why it cannot route through bump_heat_raw.
     ("infrastructure/pg_store_supersede.py", 169),
+    # W4-3: get_memories_by_ids adds 14 lines above both writers. Source:
+    # bodies byte-identical to 02543fa6; only these two locations changed.
     # Canonical single-row writer (all callers route through this).
-    ("infrastructure/pg_store_heat.py", 56),
+    ("infrastructure/pg_store_heat.py", 70),
     # A3 batched writer (homeostatic cohort branch + any other batch consumer).
-    ("infrastructure/pg_store_heat.py", 154),
+    ("infrastructure/pg_store_heat.py", 168),
     # SQLite parity of the anchor transfer (same transactional rationale).
     # Shifted 389->440->447->493->529->530 (M-D3, then #169 added _fts_augment /
     # _migrate_fts_code_tokenize / unconditional embedding_model stamp above it;
