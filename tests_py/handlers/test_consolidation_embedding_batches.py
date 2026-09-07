@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 from contextlib import nullcontext
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 from mcp_server.handlers.consolidation import cls, embedding_upgrade, sleep
 from mcp_server.infrastructure.embedding_batch import encode_items
@@ -108,8 +108,10 @@ class DirectWriters(unittest.TestCase):
             [call.args[:3] for call in store.update_memory_compression.call_args_list],
             [(7, "a", b"a"), (2, "bad", b"bad"), (5, "", None)],
         )
-        engine.encode_batch.assert_called_once_with(["a", "bad"])
-        engine.encode.assert_not_called()
+        engine.encode_batch.assert_not_called()
+        self.assertEqual(
+            engine.encode.call_args_list, [call(text) for text in ["a", "bad", ""]]
+        )
 
     def test_stale_updates_keep_id_vector_pairs_and_skip_empty(self):
         engine, store, conn = Engine(), Mock(), Mock()
@@ -123,10 +125,12 @@ class DirectWriters(unittest.TestCase):
             [call.args[1] for call in conn.execute.call_args_list],
             [(b"b", 7), (b"a", 5)],
         )
-        engine.encode_batch.assert_called_once_with(["b", "a"])
-        engine.encode.assert_not_called()
+        engine.encode_batch.assert_not_called()
+        self.assertEqual(
+            engine.encode.call_args_list, [call(text) for text in ["b", "a"]]
+        )
 
-    def test_upgrade_worklist_uses_one_batch_and_existing_guards(self):
+    def test_upgrade_worklist_preserves_scalar_calls_and_existing_guards(self):
         engine = Engine()
         store = UpgradeStore(
             [
@@ -140,8 +144,10 @@ class DirectWriters(unittest.TestCase):
             {"upgraded": 2},
         )
         self.assertEqual(store.reembedded, [(7, b"a"), (3, b"b")])
-        engine.encode_batch.assert_called_once_with(["a", "b"])
-        engine.encode.assert_not_called()
+        engine.encode_batch.assert_not_called()
+        self.assertEqual(
+            engine.encode.call_args_list, [call(text) for text in ["a", "b"]]
+        )
         engine.encode_batch.reset_mock()
         engine.mode = "fallback"
         self.assertIn(
@@ -169,8 +175,10 @@ class DirectWriters(unittest.TestCase):
         self.assertEqual([row["embedding"] for row in rows], [b"a", b"b"])
         self.assertIn("derived-src:7", rows[0]["tags"])
         self.assertIn("confabulation-risk", rows[1]["tags"])
-        engine.encode_batch.assert_called_once_with(["a", "b"])
-        engine.encode.assert_not_called()
+        engine.encode_batch.assert_not_called()
+        self.assertEqual(
+            engine.encode.call_args_list, [call(text) for text in ["a", "b"]]
+        )
 
     def test_all_empty_direct_worklists_have_no_encoding(self):
         engine, store = Engine(), Mock()

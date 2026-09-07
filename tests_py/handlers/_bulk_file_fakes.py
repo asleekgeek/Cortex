@@ -9,7 +9,6 @@ from unittest.mock import patch
 from mcp_server.handlers import codebase_analyze as codebase
 from mcp_server.handlers import codebase_analyze_batch
 from mcp_server.handlers import remember, wiki_seed_codebase as wiki
-from mcp_server.handlers import wiki_seed_batch
 from mcp_server.handlers._telemetry_wrap import instrument
 from tests_py.handlers._remember_bulk_fakes import harness, original, run
 
@@ -62,7 +61,8 @@ def file_scenario(mode, paths, root, options=None):
         if options.get("state_file"):
             enable_state_writes(env, options["state_file"])
         if options.get("force_batch"):
-            target = codebase_analyze_batch if mode == "codebase" else wiki_seed_batch
+            assert mode == "codebase"
+            target = codebase_analyze_batch
             env.stack.enter_context(
                 patch.object(target, "file_reads_are_independent", return_value=True)
             )
