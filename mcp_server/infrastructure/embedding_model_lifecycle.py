@@ -108,11 +108,11 @@ class _EmbeddingLifecycleMixin:
     A mixin so ``EmbeddingEngine`` keeps exposing ``_detect_device`` /
     ``_resolve_device`` / ``_ensure_model`` on the class (the tests patch and
     call them there). Reads/writes the engine attributes declared below, all
-    owned by ``EmbeddingEngine.__init__``.
+    owned by ``EmbeddingEngine.__init__`` except the guard configured on load.
     """
 
     _model: Any
-    _prefix_guard: BertPrefix | None
+    _prefix_guard: BertPrefix | None = None
     _model_name: str
     _dim: int
     _revision: str | None

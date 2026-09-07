@@ -24,9 +24,8 @@ Structure (Cortex#173 — the file was split along three seams):
 Device selection:
   Default is "cpu" for embedding consistency (GPU float32 arithmetic produces
   bit-different vectors from CPU). GPU is opt-in via CORTEX_MEMORY_EMBEDDING_DEVICE
-  env var. If GPU inference fails at runtime (OOM, MPS reset after sleep), the
-  engine automatically falls back to CPU; if CPU also fails, it degrades to the
-  algorithmic fallback provider. The engine never crashes on encode().
+  env var. Failed GPU inference retries on CPU (e.g. after OOM or MPS reset)
+  before using the algorithmic fallback provider.
 """
 
 from __future__ import annotations
@@ -109,7 +108,6 @@ class EmbeddingEngine(_EmbeddingLifecycleMixin, _EmbeddingMathMixin):
         # against. See embedding_model_lifecycle "Model revision pin".
         self._revision = revision
         self._model: Any = None
-        self._prefix_guard = None
         self._unavailable = False
         self._model_state: ModelState = ModelState.UNINITIALIZED
         # The SECOND provider (issue #169): the download-free algorithmic
