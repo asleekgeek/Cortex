@@ -45,6 +45,12 @@ bound is inferred from the sample. A conservative whitespace cost guard retains
 the full input when the stripped prefix is shorter than the model budget; this
 cannot change any output even if a normalizer expands characters.
 
+The boundary lookup uses four built-in str.find calls. The recorded probe
+selects exactly the same boundaries as the original regular expression on all16
+fixtures and reduces the unbroken-word scan median from25.083µs to1.208µs.
+These are lookup timings, not whole-encoder speedups; raw samples are in the
+observations JSON.
+
 ## Verification
 
 The cached-tokenizer regression runs all16 adversarial fixtures of10000characters.

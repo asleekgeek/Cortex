@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-import re
 from typing import Any
 
 
@@ -21,7 +20,7 @@ from typing import Any
 # 10k fixtures saturating the pinned model budget. A cost probe, NOT a safety
 # bound: complete-word and token-budget checks below decide every truncation.
 _PROBE_CHARS = 1450
-_BOUNDARY = re.compile(r"[ \t\r\n]")
+_BOUNDARIES = " \t\r\n"
 
 
 def _supported(config: dict) -> bool:
@@ -73,10 +72,17 @@ class BertPrefix:
     def shorten(self, text: str) -> str:
         if len(text) <= _PROBE_CHARS:
             return text
-        boundary = _BOUNDARY.search(text, _PROBE_CHARS)
-        if boundary is None or boundary.end() == len(text):
+        # str.find avoids a regex scan of a long word that cannot be shortened.
+        # source: W3-3 boundary probe, same 16 boundaries, 25us -> 1.2us for
+        # the 10k unbroken-word fixture (four samples, first discarded).
+        positions = [text.find(char, _PROBE_CHARS) for char in _BOUNDARIES]
+        positions = [pos for pos in positions if pos >= 0]
+        if not positions:
             return text
-        prefix = text[: boundary.end()]
+        end = min(positions) + 1
+        if end == len(text):
+            return text
+        prefix = text[:end]
         # A conservative cost guard for whitespace-heavy fixtures. Keeping the
         # full input is always exact, even if normalization expands characters.
         if len(prefix.strip()) < self.limit:
