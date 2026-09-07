@@ -79,3 +79,17 @@ RESULT.json --capacity N`, optionally `--warm-session`, in the closed offline
 benchmark environment. Its counters now observe scalar lookups only; batch
 calls do not change cache statistics. Record the new source SHA and compare
 complete output digests before interpreting any timing or hit-rate changes.
+
+## Corrected engine: real replay
+
+At `4a224e70d9c3aa85f6d5283188c1997c3d9a8e86`, all eight API scenarios above
+match the reference's complete vector-byte traces in every retained repetition
+(maximum delta0), including the nine-text warm/eviction case. Both capacities
+are128. The before/after processes use identical actual Python, packages, model
+revision and inputs. The corrected batch body is AST-identical to the reference
+apart from its docstring. The four recorded-provider regression tests pass;
+three failed before the correction.
+
+Proofs: `/private/tmp/cortex-green-w3-4-corrected-cache-after.json` and
+`/private/tmp/cortex-green-w3-4-corrected-real-proofs.json`. These establish the
+observed context identity, not an optimal capacity or a full retrieval floor.
