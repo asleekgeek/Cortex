@@ -88,11 +88,9 @@ class EmbeddingEngine(
 
     Cache key discipline (ADR-0045 R5): the LRU cache is keyed by
     ``sha256(text)[:16]`` (16 hex chars = 8 bytes of entropy), never by
-    raw text. A 100 KB user memory yields a 16-byte key instead of
-    100 KB of key bytes — at ``_cache_max = 128`` this bounds cache key
-    memory to ~2 KB regardless of input size. A 16-char SHA256 prefix
-    has 2^64 possible values; the birthday-bound collision probability
-    at 128 cached entries is ~4.6e-16 (negligible).
+    raw text. Each key stores 16 characters regardless of input length.
+    Cache key storage scales with the entry count, not the memory text size.
+    The capacity is measured in docs/provenance/embedding-cache-capacity.md.
     """
 
     def __init__(
@@ -120,8 +118,8 @@ class EmbeddingEngine(
         self._fallback_provider = AlgorithmicEmbeddingProvider(dim)
         # Cache keyed by sha256(text)[:16] — see class docstring / ADR-0045 R5.
         self._cache: OrderedDict[str, bytes] = OrderedDict()
-        # Existing capacity retained pending W3-4 session hit-rate measurement.
-        self._cache_max = 128
+        # source: docs/provenance/embedding-cache-capacity.md — measured session.
+        self._cache_max = 8
         self._cache_hits = self._cache_misses = self._batch_reuses = 0
 
     @property
