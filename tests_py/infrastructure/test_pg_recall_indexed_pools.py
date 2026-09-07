@@ -65,9 +65,16 @@ def recall(conn, function, options):
         "p_domain": "w4-fixture",
         "p_include_globals": False,
     } | options
+    # source: both SQL signatures declare weights/heat/trust as REAL;
+    # psycopg adapts Python float to float8, which overload lookup won't narrow.
     args = sql.SQL(", ").join(
-        sql.SQL("{} => {}").format(sql.Identifier(name), sql.Placeholder())
-        for name in values
+        sql.SQL("{} => {}").format(
+            sql.Identifier(name),
+            sql.Placeholder() + sql.SQL("::real")
+            if isinstance(value, float)
+            else sql.Placeholder(),
+        )
+        for name, value in values.items()
     )
     statement = sql.SQL("SELECT * FROM {}({})").format(sql.Identifier(function), args)
     with conn.cursor(row_factory=dict_row) as cursor:
