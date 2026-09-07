@@ -16,7 +16,6 @@ from mcp_server.core.compression import (
 )
 from mcp_server.handlers.consolidation.chunks import iter_memory_chunks
 from mcp_server.infrastructure.embedding_engine import EmbeddingEngine
-from mcp_server.infrastructure.embedding_batch import encode_items
 from mcp_server.infrastructure.memory_store import MemoryStore
 
 logger = logging.getLogger(__name__)
@@ -160,13 +159,14 @@ def _compress_to_tag_from_gist(
     encode on the 0→2 transition (was 3 encodes total → now 2).
 
     Postcondition — legacy path: behaviour is identical to the pre-change
-    implementation for writes/errors; its two vectors now share one raw batch.
+    implementation (two encodes: one for the gist archive, one for the tag).
     """
     if gist is None or gist_emb is None:
-        gist, gist_emb, tag, tag_emb = _encode_missing_gist_and_tag(embeddings, mem)
-    else:
-        tag = generate_tag(gist, mem)
-        tag_emb = embeddings.encode(tag)
+        gist = extract_gist(mem["content"])
+        gist_emb = embeddings.encode(gist)
+
+    tag = generate_tag(gist, mem)
+    tag_emb = embeddings.encode(tag)
 
     store.insert_archive(
         {
@@ -178,24 +178,6 @@ def _compress_to_tag_from_gist(
     )
     store.update_memory_compression(mem["id"], tag, tag_emb, 2)
     stats["compressed_to_tag"] += 1
-
-
-def _encode_missing_gist_and_tag(embeddings: EmbeddingEngine, mem: dict) -> tuple:
-    """Batch the two vectors only where no archive/update separates them.
-
-    A malformed tag must still report a prior gist-encoder failure first.
-    BaseException propagates; both vectors precede this phase's first write.
-    """
-    gist = extract_gist(mem["content"])
-    try:
-        tag = generate_tag(gist, mem)
-    except Exception:  # noqa: BLE001 — preserve original encode-before-tag-error precedence
-        embeddings.encode(gist)
-        raise
-    gist_result, tag_result = encode_items(
-        [{"content": gist}, {"content": tag}], "content", embeddings
-    )
-    return gist, gist_result.value(), tag, tag_result.value()
 
 
 def _compress_gist_to_tag(
