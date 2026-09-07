@@ -21,12 +21,17 @@ class PgEngramMixin(PgStoreHost):
         existing = row["c"] if row else 0
         if existing >= num_slots:
             return
-        for i in range(existing, num_slots):
-            self._execute(
-                "INSERT INTO engram_slots (slot_index, excitability) "
-                "VALUES (%s, 0.5) ON CONFLICT DO NOTHING",
-                (i,),
-            )
+        slots = range(existing, num_slots)
+        # source: PostgreSQL 16 functions-srf.html / sql-insert.html.
+        # Preserve the existing range, excitability and conflict behavior;
+        # the first remember previously sent 5000 independent INSERTs.
+        self._execute(
+            "INSERT INTO engram_slots (slot_index, excitability) "
+            "SELECT slot_index, 0.5 "
+            "FROM generate_series(%s::integer, %s::integer) AS slots(slot_index) "
+            "ORDER BY slot_index ON CONFLICT DO NOTHING",
+            (slots.start, slots.stop - 1),
+        )
         self._conn.commit()
 
     def get_all_engram_slots(self) -> list[dict[str, Any]]:
