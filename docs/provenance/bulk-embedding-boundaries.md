@@ -171,7 +171,9 @@ The previously delivered `scripts/measure_embedding_cache.py` separately
 compares disabled/default capacity and cold/warm session replay with fixture
 and code hashes. Keep the existing durable model cache and zero-download
 guards. Its capacity experiment does not replace this before/after caller
-comparison or justify the existing 128-entry capacity until results exist.
+comparison. The final capacity measurements justify eight entries on the
+observed test session; see `embedding-cache-capacity.md`. They do not establish
+a capacity optimum or replace the pending bulk-caller measurements.
 
 Pending: real-model numerical/quality verification, measured host delta,
 measured LRU sizing/removal, and the explicitly scalar boundaries above.
