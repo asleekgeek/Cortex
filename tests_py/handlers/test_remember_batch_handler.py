@@ -87,7 +87,7 @@ class RememberBatchCalls(unittest.TestCase):
             )
         return SimpleNamespace(result=result, engine=engine, store=store, insert=insert)
 
-    def test_ordinary_remember_is_raw_encode_plus_one_batch_with_same_scores(self):
+    def test_ordinary_remember_preserves_seven_scalar_calls_and_exact_scores(self):
         neighbors = [f"# Tool: Read\n**Read:** `/neighbor_{n}.py`" for n in range(5)]
         scenario = (CONTENT, neighbors, "create")
         old, new = self.run_scenario(scenario, scalar=True), self.run_scenario(scenario)
@@ -95,8 +95,10 @@ class RememberBatchCalls(unittest.TestCase):
         self.assertEqual(old.insert.call_args.args[:14], new.insert.call_args.args[:14])
         self.assertEqual(old.store.searches, new.store.searches)
         self.assertEqual(old.engine.encode.call_count, 7)
-        new.engine.encode.assert_called_once_with(CONTENT)
-        new.engine.encode_batch.assert_called_once()
+        self.assertEqual(
+            new.engine.encode.call_args_list, old.engine.encode.call_args_list
+        )
+        new.engine.encode_batch.assert_not_called()
         self.assertEqual(new.insert.call_args.args[1], blob((1, 0, 0)))
         self.assertNotEqual(new.insert.call_args.args[1], blob((0, 1, 0)))
 
@@ -104,15 +106,16 @@ class RememberBatchCalls(unittest.TestCase):
         scenario = (CONTENT, [CONTENT.removesuffix(" new")], "merge")
         result = self.run_scenario(scenario)
         self.assertEqual(result.result["action"], "merge")
-        result.engine.encode.assert_called_once_with(CONTENT)
-        result.engine.encode_batch.assert_called_once()
+        self.assertEqual(result.engine.encode.call_count, 3)
+        self.assertEqual(result.engine.encode.call_args_list[0].args[0], CONTENT)
+        result.engine.encode_batch.assert_not_called()
         result.store.update_memory_compression.assert_called_once_with(
             1, CONTENT, blob((1, 0, 0)), 0
         )
         result.store.update_memory_heat.assert_called_once_with(1, 1.0)
         result.insert.assert_not_called()
 
-    def test_new_concatenation_keeps_necessary_third_encode_and_same_merge(self):
+    def test_new_concatenation_keeps_necessary_fourth_encode_and_same_merge(self):
         existing = CONTENT.removesuffix(" new") + " old"
         scenario = (CONTENT, [existing], "merge")
         old, new = self.run_scenario(scenario, scalar=True), self.run_scenario(scenario)
@@ -125,12 +128,15 @@ class RememberBatchCalls(unittest.TestCase):
         )
         self.assertEqual(
             [call.args[0] for call in new.engine.encode.call_args_list],
-            [CONTENT, merged],
+            [
+                CONTENT,
+                capture_template_normalize(CONTENT),
+                capture_template_normalize(existing),
+                merged,
+            ],
         )
-        new.engine.encode_batch.assert_called_once()
-        self.assertEqual(
-            new.engine.encode.call_count + new.engine.encode_batch.call_count, 3
-        )
+        new.engine.encode_batch.assert_not_called()
+        self.assertEqual(new.engine.encode.call_count, 4)
 
 
 if __name__ == "__main__":
