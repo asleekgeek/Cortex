@@ -1,0 +1,88 @@
+---
+title: "ADR-0315 — mcp_server/core/wiki_templates.py rationale"
+status: accepted
+source: mcp_server/core/wiki_templates.py
+---
+
+# ADR-0315 — mcp_server/core/wiki_templates.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Source: user directive "agent or llm on side to write with template and
+naming conventions — keep the documentation organized".
+````
+
+## module — original line 6 (docstring)
+
+````text
+Each page kind has:
+  * A canonical front-matter schema (required fields + types)
+  * A template body with labelled sections
+  * A naming convention (slug pattern + path discipline)
+````
+
+## module — original line 11 (docstring)
+
+````text
+The doc-grooming agent uses these templates to rewrite pages that drift
+off-template. Human authors (or LLM-authored pages) should also follow
+them — the agent won't overwrite a hand-written page whose front-matter
+declares ``grooming: manual``.
+````
+
+## module — original line 16 (docstring)
+
+````text
+All templates are pure strings with ``{{var}}`` placeholders. The
+grooming agent fills placeholders from the existing page content +
+metadata before rewriting.
+
+````
+
+## module — original line 28 (comment)
+
+````text
+# Legacy kinds — kept readable; values match pre-ADR-2244 contracts.
+# 2026-05-18: ADRs now double as task-records. The body MUST carry the
+# five mandatory sections (entry/mandatory/how/result/serves) so every
+# completed task has the same causal-chain documentation. Existing
+# context/decision/consequences fields are preserved for back-compat.
+````
+
+## module — original line 53 (comment)
+
+````text
+# Modern kinds (ADR-2244 §4). Every modern kind requires the 4-tuple
+# axes (kind, lifecycle, audience, provenance) plus kind-specific
+# fields.  Note: ``kind`` itself is a required frontmatter field for
+# *every* modern page, validated by ``wiki_schema_loader``.
+````
+
+## module — original line 101 (comment)
+
+````text
+# Valid values for `status` field (ADR + specs).
+# Note: lifecycle (ADR-2244 §4.2) is a separate axis; the legacy ``status``
+# field is preserved for backward compat on ADR/spec pages.
+````
+
+## module — original line 422 (comment)
+
+````text
+# ── ADR-2244 modern-kind templates ───────────────────────────────────────
+````
+
+## module — original line 577 (comment)
+
+````text
+# Legacy kinds.
+````
+
+## module — original line 587 (comment)
+
+````text
+# ADR-2244 modern kinds.
+````

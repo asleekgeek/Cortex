@@ -5,17 +5,9 @@ limit and so the writer is unit-testable on its own.
 
 The flow:
 
-  1. Gather session evidence — commits in this session window, memories
-     tagged with decision/lesson/fix/feature, files changed.
-  2. Skip silently if the session wasn't substantive
-     (``is_substantive`` returns False).
-  3. Pick the next ADR number for the domain — scans
-     ``<wiki>/adr/<domain>/`` for the highest existing ``NNNN-*.md``.
-  4. Build the draft via ``build_task_record`` and write the page via
-     the existing wiki write path.
-
 Failure is non-fatal — record_session_end must continue regardless.
-"""
+
+source: ADR-0332"""
 
 from __future__ import annotations
 
@@ -43,10 +35,7 @@ _ADR_FILENAME_RE = re.compile(r"^(\d{4})-")
 def _next_adr_number(wiki_root: Path, domain: str) -> int:
     """Pick the next free ADR number for ``domain``.
 
-    Scans ``<wiki>/adr/<domain>/`` for filenames matching
-    ``NNNN-<slug>.md`` and returns max+1. Returns 1 when the directory
-    is empty or missing.
-    """
+    source: ADR-0332"""
     dom_dir = wiki_root / "adr" / domain
     if not dom_dir.is_dir():
         return 1
@@ -139,8 +128,7 @@ def _git_commits_in_window(cwd: str, since_minutes: float) -> list[dict]:
     return commits
 
 
-# source: cap documented in the _session_memories docstring ("at most 50
-# entries to keep the draft tractable")
+# source: ADR-0332
 _SESSION_MEMORIES_CAP = 50
 
 

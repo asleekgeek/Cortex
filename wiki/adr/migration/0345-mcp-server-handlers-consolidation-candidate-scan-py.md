@@ -1,0 +1,88 @@
+# ADR-0345: mcp_server/handlers/consolidation/candidate_scan.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `mcp_server/handlers/consolidation/candidate_scan.py`; original SHA-256 `b4310b82c370e872ad7accf3bec07380af3dd1faff386ef5c85069c82b2c3e5a`.
+
+## Original docstring, lines 1–13
+
+````text
+"""Candidate discovery for the headless authoring worker (no LLM calls).
+
+Walks the wiki for pages with curation gaps and scans projects for
+missing groundable anchor pages. Split out of ``headless_authoring``
+to keep that module under the size limit (Fowler: Move Function).
+
+Patchability contract: ``run_headless_authoring_cycle`` resolves
+``_scan_pages_with_gaps`` and ``_collect_anchor_candidates`` at call
+time as attributes of the ``headless_authoring`` module (where they
+are re-exported), so tests that ``monkeypatch.setattr(ha, ...)`` are
+observed. ``_AnchorCandidate`` is read from the root module the same
+way so the constructed type matches the re-exported one.
+"""
+````
+
+## Original docstring, lines 43–49
+
+````text
+"""Return ``(path, meta, body)`` for ``md`` if it has curation gaps, else None.
+
+    A page is "with gaps" when EITHER the frontmatter declares
+    ``curation_gaps`` non-empty OR a live audit of the body shows
+    missing canonical sections (only for kind=reference file-docs —
+    ADRs / specs / guides have their own section sets).
+    """
+````
+
+## Original comment, lines 61–62
+
+````text
+# No frozen gaps — but a file-doc might still be missing sections
+    # that were added to the catalogue after generation.
+````
+
+## Original docstring, lines 79–83
+
+````text
+"""Walk the wiki and return ``(path, meta, body)`` for pages with gaps.
+
+    See ``_gap_entry_for_page`` for the per-page criteria (frozen
+    frontmatter gaps OR a live section audit for file-docs).
+    """
+````
+
+## Original docstring, lines 102–106
+
+````text
+"""Append ``domain``'s missing groundable anchor candidates in place.
+
+    Stops appending once ``candidates`` reaches ``max_drains`` (checked
+    after every append, matching the original inline loop's early exit).
+    """
+````
+
+## Original docstring, lines 137–143
+
+````text
+"""Scan for missing groundable anchor candidates without calling claude.
+
+    Pre-condition:  ``wiki_root`` is an existing directory; ``max_drains`` > 0.
+    Post-condition: returned list has at most ``max_drains`` items, each
+                    representing a missing scope that passes the groundable
+                    filter and has a resolvable source root.
+    """
+````
+
+## Original comment, lines 144–150
+
+````text
+# Deferred import (issue #237): headless_authoring imports this function
+    # back at load time, so a module-top-level `from . import
+    # headless_authoring` here would deadlock a fresh interpreter that
+    # imports candidate_scan before headless_authoring finishes initializing.
+    # Resolved at call time instead — the constructed type still matches the
+    # re-exported ``headless_authoring._AnchorCandidate`` exactly (same
+    # module object, no copy).
+````
+

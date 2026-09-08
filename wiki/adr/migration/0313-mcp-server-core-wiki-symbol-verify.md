@@ -1,0 +1,47 @@
+---
+title: "ADR-0313 — mcp_server/core/wiki_symbol_verify.py rationale"
+status: accepted
+source: mcp_server/core/wiki_symbol_verify.py
+---
+
+# ADR-0313 — mcp_server/core/wiki_symbol_verify.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+Phase 2 (ADR-0046) — pure staleness verdict for wiki pages over AST.
+````
+
+## module — original line 3 (docstring)
+
+````text
+Complements ``wiki_staleness`` (file-existence check) with a symbol-
+existence check: a page that cites ``foo.Bar.baz`` is *symbol-stale*
+when that qualified name no longer resolves in AP's code graph.
+````
+
+## module — original line 7 (docstring)
+
+````text
+This module owns the verdict; the handler owns the AP calls. The split
+keeps core I/O-free and testable without mocks.
+
+````
+
+## module — original line 15 (comment)
+
+````text
+# Pages with fewer than this many qualname references are exempt from
+# the symbol-stale signal — one stray dotted reference is not enough
+# evidence. Matches the rationale of ``wiki_staleness.MIN_FILE_REFS``.
+````
+
+## module — original line 20 (comment)
+
+````text
+# A page is symbol-stale when this fraction of its references cannot be
+# resolved in AP. 0.5 matches ``wiki_staleness.STALE_THRESHOLD`` so the
+# two signals fire at the same evidence level.
+````

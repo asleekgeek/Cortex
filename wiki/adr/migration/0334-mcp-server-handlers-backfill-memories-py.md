@@ -1,0 +1,76 @@
+# ADR-0334: mcp_server/handlers/backfill_memories.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `mcp_server/handlers/backfill_memories.py`; original SHA-256 `2183599b537d250bd2fe7ddf2f5a1593b9dc8f88ee127decb29575635aa7ecb3`.
+
+## Original comment, lines 149–151
+
+````text
+# Minimum content length worth importing as a memory.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## Original docstring, lines 156–163
+
+````text
+"""Length-filter and gist one extracted item's raw content.
+
+    Split out of ``_import_single_item`` so ``_import_file`` can collect
+    every item's final content and warm the embedding cache with a single
+    ``encode_batch()`` call before the sequential ``remember()`` loop
+    below -- each ``remember()`` call used to trigger its own single-text
+    ``encode()`` (issue: green-software review 2026-09-04, Low severity).
+    """
+````
+
+## Original comment, lines 194–201
+
+````text
+# Preserve the original session timestamp. insert_memory anchors
+    # heat_base_set_at to it (A3 decay clock), so effective_heat() decays the
+    # baseline by the memory's real age at READ time — the single canonical
+    # age-decay path (pg_schema EFFECTIVE_HEAT_FN). We deliberately do NOT
+    # pre-decay initial_heat here: that would double-count the same age (once
+    # analytically at insert, once dynamically at read). A3's read-time decay
+    # also spreads the import cohort by age, subsuming the original issue #14
+    # bimodality fix.
+````
+
+## Original docstring, lines 213–219
+
+````text
+"""One encode_batch() call for every prepared item's content.
+
+    remember()'s own encode() call in ``_store_prepared_items`` then hits
+    this warmed cache instead of invoking the model per item -- see
+    harden_content note on EmbeddingEngine.warm_cache's cache-key
+    alignment.
+    """
+````
+
+## Original docstring, lines 351–358
+
+````text
+"""Import files and optionally run the wiki pipeline end-to-end.
+
+    With ``run_pipeline=True`` (the default), once imports complete we
+    invoke handlers.wiki_pipeline which chains extract → resolve →
+    emerge → synthesize → curate → compile. This is what makes
+    "install and see pages" work on fresh installs (Phase 7 cold-start
+    fix); without it, users would have to call each tool manually.
+    """
+````
+
+## Original comment, lines 389–393
+
+````text
+# Log, don't just record. This clause ran the documented
+            # fresh-install path; swallowing the exception into a string
+            # meant a backfill that produced zero wiki pages still returned
+            # a success-shaped payload with no log line anywhere — the
+            # FlashRank silent-failure mode a third time (issue #206).
+````
+

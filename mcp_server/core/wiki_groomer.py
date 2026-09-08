@@ -1,25 +1,6 @@
 """Wiki grooming — drift detection against templates + naming conventions.
 
-The grooming system has two parts:
-
-  1. **Auditor** (this module, deterministic): scans every wiki page,
-     reports drift against the page's kind template. Fast, runs every
-     consolidate cycle. Produces a structured list of issues (missing
-     front-matter, wrong status value, non-canonical slug, missing
-     required section).
-
-  2. **Rewriter** (claude-agents/cortex-wiki-groomer.md, LLM): handed the
-     audit output + the raw page, rewrites to the template while
-     preserving content semantics. Runs on-demand when the auditor
-     reports issues, or when the user invokes /cortex:groom-wiki.
-
-This module is pure-functional — no I/O, no LLM calls. The auditor's
-output is structured so tests can assert on it and the LLM rewriter
-has an unambiguous work list.
-
-Source: user directive "agent or llm on side to write with template and
-naming conventions to keep it tidy and up to date".
-"""
+source: ADR-0303"""
 
 from __future__ import annotations
 
@@ -56,11 +37,9 @@ class PageAudit:
 
 
 def page_audit_has_issues(audit: "PageAudit") -> bool:
-    """A free function, not a method: mutmut categorically excludes the
-    body of any `@dataclass`-decorated class (`mutmut/mutation/
-    file_mutation.py:236`), so logic placed on `PageAudit` methods would
-    carry zero mutation coverage no matter how the test loader names the
-    module (issue #262 3rd pass; issue #282).
+    """Return whether the page audit contains any issues.
+
+    source: ADR-0303
     """
     return bool(audit.issues)
 
@@ -70,8 +49,8 @@ def page_audit_has_issues(audit: "PageAudit") -> bool:
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
-# source: structural — a quoted scalar needs both an opening and a closing
-# quote character, so it is at least two characters long.
+# source: ADR-0303
+
 _MIN_QUOTED_SCALAR_LEN = 2
 
 
@@ -207,9 +186,7 @@ def audit_page(page_path: str, content: str) -> PageAudit:
 def audit_wiki(pages: list[tuple[str, str]]) -> list[PageAudit]:
     """Audit a batch of pages. Input is a list of (path, content) tuples.
 
-    Returns audits only for pages with issues (groomed pages are
-    filtered out to keep the output focused on the work list).
-    """
+    source: ADR-0303"""
     audits: list[PageAudit] = []
     for path, content in pages:
         a = audit_page(path, content)

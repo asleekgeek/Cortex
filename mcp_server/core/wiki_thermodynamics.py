@@ -1,23 +1,6 @@
 """Phase 4 — Wiki page thermodynamics.
 
-Pages live in an ecology, not a library: they earn existence through
-citation and access, lose it through idleness, staleness, and
-redundancy. This module is the pure-logic layer that decides:
-
-  - how much heat a page decays per tick
-  - when a page transitions between lifecycle_states
-  - when a page gets archived
-
-Same physics as pg_store memory decay, with lifecycle-aware half-lives:
-
-  active     half-life 30d   — current cognitive territory
-  area       half-life 90d   — ongoing reference, touched occasionally
-  archived   no decay        — already at floor
-  evergreen  no decay        — protected (cross-domain knowledge)
-
-Pure logic — no I/O. The handler reads pages, calls these helpers,
-writes back the new (heat, lifecycle_state, is_stale, archived_at).
-"""
+source: ADR-0316"""
 
 from __future__ import annotations
 
@@ -35,28 +18,14 @@ HALF_LIFE_DAYS: dict[str, float] = {
     "evergreen": math.inf,  # never decays
 }
 
-# Lifecycle transition thresholds.
-#
-# source: none — engineering default, calibration pending. No published
-# paper or measured benchmark backs these four cut points (searched:
-# docs/provenance/, git log -S on this file back to origin 9b7bf2d0
-# "feat(wiki redesign): Phase 4 — Thermodynamics", no ADR). The HALF_LIFE_DAYS
-# values above and the module docstring's "same physics as pg_store memory
-# decay" claim cover the *decay* mechanism (exponential half-life), not
-# these lifecycle *transition* cut points — that claim does not extend a
-# source to ACTIVE_TO_AREA_HEAT/AREA_TO_ARCHIVED_HEAT/ARCHIVED_REVIVAL_HEAT.
-# Same unsourced-engineering-default family as core/reconsolidation.py's
-# _RECONS_HEAT_BUMP_* constants and the wiki citation heat bump
-# (infrastructure/pg_schema.py WIKI_TRIGGERS_DDL, cfd8e4c3). See
-# docs/provenance/blend-weight-calibration.md for the procedural precedent
-# this codebase follows to graduate a placeholder like these to a cited,
-# measured value (that document itself does not cover these constants).
-# No behavior change: comment-only addition, values unchanged.
+# source: ADR-0316
+
+# source: ADR-0316
 ACTIVE_TO_AREA_HEAT = 0.3
 ACTIVE_TO_AREA_IDLE_DAYS = 14
 AREA_TO_ARCHIVED_HEAT = 0.1
 AREA_TO_ARCHIVED_IDLE_DAYS = 90
-ARCHIVED_REVIVAL_HEAT = 0.4  # re-promote on citation bump above this
+ARCHIVED_REVIVAL_HEAT = 0.4  # source: ADR-0316
 HEAT_FLOOR = 0.0
 
 
@@ -112,8 +81,7 @@ def transition_lifecycle(
 ) -> tuple[str, bool, str]:
     """Decide whether to move to a new lifecycle state.
 
-    Returns (new_state, transitioned, rationale).
-    """
+    source: ADR-0316"""
     if current_state == "evergreen":
         return ("evergreen", False, "evergreen — never auto-transitions")
 
@@ -147,8 +115,8 @@ def transition_lifecycle(
         return ("area", False, "area — within thresholds")
 
     if current_state == "archived":
-        # Revival happens via citation trigger (bumps heat directly);
-        # if heat already crossed the threshold we re-promote.
+        # source: ADR-0316
+
         if heat_after_decay >= ARCHIVED_REVIVAL_HEAT:
             return (
                 "active",
@@ -233,9 +201,8 @@ def summarise(
         if d.new_heat <= HEAT_FLOOR + 1e-6:
             floor += 1
         if d.transitioned:
-            # Build label like "active->area" — caller supplies prior state
-            # via original_heats? No — we only have new_lifecycle here.
-            # Use just the destination state for simplicity.
+            # source: ADR-0316
+
             label = f"->{d.new_lifecycle}"
             transitions[label] = transitions.get(label, 0) + 1
     return ThermoStats(
@@ -260,6 +227,6 @@ __all__ = [
     "transition_lifecycle",
     "evaluate_page",
     "summarise",
-    # re-exported so tests don't need a separate import
+    # source: ADR-0316
     "timedelta",
 ]

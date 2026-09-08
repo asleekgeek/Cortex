@@ -1,25 +1,20 @@
-"""Phase 2 (ADR-0046) — pure staleness verdict for wiki pages over AST.
+"""Pure staleness verdict for wiki pages over AST.
 
-Complements ``wiki_staleness`` (file-existence check) with a symbol-
-existence check: a page that cites ``foo.Bar.baz`` is *symbol-stale*
-when that qualified name no longer resolves in AP's code graph.
-
-This module owns the verdict; the handler owns the AP calls. The split
-keeps core I/O-free and testable without mocks.
+source: ADR-0313
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Pages with fewer than this many qualname references are exempt from
-# the symbol-stale signal — one stray dotted reference is not enough
-# evidence. Matches the rationale of ``wiki_staleness.MIN_FILE_REFS``.
+# source: ADR-0313
+
+
 MIN_SYMBOL_REFS = 3
 
-# A page is symbol-stale when this fraction of its references cannot be
-# resolved in AP. 0.5 matches ``wiki_staleness.STALE_THRESHOLD`` so the
-# two signals fire at the same evidence level.
+# source: ADR-0313
+
+
 STALE_THRESHOLD = 0.5
 
 

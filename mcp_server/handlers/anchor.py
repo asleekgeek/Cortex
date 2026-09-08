@@ -139,11 +139,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     content = _build_anchor_content(mem.get("content", ""), reason)
     is_global = args.get("is_global", False)
 
-    # A3 canonical anchor write: heat_base=1.0 + no_decay=TRUE preserves
-    # the anchor-resists-decay semantic via effective_heat(). heat_base_set_at
-    # refreshes the bump timestamp so recall sees a fresh anchor even after
-    # a long idle period.
-    # Source: phase-3-a3-migration-design.md §3.3. Phase 5: pooled write.
+    # source: ADR-0330
     with store.acquire_interactive() as conn:
         conn.execute(
             "UPDATE memories SET heat_base = 1.0, heat_base_set_at = NOW(), "

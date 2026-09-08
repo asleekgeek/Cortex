@@ -1,0 +1,44 @@
+# ADR-0329: mcp_server/handlers/admission.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `mcp_server/handlers/admission.py`; original SHA-256 `3fb081a721ace0f1f94946957e87ad1b6a8a752a6eae01634fc9df64b4705e00`.
+
+## Original docstring, lines 1–25
+
+````text
+"""Phase 5: admission control for MCP tool handlers.
+
+Per-tool semaphore that bounds concurrency so one client cannot
+exhaust the pool or the thread executor by hammering a single tool.
+
+Source: docs/program/phase-5-pool-admission-design.md §1.4, ADR-0045 R6.
+
+Usage (server registration wraps each handler):
+
+    from mcp_server.handlers.admission import admit
+
+    async def wrapped_handler(args):
+        async with admit("recall"):
+            return await original_handler(args)
+
+Design choices (bounded-buffer M/M/c/K per Kleinrock 1975):
+  * Interactive tools default to Semaphore(4) — four concurrent callers
+    match the interactive pool's spare capacity (min=2, max=8) minus
+    headroom for the batch pool fallover case.
+  * Batch tools default to Semaphore(1) — never run two consolidates in
+    parallel; the batch pool only has max=2 slots and one is reserved
+    for wiki_pipeline.
+  * Overrides for specific tools (recall, remember) tune the budget up
+    or down vs the class default based on measured contention.
+"""
+````
+
+## Original comment, lines 35–36
+
+````text
+# Per-tool overrides. Missing tools inherit DEFAULT_SEMAPHORE[class].
+# Source: docs/program/phase-5-pool-admission-design.md §1.4.
+````
+

@@ -1,0 +1,96 @@
+---
+title: "ADR-0304 — mcp_server/core/wiki_identity.py rationale"
+status: accepted
+source: mcp_server/core/wiki_identity.py
+---
+
+# ADR-0304 — mcp_server/core/wiki_identity.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+Stable content IDs for wiki pages — Phase 3 of ADR-2244.
+````
+
+## module — original line 3 (docstring)
+
+````text
+Every wiki page carries an immutable identifier in its frontmatter
+(``id: <uuid>``). Paths become *views* over identifiers, mirroring the
+MediaWiki and TYPO3 conventions surveyed in
+``docs/research/wiki-classification-survey.md``. When a page is renamed
+during migration (Phase 4) the identifier travels with the content; a
+redirect stub at the old path preserves inbound links — see
+``mcp_server.core.wiki_redirect``.
+````
+
+## module — original line 11 (docstring)
+
+````text
+Stable IDs unlock several downstream mechanisms:
+````
+
+## module — original line 13 (docstring)
+
+````text
+* **Backlinks survive rename.** Inbound links can be expressed as
+  ``[[id:abc-123]]`` and resolve regardless of the current slug.
+* **Bulk re-classification is reversible.** Phase 4 will re-bucket
+  thousands of pages; the ID provides the ground-truth identity for
+  before/after diffing.
+* **Audit trail.** Tools that mutate pages can record the operation
+  against the page ID rather than the path, so a rename plus an edit
+  is not double-counted as two unrelated pages.
+````
+
+## module — original line 22 (docstring)
+
+````text
+This module is pure logic — no I/O. The caller reads the page, hands
+us the parsed frontmatter, and writes any changes back.
+````
+
+## module — original line 25 (docstring)
+
+````text
+Identifier format
+-----------------
+````
+
+## module — original line 28 (docstring)
+
+````text
+UUID4 (RFC 9562) — 128 bits, ~5.3 × 10³⁶ space. Collisions are
+unreachable in practice for a single user's wiki. Serialised as the
+canonical 36-character hex form (e.g. ``adfb8a1f-1b58-4f0c-9a7e-
+4c5e6c8d9f12``). No structured embedding in the path — paths remain
+human-readable slugs.
+````
+
+## module — original line 34 (docstring)
+
+````text
+Pre-existing ID fields in the wiki — ``memory_id`` (numeric), ``draft_id``
+— are preserved as-is. ``id`` is a separate axis that uniquely names the
+PAGE, regardless of which memory or draft it was synthesised from.
+
+````
+
+## generate_page_id — original line 86 (docstring)
+
+````text
+    UUID4 over ``uuid.uuid1`` because the latter leaks the host MAC
+    address into the identifier, which is undesirable for a knowledge
+    base that may be exported or shared.
+    
+````
+
+## extract_page_id — original line 96 (docstring)
+
+````text
+    Returns None if the field is missing or malformed. Callers that
+    need a guaranteed ID should use ``ensure_page_id`` instead.
+    
+````

@@ -1,0 +1,14 @@
+# ADR-0339: mcp_server/handlers/codebase_analyze_batch.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `mcp_server/handlers/codebase_analyze_batch.py`; original SHA-256 `ab70f92587bb5d5a3965cbaed38aa0f8663032254e2d82d1ae541610004c1c43`.
+
+## Original comment, lines 68–69
+
+````text
+# A validation error ends preparation; the same error aborts replay at that
+    # item, so later jobs deliberately receive no embedding or model work.
+````
+

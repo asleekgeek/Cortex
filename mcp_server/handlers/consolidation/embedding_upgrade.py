@@ -1,17 +1,6 @@
 """Embedding-upgrade cycle: re-embed fallback memories once the model arrives.
 
-The scheduled other half of the #169 zero-download fallback. When a session ran
-on the download-free algorithmic provider (``embedding_model = 'fallback'``) and
-a later session finds the neural model present, this maintenance cycle re-embeds
-those memories with the neural encoder and restamps them 'neural' — so the
-store transparently upgrades to full-fidelity vectors over time instead of
-leaving two incompatible spaces side by side forever.
-
-Bounded per run (``_MAX_UPGRADE_PER_CYCLE``) so a large backlog is drained
-across several consolidations rather than in one blocking pass, mirroring the
-other streaming cycles. No-op when the current encoder is still fallback (no
-neural model to upgrade to) or when the store has no fallback worklist.
-"""
+source: ADR-0358"""
 
 from __future__ import annotations
 
@@ -23,9 +12,7 @@ from mcp_server.infrastructure.memory_store import MemoryStore
 
 logger = logging.getLogger(__name__)
 
-# source: matches sleep_compute.run_sleep_compute_streamed's max_reembed=100
-# bound (mcp_server/core/sleep_compute.py) — the same per-cycle re-embed budget
-# already used for stale/compressed embeddings, reused here for parity.
+# source: ADR-0358
 _MAX_UPGRADE_PER_CYCLE = 100
 
 

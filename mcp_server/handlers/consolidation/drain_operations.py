@@ -1,18 +1,6 @@
 """Per-page drain routines for the headless authoring worker.
 
-Issues ``claude -p`` calls and rewrites wiki pages. Split out of
-``headless_authoring`` (Fowler: Move Function); anchor-page authoring
-is a separate concern, split further into ``anchor_authoring`` (issue
-#276). The public import surface stays ``headless_authoring``, which
-these names re-export.
-
-Import-cycle note (issue #237): a module-top ``from . import
-headless_authoring as _root`` would deadlock a fresh interpreter
-importing this module before ``headless_authoring`` finishes (it
-imports these functions back at load time). Each function resolves
-``_root`` lazily at call time instead — every
-``monkeypatch.setattr(headless_authoring, ...)`` stays observed.
-"""
+source: ADR-0357"""
 
 from __future__ import annotations
 
@@ -151,7 +139,7 @@ async def drain_one(
     Post: the gap marker is replaced on disk; result reflects the outcome
     (filled/failed/skipped).
     """
-    # Deferred import (issue #237): see module docstring's import-cycle note.
+    # source: ADR-0357
     from . import headless_authoring as _root  # noqa: PLC0415 — import cycle (partner: headless_authoring, #237)
 
     if invoke is None:
@@ -270,11 +258,8 @@ async def drain_all_gaps_on_page(
 ) -> list[Any]:
     """Fill every curation gap on one page in a single ``claude -p`` call.
 
-    One request/page (vs. ``drain_one``'s one/gap) is ~7-8x faster and
-    keeps cross-references coherent; gap set is a LIVE AUDIT. One
-    DrainResult per gap; a failure on one gap leaves others intact.
-    """
-    # Deferred import (issue #237): see module docstring's import-cycle note.
+    source: ADR-0357"""
+    # source: ADR-0357
     from . import headless_authoring as _root  # noqa: PLC0415 — import cycle (partner: headless_authoring, #237)
 
     if invoke is None:

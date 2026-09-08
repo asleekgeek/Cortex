@@ -1,0 +1,53 @@
+---
+title: "ADR-0308 — mcp_server/core/wiki_rule_engine.py rationale"
+status: accepted
+source: mcp_server/core/wiki_rule_engine.py
+---
+
+# ADR-0308 — mcp_server/core/wiki_rule_engine.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+The wiki schema loader reads `wiki/_rules/*.md` files and returns a
+list[ClassifierRule]. This module APPLIES those rules: given a memory
+content + tags, return either the matched target kind or 'reject'.
+````
+
+## module — original line 7 (docstring)
+
+````text
+A rule has:
+  - pattern_kind: 'prefix' | 'regex' | 'substring' | 'tag'
+  - pattern: the literal/regex/tag value to match
+  - target_kind: the kind to assign on match, or None to reject
+  - weight: tie-breaker when multiple rules match (higher wins)
+  - note: human-readable comment
+````
+
+## module — original line 14 (docstring)
+
+````text
+Rules are evaluated in file-order; the first match wins UNLESS
+multiple rules tie at the same iteration step, in which case weight
+breaks the tie.
+````
+
+## module — original line 18 (docstring)
+
+````text
+Pure logic — no I/O. The classifier composition root loads rules
+once (registry caching) and calls apply_rules per memory.
+
+````
+
+## _matches — original line 45 (docstring)
+
+````text
+    All text matchers (prefix/substring/regex) are case-insensitive,
+    matching the user expectation: "the bug was" matches "The bug was".
+    Tag matching is case-insensitive against a pre-lowered tag set.
+    
+````

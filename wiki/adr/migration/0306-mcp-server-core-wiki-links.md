@@ -1,0 +1,38 @@
+---
+title: "ADR-0306 — mcp_server/core/wiki_links.py rationale"
+status: accepted
+source: mcp_server/core/wiki_links.py
+---
+
+# ADR-0306 — mcp_server/core/wiki_links.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Links live inside each page under a ``## Related`` section, rendered as
+a sorted bullet list. ``apply_link`` is idempotent: adding the same link
+twice produces identical output. Every relation has a fixed inverse so
+``wiki_link(a, b, rel)`` can update both pages with the correct symmetry.
+````
+
+## module — original line 8 (docstring)
+
+````text
+The relation vocabulary is intentionally small and hardcoded — extending
+it requires a code change so consumers can rely on canonical semantics.
+
+````
+
+## module — original line 16 (comment)
+
+````text
+# Fixed vocabulary: relation → its inverse.
+````
+
+## module — original line 88 (comment)
+
+````text
+# Drop trailing blank lines from ``before`` so re-rendering is stable.
+````

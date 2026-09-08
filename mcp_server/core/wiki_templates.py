@@ -1,22 +1,6 @@
 """Wiki page templates + naming conventions.
 
-Source: user directive "agent or llm on side to write with template and
-naming conventions — keep the documentation organized".
-
-Each page kind has:
-  * A canonical front-matter schema (required fields + types)
-  * A template body with labelled sections
-  * A naming convention (slug pattern + path discipline)
-
-The doc-grooming agent uses these templates to rewrite pages that drift
-off-template. Human authors (or LLM-authored pages) should also follow
-them — the agent won't overwrite a hand-written page whose front-matter
-declares ``grooming: manual``.
-
-All templates are pure strings with ``{{var}}`` placeholders. The
-grooming agent fills placeholders from the existing page content +
-metadata before rewriting.
-"""
+source: ADR-0315"""
 
 from __future__ import annotations
 
@@ -25,11 +9,7 @@ from typing import Final
 # ── Required front-matter fields per page kind ──────────────────────────
 
 REQUIRED_FRONTMATTER: Final[dict[str, tuple[str, ...]]] = {
-    # Legacy kinds — kept readable; values match pre-ADR-2244 contracts.
-    # 2026-05-18: ADRs now double as task-records. The body MUST carry the
-    # five mandatory sections (entry/mandatory/how/result/serves) so every
-    # completed task has the same causal-chain documentation. Existing
-    # context/decision/consequences fields are preserved for back-compat.
+    # source: ADR-0315
     "adr": (
         "id",
         "title",
@@ -50,10 +30,7 @@ REQUIRED_FRONTMATTER: Final[dict[str, tuple[str, ...]]] = {
     "notes": ("title", "updated"),
     "journal": ("title", "date"),
     "files": ("file_path", "language", "updated"),
-    # Modern kinds (ADR-2244 §4). Every modern kind requires the 4-tuple
-    # axes (kind, lifecycle, audience, provenance) plus kind-specific
-    # fields.  Note: ``kind`` itself is a required frontmatter field for
-    # *every* modern page, validated by ``wiki_schema_loader``.
+    # source: ADR-0315
     "tutorial": (
         "title",
         "kind",
@@ -98,9 +75,9 @@ REQUIRED_FRONTMATTER: Final[dict[str, tuple[str, ...]]] = {
     ),
 }
 
-# Valid values for `status` field (ADR + specs).
-# Note: lifecycle (ADR-2244 §4.2) is a separate axis; the legacy ``status``
-# field is preserved for backward compat on ADR/spec pages.
+# source: ADR-0315
+
+
 STATUS_VALUES: Final[dict[str, tuple[str, ...]]] = {
     "adr": ("proposed", "accepted", "rejected", "deprecated", "superseded"),
     "specs": ("draft", "review", "accepted", "implemented", "deprecated"),
@@ -419,7 +396,7 @@ updated: {{updated}}
 """
 
 
-# ── ADR-2244 modern-kind templates ───────────────────────────────────────
+# source: ADR-0315
 
 
 TUTORIAL_TEMPLATE = """---
@@ -574,7 +551,7 @@ updated: {{updated}}
 
 
 TEMPLATES: Final[dict[str, str]] = {
-    # Legacy kinds.
+    # source: ADR-0315
     "adr": ADR_TEMPLATE,
     "specs": SPEC_TEMPLATE,
     "guides": GUIDE_TEMPLATE,
@@ -584,7 +561,7 @@ TEMPLATES: Final[dict[str, str]] = {
     "notes": NOTE_TEMPLATE,
     "journal": JOURNAL_TEMPLATE,
     "files": FILE_TEMPLATE,
-    # ADR-2244 modern kinds.
+    # source: ADR-0315
     "tutorial": TUTORIAL_TEMPLATE,
     "how-to": HOWTO_TEMPLATE,
     "runbook": RUNBOOK_TEMPLATE,

@@ -1,16 +1,13 @@
 """Candidate discovery for the headless authoring worker (no LLM calls).
 
-Walks the wiki for pages with curation gaps and scans projects for
-missing groundable anchor pages. Split out of ``headless_authoring``
-to keep that module under the size limit (Fowler: Move Function).
-
 Patchability contract: ``run_headless_authoring_cycle`` resolves
 ``_scan_pages_with_gaps`` and ``_collect_anchor_candidates`` at call
 time as attributes of the ``headless_authoring`` module (where they
 are re-exported), so tests that ``monkeypatch.setattr(ha, ...)`` are
 observed. ``_AnchorCandidate`` is read from the root module the same
 way so the constructed type matches the re-exported one.
-"""
+
+source: ADR-0345"""
 
 from __future__ import annotations
 
@@ -42,11 +39,7 @@ def _gap_entry_for_page(
 ) -> tuple[Path, dict[str, Any], str] | None:
     """Return ``(path, meta, body)`` for ``md`` if it has curation gaps, else None.
 
-    A page is "with gaps" when EITHER the frontmatter declares
-    ``curation_gaps`` non-empty OR a live audit of the body shows
-    missing canonical sections (only for kind=reference file-docs —
-    ADRs / specs / guides have their own section sets).
-    """
+    source: ADR-0345"""
     rel = md.relative_to(wiki_root)
     if any(part.startswith((".", "_")) for part in rel.parts):
         return None
@@ -58,8 +51,7 @@ def _gap_entry_for_page(
     gaps = meta.get("curation_gaps")
     if isinstance(gaps, list) and gaps:
         return (md, meta, body)
-    # No frozen gaps — but a file-doc might still be missing sections
-    # that were added to the catalogue after generation.
+    # source: ADR-0345
     if (
         missing_sections is not None
         and meta.get("kind") == "reference"
@@ -78,9 +70,7 @@ def _gap_entry_for_page(
 def _scan_pages_with_gaps(wiki_root: Path) -> list[tuple[Path, dict[str, Any], str]]:
     """Walk the wiki and return ``(path, meta, body)`` for pages with gaps.
 
-    See ``_gap_entry_for_page`` for the per-page criteria (frozen
-    frontmatter gaps OR a live section audit for file-docs).
-    """
+    source: ADR-0345"""
     if not wiki_root.is_dir():
         return []
     missing_sections = _load_missing_sections_probe()
@@ -101,9 +91,7 @@ def _extend_anchor_candidates_for_domain(
 ) -> None:
     """Append ``domain``'s missing groundable anchor candidates in place.
 
-    Stops appending once ``candidates`` reaches ``max_drains`` (checked
-    after every append, matching the original inline loop's early exit).
-    """
+    source: ADR-0345"""
     src_root = _project_source_root(domain)
     if not src_root:
         return
@@ -136,18 +124,8 @@ def _collect_anchor_candidates(
 ) -> list[Any]:
     """Scan for missing groundable anchor candidates without calling claude.
 
-    Pre-condition:  ``wiki_root`` is an existing directory; ``max_drains`` > 0.
-    Post-condition: returned list has at most ``max_drains`` items, each
-                    representing a missing scope that passes the groundable
-                    filter and has a resolvable source root.
-    """
-    # Deferred import (issue #237): headless_authoring imports this function
-    # back at load time, so a module-top-level `from . import
-    # headless_authoring` here would deadlock a fresh interpreter that
-    # imports candidate_scan before headless_authoring finishes initializing.
-    # Resolved at call time instead — the constructed type still matches the
-    # re-exported ``headless_authoring._AnchorCandidate`` exactly (same
-    # module object, no copy).
+    source: ADR-0345"""
+    # source: ADR-0345
     from . import headless_authoring as _root  # noqa: PLC0415 — import cycle (partner: headless_authoring, #237)
 
     try:

@@ -1,0 +1,48 @@
+# ADR-0332: mcp_server/handlers/auto_task_record_writer.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `mcp_server/handlers/auto_task_record_writer.py`; original SHA-256 `3317099a3b529e095574f9c4d714f6c27955435b672320d85d8cdf91213beada`.
+
+## Original docstring, lines 1–18
+
+````text
+"""Compose + write a task-record ADR draft at session end.
+
+Pulled out of ``record_session_end`` so the handler stays under the size
+limit and so the writer is unit-testable on its own.
+
+The flow:
+
+  1. Gather session evidence — commits in this session window, memories
+     tagged with decision/lesson/fix/feature, files changed.
+  2. Skip silently if the session wasn't substantive
+     (``is_substantive`` returns False).
+  3. Pick the next ADR number for the domain — scans
+     ``<wiki>/adr/<domain>/`` for the highest existing ``NNNN-*.md``.
+  4. Build the draft via ``build_task_record`` and write the page via
+     the existing wiki write path.
+
+Failure is non-fatal — record_session_end must continue regardless.
+"""
+````
+
+## Original docstring, lines 44–49
+
+````text
+"""Pick the next free ADR number for ``domain``.
+
+    Scans ``<wiki>/adr/<domain>/`` for filenames matching
+    ``NNNN-<slug>.md`` and returns max+1. Returns 1 when the directory
+    is empty or missing.
+    """
+````
+
+## Original comment, lines 142–143
+
+````text
+# source: cap documented in the _session_memories docstring ("at most 50
+# entries to keep the draft tractable")
+````
+

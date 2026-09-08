@@ -988,6 +988,266 @@
       "mirror": "ADR-0289-mcp-server-core-unified-search-fusion.md",
       "path": "adr/migration/0289-mcp-server-core-unified-search-fusion.md"
     },
+    "ADR-0290": {
+      "mirror": "ADR-0290-mcp-server-core-value-learning.md",
+      "path": "adr/migration/0290-mcp-server-core-value-learning.md"
+    },
+    "ADR-0291": {
+      "mirror": "ADR-0291-mcp-server-core-wiki-axis-defaults.md",
+      "path": "adr/migration/0291-mcp-server-core-wiki-axis-defaults.md"
+    },
+    "ADR-0292": {
+      "mirror": "ADR-0292-mcp-server-core-wiki-axis-registry.md",
+      "path": "adr/migration/0292-mcp-server-core-wiki-axis-registry.md"
+    },
+    "ADR-0293": {
+      "mirror": "ADR-0293-mcp-server-core-wiki-citation-seed.md",
+      "path": "adr/migration/0293-mcp-server-core-wiki-citation-seed.md"
+    },
+    "ADR-0294": {
+      "mirror": "ADR-0294-mcp-server-core-wiki-classifier.md",
+      "path": "adr/migration/0294-mcp-server-core-wiki-classifier.md"
+    },
+    "ADR-0295": {
+      "mirror": "ADR-0295-mcp-server-core-wiki-classifier-gates.md",
+      "path": "adr/migration/0295-mcp-server-core-wiki-classifier-gates.md"
+    },
+    "ADR-0296": {
+      "mirror": "ADR-0296-mcp-server-core-wiki-classifier-patterns.md",
+      "path": "adr/migration/0296-mcp-server-core-wiki-classifier-patterns.md"
+    },
+    "ADR-0297": {
+      "mirror": "ADR-0297-mcp-server-core-wiki-coverage.md",
+      "path": "adr/migration/0297-mcp-server-core-wiki-coverage.md"
+    },
+    "ADR-0298": {
+      "mirror": "ADR-0298-mcp-server-core-wiki-coverage-dashboard.md",
+      "path": "adr/migration/0298-mcp-server-core-wiki-coverage-dashboard.md"
+    },
+    "ADR-0299": {
+      "mirror": "ADR-0299-mcp-server-core-wiki-curation-gaps.md",
+      "path": "adr/migration/0299-mcp-server-core-wiki-curation-gaps.md"
+    },
+    "ADR-0300": {
+      "mirror": "ADR-0300-mcp-server-core-wiki-domain-backfill.md",
+      "path": "adr/migration/0300-mcp-server-core-wiki-domain-backfill.md"
+    },
+    "ADR-0301": {
+      "mirror": "ADR-0301-mcp-server-core-wiki-drift.md",
+      "path": "adr/migration/0301-mcp-server-core-wiki-drift.md"
+    },
+    "ADR-0302": {
+      "mirror": "ADR-0302-mcp-server-core-wiki-file-doc-skeleton.md",
+      "path": "adr/migration/0302-mcp-server-core-wiki-file-doc-skeleton.md"
+    },
+    "ADR-0303": {
+      "mirror": "ADR-0303-mcp-server-core-wiki-groomer.md",
+      "path": "adr/migration/0303-mcp-server-core-wiki-groomer.md"
+    },
+    "ADR-0304": {
+      "mirror": "ADR-0304-mcp-server-core-wiki-identity.md",
+      "path": "adr/migration/0304-mcp-server-core-wiki-identity.md"
+    },
+    "ADR-0305": {
+      "mirror": "ADR-0305-mcp-server-core-wiki-kind-detection.md",
+      "path": "adr/migration/0305-mcp-server-core-wiki-kind-detection.md"
+    },
+    "ADR-0306": {
+      "mirror": "ADR-0306-mcp-server-core-wiki-links.md",
+      "path": "adr/migration/0306-mcp-server-core-wiki-links.md"
+    },
+    "ADR-0307": {
+      "mirror": "ADR-0307-mcp-server-core-wiki-redirect.md",
+      "path": "adr/migration/0307-mcp-server-core-wiki-redirect.md"
+    },
+    "ADR-0308": {
+      "mirror": "ADR-0308-mcp-server-core-wiki-rule-engine.md",
+      "path": "adr/migration/0308-mcp-server-core-wiki-rule-engine.md"
+    },
+    "ADR-0309": {
+      "mirror": "ADR-0309-mcp-server-core-wiki-source-backfill.md",
+      "path": "adr/migration/0309-mcp-server-core-wiki-source-backfill.md"
+    },
+    "ADR-0310": {
+      "mirror": "ADR-0310-mcp-server-core-wiki-staleness.md",
+      "path": "adr/migration/0310-mcp-server-core-wiki-staleness.md"
+    },
+    "ADR-0311": {
+      "mirror": "ADR-0311-mcp-server-core-wiki-stub-detector.md",
+      "path": "adr/migration/0311-mcp-server-core-wiki-stub-detector.md"
+    },
+    "ADR-0312": {
+      "mirror": "ADR-0312-mcp-server-core-wiki-symbol-extract.md",
+      "path": "adr/migration/0312-mcp-server-core-wiki-symbol-extract.md"
+    },
+    "ADR-0313": {
+      "mirror": "ADR-0313-mcp-server-core-wiki-symbol-verify.md",
+      "path": "adr/migration/0313-mcp-server-core-wiki-symbol-verify.md"
+    },
+    "ADR-0314": {
+      "mirror": "ADR-0314-mcp-server-core-wiki-sync.md",
+      "path": "adr/migration/0314-mcp-server-core-wiki-sync.md"
+    },
+    "ADR-0315": {
+      "mirror": "ADR-0315-mcp-server-core-wiki-templates.md",
+      "path": "adr/migration/0315-mcp-server-core-wiki-templates.md"
+    },
+    "ADR-0316": {
+      "mirror": "ADR-0316-mcp-server-core-wiki-thermodynamics.md",
+      "path": "adr/migration/0316-mcp-server-core-wiki-thermodynamics.md"
+    },
+    "ADR-0317": {
+      "mirror": "ADR-0317-mcp-server-core-wiki-title.md",
+      "path": "adr/migration/0317-mcp-server-core-wiki-title.md"
+    },
+    "ADR-0318": {
+      "mirror": "ADR-0318-mcp-server-core-wiki-view-executor.md",
+      "path": "adr/migration/0318-mcp-server-core-wiki-view-executor.md"
+    },
+    "ADR-0319": {
+      "mirror": "ADR-0319-mcp-server-core-write-gate.md",
+      "path": "adr/migration/0319-mcp-server-core-write-gate.md"
+    },
+    "ADR-0320": {
+      "mirror": "ADR-0320-mcp-server-core-write-gate-calibration.md",
+      "path": "adr/migration/0320-mcp-server-core-write-gate-calibration.md"
+    },
+    "ADR-0321": {
+      "mirror": "ADR-0321-mcp-server-core-write-post-store.md",
+      "path": "adr/migration/0321-mcp-server-core-write-post-store.md"
+    },
+    "ADR-0322": {
+      "mirror": "ADR-0322-mcp-server-doctor.md",
+      "path": "adr/migration/0322-mcp-server-doctor.md"
+    },
+    "ADR-0323": {
+      "mirror": "ADR-0323-mcp-server-doctor-mcp.md",
+      "path": "adr/migration/0323-mcp-server-doctor-mcp.md"
+    },
+    "ADR-0326": {
+      "mirror": "ADR-0326-mcp-server-handlers-telemetry-wrap-py.md",
+      "path": "adr/migration/0326-mcp-server-handlers-telemetry-wrap-py.md"
+    },
+    "ADR-0327": {
+      "mirror": "ADR-0327-mcp-server-handlers-tool-meta-py.md",
+      "path": "adr/migration/0327-mcp-server-handlers-tool-meta-py.md"
+    },
+    "ADR-0328": {
+      "mirror": "ADR-0328-mcp-server-handlers-add-rule-py.md",
+      "path": "adr/migration/0328-mcp-server-handlers-add-rule-py.md"
+    },
+    "ADR-0329": {
+      "mirror": "ADR-0329-mcp-server-handlers-admission-py.md",
+      "path": "adr/migration/0329-mcp-server-handlers-admission-py.md"
+    },
+    "ADR-0330": {
+      "mirror": "ADR-0330-mcp-server-handlers-anchor-py.md",
+      "path": "adr/migration/0330-mcp-server-handlers-anchor-py.md"
+    },
+    "ADR-0331": {
+      "mirror": "ADR-0331-mcp-server-handlers-assess-coverage-py.md",
+      "path": "adr/migration/0331-mcp-server-handlers-assess-coverage-py.md"
+    },
+    "ADR-0332": {
+      "mirror": "ADR-0332-mcp-server-handlers-auto-task-record-writer-py.md",
+      "path": "adr/migration/0332-mcp-server-handlers-auto-task-record-writer-py.md"
+    },
+    "ADR-0333": {
+      "mirror": "ADR-0333-mcp-server-handlers-backfill-helpers-py.md",
+      "path": "adr/migration/0333-mcp-server-handlers-backfill-helpers-py.md"
+    },
+    "ADR-0334": {
+      "mirror": "ADR-0334-mcp-server-handlers-backfill-memories-py.md",
+      "path": "adr/migration/0334-mcp-server-handlers-backfill-memories-py.md"
+    },
+    "ADR-0335": {
+      "mirror": "ADR-0335-mcp-server-handlers-change-impact-py.md",
+      "path": "adr/migration/0335-mcp-server-handlers-change-impact-py.md"
+    },
+    "ADR-0336": {
+      "mirror": "ADR-0336-mcp-server-handlers-check-setup-py.md",
+      "path": "adr/migration/0336-mcp-server-handlers-check-setup-py.md"
+    },
+    "ADR-0337": {
+      "mirror": "ADR-0337-mcp-server-handlers-checkpoint-py.md",
+      "path": "adr/migration/0337-mcp-server-handlers-checkpoint-py.md"
+    },
+    "ADR-0338": {
+      "mirror": "ADR-0338-mcp-server-handlers-codebase-analyze-py.md",
+      "path": "adr/migration/0338-mcp-server-handlers-codebase-analyze-py.md"
+    },
+    "ADR-0339": {
+      "mirror": "ADR-0339-mcp-server-handlers-codebase-analyze-batch-py.md",
+      "path": "adr/migration/0339-mcp-server-handlers-codebase-analyze-batch-py.md"
+    },
+    "ADR-0340": {
+      "mirror": "ADR-0340-mcp-server-handlers-codebase-analyze-helpers-py.md",
+      "path": "adr/migration/0340-mcp-server-handlers-codebase-analyze-helpers-py.md"
+    },
+    "ADR-0341": {
+      "mirror": "ADR-0341-mcp-server-handlers-consolidate-py.md",
+      "path": "adr/migration/0341-mcp-server-handlers-consolidate-py.md"
+    },
+    "ADR-0343": {
+      "mirror": "ADR-0343-mcp-server-handlers-consolidation-anchor-authoring-py.md",
+      "path": "adr/migration/0343-mcp-server-handlers-consolidation-anchor-authoring-py.md"
+    },
+    "ADR-0344": {
+      "mirror": "ADR-0344-mcp-server-handlers-consolidation-authoring-prompts-py.md",
+      "path": "adr/migration/0344-mcp-server-handlers-consolidation-authoring-prompts-py.md"
+    },
+    "ADR-0345": {
+      "mirror": "ADR-0345-mcp-server-handlers-consolidation-candidate-scan-py.md",
+      "path": "adr/migration/0345-mcp-server-handlers-consolidation-candidate-scan-py.md"
+    },
+    "ADR-0346": {
+      "mirror": "ADR-0346-mcp-server-handlers-consolidation-cascade-py.md",
+      "path": "adr/migration/0346-mcp-server-handlers-consolidation-cascade-py.md"
+    },
+    "ADR-0347": {
+      "mirror": "ADR-0347-mcp-server-handlers-consolidation-change-remediation-pass-py.md",
+      "path": "adr/migration/0347-mcp-server-handlers-consolidation-change-remediation-pass-py.md"
+    },
+    "ADR-0349": {
+      "mirror": "ADR-0349-mcp-server-handlers-consolidation-claude-cli-py.md",
+      "path": "adr/migration/0349-mcp-server-handlers-consolidation-claude-cli-py.md"
+    },
+    "ADR-0350": {
+      "mirror": "ADR-0350-mcp-server-handlers-consolidation-claude-invoke-py.md",
+      "path": "adr/migration/0350-mcp-server-handlers-consolidation-claude-invoke-py.md"
+    },
+    "ADR-0351": {
+      "mirror": "ADR-0351-mcp-server-handlers-consolidation-cls-py.md",
+      "path": "adr/migration/0351-mcp-server-handlers-consolidation-cls-py.md"
+    },
+    "ADR-0352": {
+      "mirror": "ADR-0352-mcp-server-handlers-consolidation-compression-py.md",
+      "path": "adr/migration/0352-mcp-server-handlers-consolidation-compression-py.md"
+    },
+    "ADR-0353": {
+      "mirror": "ADR-0353-mcp-server-handlers-consolidation-cycle-orchestration-py.md",
+      "path": "adr/migration/0353-mcp-server-handlers-consolidation-cycle-orchestration-py.md"
+    },
+    "ADR-0354": {
+      "mirror": "ADR-0354-mcp-server-handlers-consolidation-cycle-types-py.md",
+      "path": "adr/migration/0354-mcp-server-handlers-consolidation-cycle-types-py.md"
+    },
+    "ADR-0355": {
+      "mirror": "ADR-0355-mcp-server-handlers-consolidation-decay-py.md",
+      "path": "adr/migration/0355-mcp-server-handlers-consolidation-decay-py.md"
+    },
+    "ADR-0356": {
+      "mirror": "ADR-0356-mcp-server-handlers-consolidation-distill-drain-py.md",
+      "path": "adr/migration/0356-mcp-server-handlers-consolidation-distill-drain-py.md"
+    },
+    "ADR-0357": {
+      "mirror": "ADR-0357-mcp-server-handlers-consolidation-drain-operations-py.md",
+      "path": "adr/migration/0357-mcp-server-handlers-consolidation-drain-operations-py.md"
+    },
+    "ADR-0358": {
+      "mirror": "ADR-0358-mcp-server-handlers-consolidation-embedding-upgrade-py.md",
+      "path": "adr/migration/0358-mcp-server-handlers-consolidation-embedding-upgrade-py.md"
+    },
     "ADR-0795": {
       "mirror": "ADR-0795-clusterfuzzlite-Dockerfile.md",
       "path": "adr/migration/0795-clusterfuzzlite-Dockerfile.md"

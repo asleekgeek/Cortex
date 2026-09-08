@@ -1,0 +1,47 @@
+# ADR-0356: mcp_server/handlers/consolidation/distill_drain.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `mcp_server/handlers/consolidation/distill_drain.py`; original SHA-256 `f46a7418763f45ee89b96d6cf9977382d4c263f18e007b08fbf9b2eb26f91b35`.
+
+## Original docstring, lines 1–35
+
+````text
+"""Distillation leg of the scheduled groomer (G-3) — drains
+``curate_distill`` jobs via ``claude -p``, reusing headless_authoring's
+budget/concurrency/sandbox machinery.
+
+Unlike the wiki leg (``cycle_orchestration.run_headless_authoring_cycle``),
+where the ``claude -p`` response is TEXT that the *parent* process writes
+to disk via ``wiki_write.write_governed_page``, here the LLM is expected
+to call ``remember`` itself over MCP inside the child process:
+``core.distillation_reporting.build_distill_prompt`` (reused verbatim,
+INC7.8/M-D8 — not reimplemented here) already encodes the exact required
+``remember(...)`` call shape (tags include the dossier's idempotence
+marker + one ``derived-src:<id>`` per source, ``write_class='deliberate'``)
+in the prompt text itself. This module never calls ``remember`` or
+``wiki_write`` — the child's own MCP tool call, if it makes one, is the
+only write this leg can produce; this module only counts outcomes.
+
+Precondition for any write at all: ``CORTEX_HEADLESS_AGENTS=1`` (the
+default). Solo mode (``CORTEX_HEADLESS_AGENTS=0``) passes ``--safe-mode``
+to the child, which disables MCP servers entirely (``claude_cli.py``'s own
+documented contract) — a distill job's ``remember`` call could not
+possibly reach the DB under solo mode. This module detects that up front
+and reports every job as ``skipped-solo-mode`` rather than spending a
+``claude -p`` call that is structurally unable to write anything.
+
+INVARIANT (grooming-continu design doc, contractual, never relaxed): this
+module never imports or calls ``lesson_promotion.handler``. Promotion
+stays exclusively a human-in-session decision — see
+``mcp_server/handlers/lesson_promotion.py``'s own docstring ("No
+auto-promotion, ever: a rule reshapes every future recall ... so the
+decision stays with the LLM/user reading the job"). The reminder appended
+to every prompt below is advisory defence-in-depth only (matches
+``claude_cli.py``'s own "Advisory (NOT counted as enforcing)" language for
+its untrusted-content delimiter) — MCP tool calls are not gated by
+``--disallowedTools``, so this is not a hard sandbox boundary.
+"""
+````
+

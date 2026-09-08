@@ -1,23 +1,7 @@
 """Wiki sync — decide whether a stored memory should be promoted to an
 authored wiki page, and build the page payload.
 
-Pure logic, no I/O. The caller (handlers/wiki_memory_sync.py::sync_memory —
-the composition root wiring this classifier to infrastructure/wiki_store.py)
-is responsible for writing the returned markdown to disk.
-
-Design intent
--------------
-The wiki is an *authored* layer, not a projection of every memory. Only
-memories tagged with a "decision-shaped" tag (decision, adr, architecture,
-spec, design) are promoted. The promotion produces a ``note``-kind page
-per memory: the ADR / spec structured templates stay reserved for
-explicit `wiki_adr` / `wiki_write` tool calls where the caller supplies
-the structure.
-
-Filename format: ``notes/<memory_id>-<slug>.md``. Including the memory ID
-in the filename makes sync idempotent — a second call with the same
-memory ID overwrites the same file rather than creating duplicates.
-"""
+source: ADR-0314"""
 
 from __future__ import annotations
 
@@ -58,7 +42,7 @@ def _derive_title(content: str) -> str:
     first_line = content.strip().splitlines()[0].strip()
     # Strip markdown heading prefixes (## , ### , etc.).
     first_line = re.sub(r"^#+\s*", "", first_line)
-    # Strip common prefixes like "Decision:" or "Rule:".
+    # source: ADR-0314
     for prefix in ("Decision:", "Rule:", "Lesson:", "Note:"):
         if first_line.startswith(prefix):
             first_line = first_line[len(prefix) :].strip()
@@ -68,9 +52,9 @@ def _derive_title(content: str) -> str:
     return first_line
 
 
-# ADR-2244 §4.1: modern kind → directory. All 8 modern kinds map to their
-# own directory under wiki/. The classifier never returns a legacy kind
-# from v2; legacy directories stay populated only by pre-migration content.
+# source: ADR-0314
+
+
 _MODERN_KIND_TO_DIR = {
     "tutorial": "tutorial",
     "how-to": "how-to",
@@ -92,15 +76,7 @@ def build_from_memory(
 ) -> tuple[str, str] | None:
     """Build (relative_path, markdown) for a memory, or None if rejected.
 
-    Uses the v2 classifier (ADR-2244) to determine the 4-tuple
-    classification, routes to the modern kind directory, and writes
-    frontmatter conforming to the new schema.
-
-    Routing fix (Task #8): file-documentation content from
-    ``codebase_analyze`` now lands in ``reference/<domain>/`` with
-    ``provenance=auto-generated`` instead of being silently dumped in
-    ``notes/`` (which had no ``file`` mapping in the old _KIND_TO_DIR).
-    """
+    source: ADR-0314"""
     classification = classify_memory(content, tags)
     if classification is None:
         return None
@@ -116,10 +92,8 @@ def build_from_memory(
     safe_domain = slugify(domain, max_len=40) if domain else "_general"
     rel = f"{dir_name}/{safe_domain}/{filename}"
 
-    # Frontmatter from the 4-tuple; body from the existing note template.
-    # Phase 3 of ADR-2244: every page carries a stable ``id`` (UUID4) in
-    # its frontmatter so renames can leave redirect stubs that survive
-    # bulk migration. See ``mcp_server.core.wiki_identity``.
+    # source: ADR-0314
+
     fm = classification_to_frontmatter(classification)
     fm["id"] = generate_page_id()
     fm["title"] = title
@@ -136,15 +110,12 @@ def _render_with_frontmatter(
     title: str,
     body: str,
 ) -> str:
-    """Render a wiki page with explicit ADR-2244 frontmatter.
+    """Render a wiki page with explicit classification frontmatter.
 
-    Falls back to ``build_note`` for the body shape so legacy callers
-    continue to see a familiar note structure. The frontmatter is the
-    only thing that changes — the body remains the existing template
-    output until per-kind templates land in Phase 1.D.
+    source: ADR-0314
     """
-    # Use the existing note builder for the body shape, then replace its
-    # frontmatter with the 4-tuple-aware version.
+    # source: ADR-0314
+
     raw_tags = frontmatter.get("tags")
     note_md = build_note(
         title=title,
@@ -170,10 +141,7 @@ def _strip_frontmatter(md: str) -> str:
 def _format_frontmatter(fm: dict[str, object]) -> str:
     """Serialise a frontmatter dict to a ``---``-delimited YAML block.
 
-    Mirrors wiki_pages._format_frontmatter but lives here so wiki_sync
-    can produce ADR-2244 frontmatter without importing from wiki_pages
-    (whose builder API does not accept arbitrary dicts).
-    """
+    source: ADR-0314"""
     lines = ["---"]
     for key, value in fm.items():
         if isinstance(value, list):

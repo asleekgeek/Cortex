@@ -1,36 +1,6 @@
 """`cortex doctor` — diagnostic CLI for plugin-marketplace users.
 
-Helps users verify Cortex has everything it needs before first
-interactive session. The check list is backend-aware
-(``active_checks()``): on the zero-config SQLite default the PostgreSQL
-driver/connection/extension checks are replaced by a SQLite store-open
-check, so a healthy SQLite install reports green instead of four false
-failures.
-
-PostgreSQL backend checks:
-  * Python version >= 3.10
-  * psycopg + pgvector Python packages import
-  * DATABASE_URL reachable, PG >= 15
-  * pgvector + pg_trgm extensions installed
-  * memories table exists (schema auto-init ran)
-  * cache dir ~/.claude/methodology is writable
-  * POOL_INTERACTIVE_MAX matches I10 invariant
-
-SQLite backend checks:
-  * Python version >= 3.10
-  * SQLite store opens and its schema initializes
-  * cache dir ~/.claude/methodology is writable
-  * POOL_INTERACTIVE_MAX matches I10 invariant
-
-Exit 0 on full green. Exit 1 with a numbered list of fixes otherwise.
-
-Invocation:
-    python -m mcp_server.doctor
-    hypermnesia-mcp doctor       (once entry point is wired)
-
-Source: docs/program/phase-5-pool-admission-design.md §7 (marketplace
-readiness), I10 invariant.
-"""
+source: ADR-0322"""
 
 from __future__ import annotations
 
@@ -87,7 +57,7 @@ def _python_version() -> Check:
 
 def _pg_driver() -> Check:
     try:
-        import psycopg  # noqa: PLC0415, F401 — optional-feature probe: ImportError here is a handled degraded mode
+        import psycopg  # noqa: PLC0415, F401 — source: ADR-0322
     except ImportError:
         return Check(
             "psycopg driver",
@@ -96,7 +66,7 @@ def _pg_driver() -> Check:
             "Install the postgresql extra: `pip install hypermnesia-mcp[postgresql]`",
         )
     try:
-        import psycopg_pool  # noqa: PLC0415, F401 — optional-feature probe: ImportError here is a handled degraded mode
+        import psycopg_pool  # noqa: PLC0415, F401 — source: ADR-0322
     except ImportError:
         return Check(
             "psycopg_pool",
@@ -105,7 +75,7 @@ def _pg_driver() -> Check:
             "Upgrade to v3.13.0+: `pip install -U hypermnesia-mcp[postgresql]`",
         )
     try:
-        import pgvector  # noqa: PLC0415, F401 — optional-feature probe: ImportError here is a handled degraded mode
+        import pgvector  # noqa: PLC0415, F401 — source: ADR-0322
     except ImportError:
         return Check(
             "pgvector python binding",
@@ -130,7 +100,7 @@ def _database_url() -> Check:
 
 def _pg_connection() -> Check:
     try:
-        import psycopg  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+        import psycopg  # noqa: PLC0415 — source: ADR-0322
     except ImportError:
         return Check("PG connection", False, "psycopg not installed", "")
     url = os.environ.get("DATABASE_URL", "")
@@ -140,7 +110,7 @@ def _pg_connection() -> Check:
         with psycopg.connect(url, connect_timeout=5) as conn:
             row = conn.execute("SELECT version()").fetchone()
             return Check("PG connection", True, row[0] if row else "ok")
-    except Exception as exc:  # noqa: BLE001 — diagnostic probe — any failure becomes the check's failure report
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0322
         return Check(
             "PG connection",
             False,
@@ -152,7 +122,7 @@ def _pg_connection() -> Check:
 
 def _pg_extensions() -> Check:
     try:
-        import psycopg  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+        import psycopg  # noqa: PLC0415 — source: ADR-0322
     except ImportError:
         return Check(
             "pgvector + pg_trgm extensions", False, "psycopg not installed", ""
@@ -177,7 +147,7 @@ def _pg_extensions() -> Check:
                     'CREATE EXTENSION IF NOT EXISTS pg_trgm;"',
                 )
             return Check("pgvector + pg_trgm extensions", True, "both installed")
-    except Exception as exc:  # noqa: BLE001 — diagnostic probe — any failure becomes the check's failure report
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0322
         return Check(
             "pgvector + pg_trgm extensions",
             False,
@@ -187,8 +157,8 @@ def _pg_extensions() -> Check:
 
 
 def _methodology_dir() -> Check:
-    # home_dir() honors $HOME on every OS; Path.expanduser() ignores it on
-    # Windows. source: RAPPORT_INSTALLATION_CORTEX_WINDOWS.md §5.1
+    # source: ADR-0322
+
     path = home_dir() / ".claude" / "methodology"
     try:
         path.mkdir(parents=True, exist_ok=True)
@@ -196,7 +166,7 @@ def _methodology_dir() -> Check:
         probe.write_text("ok")
         probe.unlink()
         return Check("~/.claude/methodology writable", True, str(path))
-    except Exception as exc:  # noqa: BLE001 — diagnostic probe — any failure becomes the check's failure report
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0322
         return Check(
             "~/.claude/methodology writable",
             False,
@@ -208,11 +178,7 @@ def _methodology_dir() -> Check:
 def _codebase_pipeline() -> Check:
     """Optional: detect the ai-architect-mcp-codebase MCP server.
 
-    Cortex integrates with it to turn codebase analysis into wiki pages +
-    memories + KG entities via the ``ingest_codebase`` tool. Not required
-    for core memory operations — users who don't do codebase ingestion
-    can ignore this check. Gated to ``optional=True`` so doctor still
-    exits 0 on its absence.
+    source: ADR-0322
 
     Detection strategy (cheapest first):
       1. ``cortex-pipeline`` or ``ai-architect-mcp-codebase`` on PATH
@@ -276,17 +242,14 @@ def _i10_config() -> Check:
             "CORTEX_MEMORY_POOL_BATCH_MAX until I10 is satisfied."
         )
         return Check("I10 pool capacity", ok, detail, fix if not ok else "")
-    except Exception as exc:  # noqa: BLE001 — diagnostic probe — any failure becomes the check's failure report
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0322
         return Check("I10 pool capacity", False, f"{type(exc).__name__}: {exc}", "")
 
 
 def _sqlite_store() -> Check:
     """SQLite backend: the store opens and its schema initializes.
 
-    One check replaces the four PG checks (driver, URL, connection,
-    extensions): SqliteMemoryStore's constructor runs the DDL +
-    migrations, so a successful open proves the whole storage path.
-    """
+    source: ADR-0322"""
     try:
         path = get_memory_settings().SQLITE_FALLBACK_PATH
         store = SqliteMemoryStore(db_path=path)
@@ -295,7 +258,7 @@ def _sqlite_store() -> Check:
         finally:
             store.close()
         return Check("SQLite store", True, f"{path} ({total} memories)")
-    except Exception as exc:  # noqa: BLE001 — diagnostic probe — any failure becomes the check's failure report
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0322
         return Check(
             "SQLite store",
             False,
@@ -329,17 +292,11 @@ SQLITE_CHECKS: list[Callable[[], Check]] = [
 def active_checks() -> list[Callable[[], Check]]:
     """Backend-appropriate check list (single point of truth).
 
-    Resolves the backend exactly like the launcher/hooks do
-    (env var, then the installer's backend marker — see
-    ``infrastructure.backend_marker.effective_backend``), so doctor
-    diagnoses the same store the server would actually open. Any
-    resolution failure falls back to the PostgreSQL list — the
-    stricter, historical behaviour.
-    """
+    source: ADR-0322"""
     try:
         if effective_backend(os.environ) == "sqlite":
             return SQLITE_CHECKS
-    except Exception as exc:  # noqa: BLE001 — PG check list is the documented fallback
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0322
         silent_failure.note("doctor.backend_resolution", exc)
     return CHECKS
 
@@ -347,14 +304,7 @@ def active_checks() -> list[Callable[[], Check]]:
 def run() -> int:
     """Entry point. Dispatches to subcommand if given, else full check.
 
-    Subcommands:
-      (none)   Full setup verification (Python, PG, extensions, etc.)
-      mcp      MCP startup diagnostics (Discord-debug-friendly)
-               Flags:
-                 --json   Emit machine-readable JSON report
-                 --copy   Prepend a "paste me in Discord" header to the
-                          human output (useful for issue templates)
-    """
+    source: ADR-0322"""
     argv = sys.argv[1:]
     if argv and argv[0] == "mcp":
         flags = argv[1:]
@@ -365,7 +315,7 @@ def run() -> int:
 
 
 def _run_full_check() -> int:
-    """Full setup verification (legacy `cortex-doctor` behaviour)."""
+    """source: ADR-0322"""
     checks = [c() for c in active_checks()]
     width = max(len(c.name) for c in checks) + 2
 

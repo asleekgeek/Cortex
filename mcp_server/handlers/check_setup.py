@@ -1,22 +1,6 @@
 """Handler: check_setup — MCP facade over mcp_server.doctor's checks.
 
-Runs the exact same check functions as `python -m mcp_server.doctor`
-(the plugin-marketplace CLI) and returns them as structured MCP data
-instead of console text, mirroring the `check_vision_setup` /
-`check_voice_setup` pattern from the cortex-vision / cortex-voice
-plugins: call once before first interactive session to confirm the
-environment before install day.
-
-No check logic is duplicated here — every entry in doctor's
-backend-aware `active_checks()` list is imported and invoked as-is, in
-doctor's own dependency order (PostgreSQL backend: Python version -> PG
-driver -> DATABASE_URL -> live PG connection -> pgvector/pg_trgm
-extensions -> ~/.claude/methodology writability -> I10 pool config ->
-optional ai-architect-mcp-codebase probe; SQLite backend: Python version ->
-SQLite store open -> writability -> I10 -> pipeline probe). A failure
-early in the list explains later ones (e.g. no DATABASE_URL implies no
-PG connection), so callers should fix in list order.
-"""
+source: ADR-0336"""
 
 from __future__ import annotations
 

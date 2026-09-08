@@ -1,25 +1,6 @@
 """Curation-gap detector for file-doc pages.
 
-User direction 2026-05-18: *"Removing is not a solution, fixing the
-curation by showing information that should be present and missing for
-each file is a curation of the documentation."*
-
-This module is the operationalisation of that policy. Given a wiki
-page (typically a per-source-file reference), it identifies which
-sections SHOULD be present for a real curated explanation and which
-are absent. The list of missing sections is:
-
-  1. Embedded in the page frontmatter as ``curation_gaps: [...]``.
-  2. Rendered prominently at the top of the page by the wiki view.
-  3. Queued as re-author jobs by the auto-curator so the in-session
-     LLM fills the gaps over time.
-
-Nothing here deletes content. Pages with gaps stay on disk; the gaps
-are surfaced so the reader knows what's coming and the author knows
-what to write.
-
-Pure logic — no I/O. Callers pass body text + frontmatter dict.
-"""
+source: ADR-0299"""
 
 from __future__ import annotations
 
@@ -51,9 +32,9 @@ class CurationSection:
     description: str
 
 
-# Sections every file-doc must cover. The list is deliberately stable —
-# adding/removing a section is a deliberate policy edit, not an emergent
-# property of the audit.
+# source: ADR-0299
+
+
 FILE_DOC_SECTIONS: Final[tuple[CurationSection, ...]] = (
     CurationSection(
         name="purpose",
@@ -346,11 +327,7 @@ def gap_report(body: str) -> dict:
 def render_gap_banner(gap: dict) -> str:
     """Render a Markdown banner the wiki view shows above the page body.
 
-    The banner lists every missing section with its description so the
-    reader sees concretely what's not yet written and the LLM (or human
-    author) knows exactly what to add next. Empty string when the page
-    is complete.
-    """
+    source: ADR-0299"""
     if gap.get("complete"):
         return ""
     missing = gap.get("missing") or []

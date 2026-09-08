@@ -1,0 +1,123 @@
+---
+title: "ADR-0296 — mcp_server/core/wiki_classifier_patterns.py rationale"
+status: accepted
+source: mcp_server/core/wiki_classifier_patterns.py
+---
+
+# ADR-0296 — mcp_server/core/wiki_classifier_patterns.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Extracted from ``wiki_classifier.py`` (issue #134, file exceeded the
+500-line hard limit in coding-standards.md §4). This module holds every
+regex/constant table the admission gates and legacy-kind router consult:
+rejection patterns, legacy-kind detection patterns, hard-negative gate
+patterns, the audit-tag denylist, and the positive-quality-signal
+patterns. No behavior lives here — see ``wiki_classifier_gates.py`` for
+the functions that consume these tables.
+
+````
+
+## module — original line 54 (comment)
+
+````text
+# Benchmark spell content (Hogwarts benchmark artifacts)
+````
+
+## module — original line 90 (comment)
+
+````text
+# ── Hard-negative gate (Eco + Ahrens): disqualifying patterns ─────────
+#
+# Each of these, if present, is a hard DISQUALIFICATION — single hit blocks
+# admission regardless of positive signals. Catches session chat, imperatives,
+# narration, status updates, and temporal deixis that should live in session
+# logs, not a wiki.
+````
+
+## module — original line 147 (comment)
+
+````text
+# Temporal deixis — "now", "just", "previous", "earlier" make the note
+# uninterpretable outside the session in which it was written
+````
+
+## module — original line 174 (comment)
+
+````text
+# Path embedded mid-line ("also on /Users/...", "fix the file at C:\\..."):
+# any absolute POSIX path or Windows drive path anywhere in the title.
+# Bug found 2026-05-12: pages like
+# specs/2026-04-17-also-on-users-cdeust-documents-developments-...md
+# passed the start-of-line check, then slugify stripped the leading "/"
+# and folded the entire path into the slug.
+````
+
+## module — original line 184 (comment)
+
+````text
+# YAML-frontmatter / key:value lines that leaked through as titles when the
+# real title was missing. Reject lines that are purely "key: value" where
+# the value is a timestamp, identifier, or boolean — they're metadata,
+# not titles.  Bug found 2026-05-12: 10 ADRs slugged as
+# "decision-created-2026-04-15t09-29-10z" because the YAML "created:"
+# line was the first non-{}/[] line in the body.
+````
+
+## module — original line 191 (comment)
+
+````text
+# `created: 2026-04-15T09:29:10Z`, `updated: 2026-04-15`, `date: ...`
+````
+
+## module — original line 196 (comment)
+
+````text
+# Bare ISO-8601 timestamp anywhere (would slug to t09-29-10z form)
+````
+
+## module — original line 200 (comment)
+
+````text
+# Session / audit artefact tags — these are recall-fodder, not wiki-worthy.
+# Any hit in tags auto-rejects from the wiki (memory is preserved separately).
+#
+# 2026-05-17 (user feedback "that's the same for all kind of category"):
+# PostToolUse auto-captures are journal entries — tool dumps, command
+# outputs, edit diffs — useful as memories for halo retrieval but
+# pollute the wiki with hundreds of ``Lesson: Command: `git log...```
+# pages that aren't curated knowledge. Adding ``auto-captured`` and
+# ``tool:bash``/``tool:edit`` etc. as audit tags so they stay in PG
+# memory but never become wiki pages. Real wiki pages come from
+# explicit ``remember`` calls with curated content.
+````
+
+## module — original line 229 (comment)
+
+````text
+# 2026-05-17 (user feedback "wiki is still far from being curated
+# documentation"): codebase_analyze dumped one wiki page per scanned
+# file PER scan invocation — 2176 of 2248 notes were the same
+# auth/middleware/crypto files repeated 290-349 times each.
+# ``seeded`` is the tag set by seed_project; ``codebase`` is the
+# tag set by codebase_analyze's file-level extractor. Both belong
+# in PG memory (recall substrate, halo retrieval) but never on a
+# wiki page meant for curated knowledge.
+````
+
+## module — original line 292 (comment)
+
+````text
+# Knowledge tags used both by the positive-signal scoring (signal 5) and by
+# the explicit-tag fast path in the legacy-kind router.
+````
+
+## module — original line 309 (comment)
+
+````text
+# Unsourced engineering default (calibration pending): must satisfy ≥ 4 of 8
+# positive signals. Not paper-sourced; revisit if classifier precision drifts.
+````

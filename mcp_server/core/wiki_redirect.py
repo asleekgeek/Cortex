@@ -1,42 +1,6 @@
-"""Redirect stubs for renamed wiki pages — Phase 3 of ADR-2244.
+"""Build redirect stubs for renamed wiki pages.
 
-When a page is renamed (e.g. ``adr/_general/2234-decision-001-zero-
-dependencies.md.md`` → ``adr/_general/2234-zero-dependencies.md`` during
-Phase 4 slug-bug cleanup), the wiki leaves a *redirect stub* at the old
-path. The stub has minimal body and a frontmatter declaration that
-points readers at the new path.
-
-The canonical pattern (MediaWiki ``#REDIRECT`` page, TYPO3 page redirect,
-GitLab page-renamed redirect): the old path keeps responding to reads
-so inbound links continue to resolve, the reader is silently moved to
-the new content, and bulk migration becomes safe.
-
-Stub frontmatter shape::
-
-    ---
-    redirect_to: <new wiki-relative path>
-    redirect_id: <UUID4 of the target page>
-    redirect_reason: <free-form, optional>
-    created: <ISO-8601 UTC timestamp when the stub was minted>
-    ---
-
-    # Moved
-
-    This page has moved to [<new title>](<new path>).
-
-Either ``redirect_to`` (path-based) or ``redirect_id`` (ID-based) is
-sufficient. When both are present, the ID wins — paths are mutable but
-IDs are stable. This module accepts either form.
-
-Cycle and depth protection
---------------------------
-
-A redirect chain longer than ``MAX_REDIRECT_DEPTH`` (default 5) returns
-None from ``resolve_chain``. This matches MediaWiki convention and keeps
-adversarial or accidental cycles from hanging the reader.
-
-This module is pure logic — no I/O. Callers (``wiki_read`` handler,
-migration scripts) read the on-disk content and pass it in.
+source: ADR-0307
 """
 
 from __future__ import annotations
@@ -55,14 +19,7 @@ MAX_REDIRECT_DEPTH: Final[int] = 5
 class Redirect:
     """A parsed redirect declaration from a stub page's frontmatter.
 
-    Fields:
-        target_path: wiki-relative path the reader should follow, or
-            empty string if only the ID is specified.
-        target_id: page ID of the destination, or None if only the path
-            is specified.
-        reason: free-form rationale (e.g. "slug bug fix 2026-05-13"),
-            empty string when not given.
-    """
+    source: ADR-0307"""
 
     target_path: str = ""
     target_id: str | None = None
@@ -80,12 +37,7 @@ class Redirect:
 def redirect_is_id_based(redirect: "Redirect") -> bool:
     """True if the redirect points at a stable ID (preferred form).
 
-    A free function, not a method: mutmut categorically excludes the body
-    of any `@dataclass`-decorated class (`mutmut/mutation/file_mutation.py:
-    236`), so logic placed on `Redirect` methods would carry zero mutation
-    coverage no matter how the test loader names the module (issue #262
-    3rd pass; issue #282).
-    """
+    source: ADR-0307"""
     return redirect.target_id is not None
 
 
@@ -187,7 +139,7 @@ def resolve_chain(
         seen.add(next_path)
         current = next_path
 
-    # Exhausted max_depth — refuse to keep walking.
+    # source: ADR-0307
     return None
 
 
@@ -204,16 +156,15 @@ def build_redirect_stub(
 ) -> str:
     """Render the markdown for a redirect stub.
 
-    At least one of ``target_path`` / ``target_id`` must be supplied.
-    The body is a single sentence so readers who land on the stub
-    directly see a clear "this moved" notice.
+    source: ADR-0307
 
     Args:
-        target_path: wiki-relative path of the new home.
-        target_id: stable page ID of the new home (preferred when known).
-        target_title: human-readable title for the link text.
-        reason: optional free-form rationale.
-        created_at: ISO-8601 UTC timestamp; left blank if not supplied.
+        target_path: Wiki-relative new-home path.
+        target_id: Stable new-home page ID, preferred when known.
+        target_title: Human-readable link title.
+        reason: Optional explanatory text.
+        created_at: ISO-8601 UTC timestamp; blank if omitted.
+    source: ADR-0307
 
     Returns the complete markdown content. The caller is responsible
     for writing it to disk.
@@ -255,10 +206,7 @@ _FRONTMATTER_RE = re.compile(r"\A---\s*\n(?P<fm>.*?)\n---\s*\n?", re.DOTALL)
 def parse_frontmatter(text: str) -> dict[str, object]:
     """Lightweight YAML-ish frontmatter parser shared with the pilot.
 
-    Handles the three observed shapes (scalar, inline list, block list).
-    Sufficient for redirect detection — full YAML parsing is not needed
-    because redirect stubs are minimal and machine-written.
-    """
+    source: ADR-0307"""
     m = _FRONTMATTER_RE.match(text)
     if not m:
         return {}

@@ -27,22 +27,11 @@ schema = {
     "annotations": IDEMPOTENT_WRITE,
     "outputSchema": {
         "type": "object",
-        # action is intentionally NOT required (#99 fix): the dispatch
-        # error path (handler(), args missing/invalid `action`) and the
-        # "Unknown action" path fire precisely when `action` is absent or
-        # not one of the enum values below, so a required+enum-constrained
-        # `action` could never validate on those paths. Kept as an
-        # optional documented property instead — populated on both
-        # success paths (_save_checkpoint/_restore_context) below.
+        # source: ADR-0337
         "properties": {
             "action": {"type": "string", "enum": ["save", "restore"]},
             "checkpoint_id": {
-                # source: MemoryStore.insert_checkpoint (pg_store_checkpoint.py,
-                # sqlite_store_auxiliary.py) both declare `-> int` and return
-                # the serial primary key via `RETURNING id` — never a UUID.
-                # Same drift family as #99 (declared schema didn't match the
-                # actual return value); fixed alongside since it blocks the
-                # "every return dict validates" verification for this file.
+                # source: ADR-0337
                 "type": "integer",
                 "description": (
                     "ID of the saved or restored checkpoint row (serial PK, not a "
@@ -132,7 +121,14 @@ schema = {
                 "items": {"type": "string"},
                 "default": [],
                 "examples": [
-                    ["Use HNSW m=16 not IVFFlat", "Defer rerank cache fix to ADR-0043"]
+                    [
+                        "Use HNSW m=16 not IVFFlat",
+                        (
+                            # source: ADR-0337
+                            "Follow ADR-0056: edit canonical wiki decisions and "
+                            "regenerate mirrors"
+                        ),
+                    ]
                 ],
             },
             "open_questions": {

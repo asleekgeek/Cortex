@@ -17,10 +17,7 @@ CODEBASE_AGENT_CONTEXT = "codebase"
 FILE_TAG_PREFIX = "file:"
 HASH_TAG_PREFIX = "hash:"
 
-# Bounded-candidate multiplier: we take at most ``max_files * CANDIDATE_MULTIPLIER``
-# paths from the pruned walk before sorting. Source: ADR-0045 §R2 — bounded streaming
-# for ingestion paths. The multiplier gives the sort a meaningful candidate set while
-# keeping peak memory O(max_files) instead of O(tree_size).
+# source: ADR-0340
 CANDIDATE_MULTIPLIER = 10
 
 
@@ -39,24 +36,13 @@ def collect_source_files(
 ) -> list[Path]:
     """Walk directory and collect source files matching language filters.
 
-    Preconditions:
-        - ``root`` is an existing directory.
-        - ``max_bytes > 0``.
-        - ``max_files`` may be any integer; ``<= 0`` means "no limit" and
-          processes every matching file in the tree.
+        Preconditions:
+            - ``root`` is an existing directory.
+            - ``max_bytes > 0``.
+            - ``max_files`` may be any integer; ``<= 0`` means "no limit" and
+              processes every matching file in the tree.
 
-    Postconditions:
-        - When ``max_files > 0``: returns at most ``max_files`` paths,
-          and peak memory is O(max_files * CANDIDATE_MULTIPLIER) paths
-          (ADR-0045 §R2). On a 10M-file monorepo with ``max_files=5000``
-          we hold at most 50K Path objects during the sort.
-        - When ``max_files <= 0``: returns every matching path. Peak
-          memory is O(filtered_files) — we never materialise the whole
-          tree, only the post-filter survivors.
-        - Each returned path is a regular file whose extension maps to a
-          known language (and satisfies ``languages`` if supplied), and
-          whose size is ``<= max_bytes``.
-    """
+    source: ADR-0340"""
     lang_filter = set(languages) if languages else None
     unbounded = max_files <= 0
 
@@ -113,8 +99,9 @@ def _collect_bounded(
     max_bytes: int,
 ) -> list[Path]:
     """Bounded-candidate walk: take ``max_files * CANDIDATE_MULTIPLIER`` paths
-    then sort for deterministic ordering. See ADR-0045 §R2.
-    """
+        then sort for deterministic ordering.
+
+    source: ADR-0340"""
     candidate_cap = max(max_files * CANDIDATE_MULTIPLIER, max_files)
     candidates = sorted(itertools.islice(walk_pruned(root), candidate_cap))
 
@@ -181,12 +168,7 @@ def _extract_file_hash(tags: list) -> tuple[str, str]:
 def mark_stale(store: MemoryStore, memory_ids: list[int]) -> int:
     """Mark deleted file memories as stale.
 
-    The legacy ``heat = 0`` clause was redundant with ``is_stale = TRUE``
-    — every scan filters ``NOT is_stale`` before the heat signal is
-    consulted, so the heat value on stale rows is never read. A3 drops
-    the redundant zeroing; the heat_base column keeps its last value.
-    Source: phase-3-a3-migration-design.md §3.6.
-    """
+    source: ADR-0340"""
     if not memory_ids:
         return 0
     try:

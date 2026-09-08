@@ -1,0 +1,20 @@
+# ADR-0326: mcp_server/handlers/_telemetry_wrap.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `mcp_server/handlers/_telemetry_wrap.py`; original SHA-256 `a8d3e6a60ba67dde12c7a8eb03032127e2bed623650b27e32280274d4c037e47`.
+
+## Original comment, lines 48–49
+
+````text
+# source: MCP SDK utilities/func_metadata.py::_convert_to_content;
+        # safe_handler normalizes JSON-native values before SDK serialization.
+````
+
+## Original comment, lines 99–99
+
+````text
+# source: SI prefix milli; perf_counter returns seconds.
+````
+

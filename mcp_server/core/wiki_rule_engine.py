@@ -1,23 +1,6 @@
 """Phase 5.1 — User-editable classifier rule engine.
 
-The wiki schema loader reads `wiki/_rules/*.md` files and returns a
-list[ClassifierRule]. This module APPLIES those rules: given a memory
-content + tags, return either the matched target kind or 'reject'.
-
-A rule has:
-  - pattern_kind: 'prefix' | 'regex' | 'substring' | 'tag'
-  - pattern: the literal/regex/tag value to match
-  - target_kind: the kind to assign on match, or None to reject
-  - weight: tie-breaker when multiple rules match (higher wins)
-  - note: human-readable comment
-
-Rules are evaluated in file-order; the first match wins UNLESS
-multiple rules tie at the same iteration step, in which case weight
-breaks the tie.
-
-Pure logic — no I/O. The classifier composition root loads rules
-once (registry caching) and calls apply_rules per memory.
-"""
+source: ADR-0308"""
 
 from __future__ import annotations
 
@@ -42,10 +25,7 @@ class RuleMatch:
 def _matches(rule: ClassifierRule, content: str, tags: set[str]) -> bool:
     """Return True if a single rule matches the input.
 
-    All text matchers (prefix/substring/regex) are case-insensitive,
-    matching the user expectation: "the bug was" matches "The bug was".
-    Tag matching is case-insensitive against a pre-lowered tag set.
-    """
+    source: ADR-0308"""
     pattern = rule.pattern or ""
     kind = (rule.pattern_kind or "").lower()
     if not pattern:

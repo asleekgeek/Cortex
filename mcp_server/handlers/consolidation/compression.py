@@ -20,8 +20,7 @@ from mcp_server.infrastructure.memory_store import MemoryStore
 
 logger = logging.getLogger(__name__)
 
-# source: structural — compression levels documented in the module
-# docstring: full text (0) -> gist (1) -> tag (2)
+# source: ADR-0352
 _TAG_LEVEL = 2
 
 
@@ -33,8 +32,7 @@ def run_compression_cycle(
 ) -> dict:
     """Compress aging memories along the rate-distortion curve.
 
-    `memories` may be pre-loaded by the consolidate handler (issue #13).
-    """
+    source: ADR-0352"""
     stats = {
         "compressed_to_gist": 0,
         "compressed_to_tag": 0,
@@ -82,8 +80,7 @@ def _compress_memory(
 
     try:
         if target_level >= 1 and current_level == 0:
-            # Preconditions:
-            #   - mem["content"] is the original full text.
+            # source: ADR-0352
             #   - current_level == 0.  # noqa: ERA001 -- precondition doc, not code
             # Postconditions (if target_level == 1): memory written at level 1;
             #   exactly 1 encode() call.

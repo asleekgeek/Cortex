@@ -1,0 +1,63 @@
+---
+title: "ADR-0302 — mcp_server/core/wiki_file_doc_skeleton.py rationale"
+status: accepted
+source: mcp_server/core/wiki_file_doc_skeleton.py
+---
+
+# ADR-0302 — mcp_server/core/wiki_file_doc_skeleton.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+User direction 2026-05-18: a file-doc page is not "remove it because
+it's thin" — it's "show what's missing so the curation queue is
+visible at the document." This module produces skeletons that
+declare every canonical section as a heading + an explicit
+``_(missing — needs: <description>)_`` marker the LLM (or human author)
+sees and fills in.
+````
+
+## module — original line 10 (docstring)
+
+````text
+The skeletons are NOT stubs in the placeholder sense — the stub
+detector targets ``_(to be filled)_`` / ``_To be written._``. These
+skeletons use ``_(missing — needs:`` so they're distinguishable; the
+purge defaults will leave them alone.
+````
+
+## module — original line 15 (docstring)
+
+````text
+Pure logic — produces a string. Callers write to disk.
+
+````
+
+## _missing_marker — original line 156 (docstring)
+
+````text
+    Deliberately distinct from the stub markers (`_(to be filled)_` /
+    `_To be written._`) so the stub detector / purge doesn't sweep
+    these skeletons. The wiki view renders pages with these markers
+    with a "curation needed" banner — see ``wiki_curation_gaps``.
+    
+````
+
+## module — original line 27 (comment)
+
+````text
+# Tags safe to add — these do NOT trigger the classifier's audit-tag
+# rejection. ``codebase-skeleton`` is a distinct provenance marker
+# from the legacy ``codebase`` tag so the new skeletons are
+# admitted while old auto-gen pages remain rejected.
+````
+
+## module — original line 187 (comment)
+
+````text
+# Dependencies — we can list the raw imports; the curation gap
+# is the "why each import is here" annotation, so we leave the
+# heading as "needs curation" if there are imports we can't annotate.
+````

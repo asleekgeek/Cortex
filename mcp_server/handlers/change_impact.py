@@ -1,5 +1,5 @@
 """Handler: change_impact — find memories touched by a commit's code
-changes (ADR-0046 Phase 4).
+changes.
 
 Flow:
   1. Ask AP's ``detect_changes`` for changed symbols and files between
@@ -17,7 +17,8 @@ with a capped delta — the same ``_IMPACT_BOOST`` as the preemptive hook.
 
 When AP is disabled the handler returns ``status=skipped`` with the
 usual explanation.
-"""
+
+source: ADR-0335"""
 
 from __future__ import annotations
 
@@ -43,14 +44,14 @@ schema = {
     "title": "Change impact",
     "annotations": READ_ONLY,
     "description": (
+        # source: ADR-0335
         "Report which Cortex memories reference code that changed in a "
-        "commit (ADR-0046 Phase 4). Uses ai-architect-mcp-codebase's "
-        "detect_changes and optionally get_impact to compute the "
-        "symbol/file impact set, then matches against recent memories. "
-        "Read-only by default; pass apply_heat_bump=true to nudge heat "
-        "on the top 20 matches by +0.15. Requires AP enabled "
-        "(CORTEX_MEMORY_AP_ENABLED=1, the default); returns "
-        "status=skipped otherwise."
+        "commit. Uses ai-architect-mcp-codebase's detect_changes and "
+        "optionally get_impact to compute the symbol/file impact set, "
+        "then matches against recent memories. Read-only by default; pass "
+        "apply_heat_bump=true to nudge heat on the top 20 matches by "
+        "+0.15. Requires AP enabled (CORTEX_MEMORY_AP_ENABLED=1, the "
+        "default); returns status=skipped otherwise."
     ),
     "inputSchema": {
         "type": "object",

@@ -1,27 +1,6 @@
 """Phase 5.3 — Safe view DSL executor.
 
-A view is a YAML-shaped query block inside a wiki/_views/*.md page:
-
-    ```cortex-query
-    table: pages
-    where:
-      kind: spec
-      lifecycle_state: [active, evergreen]
-      status: budding
-      heat_min: 0.5
-    order_by: heat
-    direction: desc
-    limit: 20
-    ```
-
-This module parses the YAML, validates fields against a whitelist,
-and produces a parameterised SQL query. Never builds SQL by string
-concatenation of user input — every value goes through bind params,
-every column name comes from a hardcoded whitelist.
-
-Pure logic — returns (sql, params, errors). The handler executes
-the query and returns rows.
-"""
+source: ADR-0318"""
 
 from __future__ import annotations
 
@@ -126,11 +105,9 @@ class CompiledView:
 
 
 def compiled_view_ok(compiled: "CompiledView") -> bool:
-    """A free function, not a method: mutmut categorically excludes the
-    body of any `@dataclass`-decorated class (`mutmut/mutation/
-    file_mutation.py:236`), so logic placed on `CompiledView` methods would
-    carry zero mutation coverage no matter how the test loader names the
-    module (issue #262 3rd pass; issue #282).
+    """Return whether compilation produced no errors.
+
+    source: ADR-0318
     """
     return not compiled.errors
 
@@ -144,15 +121,12 @@ def compiled_view_ok(compiled: "CompiledView") -> bool:
 #     inner_key: value  # noqa: ERA001 -- YAML-ish syntax doc, not code
 #     inner_key2: value  # noqa: ERA001 -- YAML-ish syntax doc, not code
 
-# Keys are matched with a tight anchored pattern that cannot backtrack
-# quadratically: `[A-Za-z_][A-Za-z0-9_]*` on bounded input. For the
-# actual line parsing we use str.partition(":") which has no regex
-# complexity at all. This replaces a pair of earlier regexes flagged by
-# CodeQL (py/polynomial-redos alerts #51, #52, #53) where `\s*` before
-# `(.*)` could combine with `[\w]*` under adversarial input.
+# source: ADR-0318
+
+
 _KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
-# Cap line length before regex ever touches the string — defence in
-# depth against any input that slipped past the view-file discipline.
+# source: ADR-0318
+
 _MAX_LINE_LEN = 2000
 
 
@@ -363,7 +337,7 @@ def compile_view(text: str) -> CompiledView:
     limit = max(1, min(_MAX_LIMIT, limit))
 
     where_clause = (" WHERE " + " AND ".join(where_frags)) if where_frags else ""
-    sql = f"SELECT {proj} FROM {real_table}{where_clause}{order_clause} LIMIT %s"  # noqa: S608 — identifiers gated by _TABLE_WHITELIST/_COLUMN_WHITELIST — unknown names are refused, values are bound parameters (docs/ASSURANCE-CASE.md §5)
+    sql = f"SELECT {proj} FROM {real_table}{where_clause}{order_clause} LIMIT %s"  # noqa: S608 — source: ADR-0318
     params = where_params + [limit]
     return CompiledView(sql=sql, params=params, errors=errors, table=table)
 

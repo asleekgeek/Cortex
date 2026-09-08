@@ -1,25 +1,6 @@
 """Phase 4 — Staleness brake for wiki pages.
 
-A page becomes stale when the file references it cites no longer
-exist on disk. Stale pages get is_stale=True and lose heat faster
-(half-life multiplier).
-
-Pure logic: this module is given a page's referenced file paths and
-a per-path existence map (computed by the handler with filesystem
-I/O), and returns the decision.
-
-Staleness signal sources:
-  - claim_events.evidence_refs where kind='file' (most reliable)
-  - Inline file-pattern matches in lead/sections (best-effort)
-
-ADR-0051 STEP 4 adds ``harvest_page_refs_typed`` / ``normalize_typed_refs``:
-the staleness brake above only needs the *union* of referenced paths, but
-persisting them as ``wiki.page_sources`` rows (link_kind='references')
-needs per-path provenance (was this path cited by a claim, or only found
-by best-effort regex in the body?) so downstream consumers can weigh the
-two differently. ``harvest_page_refs`` is kept and now derives from the
-typed variant rather than duplicating the merge logic.
-"""
+source: ADR-0310"""
 
 from __future__ import annotations
 
@@ -34,8 +15,8 @@ _FILE_REF_RE = re.compile(
 
 # A page is stale when this fraction of its file refs are missing.
 STALE_THRESHOLD = 0.5
-# A page must reference at least this many files for staleness to apply
-# (avoid false positives from pages with one stray file mention).
+# source: ADR-0310
+
 MIN_FILE_REFS = 2
 
 
@@ -174,10 +155,7 @@ def harvest_page_refs_typed(
 def normalize_typed_refs(typed_refs: dict[str, str]) -> dict[str, str]:
     """Canonicalize a ``harvest_page_refs_typed`` result for persistence.
 
-    ``wiki.page_sources.source_path`` must share the same canonical form
-    across every link_kind (``mcp_server.shared.wiki_source_paths
-    .normalize_source_path`` — the convention ``documents`` links already
-    use) so the reverse index doesn't split one real file into two rows.
+    source: ADR-0310
 
     Two raw refs that normalize to the same canonical path collapse into
     one entry. ``claim_evidence`` wins the merge regardless of iteration
