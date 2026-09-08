@@ -25,7 +25,7 @@
 </p>
 
 <p align="center">
-  <sub>Part of a four-piece stack — each runs standalone; together they cover what an agent forgets, can't see, and can't verify. <a href="#the-rest-of-the-stack">Compare them ↓</a></sub>
+  <sub>One of three MCP servers that each run standalone and keep evolving — memory (this), <a href="https://github.com/cdeust/ai-architect-mcp-codebase">code graph</a>, <a href="https://github.com/cdeust/ai-architect-mcp-spec">spec verification</a> — plus visualization and reasoning-agent companions. <a href="#the-rest-of-the-stack">Compare them all ↓</a></sub>
 </p>
 
 <p align="center">
