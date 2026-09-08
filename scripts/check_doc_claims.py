@@ -60,7 +60,7 @@ Split across scripts/doc_claim_sources.py (canonical readers),
 scripts/doc_claim_scan.py (claim scanning/comparison) and
 scripts/doc_claim_structural.py (badge + structural-integrity checks) —
 issue #293, Extract Function/Move Function — to stay under the repo's
-300-line file cap (CLAUDE.md, Code Style); this module is the thin
+300-line file cap (docs/agent-guidance.md, Code Style); this module is the thin
 orchestrator each of those forwards through, and the only place ``read``/
 ``SCANNED_FILES`` are defined (tests patch them here; see each sibling
 module's docstring for why they take these as parameters instead).
@@ -93,6 +93,9 @@ SCANNED_FILES = (
     "CONTRIBUTING.md",
     "SECURITY.md",
     "CLAUDE.md",
+    # The former CLAUDE.md body (moved 2026-09-08 so it is read on demand);
+    # its tool and module counts describe the present exactly as before.
+    "docs/agent-guidance.md",
     "GOVERNANCE.md",
     "manifest.json",
     "docs/ROADMAP.md",
