@@ -1,16 +1,6 @@
 """Session self-critique — structured reflection for metacognitive improvement.
 
-Generates structured critique of session activity by analyzing:
-  - Tool usage patterns (diversity, over-reliance, gaps)
-  - Decision quality signals (reversals, contradictions)
-  - Coverage assessment (what was explored vs what was missed)
-  - Actionable improvement suggestions
-
-This module produces the *structure* and *analysis* for self-critique.
-No LLM calls — operates on session data and memory statistics.
-
-Pure business logic — no I/O.
-"""
+source: ADR-0254"""
 
 from __future__ import annotations
 
@@ -22,9 +12,8 @@ from mcp_server.core.session_critique_format import (
     format_critique_text,
 )
 
-# ── Heuristic thresholds ──────────────────────────────────────────────────
-# source (all constants in this block): pre-existing tuned values, extracted
-# unchanged (#197 family 3); provenance not recorded at introduction.
+# source: ADR-0254
+
 
 # More unused tools than this triggers an "unused tools" suggestion.
 _MAX_UNDER_USED_BEFORE_SUGGESTION = 3

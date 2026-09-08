@@ -1,20 +1,6 @@
 """Replay sequence selection and priority scoring.
 
-Selects which replay sequences fire during an SWR burst based on a
-priority score. Higher-priority sequences are replayed first.
-
-Priority formula: (avg_heat * 0.4 + sqrt(heat_variance) * 0.6) * DA_level.
-This is a hand-tuned heuristic combining importance (heat) and surprise
-(variance), amplified by dopamine level. No paper — engineering decision.
-
-The DA modulation captures Schultz's qualitative finding that dopamine
-amplifies replay of rewarding experiences, but the specific formula is
-not the Schultz/Rescorla-Wagner RPE equation.
-
-All constants (0.4/0.6 weights, threshold 0.3, max 5) are hand-tuned.
-
-Pure business logic — no I/O.
-"""
+source: ADR-0240"""
 
 from __future__ import annotations
 
@@ -30,8 +16,8 @@ from mcp_server.core.replay_types import (
 
 _PRIORITY_THRESHOLD = 0.3
 _MAX_SEQUENCES_PER_SWR = 5
-# source: structural — heat variance is degenerate on fewer than two events,
-# so shorter sequences score 0.0.
+# source: ADR-0240
+
 _MIN_PRIORITY_EVENTS = 2
 
 
@@ -44,9 +30,7 @@ def compute_sequence_priority(
 ) -> float:
     """Compute priority score for a replay sequence.
 
-    Formula: (avg_heat * 0.4 + sqrt(heat_variance) * 0.6) * DA_level.
-    Heuristic combining importance (heat) and surprise (variance),
-    amplified by dopamine. Weights are hand-tuned — no paper.
+    source: ADR-0240
 
     Returns:
         Priority score in [0, 1].
@@ -76,9 +60,7 @@ def select_replay_sequences(
 ) -> list[ReplaySequence]:
     """Select top replay sequences for an SWR burst.
 
-    Filters by priority threshold, then ranks by priority score. Ensures
-    at least one forward and one reverse sequence if available.
-    """
+    source: ADR-0240"""
     viable = [s for s in candidate_sequences if s.priority_score >= priority_threshold]
 
     if not viable:

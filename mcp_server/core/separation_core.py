@@ -1,28 +1,6 @@
 """Pattern separation core — dentate gyrus orthogonalization and sparsification.
 
-Implements the computational analog of hippocampal dentate gyrus (DG) pattern
-separation: similar inputs are orthogonalized and sparsified to force
-non-overlapping representations.
-
-The biological DG achieves pattern separation through winner-take-all lateral
-inhibition among granule cells (beta_INT ~0.9; Myers & Scharfman 2009),
-producing extremely sparse population codes (~2-5% active cells). This module
-uses Gram-Schmidt projection as a computational proxy — the mathematical effect
-(increasing Hamming distance between similar patterns) is equivalent, though the
-biological mechanism is competitive inhibition, not linear algebra.
-
-References:
-    Leutgeb JK et al. (2007) Pattern separation in the DG and CA3.
-        Science 315:961-966
-    Yassa MA, Stark CEL (2011) Pattern separation in the hippocampus.
-        Trends in Neurosciences 34:515-525
-    Rolls ET (2013) The mechanisms for pattern completion and pattern
-        separation in the hippocampus. Front Syst Neurosci 7:74
-    Myers CE, Scharfman HE (2009) A role for hilar cells in pattern
-        separation in the dentate gyrus. Hippocampus 19:321-337
-
-Pure business logic — no I/O.
-"""
+source: ADR-0253"""
 
 from __future__ import annotations
 
@@ -37,28 +15,27 @@ from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
-# Engineering choice: cosine similarity threshold above which two memories need
-# separation. The biological DG uses firing rate overlap, not cosine similarity;
-# this threshold was tuned empirically for 384-dim dense embeddings.
+# source: ADR-0253
+
+
 _SEPARATION_THRESHOLD = 0.75
 
-# Engineering choice: deduplication boundary. Above this cosine similarity,
-# memories are treated as near-duplicates (handled by dedup, not separation).
+# source: ADR-0253
+
 _IDENTITY_THRESHOLD = 0.95
 
-# Engineering constraint: floor for post-separation similarity with the original
-# embedding, preventing orthogonalization from destroying semantic content.
+# source: ADR-0253
+
 _MIN_POST_SEPARATION_SIMILARITY = 0.3
 
-# Vectors with a norm below this epsilon are treated as degenerate (zero) and
-# left untouched by projection/normalization.
-# source: pre-existing numerical-tolerance value, extracted unchanged
-# (#197 family 3); provenance not recorded at introduction
+# source: ADR-0253
+
+# source: ADR-0253
 _DEGENERATE_NORM_EPSILON = 1e-10
 
-# DG granule cell activation sparsity: 2-5% of cells active.
-# Leutgeb et al. (2007) Science 315:961-966; Rolls (2013) Front Syst Neurosci.
-# We use 4%, within the published 2-5% range (toward the active end).
+# source: ADR-0253
+
+
 _SPARSITY_TARGET = 0.04
 
 
@@ -101,9 +78,7 @@ def _project_away_from_single(
 ) -> list[float]:
     """Project result away from a single interferer, preserving semantic content.
 
-    Returns the updated result vector, or the original result if the
-    projection would violate the minimum similarity constraint.
-    """
+    source: ADR-0253"""
     interferer_norm = norm(interferer)
     if interferer_norm < _DEGENERATE_NORM_EPSILON:
         return result

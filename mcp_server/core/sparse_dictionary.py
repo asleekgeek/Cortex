@@ -144,8 +144,8 @@ def build_seed_dictionary() -> FeatureDictionary:
 # ---------------------------------------------------------------------------
 
 
-# source: learn_dictionary docstring — fall back to the seed dictionary when
-# fewer than 10 conversations are available.
+# source: ADR-0261
+# source: ADR-0261
 _MIN_CONVERSATIONS_FOR_LEARNING = 10
 
 
@@ -216,10 +216,9 @@ _SIGNAL_LABELS = {
 }
 
 
-# Signals with an absolute weight at or below this floor are ignored when
-# labeling a feature atom.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0261
+
+# source: ADR-0261
 _MIN_LABEL_SIGNAL_WEIGHT = 0.05
 
 
@@ -255,10 +254,9 @@ def label_feature(direction: list[float], index: int) -> Feature:
     )
 
 
-# OMP coefficients with an absolute value at or below this epsilon are
-# numerically zero and dropped from the session weights.
-# source: pre-existing numerical-tolerance value, extracted unchanged
-# (#197 family 3); provenance not recorded at introduction
+# source: ADR-0261
+
+# source: ADR-0261
 _ZERO_COEFFICIENT_EPSILON = 1e-10
 
 

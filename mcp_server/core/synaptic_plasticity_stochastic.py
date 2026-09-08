@@ -1,8 +1,6 @@
 """Stochastic Hebbian LTP/LTD with Tsodyks-Markram gating and phase modulation.
 
-Combines Tsodyks-Markram stochastic release (Tsodyks & Markram 1997), BCM
-Hebbian LTP/LTD (Bienenstock, Cooper & Munro 1982), additive noise, and
-theta-phase gating (Hasselmo 2005).
+source: ADR-0277
 
 Pure business logic — no I/O.
 """

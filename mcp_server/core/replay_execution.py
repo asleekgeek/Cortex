@@ -1,23 +1,6 @@
 """SWR replay execution — sequence building and STDP pair extraction.
 
-Builds temporal and causal replay sequences from memory traces, then
-extracts entity pairs for spike-timing-dependent plasticity updates.
-
-Biological replay compresses temporal sequences by 15-20x during SWR events
-(Davidson et al. 2009, Neuron 63:497-507). This module uses entity-overlap-
-based sequence building rather than population burst dynamics, and applies
-the compression ratio (20x, upper end of published range) to STDP timing.
-
-References:
-    Foster DJ, Wilson MA (2006) Reverse replay of behavioural sequences
-        in hippocampal place cells during the awake state. Nature 440:680-683
-    Diba K, Buzsaki G (2007) Forward and reverse hippocampal place-cell
-        sequences during ripples. Nature Neurosci 10:1241-1242
-    Davidson TJ, Kloosterman F, Wilson MA (2009) Hippocampal replay of
-        extended experience. Neuron 63:497-507
-
-Pure business logic — no I/O.
-"""
+source: ADR-0238"""
 
 from __future__ import annotations
 
@@ -33,8 +16,8 @@ from mcp_server.core.replay_types import (
 _MAX_SEQUENCE_LENGTH = 8
 _MIN_SEQUENCE_LENGTH = 2
 _STDP_REPLAY_SCALE = 0.5
-# Davidson et al. (2009) report 15-20x compression during SWR replay.
-# Using 20x (upper bound) since our sequences are shorter than biological ones.
+# source: ADR-0238
+
 _COMPRESSION_RATIO = 20.0
 
 
@@ -203,10 +186,7 @@ def compute_replay_stdp_pairs(
 ) -> list[tuple[int, int, float]]:
     """Extract entity pairs for STDP updates from a replay sequence.
 
-    During replay, sequential memories activate entities in order.
-    Replay is compressed ~20x (Davidson et al. 2009); timing is scaled
-    accordingly to model compressed STDP windows.
-    """
+    source: ADR-0238"""
     pairs: list[tuple[int, int, float]] = []
 
     for i in range(len(events) - 1):

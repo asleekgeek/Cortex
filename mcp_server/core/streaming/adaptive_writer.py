@@ -1,22 +1,6 @@
 """Adaptive batch writer + drain — AIMD-sized, load-balanced, backpressured.
 
-Pairs an ``AdaptiveBatchController`` (AIMD batch sizing from observed write
-latency) with a ``BatchSink``, and fans rows across N such writers behind a
-bounded queue:
-
-  - **Adaptive sizing** — each writer grows its batch while writes stay under
-    the latency target and halves it when PG slows (AIMD; Jacobson 1988,
-    Chiu & Jain 1989). The calibration sweep showed edge throughput rising 6x
-    from 1k→10k rows/batch, so a fixed size leaves throughput on the table.
-  - **Load balancing** — a bounded thread-safe queue hands each page to
-    whichever of ``concurrency`` workers is free; under PG contention every
-    worker's controller shrinks together, converging to a fair share (the same
-    AIMD fairness property), so writers self-balance with no central scheduler.
-  - **Backpressure** — the queue is bounded; a full queue blocks the producer
-    (SEDA; Welsh 2001), so the async page-fetcher pauses instead of piling up.
-
-Pure orchestration — depends only on the sink / controller abstractions.
-"""
+source: ADR-0268"""
 
 from __future__ import annotations
 
@@ -40,10 +24,7 @@ def compute_queue_cap(
 ) -> int:
     """``Q_cap = floor(RAM_budget / (b_max * row_bytes)) - reserve``.
 
-    Pinned to ``b_max`` (NOT the live B): the controller ramps B up to b_max,
-    so sizing from a smaller live B would let peak RAM overshoot once it ramps.
-    source: Little (1961), occupancy bound applied to memory. Floors at 1.
-    """
+    source: ADR-0268"""
     if b_max <= 0 or row_bytes <= 0:
         raise ValueError("b_max and row_bytes must be positive")
     if ram_budget_bytes <= 0:
@@ -54,9 +35,7 @@ def compute_queue_cap(
 class AdaptiveBatchWriter:
     """Buffers rows; flushes controller-sized batches; feeds latency back.
 
-    One writer is single-threaded (its sink owns one connection). The buffer
-    holds at most ``b_max + one input page`` rows, so peak RAM stays bounded.
-    """
+    source: ADR-0268"""
 
     def __init__(self, sink: BatchSink, controller: AdaptiveBatchController):
         self._sink = sink
@@ -110,15 +89,7 @@ async def adaptive_drain(
 ) -> DrainResult:
     """Drain an async page iterator into N adaptive, load-balanced writers.
 
-    The async producer (e.g. a Kuzu pager) stays on the event loop; each page
-    is offloaded onto a bounded queue via ``asyncio.to_thread(q.put, ...)`` —
-    which blocks (backpressure) when the queue is full while keeping the loop
-    free to fetch the next page (producer || consumer overlap). ``concurrency``
-    worker threads each run an ``AdaptiveBatchWriter`` with its own sink + AIMD
-    controller. One sentinel per worker (emitted in ``finally``, so a producer
-    crash still releases every worker) ends the run; workers flush their tail
-    and close. Returns total rows written + any surfaced errors.
-    """
+    source: ADR-0268"""
     q: queue.Queue[Any] = queue.Queue(maxsize=queue_cap)
     result = DrainResult()
     lock = threading.Lock()
@@ -136,7 +107,7 @@ async def adaptive_drain(
         async for rows in pages:
             if rows:
                 await asyncio.to_thread(q.put, rows)  # blocks when full
-    except Exception as exc:  # noqa: BLE001 — surfaced via result
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0268
         with lock:
             result.errors.append(f"producer: {exc!r}")
     finally:

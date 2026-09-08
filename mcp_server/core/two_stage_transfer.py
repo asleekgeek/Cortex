@@ -1,20 +1,6 @@
 """Two-stage transfer — hippocampal-cortical transfer delta and interleaving.
 
-Extracted from two_stage_model.py to keep each module under 300 lines.
-Handles the McClelland et al. (1995) transfer computation and interleaved
-replay scheduling.
-
-References:
-    McClelland JL, McNaughton BL, O'Reilly RC (1995) Why there are
-        complementary learning systems. Psychol Rev 102:419-457
-    Ketz NA, et al. (2023) C-HORSE: A computational model of hippocampal-
-        cortical complementary learning. eLife 12:e77185
-        Hippocampal LR = 0.02, cortical LR = 0.002 (10:1 ratio)
-    Tse D, et al. (2007) Schemas and memory consolidation. Science 316:76-82
-        Schema-consistent memories consolidate 15x faster (30 days -> 48h)
-
-Pure business logic — no I/O.
-"""
+source: ADR-0288"""
 
 from __future__ import annotations
 
@@ -22,34 +8,24 @@ import math
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
-# Per-replay transfer rate, grounded in the C-HORSE model
-# (Ketz et al., eLife 12:e77185, 2023), which specifies hippocampal LR = 0.02
-# and cortical LR = 0.002 (10:1 ratio). We use 0.02 (C-HORSE's HIPPOCAMPAL LR)
-# as the per-replay transfer rate — an engineering choice: the cortical LR of
-# 0.002 would transfer 10x slower than this system's hours-timescale replay
-# cadence tolerates. (This is not the cortical rate, despite driving cortical
-# trace strengthening.)
+# source: ADR-0288
+
+
 _REPLAY_TRANSFER_RATE = 0.02
 
-# Schema-accelerated transfer multiplier for schema-consistent memories.
-# Tse et al. (2007) showed 15x acceleration in rats (30 days -> 48 hours).
-# Engineering adaptation: our system operates at hours/days timescale (not weeks),
-# so we compress the 15x biological factor to 2.5x. This preserves the qualitative
-# effect (schema-consistent memories transfer faster) while fitting the compressed
-# timescale of an AI memory system.
+# source: ADR-0288
+
+
 _SCHEMA_ACCELERATION = 2.5
 
-# Engineering choice: minimum replays before transfer begins. No direct paper
-# source; reflects the intuition that a single replay is insufficient to
-# establish a cortical trace.
-# source: engineering choice
+# source: ADR-0288
+
+
 _MIN_REPLAYS_FOR_TRANSFER = 2
 
-# Hippocampal release threshold: below this, hippocampal trace can be freed.
-# Engineering choice calibrated to the transfer rate above. Single definition —
-# two_stage_model.py imports this constant rather than redefining it (a prior
-# duplicate definition in both modules risked the two copies drifting apart).
-# source: engineering choice
+# source: ADR-0288
+
+# source: ADR-0288
 _HIPPOCAMPAL_RELEASE_THRESHOLD = 0.05
 
 
@@ -68,11 +44,7 @@ def compute_transfer_delta(
 ) -> float:
     """Compute how much hippocampal dependency decreases from one replay event.
 
-    Each SWR replay strengthens the cortical trace and weakens hippocampal
-    dependency. The base rate (0.02) is C-HORSE's hippocampal learning rate
-    (Ketz et al., 2023, eLife 12:e77185), used here as the per-replay transfer
-    rate — an engineering choice (see module constant note). Schema consistency
-    accelerates transfer per Tse et al. (2007), adapted to compressed timescale.
+    source: ADR-0288
 
     Args:
         current_dependency: Current hippocampal dependency [0, 1].
@@ -141,9 +113,7 @@ def compute_interleaving_schedule(
 ) -> list[int]:
     """Generate an interleaved replay schedule from candidates.
 
-    Interleaving prevents catastrophic interference in cortical learning.
-    Rather than replaying all similar memories consecutively, we interleave
-    memories from different clusters/domains.
+    source: ADR-0288
 
     Args:
         candidates: Replay candidates with 'domain' and 'replay_priority'.

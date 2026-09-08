@@ -1,8 +1,6 @@
 """Dictionary learning via K-SVD and Orthogonal Matching Pursuit (OMP).
 
-Extracted from sparse_dictionary.py to respect the 300-line file limit.
-Contains the numerical core: OMP sparse coding, least-squares solver,
-atom initialization (maximin distance), and K-SVD dictionary optimization.
+source: ADR-0263
 
 Pure business logic — no I/O.
 """
@@ -26,10 +24,9 @@ from mcp_server.shared.linear_algebra import (
 # ---------------------------------------------------------------------------
 
 
-# Determinants with an absolute value below this epsilon are treated as
-# singular and yield a zero solution.
-# source: pre-existing numerical-tolerance value, extracted unchanged
-# (#197 family 3); provenance not recorded at introduction
+# source: ADR-0263
+
+# source: ADR-0263
 _SINGULAR_DET_EPSILON = 1e-12
 
 
@@ -113,10 +110,9 @@ def _solve_least_squares(
     return [0] * n
 
 
-# Residual correlations below this epsilon are numerically zero — no atom
-# meaningfully matches the residual, so the pursuit stops.
-# source: pre-existing numerical-tolerance value, extracted unchanged
-# (#197 family 3); provenance not recorded at introduction
+# source: ADR-0263
+
+# source: ADR-0263
 _OMP_STOP_CORRELATION_EPSILON = 1e-10
 
 

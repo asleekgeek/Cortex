@@ -1,34 +1,6 @@
 """Memory thermodynamics — heat, surprise, decay, importance, valence.
 
-Pure business logic — no I/O.
-
-Key concepts:
-  - Heat: freshness signal (1.0=hot, 0.0=cold). Decays over time, reheated on access.
-  - Surprise: novelty signal (1.0=maximally novel). Drives write gate decisions.
-  - Importance: Edmundson (1969) four-feature scoring (cue + key + title + loc).
-  - Valence: VADER compound sentiment (Hutto & Gilbert 2014).
-  - Metamemory: tracks access frequency and usefulness for confidence calibration.
-
-Citations:
-  - compute_decay: Exponential forgetting curve (Ebbinghaus, 1885,
-    "Über das Gedächtnis"). R(t) = e^{-t/S} where S is memory stability.
-    Importance and valence modulate S, following the finding that emotional
-    and meaningful memories decay slower (McGaugh 2004, "The amygdala
-    modulates the consolidation of memories of emotionally arousing
-    experiences", Annual Review of Neuroscience).
-  - compute_surprise: Simple cosine distance novelty. No paper claimed.
-  - compute_importance: Edmundson HP (1969) "New Methods in Automatic
-    Extracting." JACM 16(2):264-285. Four-feature scoring with validated
-    weights: w_cue=2, w_key=1, w_title=1, w_loc=1.
-  - compute_valence: Hutto CJ & Gilbert E (2014) "VADER: A Parsimonious
-    Rule-based Model for Sentiment Analysis of Social Media Text." ICWSM.
-    compound = x / sqrt(x^2 + alpha), alpha=15.
-  - compute_session_coherence: Linear recency bonus. No paper — engineering
-    decision to prevent "I just told you this" failures.
-  - compute_metamemory_confidence: Frequentist accuracy (useful/total).
-    Loosely inspired by Nelson & Narens (1990) metamemory framework but
-    implemented as a simple ratio, not their full monitoring-control model.
-"""
+source: ADR-0283"""
 
 from __future__ import annotations
 
@@ -43,12 +15,9 @@ from mcp_server.shared.vader import vader_compound
 from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 from mcp_server.core.value_learning import retention_bonus
 
-# Dose-response sweep override for the Python-side hourly decay factor
-# (Ebbinghaus λ in heat(t) = heat(0)·λ^t). The SQL-side analogue is
-# ``p_factor`` in ``effective_heat()`` which drives BEAM retrieval; this
-# env var only affects code paths that call ``compute_decay()`` directly
-# (reconsolidation, sleep compute). Falls back to the calibrated default.
-# Source: benchmarks/lib/decay_sweep_runner.py (verification protocol).
+# source: ADR-0283
+
+
 _DECAY_FACTOR_OVERRIDE = os.environ.get("CORTEX_DECAY_LAMBDA")
 _DECAY_FACTOR_DEFAULT = (
     float(_DECAY_FACTOR_OVERRIDE) if _DECAY_FACTOR_OVERRIDE else 0.95
@@ -157,8 +126,8 @@ def _edmundson_cue(words: list[str]) -> float:
     return max(0.0, min(1.0, raw))
 
 
-# source: structural — the top-quartile TF concentration is degenerate with
-# fewer than two distinct terms (see _edmundson_key docstring).
+# source: ADR-0283
+
 _MIN_DISTINCT_TERMS = 2
 
 
@@ -182,10 +151,9 @@ def _edmundson_key(words: list[str]) -> float:
 
 
 def compute_importance(content: str, tags: list[str] | None = None) -> float:
-    """Edmundson (1969) four-feature importance scoring.
+    """Edmundson four-feature importance scoring.
 
-    Edmundson HP (1969) "New Methods in Automatic Extracting."
-    JACM 16(2):264-285.
+    source: ADR-0283
 
     importance = w_cue * cue(m) + w_key * key(m) + w_title * title(m)
                  + w_loc * loc(m)
@@ -231,18 +199,16 @@ def compute_importance(content: str, tags: list[str] | None = None) -> float:
 
 
 def compute_valence(content: str) -> float:
-    """VADER compound sentiment score (Hutto & Gilbert 2014).
+    """VADER compound sentiment score.
 
-    Returns a value in [-1.0, +1.0].
-    Uses engineering-domain lexicon with negation and degree modifiers.
-    compound = x / sqrt(x^2 + alpha), alpha=15.
+    source: ADR-0283
     """
     return vader_compound(content)
 
 
-# Above this importance the slower importance_decay_factor applies.
-# source: compute_decay docstring — "Importance > 0.7: λ increases to
-# importance_decay_factor (slower decay)"; rationale Craik & Lockhart (1972).
+# source: ADR-0283
+
+# source: ADR-0283
 _HIGH_IMPORTANCE = 0.7
 
 
@@ -260,26 +226,7 @@ def compute_decay(
 ) -> float:
     """Exponential forgetting: heat(t) = heat(0) * λ^t  (Ebbinghaus 1885).
 
-    λ (effective decay factor per hour) is modulated by:
-      - Importance > 0.7: λ increases to importance_decay_factor (slower decay).
-        Rationale: meaningful memories consolidate better (Craik & Lockhart 1972,
-        levels-of-processing).
-      - |valence|: pushes λ toward 1.0 (emotional memories resist decay).
-        Rationale: amygdala modulation of consolidation (McGaugh 2004).
-      - confidence: minor λ increase. Engineering decision — no paper.
-      - value (B2 RL): a memory with above-neutral learned value resists decay,
-        via value_learning.retention_bonus. Rationale: reward-predictive items
-        should persist (Schultz 1997; Sutton & Barto 1998). Neutral value (0.5)
-        and below leave λ unchanged — value never *accelerates* forgetting here.
-
-    Constants: decay_factor=0.95 and importance_decay_factor=0.998 are tuned
-    to produce reasonable half-lives for a memory system operating at a
-    hours/days timescale. Not from any paper. At the default call
-    (confidence=1.0, which multiplies in confidence_mod=1.1) the actual
-    half-lives are ~15h normal and ~381h important; the confidence-independent
-    idealized λ^t form (confidence=0) gives ~14h and ~346h. The value modifier is
-    neutral (1.0) at the default value=0.5, so default half-lives are unchanged.
-    """
+    source: ADR-0283"""
     if hours_elapsed <= 0:
         return current_heat
 
@@ -290,9 +237,8 @@ def compute_decay(
 
     base = importance_decay_factor if importance > _HIGH_IMPORTANCE else decay_factor
 
-    # Emotional resistance: time-dependent (Yonelinas & Ritchey 2015).
-    # Emotional advantage grows with delay (Kleinsmith & Kaplan 1963 crossover).
-    # At t=0: no resistance. At t>>1h: full resistance (up to 30% at |v|=1).
+    # source: ADR-0283
+
     time_saturation = 1.0 - math.exp(-hours_elapsed) if hours_elapsed > 0 else 0.0
     emotional_mod = 1.0 + abs(valence) * emotional_decay_resistance * time_saturation
     effective = 1.0 - (1.0 - base) / emotional_mod
@@ -301,9 +247,7 @@ def compute_decay(
     confidence_mod = 1.0 + confidence * 0.1
     effective = 1.0 - (1.0 - effective) / confidence_mod
 
-    # Value modifier (B2): high learned value resists decay. retention_bonus maps
-    # value in [0,1] to a factor in [1, 1.5] (neutral 0.5 -> 1.0), applied the
-    # same way as the confidence modifier so value>0.5 pushes λ toward 1.0.
+    # source: ADR-0283
 
     value_mod = retention_bonus(value)
     effective = 1.0 - (1.0 - effective) / value_mod
@@ -320,8 +264,7 @@ def compute_session_coherence(
 ) -> float:
     """Boost heat for memories created within the current session window.
 
-    Prevents "I just told you this" by keeping active context elevated.
-    """
+    source: ADR-0283"""
     try:
         mem_dt = datetime.fromisoformat(created_at_iso)
         if mem_dt.tzinfo is None:
@@ -336,10 +279,9 @@ def compute_session_coherence(
     return heat
 
 
-# Confidence is only computed above this many accesses ("enough data points"
-# in the docstring below).
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0283
+
+# source: ADR-0283
 _MIN_ACCESSES_FOR_CONFIDENCE = 3
 
 
@@ -351,7 +293,9 @@ def compute_metamemory_confidence(access_count: int, useful_count: int) -> float
 
 
 def is_error_content(content: str) -> bool:
-    """Check if content carries an error cue (issue #158: language-aware).
+    """Check if content carries an error cue.
+
+    source: ADR-0283
 
     Delegates to ``content_cues.is_error_cue`` — structural runtime markers
     (tracebacks, stack frames, exception class names, POSIX signals) plus
@@ -361,9 +305,8 @@ def is_error_content(content: str) -> bool:
 
 
 def is_decision_content(content: str) -> bool:
-    """Check if content carries a decision cue (issue #158: language-aware).
+    """Check if content carries a decision cue.
 
-    Delegates to ``content_cues.is_decision_cue`` — multilingual decision
-    keywords. See ``content_cues`` for language coverage.
+    source: ADR-0283
     """
     return content_cues.is_decision_cue(content)

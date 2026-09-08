@@ -1,12 +1,6 @@
 """3-tier retrieval dispatch: simple, mixed (multi-hop), deep (BM25-primary).
 
-Dispatch strategy (validated via LoCoMo, LongMemEval, BEAM benchmarks):
-  - Simple: balanced 9-signal WRRF (general/semantic/temporal)
-  - Mixed: multi-hop with entity bridging (multi-hop intent)
-  - Deep: BM25-primary + entity-weighted (entity/factual queries)
-
-Pure business logic -- no I/O. Takes signals as data.
-"""
+source: ADR-0247"""
 
 from __future__ import annotations
 
@@ -21,22 +15,9 @@ from mcp_server.shared.telemetry_context import set_retrieval_tier
 
 # ── Tier Classification ──────────────────────────────────────────────────
 
-# Ranking multiplier applied to a memory whose capture origin is not trusted
-# (issue #368). Mirrors the _DECAY_FACTOR_OVERRIDE pattern in
-# core/thermodynamics.py: a calibration sweep varies it per cell through the
-# environment, and production reads the calibrated default.
-#
-# source: docs/provenance/trust-factor-calibration.md §Results — the largest
-# W defending 4/4 adversarial scenarios while all four gated floors hold.
-# Both arms of the pre-registered rule, measured before this value was picked:
-#   adversarial (benchmarks/lib/trust_factor_sweep.py, artefact
-#     benchmarks/results/trust-factor-sweep/adversarial/adversarial-sweep.json):
-#     1.0 -> 0/4, 0.75-0.95 -> 2/4, 0.20-0.70 -> 4/4
-#   floors (5 reproduce.sh cells, benchmarks/results/trust-factor-sweep/
-#     20260809T085409Z/, git_sha 66d2628f): at W=0.7, LME 0.9820/0.9178 and
-#     LoCoMo 0.9329/0.8181 — 4/4 PASS, margins +0.0000/+0.0038/+0.0179/+0.0131
-# 0.75 and above defend only 2/4; anything below 0.7 buys no extra defence and
-# costs more ranking distortion, which is why the rule asks for the largest.
+# source: ADR-0247
+
+
 _UNTRUSTED_FACTOR_OVERRIDE = os.environ.get("CORTEX_UNTRUSTED_ORIGIN_FACTOR")
 UNTRUSTED_ORIGIN_FACTOR = (
     float(_UNTRUSTED_FACTOR_OVERRIDE) if _UNTRUSTED_FACTOR_OVERRIDE else 0.7
@@ -72,12 +53,8 @@ def wrrf_fuse(
 ) -> list[tuple[int, float]]:
     """Weighted Reciprocal Rank Fusion across multiple signals."""
     scores: dict[int, float] = {}
-    # strict=True: WRRF requires exactly one weight per signal. Without it,
-    # zip silently truncates if lengths drift (e.g., upstream removes a
-    # signal but forgets the weight vector), silently dropping signals or
-    # weights from the fusion. The paper's WRRF claim depends on this
-    # invariant; strict surfaces a violation as ValueError instead of
-    # degrading the score silently.
+    # source: ADR-0247
+
     for results, weight in zip(signal_results, signal_weights, strict=True):
         if weight <= 0:
             continue
@@ -149,10 +126,7 @@ def _mixed_weights(v: float, f: float, h: float, sa: float) -> dict[str, float]:
 def _instruction_weights(v: float, f: float, h: float, sa: float) -> dict[str, float]:
     """BM25+FTS-primary weights for instruction/directive queries.
 
-    Instructions have distinctive lexical patterns ("always", "never", "must").
-    BM25 IDF weighting surfaces rare directive keywords that vector similarity
-    misses. Reduced vector weight avoids dilution by topic-adjacent content.
-    """
+    source: ADR-0247"""
     return {
         "vector": v * 0.5,
         "fts": f * 1.5,
@@ -254,14 +228,14 @@ def dispatch_retrieval(
     if tier == "mixed" and hop_fn is not None:
         try:
             fused = _run_multihop(query, fused, hop_fn)
-        except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("retrieval_dispatch.multihop")
+        except Exception as exc:  # noqa: BLE001 — source: ADR-0247
             silent_failure.note("retrieval_dispatch.multihop", exc)
 
     rerank_pool = fused[: max_results * 3]
     if content_lookup:
         try:
             rerank_pool = rerank_results(query, rerank_pool, content_lookup)
-        except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("retrieval_dispatch.rerank_wrapper")
+        except Exception as exc:  # noqa: BLE001 — source: ADR-0247
             # rerank_results already catches its own inference errors
             # (core/reranker.py) — reaching this handler means something
             # else in the call (e.g. content_lookup shape) raised.

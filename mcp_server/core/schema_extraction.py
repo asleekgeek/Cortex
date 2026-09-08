@@ -1,27 +1,6 @@
 """Schema extraction — formation from clusters and merging of schemas.
 
-Handles the creation side of the schema lifecycle:
-  1. Formation: cluster of memories -> Schema via entity/tag frequency analysis
-  2. Merging: two similar schemas -> single unified Schema
-
-Theoretical basis (all qualitative — no published equations):
-    Tse D et al. (2007) — Demonstrates schema-accelerated consolidation
-        in rats (~15x faster). No computational model provided.
-    Gilboa A, Marlatte H (2017) — Reviews neurobiology of schemas:
-        schemas as networks of neocortical traces, schema formation via
-        statistical regularity extraction. Conceptual framework only.
-
-Engineering implementation:
-    Schema formation extracts entity/tag frequencies from memory clusters
-    using simple counting and threshold filtering. Merging uses Jaccard
-    similarity — standard set overlap, not derived from any schema paper.
-    All thresholds are hand-tuned:
-      _MIN_FORMATION_COUNT=5, _ENTITY_FREQUENCY_THRESHOLD=0.4,
-      _HIGH_MATCH_THRESHOLD=0.7, _SCHEMA_MERGE_THRESHOLD=0.6,
-      _SCHEMA_EMA_ALPHA=0.1, _RELATIONSHIP_FREQUENCY_THRESHOLD=0.3
-
-Pure business logic — no I/O.
-"""
+source: ADR-0250"""
 
 from __future__ import annotations
 

@@ -1,49 +1,6 @@
 """Hippocampal replay — SWR-driven memory consolidation and context reconstruction.
 
-Two modes of operation:
-
-1. **Context restoration** (original): Format checkpoint + hot memories for
-   post-compaction injection. This is the "macro-replay" after Claude Code context
-   compaction.
-
-2. **SWR replay** (new): During consolidation, generate replay sequences from
-   memory traces ordered by temporal/causal chains. Forward replay projects
-   sequences forward (what happened after X?). Reverse replay traces backward
-   from outcomes to causes (what led to Y?). Replay-dependent plasticity updates
-   edge weights via STDP.
-
-SWR replay is gated by the oscillatory clock — replay only fires during
-sharp-wave ripple events, not on every consolidation call. Replay prioritizes
-sequences with high dopamine-modulated priority scores (see replay_selection.py).
-
-Biological adaptation note:
-    Biological SWR replay uses population burst dynamics where place cell
-    sequences are reactivated in compressed time (Ecker et al. 2022, eLife).
-    This code approximates replay by building sequences from entity-overlap
-    and temporal ordering, not from population-level burst detection. The
-    compression ratio (~20x, Davidson et al. 2009) is applied to STDP timing
-    in replay_execution.py.
-
-References:
-    Foster DJ, Wilson MA (2006) Reverse replay of behavioural sequences
-        in hippocampal place cells during the awake state. Nature 440:680-683
-    Diba K, Buzsaki G (2007) Forward and reverse hippocampal place-cell
-        sequences during ripples. Nature Neurosci 10:1241-1242
-    Davidson TJ, Kloosterman F, Wilson MA (2009) Hippocampal replay of
-        extended experience. Neuron 63:497-507
-    Ecker A et al. (2022) Hippocampal sharp wave-ripples and the associated
-        sequence replay emerge from structured synaptic interactions. eLife
-    Nelli S et al. (2025) Large SWRs promote hippocampo-cortical reactivation.
-        Neuron (in press)
-
-This module is the public API. Implementation is split across:
-    - replay_types.py — Data types (ReplayDirection, ReplayEvent, etc.)
-    - replay_formatting.py — Context restoration and micro-checkpoint detection
-    - replay_execution.py — Sequence building and STDP pair extraction
-    - replay_selection.py — Priority scoring and sequence selection
-
-Pure business logic — no I/O. Storage operations are handled by the caller.
-"""
+source: ADR-0237"""
 
 from __future__ import annotations
 
@@ -72,9 +29,9 @@ from mcp_server.core.replay_types import (
 
 _MIN_SEQUENCE_LENGTH = 2
 _MAX_SEQUENCES_PER_SWR = 5
-# Sequences above this priority emit a schema-extraction signal.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0237
+
+# source: ADR-0237
 _SCHEMA_SIGNAL_PRIORITY_THRESHOLD = 0.5
 
 

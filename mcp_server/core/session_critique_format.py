@@ -1,7 +1,6 @@
 """Session critique formatting, scoring, and decision analysis helpers.
 
-Companion module to session_critique.py — handles composite score
-computation, markdown text formatting, and decision quality analysis.
+source: ADR-0255
 
 Pure business logic — no I/O.
 """
@@ -11,7 +10,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# ── Decision Analysis ─────────────────────────────────────────────────────
+# source: ADR-0255
 
 _REVERSAL_RE = re.compile(
     r"\b(actually|instead|changed my mind|wait|no,|scratch that|"
@@ -24,20 +23,22 @@ _DECISION_RE = re.compile(
     re.IGNORECASE,
 )
 
-# ── Heuristic thresholds ──────────────────────────────────────────────────
-# source (all constants in this block): pre-existing tuned values, extracted
-# unchanged (#197 family 3); provenance not recorded at introduction.
+# source: ADR-0255
+
 
 # More reversals than this triggers an "upfront analysis" suggestion.
 _MAX_REVERSALS_BEFORE_SUGGESTION = 2
 # Below this average confidence, decisions count as low-confidence.
 _LOW_CONFIDENCE_THRESHOLD = 0.5
-# Missing-decision suggestion fires only above this many session memories.
+# source: ADR-0255
 _MIN_MEMORIES_FOR_DECISION_CHECK = 5
 
 
 def _is_decision_memory(m: dict[str, Any]) -> bool:
-    """Check if a memory represents a decision."""
+    """Check if a memory represents a decision.
+
+    source: ADR-0255
+    """
     tags = m.get("tags") or []
     has_decision_tag = any(isinstance(t, str) and t.lower() == "decision" for t in tags)
     has_decision_content = bool(_DECISION_RE.search(m.get("content", "")))
@@ -50,7 +51,10 @@ def _decision_suggestions(
     avg_confidence: float,
     memory_count: int,
 ) -> list[str]:
-    """Generate suggestions from decision analysis metrics."""
+    """Generate suggestions from decision analysis metrics.
+
+    source: ADR-0255
+    """
     suggestions: list[str] = []
     if reversal_count > _MAX_REVERSALS_BEFORE_SUGGESTION:
         suggestions.append(
@@ -72,6 +76,8 @@ def analyze_decisions(
     session_memories: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Analyze decision quality from session memories.
+
+    source: ADR-0255
 
     Returns:
       - decision_count: total decisions made

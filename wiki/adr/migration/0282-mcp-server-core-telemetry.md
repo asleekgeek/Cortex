@@ -1,0 +1,123 @@
+---
+title: "ADR-0282 — mcp_server/core/telemetry.py rationale"
+status: accepted
+source: mcp_server/core/telemetry.py
+---
+
+# ADR-0282 — mcp_server/core/telemetry.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Captures the empirical workload distribution (read/write ratio, latency
+per op kind, cumulative byte-volume, success/failure split) so the
+paper's "100x more reads than writes" claim is grounded in measurement,
+not assertion (Popper C6).
+````
+
+## module — original line 8 (docstring)
+
+````text
+Storage:
+  * In-memory dict (per process) for fast snapshot/inspection.
+  * Size-rotated JSONL at ~/.claude/methodology/telemetry.jsonl, with one
+    previous segment (.1) for offline analysis. In-memory counters span the
+    process lifetime; the files retain only the current and previous segments.
+````
+
+## module — original line 14 (docstring)
+
+````text
+Threading:
+  Counter increments are guarded by a Lock so the MCP-thread + any
+  background threads do not race on the running totals.
+````
+
+## module — original line 18 (docstring)
+
+````text
+Opt-out:
+  Set ``CORTEX_TELEMETRY_DISABLED=1`` in the environment to disable both
+  the in-memory counters and the JSONL append.
+````
+
+## module — original line 22 (docstring)
+
+````text
+Optional export (issue #122):
+  ``TelemetryExporter`` is a port (Protocol) that outer layers may
+  implement to mirror each recorded sample onto an external sink (e.g.
+  OTLP). Core declares the port only -- it never imports an exporter
+  implementation. The composition root (mcp_server/__main__.py) wires a
+  concrete exporter via ``set_exporter()`` at startup, OFF by default
+  (``set_exporter`` is never called unless the operator opted in via
+  env var -- see infrastructure/otel_exporter.py::build_otel_exporter).
+  Export is best-effort: any exception raised by the exporter is caught
+  here and never propagates to the caller, same guarantee as the JSONL
+  append below.
+````
+
+## module — original line 34 (docstring)
+
+````text
+Layer:
+  Pure logic. No MCP, no DB, no embeddings. Filesystem write is local
+  and best-effort (try/except OSError) so a full disk or permission
+  error never propagates to the caller.
+````
+
+## module — original line 39 (docstring)
+
+````text
+Contract (record):
+  precondition: ``op`` is a non-empty string; ``latency_ms`` >= 0;
+                byte / count fields are non-negative ints.
+  postcondition: a sample is published immediately, or captured until the
+                MCP response exists. Publication updates counters atomically
+                and writes JSONL/exporter best-effort, without failing callers.
+
+````
+
+## _disabled — original line 158 (docstring)
+
+````text
+source: opt-out contract documented in module docstring.
+````
+
+## ratio_reads_writes — original line 262 (docstring)
+
+````text
+    Reads = the canonical retrieval ops; writes = mutations + curation.
+    The denominator is clamped so a fresh process returns 0.0 instead
+    of dividing by zero.
+    
+````
+
+## module — original line 101 (comment)
+
+````text
+# source: infrastructure/config.py — CORTEX_CLAUDE_DIR isolates all local data.
+# Existing filesystem ownership in this module is unchanged; no infrastructure
+# import is introduced into core to resolve the same configuration root.
+````
+
+## module — original line 150 (comment)
+
+````text
+# asyncio.to_thread copies context; a cancelled caller can finish first.
+# Lock closure against late worker appends so no sample is stranded.
+````
+
+## module — original line 224 (comment)
+
+````text
+# source: existing JSONL contract rounds latency_ms to three decimal places.
+````
+
+## inline — original line 236 (directive-rationale)
+
+````text
+# noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
+````

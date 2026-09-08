@@ -1,7 +1,6 @@
 """Text scoring signals: BM25, n-gram phrase matching, keyword overlap.
 
-BM25 parameters match ai-architect's PostgreSQL ts_rank (k1=1.5, b=0.75).
-N-gram weights match ai-architect config (trigram=0.4, bigram=0.35, content=0.25).
+source: ADR-0251
 
 Pure business logic -- no I/O.
 """
@@ -135,9 +134,9 @@ def _extract_ngrams(tokens: list[str], n: int) -> set[tuple[str, ...]]:
     return {tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1)}
 
 
-# Query tokens at or below this length are not counted as content words.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0251
+
+
 _SHORT_TOKEN_MAX_LEN = 2
 
 

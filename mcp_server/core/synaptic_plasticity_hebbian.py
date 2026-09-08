@@ -1,28 +1,6 @@
 """Hebbian LTP/LTD and STDP updates.
 
-BCM theory (Bienenstock, Cooper & Munro 1982, "Theory for the development
-of neuron selectivity", J Neuroscience 2:32-48):
-  phi(c, theta_m) = c * (c - theta_m)
-  dw/dt = phi(c, theta_m) * d
-  theta_m = E[c^2]  (sliding threshold)
-
-  When c > theta_m: phi > 0 → LTP
-  When 0 < c < theta_m: phi < 0 → LTD
-  theta_m slides up with high activity, down with low activity.
-
-STDP (Bi & Poo 1998, "Synaptic modifications in cultured hippocampal
-neurons", J Neuroscience 18:10464-10472):
-  Pre-before-post (dt > 0): delta_w = A+ * exp(-dt/tau+)
-  Post-before-pre (dt < 0): delta_w = -A- * exp(dt/tau-)
-  With A+ > A-, tau+ ≈ 17ms, tau- ≈ 34ms (biological).
-  Adapted to hours timescale: tau+ = tau- = 24h.
-
-Constants: _LTP_RATE, _LTD_RATE are overall scaling factors (hand-tuned).
-STDP amplitudes A+/A- maintain the A+ > A- asymmetry from Bi & Poo.
-Time constants are adapted from ms to hours (documented adaptation).
-
-Pure business logic — no I/O.
-"""
+source: ADR-0276"""
 
 from __future__ import annotations
 
@@ -42,10 +20,9 @@ _STDP_A_PLUS: float = 0.03
 _STDP_A_MINUS: float = 0.02
 _STDP_TAU_PLUS: float = 24.0
 _STDP_TAU_MINUS: float = 24.0
-# Coincidence window: |dt| below this many hours is treated as simultaneous,
-# so STDP neither potentiates nor depresses.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0276
+
+# source: ADR-0276
 _STDP_COINCIDENCE_HOURS: float = 0.001
 
 
@@ -55,9 +32,7 @@ def compute_bcm_phi(
 ) -> float:
     """BCM quadratic phi function: phi(c, theta_m) = c * (c - theta_m).
 
-    Bienenstock, Cooper & Munro (1982), Eq. 3.
-    Returns positive for LTP (c > theta_m), negative for LTD (0 < c < theta_m).
-    """
+    source: ADR-0276"""
     return post_activity * (post_activity - theta)
 
 
@@ -72,9 +47,7 @@ def compute_ltp(
 ) -> float:
     """BCM LTP: dw = rate * phi(c, theta_m) * d * co_activation.
 
-    phi(c, theta_m) = c * (c - theta_m) — quadratic, per BCM 1982.
-    Only applies potentiation (phi > 0); use compute_ltd for depression.
-    """
+    source: ADR-0276"""
     phi = compute_bcm_phi(post_activity, theta)
     if phi <= 0:
         return current_weight
@@ -92,13 +65,7 @@ def compute_ltd(
 ) -> float:
     """BCM LTD: activity-based depression when 0 < c < theta_m.
 
-    Two mechanisms:
-    1. Activity-based (BCM 1982): phi(c, theta_m) < 0 when 0 < c < theta_m.
-       dw = ltd_rate * phi(c, theta_m).
-    2. Inactivity-based (fallback): logarithmic decay for edges with no
-       recent co-access. This is engineering heuristic, not from BCM —
-       BCM requires postsynaptic activity for LTD.
-    """
+    source: ADR-0276"""
     if post_activity > 0:
         phi = compute_bcm_phi(post_activity, theta)
         if phi < 0:
@@ -117,7 +84,9 @@ def update_bcm_threshold(
     entity_activity: float,
     decay: float = _BCM_THETA_DECAY,
 ) -> float:
-    """BCM sliding threshold: theta_m = E[c^2] (BCM 1982, Eq. 5).
+    """BCM sliding threshold: theta_m = E[c^2].
+
+    source: ADR-0276
 
     Implemented as EMA: theta_m' = decay * theta_m + (1 - decay) * c^2.
     This is faithful to BCM theory.
@@ -173,12 +142,8 @@ def apply_hebbian_update(
     """Apply Hebbian LTP/LTD to a batch of edges."""
 
     if is_mechanism_disabled(Mechanism.SYNAPTIC_PLASTICITY):
-        # No-op identity: zero weight change but the result-shape contract
-        # (every dict carries `action`, `weight`, `delta`) must hold so
-        # downstream `_apply_updates` in handlers/consolidation/plasticity.py
-        # doesn't KeyError. Pre-fix returned raw edges, which broke the
-        # cycle silently with a logged WARNING and dropped the row's
-        # plasticity contribution.
+        # source: ADR-0276
+
         return [
             {
                 **edge,

@@ -1,0 +1,25 @@
+---
+title: "ADR-0262 — mcp_server/core/sparse_dictionary_activation.py rationale"
+status: accepted
+source: mcp_server/core/sparse_dictionary_activation.py
+---
+
+# ADR-0262 — mcp_server/core/sparse_dictionary_activation.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 121 (comment)
+
+````text
+# Sessions shorter than this (10 minutes in milliseconds) count as short bursts.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## module — original line 125 (comment)
+
+````text
+# Conversations with more than this many turns count as long back-and-forths.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````

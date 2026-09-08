@@ -23,9 +23,9 @@ _MICRO_DECISION_RE = re.compile(
 
 _CRITICAL_TAGS = {"critical", "important", "architecture", "breaking"}
 
-# Above this surprise value an event alone warrants a micro-checkpoint.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0239
+
+# source: ADR-0239
 _HIGH_SURPRISE_THRESHOLD = 0.8
 
 
@@ -38,9 +38,7 @@ def should_micro_checkpoint(
 ) -> tuple[bool, str]:
     """Check if content warrants a micro-checkpoint.
 
-    Triggers on error detection, decisions, high surprise, or critical tags.
-    Returns (should_checkpoint, reason).
-    """
+    source: ADR-0239"""
     if tool_call_count < cooldown:
         return False, ""
 

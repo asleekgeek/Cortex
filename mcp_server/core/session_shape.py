@@ -95,9 +95,9 @@ def _parse_session_metrics(conv: dict) -> tuple[int, int, int]:
     return duration, turn_count, message_count
 
 
-# A mode whose ratio exceeds this share of the session dominates it.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0257
+
+# source: ADR-0257
 _DOMINANT_MODE_RATIO = 0.6
 
 

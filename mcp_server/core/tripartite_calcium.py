@@ -1,22 +1,6 @@
-"""Tripartite synapse calcium dynamics via De Pitta et al. (2009) G-ChI model.
+"""Compute calcium dynamics for the tripartite synapse.
 
-Reference: De Pitta M et al. (2009) Glutamate regulation of calcium and IP3
-oscillating and pulsating dynamics in astrocytes. J Biol Phys 35:383-411
-
-ODE system (Li-Rinzel reduction, Eq. 5-8):
-    dC/dt = J_chan + J_leak - J_pump
-    dh/dt = (h_inf - h) / tau_h
-    J_chan = r_C * m_inf^3 * h * (I/(I+d_1)) * (C_0 - C) / c_1
-    J_leak = r_L * (C_0 - C) / c_1
-    J_pump = v_ER * C^2 / (K_ER^2 + C^2)
-    m_inf = I/(I+d_1) * C/(C+d_5)
-    h_inf = d_2*(I+d_1) / ((I+d_3)*(C+d_2))
-
-Timescale: biological Ca2+ transients complete in seconds. Our system operates
-at hours. We compute the steady-state equilibrium Ca2+ as f(IP3), not the
-transient. At steady state dC/dt=0, dh/dt=0.
-
-Pure business logic -- no I/O.
+source: ADR-0285
 """
 
 from __future__ import annotations
@@ -24,7 +8,7 @@ from __future__ import annotations
 import math
 from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 
-# ── De Pitta 2009 Parameters (Table 1, AM mode) ─────────────────────────
+# source: ADR-0285
 
 R_C = 6.0  # s^-1, maximal CICR rate
 R_L = 0.11  # s^-1, ER leak rate
@@ -38,7 +22,7 @@ D_3 = 0.9434  # uM, IP3 dissociation (inhibiting)
 D_5 = 0.08234  # uM, Ca2+ activation dissociation
 A_2 = 0.2  # s^-1, IP3R inactivation rate
 
-# ── System mapping constants (not from paper) ───────────────────────────
+# source: ADR-0285
 
 IP3_PER_EVENT = 0.15  # uM IP3 per synaptic event
 IP3_MAX = 2.0  # uM, saturation ceiling
@@ -49,25 +33,24 @@ CA_RANGE_UM = 1.0  # uM, dynamic range above resting -> [0, 1]
 CA_LOW_THRESHOLD = 0.3
 CA_MEDIUM_THRESHOLD = 0.6
 
-# Modulation strengths (qualitative, no parametric paper model)
+# source: ADR-0285
 DSERINE_LTP_BOOST = 0.2
 GLUT_LTD_STRENGTH = 0.15
 
-# Metabolic constants (Pellerin & Magistretti 1994 concept)
+# source: ADR-0285
 METABOLIC_BASELINE = 1.0
 METABOLIC_BOOST = 1.5
 METABOLIC_STARVATION = 0.6
 
 
-# Denominators below this epsilon are treated as zero, so the corresponding
-# steady-state fraction degenerates instead of dividing by ~0.
-# source: pre-existing numerical-tolerance value, extracted unchanged
-# (#197 family 3); provenance not recorded at introduction
+# source: ADR-0285
+
+# source: ADR-0285
 _DEGENERATE_DENOM_EPSILON = 1e-15
 
-# Euler iteration stops once the Ca2+ step falls below this epsilon (uM).
-# source: pre-existing numerical-tolerance value, extracted unchanged
-# (#197 family 3); provenance not recorded at introduction
+# source: ADR-0285
+
+# source: ADR-0285
 _CALCIUM_CONVERGENCE_EPSILON = 1e-6
 
 
@@ -142,7 +125,9 @@ def compute_calcium_rise(
     current_calcium: float,
     synaptic_events: int,
 ) -> float:
-    """Compute Ca2+ after activity via De Pitta 2009 steady state.
+    """Compute the calcium increase from synaptic activity.
+
+    source: ADR-0285
 
     Maps events -> IP3, solves G-ChI equilibrium, blends toward it.
     """
@@ -161,13 +146,11 @@ def compute_calcium_decay(
 ) -> float:
     """Decay toward resting Ca2+ (IP3=0 steady state, normalized to 0).
 
-    At hours timescale, biological transients have long completed.
-    Exponential relaxation toward resting equilibrium.
-    """
+    source: ADR-0285"""
     if hours_elapsed <= 0:
         return current_calcium
     resting = _normalize_calcium(_steady_state_calcium(0.0))
-    decay_rate = 0.1  # per hour (system-tuned)
+    decay_rate = 0.1  # source: ADR-0285
     alpha = 1.0 - math.exp(-decay_rate * hours_elapsed)
     return max(0.0, current_calcium + alpha * (resting - current_calcium))
 
@@ -180,8 +163,7 @@ def propagate_calcium_wave(
 ) -> list[float]:
     """Threshold-gated linear Ca2+ spread to neighbors.
 
-    Engineering approximation; biological waves involve regenerative IP3.
-    """
+    source: ADR-0285"""
     if source_calcium < CA_LOW_THRESHOLD:
         return list(neighbor_calciums)
     wave_amount = source_calcium * spread_factor
@@ -194,9 +176,7 @@ def propagate_calcium_wave(
 def classify_calcium_regime(calcium: float) -> str:
     """Classify normalized Ca2+ into quiescent/facilitation/depression.
 
-    Thresholds at 0.3 and 0.6 on normalized scale, informed by
-    De Pitta 2009 bifurcation structure.
-    """
+    source: ADR-0285"""
     if calcium < CA_LOW_THRESHOLD:
         return "quiescent"
     if calcium < CA_MEDIUM_THRESHOLD:
@@ -209,10 +189,9 @@ def compute_ltp_modulation(
     *,
     d_serine_boost: float = DSERINE_LTP_BOOST,
 ) -> float:
-    """LTP modulation by regime. Qualitative from Henneberger (2010).
+    """LTP modulation by regime.
 
-    No parametric dose-response exists; linear ramps are engineering choices.
-    Returns multiplier: >1 facilitated, <1 depressed.
+    source: ADR-0285
     """
 
     if is_mechanism_disabled(Mechanism.TRIPARTITE_SYNAPSE):
@@ -259,7 +238,7 @@ def compute_heterosynaptic_depression(
     ]
 
 
-# ── Metabolic Gating (Pellerin & Magistretti 1994) ──────────────────────
+# source: ADR-0285
 
 
 def _compute_activity_rate(

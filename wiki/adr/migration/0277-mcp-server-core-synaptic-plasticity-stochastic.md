@@ -1,0 +1,17 @@
+---
+title: "ADR-0277 — mcp_server/core/synaptic_plasticity_stochastic.py rationale"
+status: accepted
+source: mcp_server/core/synaptic_plasticity_stochastic.py
+---
+
+# ADR-0277 — mcp_server/core/synaptic_plasticity_stochastic.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Combines Tsodyks-Markram stochastic release (Tsodyks & Markram 1997), BCM
+Hebbian LTP/LTD (Bienenstock, Cooper & Munro 1982), additive noise, and
+theta-phase gating (Hasselmo 2005).
+````

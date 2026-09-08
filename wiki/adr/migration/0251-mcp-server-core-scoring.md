@@ -1,0 +1,24 @@
+---
+title: "ADR-0251 — mcp_server/core/scoring.py rationale"
+status: accepted
+source: mcp_server/core/scoring.py
+---
+
+# ADR-0251 — mcp_server/core/scoring.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+BM25 parameters match ai-architect's PostgreSQL ts_rank (k1=1.5, b=0.75).
+N-gram weights match ai-architect config (trigram=0.4, bigram=0.35, content=0.25).
+````
+
+## module — original line 138 (comment)
+
+````text
+# Query tokens at or below this length are not counted as content words.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````

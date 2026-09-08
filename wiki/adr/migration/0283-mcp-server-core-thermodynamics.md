@@ -1,0 +1,186 @@
+---
+title: "ADR-0283 — mcp_server/core/thermodynamics.py rationale"
+status: accepted
+source: mcp_server/core/thermodynamics.py
+---
+
+# ADR-0283 — mcp_server/core/thermodynamics.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Pure business logic — no I/O.
+````
+
+## module — original line 5 (docstring)
+
+````text
+Key concepts:
+  - Heat: freshness signal (1.0=hot, 0.0=cold). Decays over time, reheated on access.
+  - Surprise: novelty signal (1.0=maximally novel). Drives write gate decisions.
+  - Importance: Edmundson (1969) four-feature scoring (cue + key + title + loc).
+  - Valence: VADER compound sentiment (Hutto & Gilbert 2014).
+  - Metamemory: tracks access frequency and usefulness for confidence calibration.
+````
+
+## module — original line 12 (docstring)
+
+````text
+Citations:
+  - compute_decay: Exponential forgetting curve (Ebbinghaus, 1885,
+    "Über das Gedächtnis"). R(t) = e^{-t/S} where S is memory stability.
+    Importance and valence modulate S, following the finding that emotional
+    and meaningful memories decay slower (McGaugh 2004, "The amygdala
+    modulates the consolidation of memories of emotionally arousing
+    experiences", Annual Review of Neuroscience).
+  - compute_surprise: Simple cosine distance novelty. No paper claimed.
+  - compute_importance: Edmundson HP (1969) "New Methods in Automatic
+    Extracting." JACM 16(2):264-285. Four-feature scoring with validated
+    weights: w_cue=2, w_key=1, w_title=1, w_loc=1.
+  - compute_valence: Hutto CJ & Gilbert E (2014) "VADER: A Parsimonious
+    Rule-based Model for Sentiment Analysis of Social Media Text." ICWSM.
+    compound = x / sqrt(x^2 + alpha), alpha=15.
+  - compute_session_coherence: Linear recency bonus. No paper — engineering
+    decision to prevent "I just told you this" failures.
+  - compute_metamemory_confidence: Frequentist accuracy (useful/total).
+    Loosely inspired by Nelson & Narens (1990) metamemory framework but
+    implemented as a simple ratio, not their full monitoring-control model.
+
+````
+
+## compute_importance — original line 185 (docstring)
+
+````text
+Edmundson (1969) four-feature importance scoring.
+````
+
+## compute_importance — original line 187 (docstring)
+
+````text
+    Edmundson HP (1969) "New Methods in Automatic Extracting."
+    JACM 16(2):264-285.
+````
+
+## compute_valence — original line 234 (docstring)
+
+````text
+VADER compound sentiment score (Hutto & Gilbert 2014).
+````
+
+## compute_valence — original line 236 (docstring)
+
+````text
+    Returns a value in [-1.0, +1.0].
+    Uses engineering-domain lexicon with negation and degree modifiers.
+    compound = x / sqrt(x^2 + alpha), alpha=15.
+    
+````
+
+## compute_decay — original line 263 (docstring)
+
+````text
+    λ (effective decay factor per hour) is modulated by:
+      - Importance > 0.7: λ increases to importance_decay_factor (slower decay).
+        Rationale: meaningful memories consolidate better (Craik & Lockhart 1972,
+        levels-of-processing).
+      - |valence|: pushes λ toward 1.0 (emotional memories resist decay).
+        Rationale: amygdala modulation of consolidation (McGaugh 2004).
+      - confidence: minor λ increase. Engineering decision — no paper.
+      - value (B2 RL): a memory with above-neutral learned value resists decay,
+        via value_learning.retention_bonus. Rationale: reward-predictive items
+        should persist (Schultz 1997; Sutton & Barto 1998). Neutral value (0.5)
+        and below leave λ unchanged — value never *accelerates* forgetting here.
+````
+
+## compute_decay — original line 275 (docstring)
+
+````text
+    Constants: decay_factor=0.95 and importance_decay_factor=0.998 are tuned
+    to produce reasonable half-lives for a memory system operating at a
+    hours/days timescale. Not from any paper. At the default call
+    (confidence=1.0, which multiplies in confidence_mod=1.1) the actual
+    half-lives are ~15h normal and ~381h important; the confidence-independent
+    idealized λ^t form (confidence=0) gives ~14h and ~346h. The value modifier is
+    neutral (1.0) at the default value=0.5, so default half-lives are unchanged.
+    
+````
+
+## compute_session_coherence — original line 323 (docstring)
+
+````text
+    Prevents "I just told you this" by keeping active context elevated.
+    
+````
+
+## is_error_content — original line 354 (docstring)
+
+````text
+Check if content carries an error cue (issue #158: language-aware).
+````
+
+## is_decision_content — original line 364 (docstring)
+
+````text
+Check if content carries a decision cue (issue #158: language-aware).
+````
+
+## is_decision_content — original line 366 (docstring)
+
+````text
+    Delegates to ``content_cues.is_decision_cue`` — multilingual decision
+    keywords. See ``content_cues`` for language coverage.
+    
+````
+
+## module — original line 46 (comment)
+
+````text
+# Dose-response sweep override for the Python-side hourly decay factor
+# (Ebbinghaus λ in heat(t) = heat(0)·λ^t). The SQL-side analogue is
+# ``p_factor`` in ``effective_heat()`` which drives BEAM retrieval; this
+# env var only affects code paths that call ``compute_decay()`` directly
+# (reconsolidation, sleep compute). Falls back to the calibrated default.
+# Source: benchmarks/lib/decay_sweep_runner.py (verification protocol).
+````
+
+## module — original line 160 (comment)
+
+````text
+# source: structural — the top-quartile TF concentration is degenerate with
+# fewer than two distinct terms (see _edmundson_key docstring).
+````
+
+## module — original line 243 (comment)
+
+````text
+# Above this importance the slower importance_decay_factor applies.
+# source: compute_decay docstring — "Importance > 0.7: λ increases to
+# importance_decay_factor (slower decay)"; rationale Craik & Lockhart (1972).
+````
+
+## module — original line 293 (comment)
+
+````text
+# Emotional resistance: time-dependent (Yonelinas & Ritchey 2015).
+# Emotional advantage grows with delay (Kleinsmith & Kaplan 1963 crossover).
+# At t=0: no resistance. At t>>1h: full resistance (up to 30% at |v|=1).
+````
+
+## module — original line 304 (comment)
+
+````text
+# Value modifier (B2): high learned value resists decay. retention_bonus maps
+# value in [0,1] to a factor in [1, 1.5] (neutral 0.5 -> 1.0), applied the
+# same way as the confidence modifier so value>0.5 pushes λ toward 1.0.
+````
+
+## module — original line 339 (comment)
+
+````text
+# Confidence is only computed above this many accesses ("enough data points"
+# in the docstring below).
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
