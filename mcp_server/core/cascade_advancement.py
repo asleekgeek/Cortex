@@ -1,34 +1,6 @@
 """Consolidation cascade — stage advancement and reconsolidation logic.
 
-Split from cascade.py to keep files under 300 lines.
-Contains the transition logic that determines when memories advance
-between consolidation stages.
-
-Schema acceleration (Tse et al. 2007):
-    Tse showed that rodents with pre-existing spatial schemas consolidated
-    new schema-consistent associations in ~48 hours, compared to ~2-4 weeks
-    for schema-inconsistent ones — an approximately 10-15x acceleration.
-    This applies specifically to systems consolidation (LATE_LTP → CONSOLIDATED),
-    not to earlier synaptic stages.
-
-    IMPORTANT: Tse 2007 is an experimental finding, not a computational model.
-    No paper in this chain (Tse 2007, van Kesteren 2012, McClelland 2013)
-    provides a mathematical function mapping schema_match to consolidation
-    rate. The exponential model used here (15^(-schema_match)) is an
-    engineering approximation chosen to: (a) match the ~15x magnitude at
-    full schema match, (b) provide diminishing returns at low match, and
-    (c) equal 1.0 (no acceleration) at zero match. The functional form
-    and the 15.0 constant are engineering choices, not paper-derived equations.
-
-References:
-    Kandel ER (2001) The molecular biology of memory storage.
-    Tse D et al. (2007) Schemas and memory consolidation. Science 316:76-82
-        (experimental: ~48h vs ~2-4 weeks for schema-consistent memories)
-    Nader K et al. (2000) Fear memories require protein synthesis in the
-        amygdala for reconsolidation after retrieval. Nature 406:722-726
-
-Pure business logic — no I/O.
-"""
+source: ADR-0117"""
 
 from __future__ import annotations
 
@@ -40,11 +12,9 @@ from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 
 # ── Stage Transitions ─────────────────────────────────────────────────────
 
-# source: advancement thresholds documented in the docstrings below
-# (_check_labile_advancement: Frey & Morris 1997 synaptic tagging;
-# _check_early_ltp_advancement: Kandel 2001; _check_late_ltp_advancement:
-# Tse 2007 schema acceleration). The numeric values themselves are
-# engineering choices consistent with those docstrings.
+# source: ADR-0117
+
+# source: ADR-0117
 _LABILE_IMPORTANCE_THRESHOLD = 0.3  # "importance > 0.3 (moderately important)"
 _EARLY_LTP_IMPORTANCE_BOOST = 0.4  # "importance > 0.4 (strong encoding)"
 _SCHEMA_FAST_CONSOLIDATION_MATCH = 0.5  # "1 with schema > 0.5"
@@ -57,9 +27,7 @@ def _check_labile_advancement(
 ) -> tuple[bool, str, float]:
     """Check LABILE -> EARLY_LTP advancement conditions.
 
-    Biological basis (Frey & Morris 1997): synaptic tagging requires
-    dopamine signal (DA >= 1.0) indicating the event was noteworthy,
-    OR sufficient importance from the encoding context.
+    source: ADR-0117
 
     Advances if:
       - dopamine_level >= 1.0 (encoding signal present), OR
@@ -80,9 +48,7 @@ def _check_early_ltp_advancement(
 ) -> tuple[bool, str, float]:
     """Check EARLY_LTP -> LATE_LTP advancement conditions.
 
-    Biological basis (Kandel 2001): transition to late LTP requires
-    protein synthesis triggered by replay (reactivation) or high
-    importance (strong initial encoding).
+    source: ADR-0117
 
     Advances if:
       - replay_count >= 1 (memory has been replayed/accessed), OR
@@ -103,9 +69,7 @@ def _check_late_ltp_advancement(
 ) -> tuple[bool, str, float]:
     """Check LATE_LTP -> CONSOLIDATED advancement conditions.
 
-    Biological basis (McClelland 1995, Kandel 2001): systems consolidation
-    requires hippocampal replay to transfer traces to cortical networks.
-    Schema-consistent memories consolidate faster (Tse 2007).
+    source: ADR-0117
 
     Advances if:
       - replay_count >= replay_threshold (3 normally, 1 with schema > 0.5)
@@ -136,12 +100,7 @@ def _effective_min_dwell(
 ) -> float:
     """Compute schema-accelerated minimum dwell time.
 
-    For systems consolidation stages (LATE_LTP, CONSOLIDATED):
-        Uses exponential acceleration: dwell * 15^(-schema_match).
-        At schema_match=1.0: ~15x faster (Tse 2007: ~2-4 weeks → 48h).
-        At schema_match=0.0: no acceleration.
-        Engineering approximation — Tse 2007 provides no equation.
-        The 15.0 constant matches the experimental ~10-15x magnitude.
+    source: ADR-0117
 
     For earlier stages (LABILE, EARLY_LTP, RECONSOLIDATING):
         Modest linear factor: dwell * (1 - schema_match * 0.2).
@@ -149,18 +108,13 @@ def _effective_min_dwell(
         synaptic tagging stages are not schema-dependent.
     """
     if stage in (ConsolidationStage.LATE_LTP, ConsolidationStage.CONSOLIDATED):
-        # Tse et al. (2007) shows ~10-15x acceleration experimentally, but
-        # provides NO equation.  The base 15.0 and the exponential form are
-        # engineering choices: 15.0**(-schema_match) equals 1.0 at match=0
-        # and ~0.067 at match=1.0, matching the experimental magnitude.
-        # Source: engineering choice — calibration pending — see ablation.
-        schema_factor = 15.0 ** (-schema_match)  # source: engineering choice
+        # source: ADR-0117
+
+        schema_factor = 15.0 ** (-schema_match)  # source: ADR-0117
     else:
-        # Earlier stages: modest linear factor — schema acceleration is a
-        # systems-consolidation phenomenon; synaptic tagging is not
-        # schema-dependent.  The 0.2 coefficient is hand-tuned.
-        # Source: engineering choice — calibration pending — see ablation.
-        schema_factor = 1.0 - (schema_match * 0.2)  # source: engineering choice
+        # source: ADR-0117
+
+        schema_factor = 1.0 - (schema_match * 0.2)  # source: ADR-0117
     return props.min_dwell_hours * schema_factor  # type: ignore[attr-defined]
 
 

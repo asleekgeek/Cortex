@@ -1,21 +1,13 @@
 """Codebase graph analysis — import resolution, call graph, communities.
 
-Takes parsed FileAnalysis objects and produces resolved edges:
-- File → file import edges (resolved from module names)
-- Function → function call edges
-- Class → method containment edges
-- Class → parent inheritance edges
-- Community assignments via Leiden (Louvain fallback)
-
-Pure business logic — no I/O.
-"""
+source: ADR-0127"""
 
 from __future__ import annotations
 
 from pathlib import PurePosixPath
 
-# Community detection & centrality live in codebase_communities.py
-# (300-line limit + SRP); re-exported so existing callers keep working.
+# source: ADR-0127
+
 from mcp_server.core.codebase_communities import (
     compute_centrality,
     detect_communities,
@@ -189,25 +181,11 @@ def build_resolved_call_edges(
     chain between methods as part of a file.
 
     Returns:
-        ``[(caller_file, caller_qname, callee_file, callee_qname),
-        ...]``. The fourth position is the **full qualified name** of
-        the resolved callee (e.g. ``Foo.baz``), NOT the basename. This
-        matches the shape ``ingest_symbol`` uses to mint SYMBOL node
-        ids and the shape AP emits for its CALLS edges; if we returned
-        a basename instead, ``ingest_ast_edge`` would hash a different
-        ``symbol_id`` for ``dst`` than the one stored for the target
-        SYMBOL, and the edge would be dropped silently. See Wu error
-        archaeology 2026-04-24 and the boundary-crossing regression
-        test in tests_py/infrastructure.
-    """
-    # Build basename → (first-defining-file, full-qname) lookup. We key
-    # by basename because the tree-sitter call sites produce "baz", not
-    # "Foo.baz" — we resolve the basename to the known symbol, then
-    # emit the symbol's full qname so the edge endpoints carry the
-    # same string the ingester hashed at ingest_symbol time.
-    #
-    # First-wins collision semantics on basename match ``build_call_edges``
-    # (documented / intentional).
+        ``[(caller_file, caller_qname, callee_file, callee_qname), ...]``.
+        The fourth position is the full qualified callee name, e.g. Foo.baz.
+    source: ADR-0127"""
+    # source: ADR-0127
+
     symbol_to_qname: dict[str, tuple[str, str]] = {}
     for analysis in analyses:
         for sym in analysis.definitions:

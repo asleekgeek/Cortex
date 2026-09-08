@@ -1,13 +1,7 @@
 """Pure normalization seam: :class:`ParsedDocument` → wiki page + memory
 payloads, stamped with provenance.
 
-Zero I/O: builds strings and plain payload dicts; the handler performs the
-actual ``wiki_write``/``remember`` writes. This is the single place a parsed
-document (from ANY adapter — docx, Confluence export, or the live REST
-connector of enterprise-backlog#28) becomes the shapes the existing memory/
-wiki path already understands, so document ingestion rides the same
-staleness/validation machinery as code references (issue #192).
-"""
+source: ADR-0162"""
 
 from __future__ import annotations
 
@@ -38,9 +32,7 @@ class SectionMemory:
 class NormalizedDocument:
     """Everything the handler needs to persist one ingested document.
 
-    ``notices`` carries human-readable, caller-surfaced signals — chiefly the
-    skipped-image notice (issue #192 F1: never silent) and the empty-document
-    notice. ``image_count`` is echoed so the handler can assert emission."""
+    source: ADR-0162"""
 
     wiki_rel_path: str
     wiki_markdown: str
@@ -51,9 +43,8 @@ class NormalizedDocument:
 
 
 def slugify(text: str) -> str:
-    # §12 note: the mutant that widens ``.strip("-")`` to ``.strip("X-")`` is
-    # EQUIVALENT — ``slug`` is already lowercased and contains only [a-z0-9-],
-    # so no 'X' can ever be at a boundary; both strip exactly the same chars.
+    # source: ADR-0162
+
     slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
     return slug[:_MAX_SLUG] or "document"
 
@@ -127,17 +118,13 @@ def normalize_document(
 ) -> NormalizedDocument:
     """Turn a parsed document + its provenance into wiki + memory payloads.
 
-    Precondition:  ``doc`` is a parsed document (possibly empty); ``prov``
-                   identifies its source and version.
-    Postcondition: returns a :class:`NormalizedDocument`. Every produced
-                   payload — the wiki markdown frontmatter and every memory —
-                   carries the provenance source + version (issue #192:
-                   provenance on every produced page/memory). A non-zero
-                   ``doc.image_count`` yields an explicit skipped-image notice
-                   (F1). An empty document yields a page + empty notice and no
-                   section memories (edge case: empty doc). Headings-only
-                   sections render their heading but produce no memory.
-    """
+    Precondition: ``doc`` is a parsed document; ``prov`` identifies its
+    source and version.
+    Postcondition: returns a NormalizedDocument carrying source and version
+    on the wiki frontmatter and every memory. Nonzero image_count produces
+    a skipped-image notice. Empty documents yield a page, empty notice, and
+    no section memories. Headings-only sections produce no memory.
+    source: ADR-0162"""
     slug = slugify(doc.title)
     lines = _frontmatter(doc, prov)
 

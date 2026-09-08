@@ -1,21 +1,6 @@
 """Emergence tracker — system-level metric tracking for neuroscience insights.
 
-Tracks properties that EMERGE from the interaction of individual mechanisms,
-not from any single module. These are the phenomena that validate whether
-Cortex's neuroscience model produces biologically realistic behavior:
-
-- Spacing effect: spaced repetitions improve retention vs massed practice
-- Testing effect: retrieval practice strengthens memory more than re-encoding
-- Sleep benefit: consolidation during SWR improves next-day retrieval
-- Schema acceleration: schema-consistent memories consolidate faster
-- Interference resolution: similar memories eventually separate over time
-- Forgetting curve: power-law decay of retrieval probability
-- Phase-locking: encoding during theta encoding-phase improves retention
-
-Forgetting curve fitting and aggregate report are in emergence_metrics.py.
-
-Pure business logic — no I/O.
-"""
+source: ADR-0172"""
 
 from __future__ import annotations
 
@@ -42,14 +27,13 @@ class MemoryEvent:
 
 # ── Spacing Effect ───────────────────────────────────────────────────────
 
-# source: structural — interval variability needs at least two intervals,
-# i.e. at least three access timestamps
+# source: ADR-0172
+# source: ADR-0172
 _MIN_ACCESSES_FOR_SPACING = 3
 
-# Minimum mean inter-access interval (hours) below which accesses count
-# as fully massed.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0172
+
+# source: ADR-0172
 _MIN_MEAN_INTERVAL_HOURS = 0.01
 
 
@@ -145,12 +129,7 @@ def compute_schema_acceleration_metric(
 
     Compares average hours to reach CONSOLIDATED stage.
 
-    Darval's v3.13.2 P2 fix: when ``consistent_count == 0`` (bootstrap
-    state — no schemas have been promoted yet), the ratio is mathematically
-    1.0 but not a measurement. Report ``ratio_defined: false`` +
-    ``reason_for_undefined`` so consumers can distinguish "speedup absent"
-    from "metric not yet meaningful".
-    """
+    source: ADR-0172"""
     consistent_count = len(schema_consistent_memories)
     inconsistent_count = len(schema_inconsistent_memories)
 

@@ -1,36 +1,6 @@
 """Coupled neuromodulation — cross-channel modulatory cascade.
 
-Orchestrates the 4-channel neuromodulatory system where channels influence each
-other and gate downstream mechanisms. Individual channel computations live in
-neuromodulation_channels.py; this module owns NeuromodulatoryState, the update
-orchestrator, downstream modulation functions, and serialization.
-
-Downstream gating (engineering design, not from Doya 2002):
-  DA -> gates cascade.py stage advancement (protein synthesis proxy)
-  DA -> modulates LTP rate (reward-dependent learning — qualitatively from Schultz)
-  NE -> modulates write gate threshold (arousal -> lower bar)
-  ACh -> driven by theta phase (encoding/retrieval — from Hasselmo 2005)
-  5-HT -> modulates spreading breadth (exploration — loosely inspired by Dayan)
-
-NOTE: Doya (2002) maps DA→discount factor, NE→inverse temperature,
-ACh→learning rate, 5-HT→time horizon. Our downstream mapping is different.
-See neuromodulation_channels.py for detailed departure documentation.
-
-Composite modulation uses Dawes (1979) equal-weight combination: all four
-channels averaged with weight 1/4. Dawes showed equal weights match or beat
-optimized regression weights when k < 10 predictors and training data is
-limited — one of the most replicated findings in decision science.
-
-Downstream modulation functions use proportional gain: base * (channel / baseline),
-where baseline = 1.0. This is standard gain modulation — output scales linearly
-with the modulatory signal relative to its resting state.
-
-References:
-    Dawes RM (1979) The robust beauty of improper linear models in decision
-        making. American Psychologist 34(7):571-582
-
-Pure business logic — no I/O.
-"""
+source: ADR-0154"""
 
 from __future__ import annotations
 
@@ -54,9 +24,7 @@ from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 class NeuromodulatoryState:
     """Dynamic state of the 4-channel modulatory system.
 
-    DA in [0, 3] (asymmetric per Schultz 1997: burst ~4-6x baseline).
-    NE, ACh, 5-HT in [0, 2] with 1.0 = baseline (no modulation).
-    """
+    source: ADR-0154"""
 
     dopamine: float = 1.0
     norepinephrine: float = 1.0
@@ -187,12 +155,15 @@ def modulate_retrieval_temperature(base_temp: float, ser: float) -> float:
     return base_temp * ser
 
 
-# source: hand-tuned threshold documented in compute_cascade_gate docstring
+# source: ADR-0154
 _CASCADE_GATE_THRESHOLD = 0.7
 
 
 def compute_cascade_gate(da: float, importance: float) -> bool:
-    """DA gates consolidation advancement. Threshold 0.7 is hand-tuned."""
+    """DA gates consolidation advancement.
+
+    source: ADR-0154
+    """
     return (da * importance) > _CASCADE_GATE_THRESHOLD
 
 
@@ -200,12 +171,9 @@ def compute_cascade_gate(da: float, importance: float) -> bool:
 
 
 def compute_composite_modulation(state: NeuromodulatoryState) -> dict[str, float]:
-    """Compute composite modulation via Dawes (1979) equal-weight combination.
+    """Compute composite modulation via equal-weight combination.
 
-    Dawes showed equal weights match or beat optimized regression weights when
-    k < 10 predictors and training data is limited. DA is in [0, 3], the other
-    three channels in [0, 2] (all with 1.0 = baseline). DA's wider range gives
-    it up to ~1.5x the swing of the other channels in the equal-weight average.
+    source: ADR-0154
     """
     da, ne, ach, ser = (
         state.dopamine,
@@ -214,7 +182,7 @@ def compute_composite_modulation(state: NeuromodulatoryState) -> dict[str, float
         state.serotonin,
     )
 
-    # Dawes (1979): equal weights for k=4 channels
+    # source: ADR-0154
     n = 4
     composite = (da + ne + ach + ser) / n
 

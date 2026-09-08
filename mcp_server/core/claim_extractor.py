@@ -1,19 +1,6 @@
 """Phase 2.1 — Claim extraction from raw memory content.
 
-Deterministic, pattern-based extractor that turns a memory's content
-into a list of typed ClaimEvents (Hopper IR layer 1).
-
-Pure logic — no I/O, no LLM calls. The LLM-augmented refinement step
-lives in a separate handler that wraps this with prompt-driven
-enrichment when needed.
-
-The extractor splits content into candidate sentences, classifies each
-by pattern matching against eight ClaimType buckets, and pulls out
-evidence references (file paths, URLs, citations, commit SHAs).
-
-Sentences that match no pattern are dropped — silent rejection is the
-default, mirroring the wiki classifier's positive-signal philosophy.
-"""
+source: ADR-0123"""
 
 from __future__ import annotations
 
@@ -40,8 +27,8 @@ def _strip_code_fences(text: str) -> str:
     return _FENCE_RE.sub("", text)
 
 
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0123
+# source: ADR-0123
 _ATOMIC_PARA_MAX_CHARS = 120  # shorter paragraphs pass through unsplit
 _MIN_SENTENCE_CHARS = 12  # shorter fragments carry no classifiable claim
 _MAX_SENTENCE_CHARS = 1500  # longer blobs are dumps, not sentences
@@ -145,7 +132,7 @@ _CLAIM_PATTERNS: list[tuple[re.Pattern, ClaimType, float]] = [
         "question",
         0.6,
     ),
-    # references — line that is essentially a URL / citation / doi
+    # source: ADR-0123
     (
         re.compile(
             r"^\s*(https?://|doi:|arxiv:|@?\w+\d{4}|\[.+\]\(https?://)",
@@ -158,8 +145,10 @@ _CLAIM_PATTERNS: list[tuple[re.Pattern, ClaimType, float]] = [
 
 
 def _classify_sentence(sentence: str) -> tuple[ClaimType, float] | None:
-    """Return (claim_type, confidence) for a sentence, or None if it
-    matches no pattern. None → drop the sentence (default-reject).
+    """Return (claim_type, confidence) for a sentence, or None if it matches no
+    pattern.
+
+    source: ADR-0123
     """
     for pat, claim_type, conf in _CLAIM_PATTERNS:
         if pat.search(sentence):
@@ -225,7 +214,7 @@ def _extract_evidence(content: str) -> list[EvidenceRef]:
     return refs
 
 
-# ── Supersedes detection ─────────────────────────────────────────────
+# source: ADR-0123
 
 _SUPERSEDES_RE = re.compile(
     r"\b(supersed(?:es|ed by)|replaces?|replaced by|deprecated by|in favour of)\b",
@@ -259,14 +248,7 @@ def extract_claims(
 ) -> tuple[list[ClaimEvent], ExtractionStats]:
     """Extract typed ClaimEvents from raw memory content.
 
-    Process:
-      1. Strip fenced code blocks (don't classify code as prose claims).
-      2. Split into candidate sentences.
-      3. Classify each sentence by pattern; drop unclassified.
-      4. Pull document-level evidence refs (URLs, files, papers, commits).
-      5. Attach evidence refs to every claim from this content (a single
-         shared evidence pool — refining per-claim attribution is a
-         later optimization).
+    source: ADR-0123
 
     Returns (claims, stats). Never raises on bad input — empty content
     yields ([], stats with zero counts).

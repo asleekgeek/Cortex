@@ -1,27 +1,6 @@
 """Personalized PageRank traversal over Cortex's entity graph (Phase 2).
 
-Replaces the Swift `graph.traverse(entities, maxHops=2, maxNodes=5)` BFS
-with a principled weighted walk. Each node gets a PPR score
-proportional to the probability that a random walker, restarted with
-probability α at the Phase 1 seed entities, visits it.
-
-**Paper backing**:
-  Gutiérrez, Shu, Gu, Yasunaga, Su. "HippoRAG: Neurobiologically
-  Inspired Long-Term Memory for Large Language Models". NeurIPS 2024,
-  arxiv 2405.14831. Section 3.3 — scores passages by aggregating PPR
-  mass of their contained entities seeded on query entities. Reports
-  strong multi-hop QA gains on MuSiQue, 2WikiMultihopQA, HotpotQA.
-
-**Applied here**: seed PPR on entities extracted from Phase 1 results,
-aggregate mass onto memories that contain those entities, return
-memories ranked by PPR mass. Bridges stages via shared entity
-vocabulary — the structural counterpart to dense semantic similarity.
-
-Complements (not replaces) Cortex's existing `spreading_activation.py`
-(Collins & Loftus 1975), which is a decaying BFS. PPR gives a
-*stationary* distribution rather than a depth-bounded traversal; both
-are valid, with different use cases.
-"""
+source: ADR-0148"""
 
 from __future__ import annotations
 
@@ -42,15 +21,13 @@ def personalized_pagerank(
     Power-iteration variant of Personalized PageRank.
 
     Args:
-        adjacency: node_id → list of (neighbor_id, edge_weight) tuples.
-            Weights are normalized to probabilities during iteration.
-        seeds: node_id → seed mass. Mass is re-injected at these nodes
-            on every restart. Does not need to be normalized — the
-            algorithm normalizes it.
-        alpha: restart probability. Default 0.15 (Brin & Page 1998
-            canonical). Higher α → more localized results.
-        max_iters: cap on power iterations.
+        adjacency: node_id to (neighbor_id, edge_weight) lists; weights are
+            normalized to probabilities during iteration.
+        seeds: node_id to seed mass, normalized and injected on every restart.
+        alpha: Restart probability (default 0.15); higher values localize.
+        max_iters: Power iteration cap.
         tolerance: L1 convergence threshold.
+    source: ADR-0148
 
     Returns:
         Dict node_id → PPR score. Only nodes with non-zero mass are
@@ -127,7 +104,7 @@ def build_entity_adjacency(
         `personalized_pagerank`.
     """
     adj: dict[str, list[tuple[str, float]]] = defaultdict(list)
-    # Ensure every entity is a node even if it has no edges
+    # source: ADR-0148
     for e in entities:
         node_id = str(e.get("id") or e.get("name") or "")
         if node_id:

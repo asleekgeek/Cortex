@@ -1,9 +1,6 @@
-"""Condenser for structured (subject, predicate, object) content (issue #228
-split 3/4).
+"""Condenser for structured (subject, predicate, object) content.
 
-Extracted from ``condensers.py`` (§4.1 — the original file was 391 lines,
-over this repo's 300-line cap) with zero behaviour change. See
-``condensers.py`` for the shared module docstring and re-export facade.
+source: ADR-0143
 """
 
 from __future__ import annotations
@@ -15,8 +12,8 @@ from mcp_server.core.context_assembly.budget import (
     truncate_to_budget,
 )
 
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0143
+
 _MIN_ARROWS_FOR_TRIPLES = 2
 
 

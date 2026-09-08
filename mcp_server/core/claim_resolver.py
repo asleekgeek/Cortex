@@ -1,29 +1,6 @@
 """Phase 2.2 — Claim resolution.
 
-Three responsibilities:
-
-  1. Entity linking — each ClaimEvent inherits its source memory's
-     entity_ids (the existing memory_entities join table is the
-     authority). Also harvests inline entity name mentions from claim
-     text against the entities catalogue.
-
-  2. Supersedes resolution — when a claim's text contains
-     "supersedes / replaces / deprecated by", find the most likely
-     prior claim it overrides (same entities + earlier in time + same
-     claim_type when sensible). Writes claim_events.supersedes.
-
-  3. Conflict detection — claims about the same entities with
-     opposing types (decision vs limitation about the same target) are
-     surfaced as candidates. Writes a memo per detected pair so the
-     curation phase can act on them.
-
-Pure logic — no I/O. The handler wires this against pg_store_wiki.
-
-Design constraint (DBA): the resolver must not JOIN into the memories
-hot path. All inputs are pre-fetched by the handler; the resolver
-returns plans (entity-id lists, supersedes pairs, conflict pairs) that
-the handler persists in idempotent batches.
-"""
+source: ADR-0124"""
 
 from __future__ import annotations
 
@@ -44,7 +21,10 @@ class EntityLinkPlan:
 
 @dataclass(frozen=True)
 class SupersedesPlan:
-    """One claim_event.supersedes update."""
+    """One claim_event.supersedes update.
+
+    source: ADR-0124
+    """
 
     new_claim_id: int
     superseded_claim_id: int
@@ -55,10 +35,7 @@ class SupersedesPlan:
 class ConflictPlan:
     """A pair of claims that appear to disagree.
 
-    Captured as a memo via ``insert_memo(subject_type='claim', ...)``
-    rather than altering either claim — disagreement is data, not a
-    correction.
-    """
+    source: ADR-0124"""
 
     claim_a_id: int
     claim_b_id: int
@@ -77,8 +54,8 @@ class ResolveStats:
 # ── Entity linking ────────────────────────────────────────────────────
 
 
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0124
+# source: ADR-0124
 _MIN_ENTITY_NAME_CHARS = 3  # 1-2 char names match too promiscuously
 
 
@@ -89,9 +66,7 @@ def plan_entity_links(
 ) -> list[EntityLinkPlan]:
     """For each claim, gather entity ids.
 
-    Sources:
-      - memory_entities for claim.memory_id (inherited from source)
-      - case-insensitive name match on entities catalogue (inline mentions)
+    source: ADR-0124
 
     Returns one plan per claim with a deduplicated, sorted entity_id list.
     """
@@ -106,8 +81,8 @@ def plan_entity_links(
         )
         if name_map:
             text = (c.get("text") or "").lower()
-            # Word-bounded substring — cheap pre-filter, no false positives
-            # on partial words. Misses fuzzy matches; that's a Phase 3 problem.
+            # source: ADR-0124
+
             for name, eid in name_map.items():
                 if len(name) < _MIN_ENTITY_NAME_CHARS:
                     continue
@@ -122,7 +97,7 @@ def plan_entity_links(
     return plans
 
 
-# ── Supersedes detection ──────────────────────────────────────────────
+# source: ADR-0124
 
 _SUPERSEDES_PATTERN = re.compile(
     r"\b(supersed(?:es|ed by)|replaces?|replaced by|deprecated by"
@@ -141,16 +116,7 @@ def plan_supersedes(
 ) -> list[SupersedesPlan]:
     """Find supersession edges.
 
-    A claim is a supersedes-candidate when its text matches the
-    supersedes pattern. We look for prior claims that:
-      - share at least one entity_id with the new claim
-      - have an earlier extracted_at timestamp
-      - have a compatible claim_type (decision supersedes decision,
-        method supersedes method; we don't supersede limitations)
-
-    Picks the most-recently-superseded matching prior claim if any.
-    Returns one plan per superseder; never raises.
-    """
+    source: ADR-0124"""
     plans: list[SupersedesPlan] = []
     for c in claims:
         if not _claim_supersedes_signal(c.get("text", "")):
@@ -215,7 +181,10 @@ _CONFLICT_PAIRS: dict[tuple[str, str], str] = {
 
 
 def _conflict_reason(type_a: str, type_b: str) -> str | None:
-    """Return reason text if (type_a, type_b) is a conflicting pair."""
+    """Return reason text if (type_a, type_b) is a conflicting pair.
+
+    source: ADR-0124
+    """
     if (type_a, type_b) in _CONFLICT_PAIRS:
         return _CONFLICT_PAIRS[(type_a, type_b)]
     if (type_b, type_a) in _CONFLICT_PAIRS:
@@ -230,12 +199,7 @@ def plan_conflicts(
 ) -> list[ConflictPlan]:
     """Surface candidate conflicting claim pairs.
 
-    Pair (A, B) is a conflict candidate when:
-      - claim_types match _CONFLICT_PAIRS
-      - they share ≥ min_entity_overlap entities
-      - they are not already in a supersedes relationship (caller
-        suppresses by ordering: supersedes plan first; conflict plan
-        excludes those pairs)
+    source: ADR-0124
 
     Returns plans for the curation phase to act on.
     """
@@ -301,14 +265,11 @@ def resolve(
         (already enriched with entity_ids from a pre-pass)
       - entity_name_to_id — lowercased name → entity_id
 
-    Order matters: entity links first (so supersedes/conflicts can
-    use the freshly-attached ids), then supersedes (so conflict
-    detection can suppress superseded pairs).
-    """
+    source: ADR-0124"""
     link_plans = plan_entity_links(claims, entities_by_memory, entity_name_to_id)
 
-    # Inject the planned entity ids back into the claim dicts so
-    # supersedes/conflict planners see the up-to-date data.
+    # source: ADR-0124
+
     plan_by_claim: dict[int, list[int]] = {p.claim_id: p.entity_ids for p in link_plans}
     enriched: list[dict] = []
     for c in claims:
@@ -318,7 +279,7 @@ def resolve(
 
     sup_plans = plan_supersedes(enriched, prior_claims_by_entity)
 
-    # Build a set of superseded ids so conflict detection can skip them
+    # source: ADR-0124
     superseded_ids: set[int] = {p.superseded_claim_id for p in sup_plans}
     superseder_ids: set[int] = {p.new_claim_id for p in sup_plans}
     conflict_input = [

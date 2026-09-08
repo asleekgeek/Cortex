@@ -1,12 +1,6 @@
-"""Condensers for code-shaped content (issue #228 split 2/4).
+"""Condensers for code-shaped content.
 
-Extracted from ``condensers.py`` (§4.1 — the original file was 391 lines,
-over this repo's 300-line cap) with zero behaviour change. See
-``condensers.py`` for the shared module docstring and re-export facade.
-
-Covers the code-block condenser (signatures only) and the assistant-message
-condenser (verbatim code, compressed prose in between), plus the private
-fence-splitting helpers both of them and the dispatcher depend on.
+source: ADR-0140
 """
 
 from __future__ import annotations
@@ -17,8 +11,8 @@ from mcp_server.core.context_assembly.budget import (
 )
 from mcp_server.core.context_assembly.condense_text import _first_sentence
 
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0140
+# source: ADR-0140
 _MIN_INDENT_RUNS_FOR_CODE = 3
 
 
@@ -85,25 +79,8 @@ def condense_assistant_message(text: str, token_budget: int) -> str:
     if code_tokens >= token_budget:
         return _keep_leading_code_blocks(code_parts, token_budget, text)
 
-    # DEAD CODE REMOVED (issue #228): both operands of the guard that used
-    # to sit here — `prose_parts and prose_budget > 0` — are provably true
-    # at this point, so the guard and its "concatenate code only" fallback
-    # were a branch no input could reach. The scoped mutmut run proved it
-    # empirically: every mutant of that fallback survived (§12.1 — the
-    # signature of dead code). Proof:
-    #   (a) prose_budget > 0: reaching here means the `code_tokens >=
-    #       token_budget` branch above did NOT return, so code_tokens <
-    #       token_budget, i.e. token_budget - code_tokens > 0.
-    #   (b) prose_parts is non-empty: it can only be empty when
-    #       _split_by_code_blocks returns a single segment tagged as code
-    #       (any closed or re-opened fence emits the fence line into a
-    #       following prose segment — pinned by
-    #       test_split_by_code_blocks_segments_preserve_original_newlines).
-    #       A single segment IS the whole input text, so code_tokens ==
-    #       estimate_tokens(text), which the fast-path guard at the top of
-    #       this function already established exceeds token_budget — i.e.
-    #       (a) would have returned first. Pinned by
-    #       test_assistant_unclosed_fence_is_a_single_code_segment.
+    # source: ADR-0140
+
     prose_budget = token_budget - code_tokens
     compressed_prose = _compress_prose_parts(prose_parts, prose_budget)
     joined = _reassemble_in_order(parts, code_parts, compressed_prose)
@@ -115,10 +92,7 @@ def _keep_leading_code_blocks(
 ) -> str:
     """Even the code exceeds budget — keep first N code blocks that fit.
 
-    A single block bigger than the whole budget keeps nothing, and
-    returning "" would delete the memory outright. Degrade to the generic
-    truncation the sibling condensers fall back to.
-    """
+    source: ADR-0140"""
     kept: list[str] = []
     used = 0
     for p in code_parts:
@@ -148,11 +122,8 @@ def _reassemble_in_order(
     pi = ci = 0
     for is_code, _ in parts:
         if is_code:
-            # EQUIVALENT MUTANT (#228): `ci < len(code_parts)` → `<=`. ci is
-            # incremented exactly once per is_code segment and code_parts is
-            # built from those same segments, so ci < len(code_parts) holds
-            # on every entry; both comparisons are unconditionally true and
-            # no input can distinguish them. Same for `pi` below.
+            # source: ADR-0140
+
             if ci < len(code_parts):
                 out.append(code_parts[ci])
                 ci += 1

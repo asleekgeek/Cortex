@@ -1,29 +1,6 @@
 """Dendritic memory clusters — semantic-similarity-based memory grouping.
 
-Groups memories onto "branches" based on entity/tag Jaccard similarity.
-Co-clustered memories benefit from nonlinear amplification during retrieval
-(see dendritic_computation.py).
-
-What Kastellakis (2015) describes:
-  Related synapses physically co-localize on the same dendritic branch.
-  When co-activated, NMDA-dependent nonlinear events (dendritic spikes)
-  amplify the signal supralinearly. Clustering is driven by spatiotemporal
-  coincidence of synaptic inputs, not semantic similarity.
-
-What this code does:
-  Assigns memories to branches via Jaccard similarity of entity/tag sets
-  (0.7 entity + 0.3 tag weighting). This is a semantic grouping heuristic
-  that uses dendritic terminology metaphorically. The branch admission
-  threshold (0.3), max branch size (15), and entity/tag weights are all
-  hand-tuned engineering choices.
-
-The metaphor is useful: grouping related memories enables the nonlinear
-retrieval boost in dendritic_computation.py (which more closely follows
-Poirazi 2003's two-layer neuron model). But the assignment mechanism is
-not the biological one.
-
-Pure business logic — no I/O.
-"""
+source: ADR-0157"""
 
 from __future__ import annotations
 
@@ -47,10 +24,9 @@ def compute_branch_affinity(
     memory_tags: set[str],
     branch: DendriticBranch,
 ) -> float:
-    """Weighted Jaccard similarity (0.7 entity + 0.3 tag). Heuristic — no paper.
+    """Weighted Jaccard similarity (0.7 entity + 0.3 tag).
 
-    In biology, dendritic clustering is driven by spatiotemporal coincidence,
-    not semantic similarity. This is a practical engineering proxy.
+    source: ADR-0157
 
     Returns:
         Affinity score [0, 1].

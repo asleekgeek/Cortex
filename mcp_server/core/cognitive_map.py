@@ -1,19 +1,6 @@
 """Cognitive map — Successor Representation for navigation-based memory retrieval.
 
-Tracks temporal co-access (memories accessed within a session window are linked)
-and uses discounted SR weights for retrieval scoring and BFS navigation.
-
-Pure business logic — no I/O. Callers pass pre-fetched access history.
-
-References:
-  Dayan (1993) "Improving Generalization for Temporal Difference Learning"
-    — the Successor Representation M = (I - γT)⁻¹.
-  Stachenfeld et al. (2017) "The Hippocampus as a Predictive Map" — the SR
-    matrix's eigenvectors form a low-dimensional embedding of the state
-    graph (grid-cell-like); used by ``project_to_2d``.
-  Belkin & Niyogi (2003) "Laplacian Eigenmaps" — those eigenvectors are
-    computed here via S = D^(-1/2) W D^(-1/2), which is similar to T = D⁻¹W.
-"""
+source: ADR-0130"""
 
 from __future__ import annotations
 
@@ -25,9 +12,8 @@ from datetime import datetime, timezone
 
 # ── SR parameters ─────────────────────────────────────────────────────────
 
-# The 2D spectral embedding (project_to_2d) uses the eigenvectors of the SR
-# matrix M = (I - γT)⁻¹, which are a function of T alone — they are identical
-# for every discount γ ∈ (0, 1) — so no γ value is needed here.
+# source: ADR-0130
+
 
 # Session window: memories accessed within this many hours are co-access candidates
 _CO_ACCESS_WINDOW_HOURS = 2.0
@@ -67,7 +53,7 @@ def _link_nearby_memories(
             gap = abs(t_b - t_a)
 
             if gap > window_secs:
-                break  # Sorted, so all further pairs are further apart
+                break  # source: ADR-0130
 
             mid_b = mem_b["id"]
             proximity = 1.0 - (gap / window_secs)
@@ -210,11 +196,7 @@ def _symmetric_normalized_adjacency(
 ) -> np.ndarray:
     """Build S = D^(-1/2) W D^(-1/2) over ``active_ids`` (all degree > 0).
 
-    W is the symmetrised co-access weight matrix. S is similar to the random
-    walk T = D⁻¹W, hence shares the eigenvectors of the SR matrix
-    M = (I - γT)⁻¹ — so its spectrum yields the SR/Laplacian eigenmap
-    (Stachenfeld 2017; Belkin & Niyogi 2003).
-    """
+    source: ADR-0130"""
     n = len(active_ids)
     idx = {mid: i for i, mid in enumerate(active_ids)}
     w = np.zeros((n, n), dtype=np.float64)
@@ -248,8 +230,8 @@ def _active_node_degrees(
     return active
 
 
-# source: structural — spectral embedding axes exist only past these node
-# counts (one non-trivial eigenvector needs >= 2 nodes; a second needs >= 3)
+# source: ADR-0130
+
 _MIN_NODES_FOR_EMBEDDING = 2
 _MIN_NODES_FOR_SECOND_AXIS = 3
 
@@ -260,13 +242,7 @@ def project_to_2d(
 ) -> dict[int, tuple[float, float]]:
     """Project memories to 2D via the SR spectral embedding.
 
-    Faithful to Stachenfeld et al. (2017): the SR eigenvectors embed the
-    state graph. They are computed from S = D^(-1/2) W D^(-1/2) (similar to
-    T = D⁻¹W, so sharing the SR matrix's eigenvectors — Belkin & Niyogi
-    2003). S's top eigenvalue is the trivial stationary component
-    (eigenvector ∝ √degree); the two subdominant eigenvectors are the
-    grid-cell-like (x, y) axes, placing co-accessed memories near each other.
-    Isolated memories (no edge) have no predictive map → placed at origin.
+    source: ADR-0130
 
     Args:
         sr_graph: Symmetric co-access graph from build_temporal_co_access.

@@ -1,0 +1,88 @@
+---
+title: "ADR-0139 — mcp_server/core/context_assembly/budget.py rationale"
+status: accepted
+source: mcp_server/core/context_assembly/budget.py
+---
+
+# ADR-0139 — mcp_server/core/context_assembly/budget.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Provides token estimation and budget allocation utilities used by the
+prompt decomposer and stage assembler.
+````
+
+## module — original line 6 (docstring)
+
+````text
+Original Swift design by Clément Deust in ai-architect-prd-builder
+(packages/AIPRDMetaPromptingEngine/Sources/Pipeline/ContextDecomposer.swift).
+Python port with Cortex-specific adaptations.
+
+````
+
+## estimate_tokens — original line 24 (docstring)
+
+````text
+Return a conservative token estimate (chars // 3, min 1).
+````
+
+## available_budget — original line 40 (docstring)
+
+````text
+    Leaves (1 - headroom) of the window for the response. Default 0.75
+    matches the Swift ContextDecomposer.availableTokenBudget default.
+    
+````
+
+## proportional_share — original line 61 (docstring)
+
+````text
+    Even split of what is left, floored at ``MIN_ITEM_SHARE_TOKENS``. The
+    floor is what lets a packing loop condense every item instead of
+    dropping the ones that arrive after the budget runs out.
+    
+````
+
+## AssemblyMetrics — original line 96 (docstring)
+
+````text
+    Consumed by warning.py to build the banner injected at the top of
+    the final prompt so the LLM knows what was cut.
+    
+````
+
+## assembly_metrics_reduction_fraction — original line 110 (docstring)
+
+````text
+    A free function, not a method: mutmut categorically excludes the body
+    of any `@dataclass`-decorated class (`mutmut/mutation/file_mutation.py:
+    236`), so logic placed on `AssemblyMetrics` methods would carry zero
+    mutation coverage no matter how the test loader names the module
+    (issue #262 3rd pass; issue #282).
+    
+````
+
+## module — original line 17 (comment)
+
+````text
+# ── Token estimation ─────────────────────────────────────────────────────
+# Conservative ~1 token per 3 Unicode scalars heuristic. Matches the Swift
+# fallback when no provider-specific tokenizer is available. For higher
+# accuracy, swap for tiktoken at the integration site.
+````
+
+## module — original line 48 (comment)
+
+````text
+# Floor on a single item's share of the remaining budget. Below this an
+# item condenses to a fragment that carries no usable meaning, so the
+# share rule never allocates less.
+# source: Swift ContextDecomposer progressive-condensation loop
+#   (ai-architect-prd-builder, ContextDecomposer.swift) — the same `max(50,
+#   remaining / notYetAssigned)` rule this port has used since the
+#   decomposer landed.
+````

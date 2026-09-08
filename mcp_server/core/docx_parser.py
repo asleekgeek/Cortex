@@ -1,25 +1,6 @@
 """Pure docx (OOXML WordprocessingML) parser — string in, typed model out.
 
-Zero I/O: this module is handed the already-unzipped ``word/document.xml``
-string (the zip unpacking is infrastructure — ``infrastructure.document_
-reader``) and turns it into a :class:`ParsedDocument`. Stdlib only
-(``xml.etree.ElementTree`` parses an in-memory string — pure computation,
-not I/O), so no heavyweight dependency (python-docx) is pulled in — issue
-#192 §8: "Pure-Python parsing (zipfile + XML — no new heavyweight
-dependency)."
-
-WordprocessingML shape actually parsed (source: ECMA-376 Part 1, §17
-"WordprocessingML", the OOXML spec; namespace ``w`` =
-http://schemas.openxmlformats.org/wordprocessingml/2006/main):
-  - ``w:body`` holds block-level children in document order: ``w:p``
-    (paragraphs) and ``w:tbl`` (tables).
-  - A paragraph's style is ``w:p/w:pPr/w:pStyle@w:val``; the built-in
-    heading styles are ``Heading1``..``Heading9`` and ``Title`` (§17.7.4).
-  - Text lives in ``w:t`` runs; ``w:tab`` / ``w:br`` are whitespace.
-  - Embedded images appear as ``w:drawing`` (DrawingML, §20.4) or the
-    legacy ``w:pict`` (VML) — counted, never extracted (issue #192
-    non-goal: no image ingestion).
-"""
+source: ADR-0163"""
 
 from __future__ import annotations
 
@@ -40,11 +21,8 @@ _HEADING_RE = re.compile(r"^Heading\s*([1-9])$", re.IGNORECASE)
 def _local(tag: str) -> str:
     """Strip the ``{namespace}`` prefix ElementTree prepends to qualified
     tags, leaving the bare local name (``p``, ``tbl``, ``t``, ...)."""
-    # §12 note: several mutants here are EQUIVALENT because the input domain is
-    # fixed — ElementTree tags for OOXML are always the single-'}' form
-    # ``{uri}local`` (namespace URIs never contain '}'). So split==rsplit,
-    # maxsplit 1==2==unbounded, and the result list always has exactly two
-    # elements, making [-1]==[1]. None of those variants change the output.
+    # source: ADR-0163
+
     return tag.rsplit("}", 1)[-1]
 
 
@@ -70,9 +48,8 @@ def _heading_level(para: ET.Element) -> int | None:
     style = para.find(f"{{{_W_NS}}}pPr/{{{_W_NS}}}pStyle")
     if style is None:
         return None
-    # §12 note: the ``or ""`` → ``or "XXXX"`` mutant is EQUIVALENT — when a
-    # pStyle carries no w:val, both the empty string and the sentinel fail the
-    # ``title``/Heading regex below, so both fall through to "body text" (None).
+    # source: ADR-0163
+
     val = style.get(f"{{{_W_NS}}}val") or ""
     if val.lower() == "title":
         return 0
@@ -98,8 +75,11 @@ def _table_rows(tbl: ET.Element) -> DocumentTable:
 
 
 def _count_images(root: ET.Element) -> int:
-    """Count embedded images (``w:drawing`` + legacy ``w:pict``) in the
-    whole document — these are skipped, not ingested (issue #192)."""
+    """Count embedded images (``w:drawing`` + legacy ``w:pict``) in the whole document
+    — these are skipped, not ingested.
+
+    source: ADR-0163
+    """
     return sum(1 for node in root.iter() if _local(node.tag) in ("drawing", "pict"))
 
 
@@ -140,9 +120,8 @@ def parse_docx_xml(document_xml: str, *, title: str = "") -> ParsedDocument:
             level = _heading_level(child)
             text = _paragraph_text(child)
             if level == 0:
-                # ``Title`` style names the document; it is not a section
-                # heading (that would duplicate the page's own title). Text
-                # continues under the current section.
+                # source: ADR-0163
+
                 if not resolved_title and text:
                     resolved_title = text
             elif level is not None:

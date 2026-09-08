@@ -1,16 +1,6 @@
 """Fractal memory tree — multi-scale hierarchical retrieval.
 
-Implements a 3-level memory hierarchy:
-  - Level 0: Individual memories (leaf nodes)
-  - Level 1: Similarity-based clusters (agglomerative)
-  - Level 2: Directory/domain-level root clusters
-
-Adaptive retrieval weights query length against hierarchy levels:
-  - Short queries -> broad Level 2 results
-  - Long queries -> specific Level 0 results
-
-Pure business logic — no I/O. Receives pre-computed data, returns hierarchy.
-"""
+source: ADR-0181"""
 
 from __future__ import annotations
 
@@ -35,14 +25,14 @@ __all__ = [
     "roll_up",
 ]
 
-# Query-length bands for level weighting.
-# source: thresholds documented in the compute_level_weights docstring
-# (short <10 words -> broad, long >30 words -> specific)
+# source: ADR-0181
+
+# source: ADR-0181
 _SHORT_QUERY_WORDS = 10
 _LONG_QUERY_WORDS = 30
 
-# source: structural — the fractal tree has three levels (L0 memories,
-# L1 clusters, L2 super-clusters); L2 is the top level
+# source: ADR-0181
+
 _LEVEL_L2 = 2
 
 

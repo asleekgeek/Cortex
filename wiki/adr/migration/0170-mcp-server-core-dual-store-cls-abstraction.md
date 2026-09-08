@@ -1,0 +1,32 @@
+---
+title: "ADR-0170 — mcp_server/core/dual_store_cls_abstraction.py rationale"
+status: accepted
+source: mcp_server/core/dual_store_cls_abstraction.py
+---
+
+# ADR-0170 — mcp_server/core/dual_store_cls_abstraction.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Extracted from dual_store_cls.py: greedy embedding clustering,
+recurring pattern filtering, contradiction detection, and
+keyword-frequency schema abstraction.
+````
+
+## check_consistency — original line 137 (docstring)
+
+````text
+    Simple heuristic: if one memory has negation words and another doesn't,
+    flag as potential contradiction.
+    
+````
+
+## module — original line 129 (comment)
+
+````text
+# source: structural — a contradiction requires at least two memories to
+# compare
+````

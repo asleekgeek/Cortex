@@ -1,0 +1,60 @@
+---
+title: "ADR-0145 — mcp_server/core/context_assembly/condensers.py rationale"
+status: accepted
+source: mcp_server/core/context_assembly/condensers.py
+---
+
+# ADR-0145 — mcp_server/core/context_assembly/condensers.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Each condenser reduces a piece of content to fit a token budget, using
+domain knowledge of **what matters** for that content type. Generic
+truncation loses the most important information first (it keeps the
+first N tokens regardless of significance); domain-aware condensers
+preserve high-signal content and drop filler.
+````
+
+## module — original line 9 (docstring)
+
+````text
+Adapted from Clément Deust's Swift condensers in ContextDecomposer.swift
+(`condenseContracts`, `condenseEngineGraph`, `condenseFileTree`,
+`condenseImpactReport`), plus Cortex-specific memory types.
+````
+
+## module — original line 13 (docstring)
+
+````text
+Issue #228 split this module (was 391 lines, over this repo's 300-line
+§4.1 cap, with two functions over the 40-line §4.2 cap) into one file per
+condenser family, behaviour-preserving:
+````
+
+## module — original line 17 (docstring)
+
+````text
+- ``condense_text.py`` — user-message and timeline-event condensers
+  (sentence-slot strategies) + their sentence-splitting helpers.
+- ``condense_code.py`` — code-block and assistant-message condensers
+  (verbatim-code strategies) + their fence-splitting helpers.
+- ``condense_structured.py`` — the entity-triple condenser.
+- ``condense_dispatch.py`` — ``condense_memory_content``, the
+  shape/tag-driven dispatcher over the three families above.
+- ``condense_stage.py`` — ``condense_assembled_context``, the
+  stage-assembler integration point (issue #196).
+````
+
+## module — original line 27 (docstring)
+
+````text
+This module re-exports every public name (plus the private helpers the
+issue #228 test suite targets directly) so every existing import path
+(``from mcp_server.core.context_assembly.condensers import ...``,
+including patch targets in tests) keeps resolving unchanged — the split
+is an internal reorganization, not an API change.
+
+````

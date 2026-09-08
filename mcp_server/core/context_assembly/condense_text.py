@@ -1,13 +1,6 @@
-"""Condensers for free-text conversational content (issue #228 split 1/4).
+"""Condensers for free-text conversational content.
 
-Extracted from ``condensers.py`` (§4.1 — the original file was 391 lines,
-over this repo's 300-line cap) with zero behaviour change: same functions,
-same bodies, same helpers, only the module boundary moved. See
-``condensers.py`` for the shared module docstring and re-export facade.
-
-Covers the two condensers whose strategy is "keep a sentence-level slot,
-drop the rest": the user-message condenser (first + questions + last) and
-the timeline-event condenser (date + first sentence).
+source: ADR-0144
 """
 
 from __future__ import annotations
@@ -19,8 +12,8 @@ from mcp_server.core.context_assembly.budget import (
     truncate_to_budget,
 )
 
-# source: structural — the condenser keeps first + last sentence, so texts
-# of two or fewer sentences have no middle filler to drop.
+# source: ADR-0144
+
 _FIRST_PLUS_LAST_SENTENCES = 2
 
 
@@ -44,24 +37,21 @@ def condense_user_message(text: str, token_budget: int) -> str:
             kept.append(s)
     kept.append(sentences[-1])
     result = " ".join(kept).strip()
-    # EQUIVALENT MUTANT (#228): `<=` → `<`. On the boundary the mutant falls
-    # through to `truncate_to_budget(result, token_budget)`, whose own guard
-    # is `estimator(text) <= token_budget` — so it returns `result` unchanged
-    # and the two branches coincide exactly where the mutation moves the
-    # comparison. The same shape recurs in condense_timeline_event below.
+    # source: ADR-0144
+
     if estimate_tokens(result) <= token_budget:
         return result
     return truncate_to_budget(result, token_budget)
 
 
-# ── Timeline-event condenser ────────────────────────────────────────────
-# Strategy: extract (when, what, who) slots. A fixed schema compresses an
-# event more reliably than a free-text summary because the salient fields
-# are pinned. (Engineering heuristic — no biological source.)
+# source: ADR-0144
 
 
 def condense_timeline_event(text: str, token_budget: int) -> str:
-    """Extract when/what/who into a fixed-slot format within budget."""
+    """Extract when/what/who into a fixed-slot format within budget.
+
+    source: ADR-0144
+    """
     if estimate_tokens(text) <= token_budget:
         return text
 
@@ -78,9 +68,8 @@ def condense_timeline_event(text: str, token_budget: int) -> str:
 
     first = _first_sentence(text)
     compressed = f"[{date}] {first}" if date else first
-    # EQUIVALENT MUTANT (#228): `<=` → `<`, same shape as the one documented
-    # in condense_user_message — truncate_to_budget returns `compressed`
-    # unchanged on the boundary, so both branches agree there.
+    # source: ADR-0144
+
     if estimate_tokens(compressed) <= token_budget:
         return compressed
     return truncate_to_budget(compressed, token_budget)

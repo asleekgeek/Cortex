@@ -1,0 +1,69 @@
+---
+title: "ADR-0148 — mcp_server/core/context_assembly/ppr_traversal.py rationale"
+status: accepted
+source: mcp_server/core/context_assembly/ppr_traversal.py
+---
+
+# ADR-0148 — mcp_server/core/context_assembly/ppr_traversal.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Replaces the Swift `graph.traverse(entities, maxHops=2, maxNodes=5)` BFS
+with a principled weighted walk. Each node gets a PPR score
+proportional to the probability that a random walker, restarted with
+probability α at the Phase 1 seed entities, visits it.
+````
+
+## module — original line 8 (docstring)
+
+````text
+**Paper backing**:
+  Gutiérrez, Shu, Gu, Yasunaga, Su. "HippoRAG: Neurobiologically
+  Inspired Long-Term Memory for Large Language Models". NeurIPS 2024,
+  arxiv 2405.14831. Section 3.3 — scores passages by aggregating PPR
+  mass of their contained entities seeded on query entities. Reports
+  strong multi-hop QA gains on MuSiQue, 2WikiMultihopQA, HotpotQA.
+````
+
+## module — original line 15 (docstring)
+
+````text
+**Applied here**: seed PPR on entities extracted from Phase 1 results,
+aggregate mass onto memories that contain those entities, return
+memories ranked by PPR mass. Bridges stages via shared entity
+vocabulary — the structural counterpart to dense semantic similarity.
+````
+
+## module — original line 20 (docstring)
+
+````text
+Complements (not replaces) Cortex's existing `spreading_activation.py`
+(Collins & Loftus 1975), which is a decaying BFS. PPR gives a
+*stationary* distribution rather than a depth-bounded traversal; both
+are valid, with different use cases.
+
+````
+
+## personalized_pagerank — original line 40 (mixed-contract-rationale)
+
+````text
+    Args:
+        adjacency: node_id → list of (neighbor_id, edge_weight) tuples.
+            Weights are normalized to probabilities during iteration.
+        seeds: node_id → seed mass. Mass is re-injected at these nodes
+            on every restart. Does not need to be normalized — the
+            algorithm normalizes it.
+        alpha: restart probability. Default 0.15 (Brin & Page 1998
+            canonical). Higher α → more localized results.
+        max_iters: cap on power iterations.
+        tolerance: L1 convergence threshold.
+````
+
+## module — original line 130 (comment)
+
+````text
+# Ensure every entity is a node even if it has no edges
+````

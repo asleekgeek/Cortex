@@ -1,30 +1,6 @@
-"""Dendritic computation — two-layer neuron model after Poirazi, Brannon & Mel (2003).
+"""Dendritic computation with branch subunits and a soma output.
 
-Implements the pyramidal neuron as a two-layer network:
-
-  Layer 1 — Dendritic branch subunit function:
-    s(n) = 1 / (1 + exp((3.6 - n) / 2)) + 0.30*n + 0.0114*n^2
-
-    where n = number of active synapses on the branch.
-    Half-activation at n = 3.6 synapses, slope factor 2.0.
-    Sigmoid + linear + quadratic terms capture the full nonlinearity
-    (NMDA plateau + cooperative unblocking + voltage-gated amplification).
-
-  Layer 2 — Soma output nonlinearity:
-    g(x) = 0.96 * x / (1 + 1509 * exp(-0.26 * x))
-
-    where x = weighted sum of branch outputs.
-    Effective threshold emerges around x ~ 20-30.
-
-Constants 3.6, 2.0, 0.30, 0.0114, 0.96, 1509, 0.26 are all from
-Poirazi P, Brannon T, Mel BW (2003) "Pyramidal Neuron as a Two-Layer
-Neural Network." Neuron 37:989-999, Figure 3 and Equation fits.
-
-Branch clustering (dendritic_clusters.py) and cluster priming are
-engineering heuristics inspired by Kastellakis (2015) but not direct
-implementations of any specific paper equation.
-
-Pure business logic — no I/O.
+source: ADR-0158
 """
 
 from __future__ import annotations
@@ -32,8 +8,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-# ── Poirazi (2003) Constants ─────────────────────────────────────────────
-# All from Neuron 37:989-999, Figure 3 subunit fit and soma nonlinearity.
+# source: ADR-0158
+
 
 # Subunit sigmoid half-activation (number of active synapses)
 SUBUNIT_HALF_ACTIVATION = 3.6
@@ -51,20 +27,19 @@ SOMA_STEEPNESS = 0.26
 # Soma exponential offset (sets effective threshold)
 SOMA_OFFSET = 1509
 
-# ── Engineering Constants (no paper) ─────────────────────────────────────
+# source: ADR-0158
 
 BRANCH_ADMISSION_THRESHOLD = 0.3
 MAX_BRANCH_SIZE = 15
 PRIMING_STRENGTH = 0.3
 
-# Guard for math.exp arguments.
-# source: structural — IEEE 754 double exp() underflows to 0.0 below
-# ≈ -745; -500 is a conservative pre-existing cutoff, extracted unchanged
-# (#197 family 3)
+# source: ADR-0158
+
+# source: ADR-0158
 _EXP_ARG_FLOOR = -500.0
 
-# source: structural — a sigmoid crosses 0.5 exactly at its
-# half-activation point, so >0.5 means n > SUBUNIT_HALF_ACTIVATION
+# source: ADR-0158
+# source: ADR-0158
 _SIGMOID_MIDPOINT = 0.5
 
 
@@ -96,7 +71,7 @@ class DendriticBranch:
     spike_count: int = 0
 
 
-# ── Layer 1: Dendritic Branch Subunit — Poirazi (2003) Eq. ──────────────
+# source: ADR-0158
 
 
 def branch_subunit(
@@ -107,17 +82,20 @@ def branch_subunit(
     linear_coeff: float = SUBUNIT_LINEAR_COEFF,
     quadratic_coeff: float = SUBUNIT_QUADRATIC_COEFF,
 ) -> float:
-    """Poirazi (2003) dendritic branch subunit function.
+    """Dendritic branch subunit function.
+
+    source: ADR-0158
 
     s(n) = 1 / (1 + exp((3.6 - n) / 2)) + 0.30*n + 0.0114*n^2
 
     Args:
         n: Number of active synapses on the branch. In our system this
            is the number of co-retrieved memories on the branch.
-        half_activation: Sigmoid midpoint (paper: 3.6).
-        slope: Sigmoid slope factor (paper: 2.0).
-        linear_coeff: Linear term coefficient (paper: 0.30).
-        quadratic_coeff: Quadratic term coefficient (paper: 0.0114).
+        half_activation: Sigmoid midpoint (3.6).
+        slope: Sigmoid slope factor (2.0).
+        linear_coeff: Linear term coefficient (0.30).
+        quadratic_coeff: Quadratic term coefficient (0.0114).
+    source: ADR-0158
 
     Returns:
         Branch subunit output (unbounded positive).
@@ -132,7 +110,7 @@ def branch_subunit(
     return sigmoid + linear + quadratic
 
 
-# ── Layer 2: Soma Output Nonlinearity — Poirazi (2003) Eq. ──────────────
+# source: ADR-0158
 
 
 def soma_output(
@@ -142,15 +120,18 @@ def soma_output(
     steepness: float = SOMA_STEEPNESS,
     offset: float = SOMA_OFFSET,
 ) -> float:
-    """Poirazi (2003) soma output nonlinearity.
+    """Soma output nonlinearity.
+
+    source: ADR-0158
 
     g(x) = 0.96 * x / (1 + 1509 * exp(-0.26 * x))
 
     Args:
         x: Weighted sum of branch subunit outputs.
-        scale: Output scaling (paper: 0.96).
-        steepness: Exponential steepness (paper: 0.26).
-        offset: Exponential offset controlling threshold (paper: 1509).
+        scale: Output scaling (0.96).
+        steepness: Exponential steepness (0.26).
+        offset: Exponential offset controlling threshold (1509).
+    source: ADR-0158
 
     Returns:
         Soma output. Near zero for small x, rises sharply around x~28,
@@ -159,8 +140,8 @@ def soma_output(
     if x <= 0.0:
         return 0.0
 
-    # Guard against overflow in exp for very negative arguments.
-    # When x is large, exp(-0.26*x) -> 0 and denominator -> 1.
+    # source: ADR-0158
+
     exponent = -steepness * x
     if exponent < _EXP_ARG_FLOOR:
         return scale * x
@@ -176,7 +157,9 @@ def compute_dendritic_integration(
     total_count: int,
     individual_scores: list[float],
 ) -> tuple[float, bool]:
-    """Two-layer dendritic integration after Poirazi, Brannon & Mel (2003).
+    """Combine branch subunits through the soma output.
+
+    source: ADR-0158
 
     Layer 1: Each branch computes s(n) where n = active_count (number of
     co-retrieved memories on the branch). The individual_scores are used
@@ -206,8 +189,8 @@ def compute_dendritic_integration(
     # Layer 1: branch subunit
     subunit = branch_subunit(n)
 
-    # Weight by mean retrieval score so higher-quality retrievals
-    # produce stronger branch output.
+    # source: ADR-0158
+
     mean_score = sum(individual_scores) / len(individual_scores)
     weighted_branch = subunit * mean_score
 
@@ -223,7 +206,7 @@ def compute_dendritic_integration(
     return output, spiked
 
 
-# ── Cluster Priming (Engineering Heuristic) ─────────────────────────────
+# source: ADR-0158
 
 
 def compute_cluster_priming(
@@ -234,10 +217,7 @@ def compute_cluster_priming(
 ) -> dict[int, float]:
     """Associative priming from retrieving one branch member.
 
-    Engineering heuristic, not from Poirazi (2003). Inspired by the general
-    principle that co-localized synapses prime each other (Kastellakis 2015),
-    but the exponential decay with list-position distance is a practical
-    approximation, not a biological model.
+    source: ADR-0158
 
     All other branch members get a priming boost with exponential
     decay proportional to distance on the branch.
@@ -261,7 +241,7 @@ def compute_cluster_priming(
     return primes
 
 
-# ── Branch-Specific Plasticity (Engineering Heuristic) ──────────────────
+# source: ADR-0158
 
 
 def _apply_plasticity_events(
@@ -273,11 +253,7 @@ def _apply_plasticity_events(
 ) -> float:
     """Apply LTP/LTD events to a plasticity value.
 
-    Engineering heuristic for branch-specific plasticity modulation.
-    The concept of branch-specific plasticity is supported by Kastellakis
-    (2015) and Losonczy et al. (2008), but the specific boost/reduction
-    constants are hand-tuned, not from any paper.
-    """
+    source: ADR-0158"""
     p = plasticity
     if ltp_occurred:
         p = min(1.0, p + ltp_boost)
@@ -297,8 +273,7 @@ def update_branch_plasticity(
 ) -> DendriticBranch:
     """Update branch-specific plasticity after learning events.
 
-    Engineering heuristic. LTP increases plasticity; LTD decreases it.
-    Passive decay toward 0.5 (homeostatic baseline).
+    source: ADR-0158
 
     Returns:
         Branch with updated plasticity.

@@ -864,11 +864,6 @@
     },
     {
       "file": "mcp_server/core/claim_extractor.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/claim_extractor.py",
       "kind": "method-size",
       "detail": "extract_claims"
     },
@@ -881,11 +876,6 @@
       "file": "mcp_server/core/claim_extractor.py",
       "kind": "unsourced-constant",
       "detail": "_MIN_SENTENCE_CHARS"
-    },
-    {
-      "file": "mcp_server/core/claim_resolver.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "mcp_server/core/claim_resolver.py",
@@ -934,11 +924,6 @@
     },
     {
       "file": "mcp_server/core/cognitive_map.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/cognitive_map.py",
       "kind": "layer-violation",
       "detail": "numpy"
     },
@@ -956,16 +941,6 @@
       "file": "mcp_server/core/cognitive_map.py",
       "kind": "unsourced-constant",
       "detail": "_MIN_NODES_FOR_SECOND_AXIS"
-    },
-    {
-      "file": "mcp_server/core/compression.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/compression.py",
-      "kind": "method-size",
-      "detail": "get_compression_schedule"
     },
     {
       "file": "mcp_server/core/compression.py",
@@ -1109,11 +1084,6 @@
     },
     {
       "file": "mcp_server/core/context_assembly/stage_assembler.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/context_assembly/stage_assembler.py",
       "kind": "method-size",
       "detail": "StageAwareContextAssembler.assemble"
     },
@@ -1191,11 +1161,6 @@
       "file": "mcp_server/core/dendritic_computation.py",
       "kind": "unsourced-constant",
       "detail": "SUBUNIT_QUADRATIC_COEFF"
-    },
-    {
-      "file": "mcp_server/core/distillation.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "mcp_server/core/distillation.py",
@@ -1329,11 +1294,6 @@
     },
     {
       "file": "mcp_server/core/dual_process_retrieval.py",
-      "kind": "method-size",
-      "detail": "triage"
-    },
-    {
-      "file": "mcp_server/core/dual_process_retrieval.py",
       "kind": "unsourced-constant",
       "detail": "FAMILIARITY_MARGIN"
     },
@@ -1346,11 +1306,6 @@
       "file": "mcp_server/core/emergence_metrics.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/emergence_metrics.py",
-      "kind": "method-size",
-      "detail": "_schema_acceleration_from_agg"
     },
     {
       "file": "mcp_server/core/emergence_metrics.py",
@@ -1379,18 +1334,8 @@
     },
     {
       "file": "mcp_server/core/emotional_tagging.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/emotional_tagging.py",
       "kind": "method-size",
       "detail": "detect_emotions"
-    },
-    {
-      "file": "mcp_server/core/entity_dedup_filters.py",
-      "kind": "unsourced-constant",
-      "detail": "ENTROPY_THRESHOLD"
     },
     {
       "file": "mcp_server/core/entity_dedup_filters.py",
@@ -1416,16 +1361,6 @@
       "file": "mcp_server/core/entity_dedup_filters.py",
       "kind": "unsourced-constant",
       "detail": "_SHORT_LABEL_MAX"
-    },
-    {
-      "file": "mcp_server/core/entity_reconciliation.py",
-      "kind": "method-size",
-      "detail": "build_reconciliation_sql"
-    },
-    {
-      "file": "mcp_server/core/entity_reconciliation.py",
-      "kind": "method-size",
-      "detail": "reconcile_leak_ratio"
     },
     {
       "file": "mcp_server/core/entity_reconciliation.py",

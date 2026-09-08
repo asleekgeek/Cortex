@@ -1,0 +1,31 @@
+---
+title: "ADR-0155 — mcp_server/core/curation.py rationale"
+status: accepted
+source: mcp_server/core/curation.py
+---
+
+# ADR-0155 — mcp_server/core/curation.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Implements:
+  - Ingestion decisions: merge near-duplicates, link related, create new
+  - Contradiction detection: negation + action divergence
+  - Memify self-improvement: prune, strengthen, reweight, derive
+````
+
+## module — original line 8 (docstring)
+
+````text
+Pure business logic — no I/O. Receives data, returns decisions/actions.
+
+````
+
+## merge_contents — original line 66 (docstring)
+
+````text
+Merge two memory contents, avoiding pure duplication.
+````

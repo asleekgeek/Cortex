@@ -1,12 +1,6 @@
 """Concept expansion vocabulary for query enrichment.
 
-Maps concepts to related terms across two domains:
-  - Programming & DevOps (code, architecture, ML, infra)
-  - Personal & Lifestyle (preferences, facts, activities, health, travel)
-
-Used by enrichment.py for retrieval-time query expansion.
-Pure data -- no logic.
-"""
+source: ADR-0133"""
 
 from __future__ import annotations
 

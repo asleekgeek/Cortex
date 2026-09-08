@@ -1,0 +1,25 @@
+---
+title: "ADR-0133 — mcp_server/core/concept_vocabulary.py rationale"
+status: accepted
+source: mcp_server/core/concept_vocabulary.py
+---
+
+# ADR-0133 — mcp_server/core/concept_vocabulary.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Maps concepts to related terms across two domains:
+  - Programming & DevOps (code, architecture, ML, infra)
+  - Personal & Lifestyle (preferences, facts, activities, health, travel)
+````
+
+## module — original line 7 (docstring)
+
+````text
+Used by enrichment.py for retrieval-time query expansion.
+Pure data -- no logic.
+
+````

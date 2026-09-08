@@ -1,0 +1,16 @@
+---
+title: "ADR-0129 — mcp_server/core/codebase_type_resolver.py rationale"
+status: accepted
+source: mcp_server/core/codebase_type_resolver.py
+---
+
+# ADR-0129 — mcp_server/core/codebase_type_resolver.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## build_type_index — original line 86 (docstring)
+
+````text
+    Only includes class/struct/protocol/enum/interface/trait — not
+    functions or methods, which would produce too much noise.
+````

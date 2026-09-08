@@ -1,18 +1,6 @@
 """Phase 2.3 (Path A) — Template-driven draft page synthesizer.
 
-Takes a set of resolved ClaimEvents + a target kind, produces a
-DraftPage with kind-specific structure. Deterministic, no LLM call.
-
-Routing per kind: each claim_type maps to a target section.
-The lead is synthesised from the highest-confidence claim.
-
-Output goes to wiki.drafts with status='pending' for the curate
-phase to act on. Phase 2.5 path B replaces these with LLM-refined
-drafts via wiki_refine.
-
-Pure logic, no I/O. The handler wires this against pg_store_wiki and
-the wiki_schema_loader's KindDefinition registry.
-"""
+source: ADR-0167"""
 
 from __future__ import annotations
 
@@ -23,11 +11,8 @@ from mcp_server.shared.wiki_schema_loader import KindDefinition
 from mcp_server.shared.wiki_ir import DraftPage, Provenance, Section
 
 
-# ── Per-kind claim_type → section routing ─────────────────────────────
-#
-# Hardcoded defaults. A future Phase 5 step migrates these into the
-# KindDefinition frontmatter (e.g. `section_map: {Decision: [decision]}`)
-# so users can customise routing without editing Python.
+# source: ADR-0167
+
 
 _DEFAULT_ROUTING: dict[str, dict[str, list[str]]] = {
     "adr": {
@@ -91,9 +76,9 @@ def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-# Lead-fitness length band (chars).
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0167
+
+# source: ADR-0167
 _LEAD_MIN_CHARS = 50
 _LEAD_MAX_CHARS = 300
 _LEAD_ESSAY_CHARS = 600
@@ -203,11 +188,11 @@ def _format_claims_as_prose(claims: list[dict]) -> str:
     return "\n".join(f"- {c.get('text', '').strip()}" for c in claims)
 
 
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0167
+# source: ADR-0167
 _TITLE_SENTENCE_SCAN_CHARS = 120
-# source: title cap documented in _derive_title docstring
-# ("Cap at 80 chars on word boundary")  # noqa: ERA001 -- docstring citation, not code
+# source: ADR-0167
+# source: ADR-0167
 _TITLE_MAX_CHARS = 80
 
 

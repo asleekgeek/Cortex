@@ -1,17 +1,6 @@
-"""Phase 4 (ADR-0046) — match code-change impact sets to memories.
+"""Match code-change impact sets to memories.
 
-Given:
-  * a set of impacted qualified names (from ``ap.detect_changes`` /
-    ``ap.get_impact``),
-  * a set of file paths touched by the commit,
-  * an iterable of memory rows (``{memory_id, content, tags, ...}``),
-
-return a deterministic list of ``(memory_id, matched_terms)`` pairs
-identifying memories whose content mentions any impacted symbol or file.
-
-Pure logic — no I/O. Case-insensitive substring match on the *content*
-field plus tag intersection. The handler is responsible for deciding
-what to do with the matches (heat bump, tag annotation, user report).
+source: ADR-0121
 """
 
 from __future__ import annotations
@@ -56,9 +45,7 @@ def match_memories(
       * OR any impacted file path (or its basename),
       * OR its ``tags`` list intersects the impacted-file basenames.
 
-    The match is case-insensitive. Results are ordered by descending
-    match_count then ascending id so the output is stable across runs.
-    """
+    source: ADR-0121"""
     sym_terms = [(q, _tail_of_qualname(q)) for q in impacted_symbols if q]
     file_terms = [(p, _basename(p)) for p in impacted_files if p]
 

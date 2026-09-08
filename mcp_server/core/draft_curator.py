@@ -1,22 +1,6 @@
 """Phase 2.4 — Draft curation.
 
-Pure-logic gate: given a DraftPage and its KindDefinition, decide
-whether to approve, reject, or hold for review.
-
-Hard-rule gate (no LLM): a draft must satisfy all of:
-  - confidence ≥ MIN_CONFIDENCE
-  - all required sections present and non-placeholder
-  - lead present, non-placeholder, ≤ MAX_LEAD_WORDS
-  - title is a noun phrase (not imperative-shaped)
-
-Drafts that PASS → approved.
-Drafts that FAIL → return 'reject' with reasons (curator handler may
-                  log the rejection but keep the draft for refinement).
-Drafts that are CLOSE → 'hold' (recoverable via Path B refinement).
-
-Pure logic, no I/O. The handler persists the decision via
-update_draft_status + insert_memo.
-"""
+source: ADR-0166"""
 
 from __future__ import annotations
 
@@ -30,15 +14,15 @@ CurationVerdict = Literal["approved", "rejected", "hold"]
 
 MIN_CONFIDENCE_APPROVE = 0.6
 MIN_CONFIDENCE_HOLD = 0.4
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0166
+# source: ADR-0166
 MIN_SCORE_HOLD = 0.3
 MAX_LEAD_WORDS = 80
 PLACEHOLDER_PREFIX = "_(to be filled)_"
 PLACEHOLDER_LEAD_MARKERS = ("_(no claims yet", "_(to be filled)_")
 
-# Imperative title shapes from the wiki classifier — duplicated here so
-# the curator stays self-contained and doesn't depend on the noise gate.
+# source: ADR-0166
+
 _IMPERATIVE_TITLE_RE = re.compile(
     r"^\s*(let'?s|use|fetch|take|give|look at|verify|audit|check|make|do|"
     r"run|push|remove|rename|adapt|implement|execute|perform|replace|"

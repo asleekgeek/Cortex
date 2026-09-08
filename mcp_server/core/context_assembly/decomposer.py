@@ -1,25 +1,6 @@
 """Priority-budgeted structured prompt assembly.
 
-**The core primitive**: a prompt template is a set of typed placeholders,
-each with a priority rank, each optionally paired with a domain-aware
-condenser. When the filled template would exceed the context window,
-placeholders are progressively condensed — lowest priority first —
-until the total fits. If any placeholder was materially reduced, a
-truncation warning banner is injected at the top so the LLM knows
-what it's missing.
-
-**The invention is Clément Deust's** (original Swift implementation in
-ai-architect-prd-builder/packages/AIPRDMetaPromptingEngine/Sources/
-Pipeline/ContextDecomposer.swift). This Python port adapts the semantics
-1:1 for Cortex. No paper precedent was found for:
-  1) priority-driven progressive condensation with per-type condensers, or
-  2) injecting explicit truncation awareness into the prompt.
-
-The closest neighbors in the literature are Anthropic's Contextual
-Retrieval (chunk-level LLM summaries, different goal) and various
-token-budgeting recipes in LangChain-style libraries (flat truncation,
-no priorities, no domain awareness, no model-side warning).
-"""
+source: ADR-0147"""
 
 from __future__ import annotations
 
@@ -35,8 +16,8 @@ from mcp_server.core.context_assembly.budget import (
 )
 from mcp_server.core.context_assembly.warning import build_truncation_banner
 
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0147
+# source: ADR-0147
 _MIN_HALVABLE_TOKENS = 50
 
 
