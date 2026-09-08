@@ -1,0 +1,431 @@
+{
+  "source_report_sha256": "713b028189e98180e3f4a6b878148a0100173e02b4874d979dba85a700961547",
+  "model_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+  "tokenizer_sha256": "be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037",
+  "model_sequence_limit": 256,
+  "fixtures": {
+    "internal_spaces": {
+      "chars": 10000,
+      "sha256": "dae65e28df95ac0876c38478a3e504dd989d8b3c2b1cb477be278de214c88c34",
+      "tokens_before": 4,
+      "furthest_retained_token_end_not_safe_cap": 10000
+    },
+    "leading_spaces": {
+      "chars": 10000,
+      "sha256": "5c1b698dff7aa0b200aad3ce5b44d8752795e87ef268e9aeec69114854e6f4c8",
+      "tokens_before": 3,
+      "furthest_retained_token_end_not_safe_cap": 10000
+    },
+    "internal_tabs": {
+      "chars": 10000,
+      "sha256": "1e8b33ec1cee525b6dbd3f3535783f3e3df2ffe019709b6b3e6dc413ee06d9b2",
+      "tokens_before": 4,
+      "furthest_retained_token_end_not_safe_cap": 10000
+    },
+    "internal_nbsp": {
+      "chars": 10000,
+      "sha256": "4b0409d9d0d28ef5f02b334744dbbbf8a4bdf2dfe0454720303307ebe0ca419e",
+      "tokens_before": 4,
+      "furthest_retained_token_end_not_safe_cap": 10000
+    },
+    "null_controls": {
+      "chars": 10000,
+      "sha256": "54ac42d6c3a22b5ec71545c3c99f6a4006dd93ed64cb1d53a911f20506d690a6",
+      "tokens_before": 3,
+      "furthest_retained_token_end_not_safe_cap": 10000
+    },
+    "format_controls": {
+      "chars": 10000,
+      "sha256": "01ccb8a1eb4778d1dc4220b1b55dd110bb9118ed933455c7ca5780de0579284a",
+      "tokens_before": 3,
+      "furthest_retained_token_end_not_safe_cap": 10000
+    },
+    "replacement_chars": {
+      "chars": 10000,
+      "sha256": "8dbf731b82d45a089714527e31bf8f60beca1d1ce2927a677be76bdf2cb3570c",
+      "tokens_before": 3,
+      "furthest_retained_token_end_not_safe_cap": 10000
+    },
+    "combining_marks": {
+      "chars": 10000,
+      "sha256": "239f5a5138e3f2905bad95404480ac4e3973302e61e06aa1cdf844176d02704c",
+      "tokens_before": 3,
+      "furthest_retained_token_end_not_safe_cap": 10000
+    },
+    "composed_accents": {
+      "chars": 10000,
+      "sha256": "041a97e0a4fc7a8c993ab6af689071eb9d4dc400552d57d1ec8f3975b1e97882",
+      "tokens_before": 256,
+      "furthest_retained_token_end_not_safe_cap": 763
+    },
+    "decomposed_accents": {
+      "chars": 10000,
+      "sha256": "34f63da5c7a84c4f5cc87845bfc1d9dccd150d97c8175a9f9d2bd6d13ae98b3b",
+      "tokens_before": 256,
+      "furthest_retained_token_end_not_safe_cap": 916
+    },
+    "joined_emoji": {
+      "chars": 10000,
+      "sha256": "bf931c97173713c6a6e5ad202110f64da28799bb08a58fdf814de1f74a4c7b38",
+      "tokens_before": 256,
+      "furthest_retained_token_end_not_safe_cap": 1083
+    },
+    "long_word": {
+      "chars": 10000,
+      "sha256": "27dd1f61b867b6a0f6e9d8a41c43231de52107e53ae424de8f847b821db4b711",
+      "tokens_before": 3,
+      "furthest_retained_token_end_not_safe_cap": 10000
+    },
+    "word_limit_boundary": {
+      "chars": 10000,
+      "sha256": "c90eee9d6875ff7b1d5ab4c3dd8951def6041b11fc25eaeef873d1ae9cd9f4a2",
+      "tokens_before": 3,
+      "furthest_retained_token_end_not_safe_cap": 101
+    },
+    "chinese_punctuation": {
+      "chars": 10000,
+      "sha256": "4f4166d2356867d78f4d1c24098237566a58dbc6684f0c528e3abc7d99758048",
+      "tokens_before": 256,
+      "furthest_retained_token_end_not_safe_cap": 296
+    },
+    "added_special_tokens": {
+      "chars": 10000,
+      "sha256": "040bb8cf1101a9b53a03f13cea4d30b1a8cc16fba75a0665287ab6732f2f3f1e",
+      "tokens_before": 256,
+      "furthest_retained_token_end_not_safe_cap": 1170
+    },
+    "ordinary_prose": {
+      "chars": 10000,
+      "sha256": "eaa7ef37e76b311213282927a274fa904051be337180c79f74eb8e6c5f657a7c",
+      "tokens_before": 256,
+      "furthest_retained_token_end_not_safe_cap": 1450
+    }
+  },
+  "boundary_search_probe": {
+    "same_boundary_all_16": true,
+    "samples": {
+      "internal_spaces": {
+        "regex": {
+          "raw_ns": [
+            1250,
+            666,
+            417,
+            292
+          ],
+          "median_ns": 417
+        },
+        "finds": {
+          "raw_ns": [
+            1875,
+            1291,
+            1083,
+            1083
+          ],
+          "median_ns": 1083
+        }
+      },
+      "leading_spaces": {
+        "regex": {
+          "raw_ns": [
+            375,
+            250,
+            250,
+            250
+          ],
+          "median_ns": 250
+        },
+        "finds": {
+          "raw_ns": [
+            1125,
+            1083,
+            1042,
+            1042
+          ],
+          "median_ns": 1042
+        }
+      },
+      "internal_tabs": {
+        "regex": {
+          "raw_ns": [
+            292,
+            250,
+            291,
+            291
+          ],
+          "median_ns": 291
+        },
+        "finds": {
+          "raw_ns": [
+            1125,
+            1125,
+            1084,
+            1125
+          ],
+          "median_ns": 1125
+        }
+      },
+      "internal_nbsp": {
+        "regex": {
+          "raw_ns": [
+            25167,
+            25084,
+            25000,
+            25000
+          ],
+          "median_ns": 25000
+        },
+        "finds": {
+          "raw_ns": [
+            1333,
+            1209,
+            1208,
+            1167
+          ],
+          "median_ns": 1208
+        }
+      },
+      "null_controls": {
+        "regex": {
+          "raw_ns": [
+            25041,
+            25000,
+            25041,
+            25000
+          ],
+          "median_ns": 25000
+        },
+        "finds": {
+          "raw_ns": [
+            1250,
+            1250,
+            1250,
+            1208
+          ],
+          "median_ns": 1250
+        }
+      },
+      "format_controls": {
+        "regex": {
+          "raw_ns": [
+            22334,
+            22333,
+            22291,
+            22333
+          ],
+          "median_ns": 22333
+        },
+        "finds": {
+          "raw_ns": [
+            8125,
+            8041,
+            8000,
+            8041
+          ],
+          "median_ns": 8041
+        }
+      },
+      "replacement_chars": {
+        "regex": {
+          "raw_ns": [
+            22250,
+            22291,
+            22208,
+            22250
+          ],
+          "median_ns": 22250
+        },
+        "finds": {
+          "raw_ns": [
+            1916,
+            1834,
+            1916,
+            1875
+          ],
+          "median_ns": 1875
+        }
+      },
+      "combining_marks": {
+        "regex": {
+          "raw_ns": [
+            22250,
+            22291,
+            22291,
+            22208
+          ],
+          "median_ns": 22291
+        },
+        "finds": {
+          "raw_ns": [
+            1958,
+            1916,
+            1875,
+            1875
+          ],
+          "median_ns": 1875
+        }
+      },
+      "composed_accents": {
+        "regex": {
+          "raw_ns": [
+            291,
+            250,
+            250,
+            209
+          ],
+          "median_ns": 250
+        },
+        "finds": {
+          "raw_ns": [
+            1125,
+            1125,
+            1084,
+            1000
+          ],
+          "median_ns": 1084
+        }
+      },
+      "decomposed_accents": {
+        "regex": {
+          "raw_ns": [
+            292,
+            291,
+            250,
+            333
+          ],
+          "median_ns": 291
+        },
+        "finds": {
+          "raw_ns": [
+            1584,
+            1666,
+            1666,
+            1583
+          ],
+          "median_ns": 1666
+        }
+      },
+      "joined_emoji": {
+        "regex": {
+          "raw_ns": [
+            333,
+            291,
+            250,
+            250
+          ],
+          "median_ns": 250
+        },
+        "finds": {
+          "raw_ns": [
+            8959,
+            8916,
+            8708,
+            8792
+          ],
+          "median_ns": 8792
+        }
+      },
+      "long_word": {
+        "regex": {
+          "raw_ns": [
+            25125,
+            25000,
+            25083,
+            25125
+          ],
+          "median_ns": 25083
+        },
+        "finds": {
+          "raw_ns": [
+            1375,
+            1208,
+            1250,
+            1167
+          ],
+          "median_ns": 1208
+        }
+      },
+      "word_limit_boundary": {
+        "regex": {
+          "raw_ns": [
+            208,
+            250,
+            250,
+            2041
+          ],
+          "median_ns": 250
+        },
+        "finds": {
+          "raw_ns": [
+            1125,
+            1084,
+            1041,
+            1083
+          ],
+          "median_ns": 1083
+        }
+      },
+      "chinese_punctuation": {
+        "regex": {
+          "raw_ns": [
+            292,
+            250,
+            250,
+            292
+          ],
+          "median_ns": 250
+        },
+        "finds": {
+          "raw_ns": [
+            1625,
+            1625,
+            1625,
+            1583
+          ],
+          "median_ns": 1625
+        }
+      },
+      "added_special_tokens": {
+        "regex": {
+          "raw_ns": [
+            250,
+            250,
+            208,
+            250
+          ],
+          "median_ns": 250
+        },
+        "finds": {
+          "raw_ns": [
+            1125,
+            1083,
+            1083,
+            1084
+          ],
+          "median_ns": 1083
+        }
+      },
+      "ordinary_prose": {
+        "regex": {
+          "raw_ns": [
+            250,
+            250,
+            208,
+            208
+          ],
+          "median_ns": 208
+        },
+        "finds": {
+          "raw_ns": [
+            1125,
+            1083,
+            1000,
+            1041
+          ],
+          "median_ns": 1041
+        }
+      }
+    },
+    "source_head": "84a9b315",
+    "protocol": "Four sequential perf_counter_ns samples per boundary function; first discarded. Same fixtures and start=1450; regex search vs minimum of four str.find offsets. Only boundary-selection cost, not model latency."
+  }
+}
