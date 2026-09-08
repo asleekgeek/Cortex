@@ -25,7 +25,7 @@
 </p>
 
 <p align="center">
-  <sub>One of three MCP servers that each run standalone and keep evolving — memory (this), <a href="https://github.com/cdeust/ai-architect-mcp-codebase">code graph</a>, <a href="https://github.com/cdeust/ai-architect-mcp-spec">spec verification</a> — plus visualization and reasoning-agent companions. <a href="#the-rest-of-the-stack">Compare them all ↓</a></sub>
+  <sub>One of three MCP servers that each run standalone and keep evolving — memory (this), <a href="https://github.com/cdeust/ai-architect-mcp-codebase">code graph</a>, <a href="https://github.com/cdeust/ai-architect-mcp-spec">spec verification</a> — alongside the <a href="https://github.com/cdeust/cortex-viz">hypermnesia-mcp-viz</a> visualization companion and the <a href="https://github.com/cdeust/zetetic-team-subagents">zetetic-team-subagents</a> reasoning agents. <a href="#the-rest-of-the-stack">Compare them all ↓</a></sub>
 </p>
 
 <p align="center">
