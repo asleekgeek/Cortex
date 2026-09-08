@@ -2040,6 +2040,258 @@
       "mirror": "ADR-0576-pg-store-wiki-domain.md",
       "path": "adr/migration/0576-pg-store-wiki-domain.md"
     },
+    "ADR-0577": {
+      "mirror": "ADR-0577-pg-store-wiki-drafts.md",
+      "path": "adr/migration/0577-pg-store-wiki-drafts.md"
+    },
+    "ADR-0578": {
+      "mirror": "ADR-0578-pg-store-wiki-links.md",
+      "path": "adr/migration/0578-pg-store-wiki-links.md"
+    },
+    "ADR-0579": {
+      "mirror": "ADR-0579-pg-store-wiki-notes.md",
+      "path": "adr/migration/0579-pg-store-wiki-notes.md"
+    },
+    "ADR-0580": {
+      "mirror": "ADR-0580-pg-store-wiki-pages.md",
+      "path": "adr/migration/0580-pg-store-wiki-pages.md"
+    },
+    "ADR-0581": {
+      "mirror": "ADR-0581-pg-store-wiki-sources.md",
+      "path": "adr/migration/0581-pg-store-wiki-sources.md"
+    },
+    "ADR-0582": {
+      "mirror": "ADR-0582-pg-store-wiki-thermo.md",
+      "path": "adr/migration/0582-pg-store-wiki-thermo.md"
+    },
+    "ADR-0583": {
+      "mirror": "ADR-0583-pg-store-write.md",
+      "path": "adr/migration/0583-pg-store-write.md"
+    },
+    "ADR-0584": {
+      "mirror": "ADR-0584-pipeline-discovery.md",
+      "path": "adr/migration/0584-pipeline-discovery.md"
+    },
+    "ADR-0585": {
+      "mirror": "ADR-0585-pipeline-graph-ttl.md",
+      "path": "adr/migration/0585-pipeline-graph-ttl.md"
+    },
+    "ADR-0586": {
+      "mirror": "ADR-0586-pipeline-install-lock.md",
+      "path": "adr/migration/0586-pipeline-install-lock.md"
+    },
+    "ADR-0587": {
+      "mirror": "ADR-0587-pipeline-install-release.md",
+      "path": "adr/migration/0587-pipeline-install-release.md"
+    },
+    "ADR-0588": {
+      "mirror": "ADR-0588-pipeline-install-rust.md",
+      "path": "adr/migration/0588-pipeline-install-rust.md"
+    },
+    "ADR-0589": {
+      "mirror": "ADR-0589-pipeline-installer.md",
+      "path": "adr/migration/0589-pipeline-installer.md"
+    },
+    "ADR-0590": {
+      "mirror": "ADR-0590-pipeline-installer-common.md",
+      "path": "adr/migration/0590-pipeline-installer-common.md"
+    },
+    "ADR-0591": {
+      "mirror": "ADR-0591-pooled-sink.md",
+      "path": "adr/migration/0591-pooled-sink.md"
+    },
+    "ADR-0592": {
+      "mirror": "ADR-0592-profile-store.md",
+      "path": "adr/migration/0592-profile-store.md"
+    },
+    "ADR-0593": {
+      "mirror": "ADR-0593-project-wiki.md",
+      "path": "adr/migration/0593-project-wiki.md"
+    },
+    "ADR-0594": {
+      "mirror": "ADR-0594-row-factory.md",
+      "path": "adr/migration/0594-row-factory.md"
+    },
+    "ADR-0595": {
+      "mirror": "ADR-0595-scanner.md",
+      "path": "adr/migration/0595-scanner.md"
+    },
+    "ADR-0596": {
+      "mirror": "ADR-0596-scanner-parse.md",
+      "path": "adr/migration/0596-scanner-parse.md"
+    },
+    "ADR-0597": {
+      "mirror": "ADR-0597-session-registry.md",
+      "path": "adr/migration/0597-session-registry.md"
+    },
+    "ADR-0599": {
+      "mirror": "ADR-0599-sqlite-compat.md",
+      "path": "adr/migration/0599-sqlite-compat.md"
+    },
+    "ADR-0600": {
+      "mirror": "ADR-0600-sqlite-connection-registry.md",
+      "path": "adr/migration/0600-sqlite-connection-registry.md"
+    },
+    "ADR-0602": {
+      "mirror": "ADR-0602-sqlite-schema.md",
+      "path": "adr/migration/0602-sqlite-schema.md"
+    },
+    "ADR-0603": {
+      "mirror": "ADR-0603-sqlite-schema-wiki.md",
+      "path": "adr/migration/0603-sqlite-schema-wiki.md"
+    },
+    "ADR-0604": {
+      "mirror": "ADR-0604-sqlite-sql-translate.md",
+      "path": "adr/migration/0604-sqlite-sql-translate.md"
+    },
+    "ADR-0605": {
+      "mirror": "ADR-0605-sqlite-store.md",
+      "path": "adr/migration/0605-sqlite-store.md"
+    },
+    "ADR-0606": {
+      "mirror": "ADR-0606-sqlite-store-auxiliary.md",
+      "path": "adr/migration/0606-sqlite-store-auxiliary.md"
+    },
+    "ADR-0607": {
+      "mirror": "ADR-0607-sqlite-store-entities.md",
+      "path": "adr/migration/0607-sqlite-store-entities.md"
+    },
+    "ADR-0608": {
+      "mirror": "ADR-0608-sqlite-store-entity-merge.md",
+      "path": "adr/migration/0608-sqlite-store-entity-merge.md"
+    },
+    "ADR-0609": {
+      "mirror": "ADR-0609-sqlite-store-grooming.md",
+      "path": "adr/migration/0609-sqlite-store-grooming.md"
+    },
+    "ADR-0610": {
+      "mirror": "ADR-0610-sqlite-store-lesson-promotion.md",
+      "path": "adr/migration/0610-sqlite-store-lesson-promotion.md"
+    },
+    "ADR-0611": {
+      "mirror": "ADR-0611-sqlite-store-mood.md",
+      "path": "adr/migration/0611-sqlite-store-mood.md"
+    },
+    "ADR-0612": {
+      "mirror": "ADR-0612-sqlite-store-queries.md",
+      "path": "adr/migration/0612-sqlite-store-queries.md"
+    },
+    "ADR-0613": {
+      "mirror": "ADR-0613-sqlite-store-receipts.md",
+      "path": "adr/migration/0613-sqlite-store-receipts.md"
+    },
+    "ADR-0616": {
+      "mirror": "ADR-0616-sqlite-store-search.md",
+      "path": "adr/migration/0616-sqlite-store-search.md"
+    },
+    "ADR-0617": {
+      "mirror": "ADR-0617-sqlite-store-stats.md",
+      "path": "adr/migration/0617-sqlite-store-stats.md"
+    },
+    "ADR-0618": {
+      "mirror": "ADR-0618-staging-resolve-sink.md",
+      "path": "adr/migration/0618-staging-resolve-sink.md"
+    },
+    "ADR-0619": {
+      "mirror": "ADR-0619-stream-sources.md",
+      "path": "adr/migration/0619-stream-sources.md"
+    },
+    "ADR-0620": {
+      "mirror": "ADR-0620-upstream-availability.md",
+      "path": "adr/migration/0620-upstream-availability.md"
+    },
+    "ADR-0621": {
+      "mirror": "ADR-0621-upstream-governor.md",
+      "path": "adr/migration/0621-upstream-governor.md"
+    },
+    "ADR-0622": {
+      "mirror": "ADR-0622-upstream-identity.md",
+      "path": "adr/migration/0622-upstream-identity.md"
+    },
+    "ADR-0623": {
+      "mirror": "ADR-0623-viz-client.md",
+      "path": "adr/migration/0623-viz-client.md"
+    },
+    "ADR-0624": {
+      "mirror": "ADR-0624-wiki-decision-index.md",
+      "path": "adr/migration/0624-wiki-decision-index.md"
+    },
+    "ADR-0625": {
+      "mirror": "ADR-0625-wiki-decision-mirror.md",
+      "path": "adr/migration/0625-wiki-decision-mirror.md"
+    },
+    "ADR-0626": {
+      "mirror": "ADR-0626-wiki-page-fs.md",
+      "path": "adr/migration/0626-wiki-page-fs.md"
+    },
+    "ADR-0627": {
+      "mirror": "ADR-0627-wiki-pages-listing.md",
+      "path": "adr/migration/0627-wiki-pages-listing.md"
+    },
+    "ADR-0628": {
+      "mirror": "ADR-0628-wiki-reindex-io.md",
+      "path": "adr/migration/0628-wiki-reindex-io.md"
+    },
+    "ADR-0629": {
+      "mirror": "ADR-0629-wiki-schema-reader.md",
+      "path": "adr/migration/0629-wiki-schema-reader.md"
+    },
+    "ADR-0630": {
+      "mirror": "ADR-0630-wiki-store.md",
+      "path": "adr/migration/0630-wiki-store.md"
+    },
+    "ADR-0631": {
+      "mirror": "ADR-0631-workflow-graph-ast-edges.md",
+      "path": "adr/migration/0631-workflow-graph-ast-edges.md"
+    },
+    "ADR-0632": {
+      "mirror": "ADR-0632-workflow-graph-ast-response.md",
+      "path": "adr/migration/0632-workflow-graph-ast-response.md"
+    },
+    "ADR-0633": {
+      "mirror": "ADR-0633-workflow-graph-ast-symbols.md",
+      "path": "adr/migration/0633-workflow-graph-ast-symbols.md"
+    },
+    "ADR-0634": {
+      "mirror": "ADR-0634-workflow-graph-source-ast.md",
+      "path": "adr/migration/0634-workflow-graph-source-ast.md"
+    },
+    "ADR-0635": {
+      "mirror": "ADR-0635-mcp-server-mcp-progress.md",
+      "path": "adr/migration/0635-mcp-server-mcp-progress.md"
+    },
+    "ADR-0636": {
+      "mirror": "ADR-0636-mcp-server-mcp-prompts.md",
+      "path": "adr/migration/0636-mcp-server-mcp-prompts.md"
+    },
+    "ADR-0637": {
+      "mirror": "ADR-0637-mcp-server-migrate.md",
+      "path": "adr/migration/0637-mcp-server-migrate.md"
+    },
+    "ADR-0639": {
+      "mirror": "ADR-0639-mcp-server-observability-metrics.md",
+      "path": "adr/migration/0639-mcp-server-observability-metrics.md"
+    },
+    "ADR-0640": {
+      "mirror": "ADR-0640-mcp-server-observability-silent-failure.md",
+      "path": "adr/migration/0640-mcp-server-observability-silent-failure.md"
+    },
+    "ADR-0643": {
+      "mirror": "ADR-0643-mcp-server-shared-algorithmic-embedding.md",
+      "path": "adr/migration/0643-mcp-server-shared-algorithmic-embedding.md"
+    },
+    "ADR-0644": {
+      "mirror": "ADR-0644-mcp-server-shared-categorizer.md",
+      "path": "adr/migration/0644-mcp-server-shared-categorizer.md"
+    },
+    "ADR-0645": {
+      "mirror": "ADR-0645-mcp-server-shared-code-tokenize.md",
+      "path": "adr/migration/0645-mcp-server-shared-code-tokenize.md"
+    },
+    "ADR-0646": {
+      "mirror": "ADR-0646-mcp-server-shared-content-hardening.md",
+      "path": "adr/migration/0646-mcp-server-shared-content-hardening.md"
+    },
     "ADR-0795": {
       "mirror": "ADR-0795-clusterfuzzlite-Dockerfile.md",
       "path": "adr/migration/0795-clusterfuzzlite-Dockerfile.md"
