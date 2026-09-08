@@ -2292,6 +2292,258 @@
       "mirror": "ADR-0646-mcp-server-shared-content-hardening.md",
       "path": "adr/migration/0646-mcp-server-shared-content-hardening.md"
     },
+    "ADR-0647": {
+      "mirror": "ADR-0647-mcp-server-shared-domain-mapping.md",
+      "path": "adr/migration/0647-mcp-server-shared-domain-mapping.md"
+    },
+    "ADR-0648": {
+      "mirror": "ADR-0648-mcp-server-shared-entity-canonical.md",
+      "path": "adr/migration/0648-mcp-server-shared-entity-canonical.md"
+    },
+    "ADR-0649": {
+      "mirror": "ADR-0649-mcp-server-shared-freshness.md",
+      "path": "adr/migration/0649-mcp-server-shared-freshness.md"
+    },
+    "ADR-0651": {
+      "mirror": "ADR-0651-mcp-server-shared-hook-state-paths.md",
+      "path": "adr/migration/0651-mcp-server-shared-hook-state-paths.md"
+    },
+    "ADR-0652": {
+      "mirror": "ADR-0652-mcp-server-shared-json-native.md",
+      "path": "adr/migration/0652-mcp-server-shared-json-native.md"
+    },
+    "ADR-0654": {
+      "mirror": "ADR-0654-mcp-server-shared-log-file-lock.md",
+      "path": "adr/migration/0654-mcp-server-shared-log-file-lock.md"
+    },
+    "ADR-0655": {
+      "mirror": "ADR-0655-mcp-server-shared-log-rotation.md",
+      "path": "adr/migration/0655-mcp-server-shared-log-rotation.md"
+    },
+    "ADR-0658": {
+      "mirror": "ADR-0658-mcp-server-shared-minhash.md",
+      "path": "adr/migration/0658-mcp-server-shared-minhash.md"
+    },
+    "ADR-0659": {
+      "mirror": "ADR-0659-mcp-server-shared-near-dup-calibration.md",
+      "path": "adr/migration/0659-mcp-server-shared-near-dup-calibration.md"
+    },
+    "ADR-0660": {
+      "mirror": "ADR-0660-mcp-server-shared-platform.md",
+      "path": "adr/migration/0660-mcp-server-shared-platform.md"
+    },
+    "ADR-0661": {
+      "mirror": "ADR-0661-mcp-server-shared-progress.md",
+      "path": "adr/migration/0661-mcp-server-shared-progress.md"
+    },
+    "ADR-0662": {
+      "mirror": "ADR-0662-mcp-server-shared-project-ids.md",
+      "path": "adr/migration/0662-mcp-server-shared-project-ids.md"
+    },
+    "ADR-0663": {
+      "mirror": "ADR-0663-mcp-server-shared-redaction.md",
+      "path": "adr/migration/0663-mcp-server-shared-redaction.md"
+    },
+    "ADR-0666": {
+      "mirror": "ADR-0666-mcp-server-shared-string-distance.md",
+      "path": "adr/migration/0666-mcp-server-shared-string-distance.md"
+    },
+    "ADR-0667": {
+      "mirror": "ADR-0667-mcp-server-shared-subprocess-safe.md",
+      "path": "adr/migration/0667-mcp-server-shared-subprocess-safe.md"
+    },
+    "ADR-0668": {
+      "mirror": "ADR-0668-mcp-server-shared-telemetry-context.md",
+      "path": "adr/migration/0668-mcp-server-shared-telemetry-context.md"
+    },
+    "ADR-0669": {
+      "mirror": "ADR-0669-mcp-server-shared-temporal.md",
+      "path": "adr/migration/0669-mcp-server-shared-temporal.md"
+    },
+    "ADR-0670": {
+      "mirror": "ADR-0670-mcp-server-shared-temporal-normalize.md",
+      "path": "adr/migration/0670-mcp-server-shared-temporal-normalize.md"
+    },
+    "ADR-0671": {
+      "mirror": "ADR-0671-mcp-server-shared-temporal-timezones.md",
+      "path": "adr/migration/0671-mcp-server-shared-temporal-timezones.md"
+    },
+    "ADR-0672": {
+      "mirror": "ADR-0672-mcp-server-shared-text.md",
+      "path": "adr/migration/0672-mcp-server-shared-text.md"
+    },
+    "ADR-0673": {
+      "mirror": "ADR-0673-mcp-server-shared-types-features.md",
+      "path": "adr/migration/0673-mcp-server-shared-types-features.md"
+    },
+    "ADR-0675": {
+      "mirror": "ADR-0675-mcp-server-shared-vader.md",
+      "path": "adr/migration/0675-mcp-server-shared-vader.md"
+    },
+    "ADR-0676": {
+      "mirror": "ADR-0676-mcp-server-shared-wiki-classification.md",
+      "path": "adr/migration/0676-mcp-server-shared-wiki-classification.md"
+    },
+    "ADR-0677": {
+      "mirror": "ADR-0677-mcp-server-shared-wiki-decision-ids.md",
+      "path": "adr/migration/0677-mcp-server-shared-wiki-decision-ids.md"
+    },
+    "ADR-0678": {
+      "mirror": "ADR-0678-mcp-server-shared-wiki-frontmatter.md",
+      "path": "adr/migration/0678-mcp-server-shared-wiki-frontmatter.md"
+    },
+    "ADR-0679": {
+      "mirror": "ADR-0679-mcp-server-shared-wiki-frontmatter-validation.md",
+      "path": "adr/migration/0679-mcp-server-shared-wiki-frontmatter-validation.md"
+    },
+    "ADR-0680": {
+      "mirror": "ADR-0680-mcp-server-shared-wiki-index.md",
+      "path": "adr/migration/0680-mcp-server-shared-wiki-index.md"
+    },
+    "ADR-0681": {
+      "mirror": "ADR-0681-mcp-server-shared-wiki-ir.md",
+      "path": "adr/migration/0681-mcp-server-shared-wiki-ir.md"
+    },
+    "ADR-0682": {
+      "mirror": "ADR-0682-mcp-server-shared-wiki-layout.md",
+      "path": "adr/migration/0682-mcp-server-shared-wiki-layout.md"
+    },
+    "ADR-0683": {
+      "mirror": "ADR-0683-mcp-server-shared-wiki-page-builders.md",
+      "path": "adr/migration/0683-mcp-server-shared-wiki-page-builders.md"
+    },
+    "ADR-0684": {
+      "mirror": "ADR-0684-mcp-server-shared-wiki-pages.md",
+      "path": "adr/migration/0684-mcp-server-shared-wiki-pages.md"
+    },
+    "ADR-0685": {
+      "mirror": "ADR-0685-mcp-server-shared-wiki-readme.md",
+      "path": "adr/migration/0685-mcp-server-shared-wiki-readme.md"
+    },
+    "ADR-0686": {
+      "mirror": "ADR-0686-mcp-server-shared-wiki-schema-loader.md",
+      "path": "adr/migration/0686-mcp-server-shared-wiki-schema-loader.md"
+    },
+    "ADR-0687": {
+      "mirror": "ADR-0687-mcp-server-shared-wiki-source-paths.md",
+      "path": "adr/migration/0687-mcp-server-shared-wiki-source-paths.md"
+    },
+    "ADR-0688": {
+      "mirror": "ADR-0688-mcp-server-shared-write-class.md",
+      "path": "adr/migration/0688-mcp-server-shared-write-class.md"
+    },
+    "ADR-0690": {
+      "mirror": "ADR-0690-mcp-server-telemetry-middleware.md",
+      "path": "adr/migration/0690-mcp-server-telemetry-middleware.md"
+    },
+    "ADR-0691": {
+      "mirror": "ADR-0691-mcp-server-tool-error-handler.md",
+      "path": "adr/migration/0691-mcp-server-tool-error-handler.md"
+    },
+    "ADR-0692": {
+      "mirror": "ADR-0692-mcp-server-tool-profile-middleware.md",
+      "path": "adr/migration/0692-mcp-server-tool-profile-middleware.md"
+    },
+    "ADR-0693": {
+      "mirror": "ADR-0693-mcp-server-tool-profiles.md",
+      "path": "adr/migration/0693-mcp-server-tool-profiles.md"
+    },
+    "ADR-0696": {
+      "mirror": "ADR-0696-mcp-server-tool-registry-ingest.md",
+      "path": "adr/migration/0696-mcp-server-tool-registry-ingest.md"
+    },
+    "ADR-0698": {
+      "mirror": "ADR-0698-mcp-server-tool-registry-memory.md",
+      "path": "adr/migration/0698-mcp-server-tool-registry-memory.md"
+    },
+    "ADR-0700": {
+      "mirror": "ADR-0700-mcp-server-tool-registry-wiki.md",
+      "path": "adr/migration/0700-mcp-server-tool-registry-wiki.md"
+    },
+    "ADR-0702": {
+      "mirror": "ADR-0702-mcp-server-validation-schemas.md",
+      "path": "adr/migration/0702-mcp-server-validation-schemas.md"
+    },
+    "ADR-0703": {
+      "mirror": "ADR-0703-scripts-aggregate-hook-timings-py.md",
+      "path": "adr/migration/0703-scripts-aggregate-hook-timings-py.md"
+    },
+    "ADR-0704": {
+      "mirror": "ADR-0704-scripts-backfill-wiki-titles-2026-07-14-py.md",
+      "path": "adr/migration/0704-scripts-backfill-wiki-titles-2026-07-14-py.md"
+    },
+    "ADR-0705": {
+      "mirror": "ADR-0705-scripts-backfill-write-class-py.md",
+      "path": "adr/migration/0705-scripts-backfill-write-class-py.md"
+    },
+    "ADR-0706": {
+      "mirror": "ADR-0706-scripts-badge-render-py.md",
+      "path": "adr/migration/0706-scripts-badge-render-py.md"
+    },
+    "ADR-0708": {
+      "mirror": "ADR-0708-scripts-campaign-guards-i6d5-measure-reheat-ranks-py.md",
+      "path": "adr/migration/0708-scripts-campaign-guards-i6d5-measure-reheat-ranks-py.md"
+    },
+    "ADR-0709": {
+      "mirror": "ADR-0709-scripts-check-ci-file-count-py.md",
+      "path": "adr/migration/0709-scripts-check-ci-file-count-py.md"
+    },
+    "ADR-0710": {
+      "mirror": "ADR-0710-scripts-check-ci-gate-complete-py.md",
+      "path": "adr/migration/0710-scripts-check-ci-gate-complete-py.md"
+    },
+    "ADR-0711": {
+      "mirror": "ADR-0711-scripts-check-ci-gate-results-py.md",
+      "path": "adr/migration/0711-scripts-check-ci-gate-results-py.md"
+    },
+    "ADR-0712": {
+      "mirror": "ADR-0712-scripts-check-craftsmanship-py.md",
+      "path": "adr/migration/0712-scripts-check-craftsmanship-py.md"
+    },
+    "ADR-0713": {
+      "mirror": "ADR-0713-scripts-check-doc-claims-py.md",
+      "path": "adr/migration/0713-scripts-check-doc-claims-py.md"
+    },
+    "ADR-0714": {
+      "mirror": "ADR-0714-scripts-check-marketplace-pins-py.md",
+      "path": "adr/migration/0714-scripts-check-marketplace-pins-py.md"
+    },
+    "ADR-0716": {
+      "mirror": "ADR-0716-scripts-check-venv-lock-parity-py.md",
+      "path": "adr/migration/0716-scripts-check-venv-lock-parity-py.md"
+    },
+    "ADR-0717": {
+      "mirror": "ADR-0717-scripts-check-version-surfaces-py.md",
+      "path": "adr/migration/0717-scripts-check-version-surfaces-py.md"
+    },
+    "ADR-0718": {
+      "mirror": "ADR-0718-scripts-collect-response-budget-payloads-py.md",
+      "path": "adr/migration/0718-scripts-collect-response-budget-payloads-py.md"
+    },
+    "ADR-0719": {
+      "mirror": "ADR-0719-scripts-cortex-ingest-py.md",
+      "path": "adr/migration/0719-scripts-cortex-ingest-py.md"
+    },
+    "ADR-0720": {
+      "mirror": "ADR-0720-scripts-craftsmanship-baseline-py.md",
+      "path": "adr/migration/0720-scripts-craftsmanship-baseline-py.md"
+    },
+    "ADR-0721": {
+      "mirror": "ADR-0721-scripts-craftsmanship-constants-py.md",
+      "path": "adr/migration/0721-scripts-craftsmanship-constants-py.md"
+    },
+    "ADR-0722": {
+      "mirror": "ADR-0722-scripts-craftsmanship-decisions-py.md",
+      "path": "adr/migration/0722-scripts-craftsmanship-decisions-py.md"
+    },
+    "ADR-0723": {
+      "mirror": "ADR-0723-scripts-craftsmanship-git-py.md",
+      "path": "adr/migration/0723-scripts-craftsmanship-git-py.md"
+    },
+    "ADR-0724": {
+      "mirror": "ADR-0724-scripts-craftsmanship-imports-py.md",
+      "path": "adr/migration/0724-scripts-craftsmanship-imports-py.md"
+    },
     "ADR-0795": {
       "mirror": "ADR-0795-clusterfuzzlite-Dockerfile.md",
       "path": "adr/migration/0795-clusterfuzzlite-Dockerfile.md"
@@ -2607,6 +2859,10 @@
     "ADR-0873": {
       "mirror": "ADR-0873-docker-entrypoint-sh.md",
       "path": "adr/migration/0873-docker-entrypoint-sh.md"
+    },
+    "ADR-0874": {
+      "mirror": "ADR-0874-pyproject-toml.md",
+      "path": "adr/migration/0874-pyproject-toml.md"
     },
     "ADR-0880": {
       "mirror": "ADR-0880-fuzz-fuzz-yaml-frontmatter-py.md",
