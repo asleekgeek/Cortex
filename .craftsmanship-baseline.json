@@ -3319,11 +3319,6 @@
     },
     {
       "file": "mcp_server/handlers/consolidation/homeostatic.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/homeostatic.py",
       "kind": "method-size",
       "detail": "_dispatch_class"
     },
@@ -3341,11 +3336,6 @@
       "file": "mcp_server/handlers/consolidation/homeostatic_apply.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/homeostatic_apply.py",
-      "kind": "method-size",
-      "detail": "_apply_fold"
     },
     {
       "file": "mcp_server/handlers/consolidation/homeostatic_apply.py",
@@ -3368,29 +3358,14 @@
       "detail": "_MAX_STEP"
     },
     {
-      "file": "mcp_server/handlers/consolidation/homeostatic_apply.py",
-      "kind": "unsourced-constant",
-      "detail": "_MIN_SAFE_MEAN"
-    },
-    {
       "file": "mcp_server/handlers/consolidation/memify.py",
       "kind": "layer-violation",
       "detail": "mcp_server.observability"
     },
     {
       "file": "mcp_server/handlers/consolidation/memify.py",
-      "kind": "method-size",
-      "detail": "_classify_memify_reason"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/memify.py",
       "kind": "unsourced-constant",
       "detail": "_PRUNE_CONFIDENCE_THRESHOLD"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/memify.py",
-      "kind": "unsourced-constant",
-      "detail": "_PRUNE_HEAT_THRESHOLD"
     },
     {
       "file": "mcp_server/handlers/consolidation/memify.py",
@@ -3415,27 +3390,7 @@
     {
       "file": "mcp_server/handlers/consolidation/memify_derive.py",
       "kind": "unsourced-constant",
-      "detail": "_CANDIDATE_SCAN_LIMIT"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/memify_derive.py",
-      "kind": "unsourced-constant",
-      "detail": "_MAX_DERIVATIONS_PER_RUN"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/memify_derive.py",
-      "kind": "unsourced-constant",
-      "detail": "_PROVENANCE_SRC_CAP"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/memify_derive.py",
-      "kind": "unsourced-constant",
       "detail": "_WEIGHT_THRESHOLD"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/memory_dedup_exact_pass.py",
-      "kind": "method-size",
-      "detail": "run_memory_dedup_exact_pass"
     },
     {
       "file": "mcp_server/handlers/consolidation/memory_dedup_exact_pass.py",
@@ -3448,19 +3403,9 @@
       "detail": "run_memory_domain_backfill_pass"
     },
     {
-      "file": "mcp_server/handlers/consolidation/memory_domain_backfill_pass.py",
-      "kind": "unsourced-constant",
-      "detail": "DEFAULT_MEMORY_DOMAIN_BACKFILL_LIMIT"
-    },
-    {
       "file": "mcp_server/handlers/consolidation/memory_reheat_pass.py",
       "kind": "method-size",
       "detail": "_process_row"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/memory_reheat_pass.py",
-      "kind": "method-size",
-      "detail": "run_memory_reheat_pass"
     },
     {
       "file": "mcp_server/handlers/consolidation/memory_reheat_pass.py",
@@ -3533,11 +3478,6 @@
       "detail": "run_plasticity_cycle"
     },
     {
-      "file": "mcp_server/handlers/consolidation/plasticity.py",
-      "kind": "unsourced-constant",
-      "detail": "_CO_ACCESS_SAMPLE_CAP"
-    },
-    {
       "file": "mcp_server/handlers/consolidation/sleep.py",
       "kind": "method-size",
       "detail": "run_deep_sleep"
@@ -3563,39 +3503,9 @@
       "detail": "DEFAULT_SEED_SCAN_LIMIT"
     },
     {
-      "file": "mcp_server/handlers/consolidation/wiki_domain_backfill_pass.py",
-      "kind": "unsourced-constant",
-      "detail": "DEFAULT_DOMAIN_BACKFILL_LIMIT"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/wiki_maintenance.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
       "file": "mcp_server/handlers/consolidation/wiki_maintenance.py",
       "kind": "method-size",
       "detail": "run_wiki_maintenance"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/wiki_maintenance.py",
-      "kind": "unsourced-constant",
-      "detail": "MAX_PURGES_PER_CYCLE"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/wiki_source_backfill_pass.py",
-      "kind": "unsourced-constant",
-      "detail": "DEFAULT_BACKFILL_LIMIT"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/write_class_backfill_pass.py",
-      "kind": "method-size",
-      "detail": "run_write_class_backfill_pass"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/write_class_backfill_pass.py",
-      "kind": "unsourced-constant",
-      "detail": "DEFAULT_WRITE_CLASS_BACKFILL_LIMIT"
     },
     {
       "file": "mcp_server/handlers/create_trigger.py",
@@ -3633,11 +3543,6 @@
       "detail": "_MIN_RECURRING_ACCESS"
     },
     {
-      "file": "mcp_server/handlers/curate_distill.py",
-      "kind": "unsourced-constant",
-      "detail": "_TAG_SCAN_LIMIT"
-    },
-    {
       "file": "mcp_server/handlers/curate_wiki.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
@@ -3671,11 +3576,6 @@
       "file": "mcp_server/handlers/forget.py",
       "kind": "method-size",
       "detail": "_handler_impl"
-    },
-    {
-      "file": "mcp_server/handlers/get_causal_chain.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "mcp_server/handlers/get_grooming_health.py",
@@ -3725,11 +3625,6 @@
     {
       "file": "mcp_server/handlers/ingest_codebase_cypher.py",
       "kind": "method-size",
-      "detail": "_run_query"
-    },
-    {
-      "file": "mcp_server/handlers/ingest_codebase_cypher.py",
-      "kind": "method-size",
       "detail": "fetch_files"
     },
     {
@@ -3746,11 +3641,6 @@
       "file": "mcp_server/handlers/ingest_codebase_cypher.py",
       "kind": "method-size",
       "detail": "iter_call_edges"
-    },
-    {
-      "file": "mcp_server/handlers/ingest_codebase_cypher.py",
-      "kind": "unsourced-constant",
-      "detail": "_FILE_PAGE_SIZE"
     },
     {
       "file": "mcp_server/handlers/ingest_codebase_graph.py",
@@ -3771,11 +3661,6 @@
       "file": "mcp_server/handlers/ingest_docs_content.py",
       "kind": "method-size",
       "detail": "run_docs_pass"
-    },
-    {
-      "file": "mcp_server/handlers/ingest_docs_content_cypher.py",
-      "kind": "method-size",
-      "detail": "fetch_doc_references"
     },
     {
       "file": "mcp_server/handlers/ingest_docs_content_writers.py",
@@ -3814,11 +3699,6 @@
     },
     {
       "file": "mcp_server/handlers/ingest_findings_writers.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/handlers/ingest_findings_writers.py",
       "kind": "layer-violation",
       "detail": "mcp_server.observability"
     },
@@ -3836,11 +3716,6 @@
       "file": "mcp_server/handlers/ingest_findings_writers.py",
       "kind": "method-size",
       "detail": "write_receipt_memos"
-    },
-    {
-      "file": "mcp_server/handlers/ingest_helpers.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "mcp_server/handlers/ingest_helpers.py",
@@ -3866,11 +3741,6 @@
       "file": "mcp_server/handlers/lesson_promotion.py",
       "kind": "layer-violation",
       "detail": "mcp_server.observability"
-    },
-    {
-      "file": "mcp_server/handlers/lesson_promotion.py",
-      "kind": "method-size",
-      "detail": "handler"
     },
     {
       "file": "mcp_server/handlers/procedural_skill_writer.py",
@@ -3990,11 +3860,6 @@
     {
       "file": "mcp_server/handlers/remember_helpers.py",
       "kind": "method-size",
-      "detail": "_grade_content_best_effort"
-    },
-    {
-      "file": "mcp_server/handlers/remember_helpers.py",
-      "kind": "method-size",
       "detail": "insert_and_post_process"
     },
     {
@@ -4011,11 +3876,6 @@
       "file": "mcp_server/handlers/remember_helpers.py",
       "kind": "method-size",
       "detail": "update_user_mood_ema"
-    },
-    {
-      "file": "mcp_server/handlers/remember_helpers.py",
-      "kind": "unsourced-constant",
-      "detail": "MOOD_EMA_ALPHA"
     },
     {
       "file": "mcp_server/handlers/remember_response.py",

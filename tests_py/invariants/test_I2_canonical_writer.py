@@ -50,7 +50,7 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # SQLite batched writer.
     ("infrastructure/sqlite_store.py", 651),
     # Homeostatic fold.
-    ("handlers/consolidation/homeostatic_apply.py", 234),
+    ("handlers/consolidation/homeostatic_apply.py", 184),
     # Anchor pin.
     ("handlers/anchor.py", 145),
     # Preemptive boost.
