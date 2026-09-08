@@ -45,6 +45,9 @@ class Engine:
         self.similarity_score = similarity
         self.encoded = []
 
+    def encode_batch(self, contents):
+        return [b"raw:" + content.encode() if content else None for content in contents]
+
     def encode(self, content):
         self.encoded.append(content)
         return b"raw:" + content.encode()
