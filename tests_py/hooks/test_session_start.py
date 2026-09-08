@@ -396,6 +396,49 @@ def test_build_context_renders_all_sections_and_receipt_marker():
     assert "Use `recall` to retrieve full memories." in out
 
 
+def test_short_line_carries_no_fetch_key():
+    """An untruncated line needs no key — the whole memory is already there."""
+    hot = [{"id": 42, "content": "short", "domain": "", "heat": 0.1}]
+    out = hook._build_context([], hot, None)
+    assert "short" in out
+    assert hook.MEMORY_MARKER_PREFIX not in out
+    assert "are truncated" not in out, "legend must not appear without a key"
+
+
+def test_truncated_line_carries_its_memory_id_as_a_fetch_key():
+    """The regression this closes: a cut banner line used to be a dead end.
+
+    The reader could see content had been cut but had no handle to fetch
+    the remainder — only a fresh search whose top hit is not guaranteed
+    to be the same row. Every truncated line now ends in its own id.
+    """
+    long_content = "x" * 500
+    anchors = [{"id": 7, "content": long_content, "domain": "", "is_global": False}]
+    hot = [{"id": 8, "content": long_content, "domain": "cortex", "heat": 0.9}]
+    team = [{"id": 9, "content": long_content, "domain": "", "agent": "dba"}]
+
+    out = hook._build_context([], hot, None, team_decisions=team)
+    out += hook._build_context(anchors, [], None)
+
+    for memory_id in (7, 8, 9):
+        assert hook.memory_marker(memory_id) in out, f"id {memory_id} lost"
+    assert "..." in out, "still truncated — the key is added, not a bypass"
+    assert long_content not in out, "the key must not smuggle in full content"
+
+
+def test_fetch_key_legend_appears_only_when_a_key_was_emitted():
+    truncated = [{"id": 3, "content": "y" * 500, "domain": "", "heat": 0.5}]
+    assert "are truncated" in hook._build_context([], truncated, None)
+
+
+def test_truncation_boundary_is_unchanged_by_the_fetch_key():
+    """The key changes what a cut line CARRIES, never where it is cut."""
+    content = "z" * 500
+    body = hook._body({"id": 1, "content": content})
+    assert body.startswith(hook._short(content))
+    assert body == f"{hook._short(content)} {hook.memory_marker(1)}"
+
+
 def test_build_context_without_receipt_has_no_marker():
     hot = [{"id": 2, "content": "hot", "domain": "", "heat": 0.1}]
     out = hook._build_context([], hot, None)

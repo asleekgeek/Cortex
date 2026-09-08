@@ -32,9 +32,24 @@ def _skip(needs: dict, jobs: frozenset[str]) -> dict:
 
 
 class JustifiedSkips(unittest.TestCase):
-    def test_docs_only_runs_only_changes_and_lint(self) -> None:
-        needs = _skip(_needs("docs"), gate.CONDITIONAL_JOBS)
+    def test_docs_only_still_requires_the_full_suite_job(self) -> None:
+        """A docs-only PR may skip every conditional job except test-sqlite.
+
+        Regression for the #509 -> #510 incident: README.md is the INPUT of
+        tests_py/scripts/test_codex_plugin_contract.py, so skipping every test
+        job on a docs-only diff switched that guard off exactly when its subject
+        changed. #509 merged green and main went red on the push (run
+        34238410970). test-sqlite is the one job that runs the full suite.
+        """
+        allowed = gate.CONDITIONAL_JOBS - {"test-sqlite"}
+        needs = _skip(_needs("docs"), allowed)
         self.assertEqual(gate.check(needs, "pull_request", _event()), [])
+
+        needs["test-sqlite"]["result"] = "skipped"
+        self.assertTrue(
+            gate.check(needs, "pull_request", _event()),
+            "skipping test-sqlite on a docs-only PR must not be justified",
+        )
 
     def test_docker_only_requires_docker_jobs(self) -> None:
         needs = _skip(_needs("docker"), gate.CODE_JOBS)
@@ -193,7 +208,10 @@ class ExecutableContract(unittest.TestCase):
             )
 
     def test_docs_only_cli_succeeds(self) -> None:
-        result = self._run(json.dumps(_skip(_needs("docs"), gate.CONDITIONAL_JOBS)))
+        # test-sqlite runs on a docs-only PR (it carries the doc-contract
+        # guards); every other conditional job may skip.
+        allowed = gate.CONDITIONAL_JOBS - {"test-sqlite"}
+        result = self._run(json.dumps(_skip(_needs("docs"), allowed)))
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_malformed_json_cli_fails_with_diagnostic(self) -> None:
