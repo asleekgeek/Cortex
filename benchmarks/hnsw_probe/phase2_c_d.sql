@@ -10,8 +10,8 @@ DROP INDEX IF EXISTS _bench_memories_hnsw_emb_idx;
 SELECT 'hnsw_present' AS flag, COUNT(*) FROM pg_indexes
 WHERE tablename = '_bench_memories_hnsw' AND indexname LIKE '%hnsw%';
 
--- VACUUM to clean up any dead tuples from the previous phase
--- (HNSW-present conditions left bloat because batched UPDATE creates new tuple versions).
+-- source: ADR-0833
+
 VACUUM (ANALYZE) _bench_memories_hnsw;
 
 -- ── Condition C: no HNSW, per-row UPDATE ──

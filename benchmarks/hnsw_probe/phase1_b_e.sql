@@ -30,10 +30,10 @@ INSERT INTO _bench_results (condition, replicate, kind, elapsed_ms, rows_updated
 SELECT 'B', 3, 'measure', elapsed_ms, rows_updated, 'HNSW+batched'
 FROM _bench_batched_update(0.00024);
 
--- ── Condition E: HNSW + batched UPDATE with IS DISTINCT FROM gating ──
--- Since we reset heat to random before each run, every row is distinct, so
--- gating will NOT reduce row count here. It tests the gating overhead when
--- all rows actually change.
+-- source: ADR-0832
+
+
+
 SELECT _bench_reset_heat();
 SELECT 'warmup_e' AS label, * FROM _bench_batched_update_gated(0.00031);
 

@@ -1,0 +1,28 @@
+# ADR-0059: benchmarks/lib/__init__.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `benchmarks/lib/__init__.py`; original SHA-256 `93a876d884fa9e8aa34cd20090d8050f2bf71e32b7d7b69f11604fefce9cb209`.
+
+## Original docstring, lines 1–16
+
+````text
+"""Shared benchmark library — retrieval, fusion, and PG database helpers.
+
+``BenchmarkDB`` is re-exported lazily (PEP 562 module ``__getattr__``)
+rather than imported eagerly at the top: ``bench_db.py`` hard-imports
+``psycopg``/``psycopg_pool``/``pgvector`` at module scope (issue #282),
+and every other consumer in this package already defers that same import
+inside a function for exactly this reason (see the "deferred: module
+hard-imports pgvector/psycopg/psycopg_pool at top level; hoisting would
+break installs without it" comments in ``ablation_runner.py``,
+``bench_db.py``, ``_xb_drivers.py``, ``longitudinal_runner.py``,
+``llm_head_to_head/pilot.py``). Eagerly importing it here at package-init
+time — as this module did before — made every other submodule
+(``benchmarks.lib.verification_report`` included) unimportable on an
+install without the Postgres extras, since Python always runs a
+package's ``__init__.py`` before any of its submodules.
+"""
+````
+

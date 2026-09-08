@@ -1,12 +1,6 @@
 """Dup-collapse benchmark for the fuzzy entity deduplicator.
 
-Measures how many near-duplicate *concept* entities the 3-pass MinHash/LSH/
-Jaro-Winkler deduplicator (``mcp_server.core.entity_dedup``) collapses that the
-exact-name + case-canonical insert policy leaves behind.
-
-READ-ONLY: loads entities via ``get_all_entities`` and runs the pure planner.
-It never mutates the store — it reports the remap that a future merge pass would
-apply, so the before/after collapse can be reviewed before any FK rewiring.
+source: ADR-0824
 
 Usage:
     python3 benchmarks/entity_dedup/run_benchmark.py            # live DB
@@ -46,7 +40,7 @@ _FIXTURE = [
 
 def _load_live(samples: int) -> list[dict]:
     """Load fuzzy-eligible entities from the live store (read-only)."""
-    from mcp_server.infrastructure.pg_store import PgMemoryStore  # noqa: PLC0415 — deferred: module hard-imports pgvector/psycopg/psycopg_pool at top level; hoisting would break installs without it
+    from mcp_server.infrastructure.pg_store import PgMemoryStore  # noqa: PLC0415 — source: ADR-0824
 
     store = PgMemoryStore()
     try:
@@ -62,7 +56,7 @@ def _load_live(samples: int) -> list[dict]:
     print(f"ast_symbol entities excluded from fuzzy: {excluded}")
     print(f"total entities in store:                 {len(ents)}")
     if samples and len(eligible) > samples:
-        # Deterministic slice (sorted by name) so runs are reproducible.
+        # source: ADR-0824
         eligible = sorted(eligible, key=lambda e: str(e.get("name", "")))[:samples]
     return eligible
 
@@ -114,7 +108,7 @@ def main() -> int:
     print("=== entity dedup dup-collapse (live, read-only) ===")
     try:
         entities = _load_live(args.samples)
-    except Exception as exc:  # noqa: BLE001 — benchmark CLI, surface and exit
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0824
         print(f"DB unavailable ({type(exc).__name__}: {exc}); try --fixture.")
         return 1
     _report(entities, args.sample_merges)

@@ -1,15 +1,6 @@
 """BEAM ablation study for engineering constants.
 
-Tests parameter variations on the BEAM benchmark to find empirically
-justified values for constants that currently lack paper backing.
-
-Parameters under test:
-  1. rerank_alpha: CE vs first-stage blend weight (completed: 0.70 optimal)
-  2. signal_weights: fts, heat, ngram weight combinations
-  3. gate_threshold: CE confidence gate for abstention
-
-Each ablation runs on the full BEAM 100K split (20 conversations, 395 Qs).
-Results are printed as a table and written to ablation_results.json.
+source: ADR-0816
 """
 
 from __future__ import annotations
@@ -38,24 +29,23 @@ from benchmarks.lib.bench_db import BenchmarkDB
 from mcp_server.core.pg_recall import recall as pg_recall
 import mcp_server.core.pg_recall as pgr
 
-# Minimum turn length for a turn to seed an 80-char prefix match key.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0816
+
+# source: ADR-0816
 _MIN_SOURCE_TURN_CHARS = 10
 
-# Top-1 retrieval score below which the system counts as having found nothing
-# confident (abstention success).
-# source: engineering heuristic documented at benchmarks/beam/run_benchmark.py
-# — "BEAM paper uses LLM-as-judge to evaluate abstention quality. We approximate
-# by checking if top retrieval score is low"
+# source: ADR-0816
+
+
+# source: ADR-0816
 _ABSTENTION_SCORE_GATE = 0.3
 
-# Minimum answer length for an answer substring match to carry signal.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0816
+
+
 _MIN_ANSWER_MATCH_CHARS = 2
 
-# source: structural — the K in the reported Recall@5 / Recall@10 metrics
+# source: ADR-0816
 _RECALL_AT_5_K = 5
 _RECALL_AT_10_K = 10
 
@@ -230,10 +220,7 @@ def ablation_signal_weights(ds, db):
     # Baseline first
     results = {}
 
-    # The recall function computes weights internally via compute_pg_weights().
-    # We can't override weights directly through the recall() API — the weights
-    # are computed from intent classification. Instead, we'll test with rerank
-    # disabled to isolate the PG fusion signal, then with rerank enabled.
+    # source: ADR-0816
 
     # Test FTS weight variations
     print("\n--- FTS weight ---")

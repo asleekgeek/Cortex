@@ -30,12 +30,12 @@ def load_beam_dataset(split: str = "100K"):
     array of 10 sub-plans whose chats together form ~10M tokens.
     """
     try:
-        from datasets import load_dataset  # noqa: PLC0415 — optional dependency ([benchmarks] extra); imported where used so environments without it keep working
+        from datasets import load_dataset  # noqa: PLC0415 — source: ADR-0817
 
         if split == "10M":
             return load_dataset("Mohammadta/BEAM-10M", split="10M")
         return load_dataset("Mohammadta/BEAM", split=split)
-    except Exception as e:  # noqa: BLE001 — bench harness is fail-soft — failure is printed and the run continues or exits with a report
+    except Exception as e:  # noqa: BLE001 — source: ADR-0817
         print(f"Error loading dataset: {e}")
         print("Install: pip install datasets")
         sys.exit(1)
@@ -48,11 +48,7 @@ def extract_10m_chat(conversation: dict) -> list:
     probing questions' ``source_chat_ids`` use a **global** numbering
     that treats the 10 plans as one concatenated sequence.
 
-    This function re-numbers each message's ``id`` field to the global
-    scheme so the benchmark scoring loop can match source_chat_ids to
-    the flattened turn list. It also tags each message with a
-    ``plan_id`` field so `turns_to_memories` can propagate it into
-    memory ``agent_context`` for stage-aware retrieval.
+    source: ADR-0817
 
     The global offset per plan = cumulative count of messages in all
     preceding plans. Verified against BEAM-10M dataset conv 0 where
@@ -160,12 +156,7 @@ def extract_conversation_turns(chat_data) -> list[dict]:
 def turns_to_memories(turns: list[dict]) -> list[dict]:
     """Convert conversation turns to memory units (user-assistant pairs).
 
-    BEAM conversations have 3 time_anchors marking session boundaries.
-    Propagate each time_anchor forward to subsequent turns in the same
-    session — if a session starts on March-15-2024, all turns in that
-    session are from March-15-2024.  This gives the temporal/recency
-    retrieval signals meaningful values instead of defaulting to NOW().
-    """
+    source: ADR-0817"""
     memories = []
     # Track the most recent time_anchor seen — propagate forward
     last_anchor = ""
@@ -195,9 +186,8 @@ def turns_to_memories(turns: list[dict]) -> list[dict]:
                 last_anchor = turn_anchor
             i += 1
 
-        # Only include [Date:] in content if this turn pair originally had
-        # a time_anchor — avoids diluting embeddings with repeated dates.
-        # The propagated `last_anchor` still feeds `created_at` for recency.
+        # source: ADR-0817
+
         display_anchor = ""
         pair_start = max(0, i - 2 if user_content and assistant_content else i - 1)
         for ti in range(pair_start, min(pair_start + 2, len(turns))):
@@ -214,13 +204,8 @@ def turns_to_memories(turns: list[dict]) -> list[dict]:
             content += f"\n[assistant]: {assistant_content}"
 
         if content.strip():
-            # Stage ID = time_anchor when present, fallback to "stage-0".
-            # For 100K/500K/1M splits the BEAM conversations have 3 time
-            # anchors marking session boundaries, so each conversation
-            # naturally decomposes into 3 stages. For 10M we also set
-            # plan_id per (user,assistant) pair from the plan index.
-            # Stage ID: for 10M, prefer plan_id (from extract_10m_chat);
-            # for 100K/500K/1M, fall back to time_anchor session.
+            # source: ADR-0817
+
             turn_plan = turns[max(0, i - 1)].get("plan_id", "")
             stage_id = (
                 turn_plan if turn_plan else (last_anchor if last_anchor else "stage-0")
@@ -231,10 +216,7 @@ def turns_to_memories(turns: list[dict]) -> list[dict]:
                     "created_at": last_anchor if last_anchor else "",
                     "user_content": user_content,
                     "plan_id": stage_id,
-                    # Also propagate into agent_context so the stage
-                    # survives ingest (memory_ingest passes agent_context
-                    # through to the DB). The assembler reads stages
-                    # from this field at benchmark time.
+                    # source: ADR-0817
                     "agent_context": f"beam:{stage_id}",
                 }
             )

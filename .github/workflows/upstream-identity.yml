@@ -1,16 +1,16 @@
 # Conformance with the upstream codebase-intelligence identity contract.
 #
-# Cortex resolves that server three ways (release asset, marketplace install,
-# PATH lookup) and validates the resolved command against a security allowlist.
-# Those names used to be hardcoded in five modules; when upstream renamed its
-# binary, only some copies were updated and every ingest failed with "Command
-# not in allowed list" (CHANGELOG 3.14.11). The 2026-08 rename to
-# ai-architect-mcp-codebase repeated it: the marketplace key filter matched
-# nothing, so the AST layer disappeared with no error at all.
+# source: ADR-0811
+
+
+
+
+
+
 #
-# The names now live in mcp_server/infrastructure/upstream_identity.py. This
-# job proves that module still agrees with what upstream publishes, so a future
-# rename fails here instead of silently degrading a user's session.
+# source: ADR-0811
+
+
 #
 # The contract URL is pinned to a full commit SHA, not a tag: the producer's
 # README is explicit that tags can be moved.
@@ -27,7 +27,7 @@ on:
 permissions:
   contents: read
 
-# source: W1-7 in tasks/codex-green-remediation-plan.md; superseded PR checks.
+# source: ADR-0811
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -36,7 +36,7 @@ jobs:
   contract:
     name: agree with the upstream identity contract
     runs-on: ubuntu-latest
-    # source: run 34034615566 (2026-09-06), max 9s; ceil(2 * 9 / 60).
+    # source: ADR-0811
     timeout-minutes: 1
     env:
       CONTRACT_URL: https://raw.githubusercontent.com/cdeust/ai-architect-mcp-codebase/37728cc5747cebe39ea9d4011b7424de90f0a57b/mcp-contract.json
@@ -82,14 +82,14 @@ jobs:
           if u.CANONICAL_BINARY != contract["distribution"]:
               problems.append(f"CANONICAL_BINARY={u.CANONICAL_BINARY!r} != {contract['distribution']!r}")
 
-          # The canonical name must be first everywhere it is offered as a
-          # candidate: a legacy install must never win over a current one.
+          # source: ADR-0811
+          #
           if u.BINARY_NAMES[0] != u.CANONICAL_BINARY:
               problems.append("BINARY_NAMES does not lead with the canonical binary")
           if u.PLUGIN_KEY_BINARIES[0][0] != u.CANONICAL_PLUGIN_KEY:
               problems.append("PLUGIN_KEY_BINARIES does not lead with the canonical key")
-          # A legacy entry that equals the canonical one is a silent no-op
-          # fallback — the shape this module exists to prevent.
+          # source: ADR-0811
+          #
           if u.CANONICAL_BINARY in u.LEGACY_BINARIES:
               problems.append("LEGACY_BINARIES duplicates the canonical binary")
           if u.CANONICAL_PLUGIN_KEY in u.LEGACY_PLUGIN_KEYS:
@@ -107,8 +107,8 @@ jobs:
           set -euo pipefail
           status=0
           while read -r revoked; do
-            # -e carries the pattern: `--` would end option parsing and turn
-            # the --exclude-dir flags into path operands.
+            # source: ADR-0811
+            #
             hits=$(grep -rn --binary-files=without-match \
                      --exclude-dir=.git --exclude-dir=.github \
                      -e "$revoked" . \

@@ -1,18 +1,6 @@
 """Episodic Memories Benchmark for Cortex memory system.
 
-Tests episodic memory recall on synthetic book-like narratives
-(Huet et al., ICLR 2025). Each event is a 5-tuple (date, location, entity,
-content, content_detail) embedded in narrative prose.
-
-Metrics:
-  - Simple Recall Score: F1 grouped by event count bins {0,1,2,3-5,6+}
-  - Chronological Awareness: latest state + temporal ordering (Kendall tau)
-
-Dataset: Pre-generated from figshare.org/28244480, or generate with the
-         episodic-memory-benchmark repo.
-
-Run:
-    python3 benchmarks/episodic/run_benchmark.py [--events 20] [--limit N]
+source: ADR-0825
 """
 
 from __future__ import annotations
@@ -35,24 +23,24 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from benchmarks.lib.retriever import BenchmarkRetriever
 import random
 
-# source: structural — an event is the 5-tuple
-# (date, location, entity, content, content_detail) documented in the module
-# docstring; the first four fields are what every question is built from
+# source: ADR-0825
+
+
 _EVENT_MIN_FIELDS = 4
 _EVENT_FULL_FIELDS = 5
 
-# source: structural — "latest" and "chronological" questions need at least a
-# pair of events to be non-trivial
+# source: ADR-0825
+
 _MIN_EVENTS_FOR_ORDERING = 2
 
-# Retrieved-text length under which a bin-0 (non-existent entity) answer counts
-# as a clean abstention rather than a hallucination.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0825
+
+
+# source: ADR-0825
 _ABSTENTION_TEXT_CHARS = 50
 
-# source: Simple Recall Score bins {0,1,2,3-5,6+} documented in the module
-# docstring (Huet et al., ICLR 2025)
+# source: ADR-0825
+
 _BIN_2_ITEMS = 2
 _BIN_3_5_MAX_ITEMS = 5
 
@@ -189,7 +177,10 @@ def generate_qa_from_events(events: list[list[str]]) -> list[dict]:
 
 
 class EpisodicRetriever:
-    """Adapter wrapping shared BenchmarkRetriever for episodic benchmark."""
+    """Adapter wrapping shared BenchmarkRetriever for episodic benchmark.
+
+    source: ADR-0825
+    """
 
     def __init__(self):
 
@@ -255,13 +246,16 @@ def compute_recall_f1(retrieved_text: str, answers: set[str]) -> float:
     )
 
 
-# ── Main Benchmark ───────────────────────────────────────────────────────
+# source: ADR-0825
 
 
 def run_benchmark(
     data_dir: str | None = None, nb_events: int = 20, limit: int | None = None
 ):
-    """Run episodic memory benchmark."""
+    """Run episodic memory benchmark.
+
+    source: ADR-0825
+    """
     data_path = Path(data_dir) if data_dir else None
 
     print(f"Episodic Memory Benchmark (nb_events={nb_events})")

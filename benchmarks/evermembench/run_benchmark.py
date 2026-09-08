@@ -1,21 +1,6 @@
 """EverMemBench benchmark for Cortex memory system.
 
-Tests long-horizon memory for multi-party collaborative dialogues
-(Hu et al., 2026). 5 projects, 170 employees, 365 simulated days,
-2,400 QA pairs across 3 evaluation dimensions.
-
-Dimensions:
-  F — Fine-grained Recall (SH: single-hop, Multi: multi-hop, Temp: temporal)
-  MA — Memory Awareness (Const: constraint, Proact: proactivity, U: update)
-  P — Profile Understanding (Style, Skill, Role)
-
-Evaluation: Retrieval-based — check if correct evidence is in top-K.
-Full QA requires claude -p as judge.
-
-Dataset: HuggingFace "EverMind-AI/EverMemBench-Dynamic"
-
-Run:
-    python3 benchmarks/evermembench/run_benchmark.py [--limit N]
+source: ADR-0826
 """
 
 from __future__ import annotations
@@ -57,8 +42,8 @@ MINOR_MAP = {
 }
 
 
-# source: structural — a question ID carries a major and a minor prefix,
-# e.g. "F_SH_Top004_001" splits on "_" into at least those two fields
+# source: ADR-0826
+
 _QID_MIN_PARTS = 2
 
 
@@ -77,7 +62,7 @@ def parse_question_id(qid: str) -> tuple[str, str]:
 
 def load_evermembench():
     """Load EverMemBench from HuggingFace (dialogues + qars configs)."""
-    from datasets import load_dataset  # noqa: PLC0415 — optional dependency ([benchmarks] extra); imported where used so environments without it keep working
+    from datasets import load_dataset  # noqa: PLC0415 — source: ADR-0826
 
     dialogues_ds = load_dataset(
         "EverMind-AI/EverMemBench-Dynamic", "dialogues", split="train"
@@ -140,7 +125,10 @@ def chunk_dialogues(messages: list[dict], chunk_size: int = 20) -> list[dict]:
 
 
 class EverMemRetriever:
-    """Adapter wrapping shared BenchmarkRetriever for EverMemBench."""
+    """Adapter wrapping shared BenchmarkRetriever for EverMemBench.
+
+    source: ADR-0826
+    """
 
     def __init__(self):
 
@@ -188,7 +176,7 @@ def evaluate_qa(retriever: EverMemRetriever, qa_items: list[dict]) -> dict[str, 
         # For MC: check if evidence supports the correct option
         # For OE: check if answer appears in retrieved context
         if options and isinstance(options, dict):
-            # Multiple choice — check if correct answer's content is retrievable
+            # source: ADR-0826
             correct_option_text = options.get(answer, answer)
             hit = (
                 correct_option_text.lower() in retrieved_text.lower()

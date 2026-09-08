@@ -12,18 +12,14 @@ through the production read path (BenchmarkDB → pg_recall) — same code
 as the standalone benchmarks. Outputs JSON per (benchmark, N, cond) and
 a summary.csv.
 
-Falsifiability (per docs/provenance/verification-protocol.md §E2): the gap between
-cortex_full and cortex_flat MRR on at least one of {LongMemEval-S,
-LoCoMo, BEAM-100K} at N=full must be >= 5pp; otherwise the
-thermodynamic-structure-matters claim is refuted.
-
 CLI:
     python -m benchmarks.lib.e2_subsample_runner \\
         --benchmark longmemeval-s --n 100 1000 \\
         --queries 50 --seed 42 \\
         --db-url postgresql://localhost:5432/cortex_e2_subsample \\
         [--quick]
-"""
+
+source: ADR-0075"""
 
 from __future__ import annotations
 
@@ -156,10 +152,7 @@ def _load_subsample_into_db(
     os.environ["DATABASE_URL"] = db_url
     tracemalloc.start()
     try:
-        # require_reranker=True: this is the claim-bearing E2 retrieval
-        # runner (module docstring) -- a silently-degraded first-stage-only
-        # pipeline would corrupt the falsifiable cortex_full vs cortex_flat
-        # MRR gap this module exists to measure (INC7.2 audit).
+        # source: ADR-0075
         with BenchmarkDB(database_url=db_url, require_reranker=True) as db:
             heat = heat_for(condition)
             payload = [{**it.memory, "heat": heat} for it in sub_items]

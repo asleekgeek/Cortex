@@ -1,19 +1,19 @@
 name: MCP Toplist badge refresh
 
-# assets/badge-mcp-toplist.svg is a committed static file rather than a
-# hotlinked remote image, so its claim cannot be restated without a commit
-# here. The cost of that choice is that the badge cannot self-update: the
-# date it carries is part of the claim and goes stale by INACTION, and
-# inaction never opens a PR. This workflow is what closes that loop.
+# source: ADR-0806
+
+
+
+
 #
-# Monthly, not weekly: the badge stamps a month, so a monthly run is the
-# least frequent cadence that keeps the date honest and the most frequent
-# one that does not churn a PR proposing an identical file.
+# source: ADR-0806
+
+
 #
-# No pull_request trigger on purpose. The script reads a third-party site;
-# wiring that into PR CI would make a required check depend on someone
-# else's uptime. The unit tests in tests_py/scripts/ cover the logic and
-# run in the normal suite with no network at all.
+# source: ADR-0806
+
+
+
 
 on:
   schedule:
@@ -27,7 +27,7 @@ jobs:
   refresh:
     name: refresh rank badge from upstream
     runs-on: ubuntu-latest
-    # source: run 30692957797 (2026-08-01), max 32s; ceil(2 * 32 / 60).
+    # source: ADR-0806
     timeout-minutes: 2
     permissions:
       contents: write
@@ -40,9 +40,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Fails the job when no source yields a figure that passes validation.
-      # A red run is the intended outcome there: the badge keeps its last
-      # good value, and the failure is visible rather than silently skipped.
+      # source: ADR-0806
+
+
       - name: Regenerate badge
         run: python3 scripts/refresh_mcp_toplist_badge.py
 
@@ -52,24 +52,24 @@ jobs:
       # BADGE_REFRESH_TOKEN is optional. Without it the PR is authored by
       # GITHUB_TOKEN. That has two distinct consequences, not one:
       #
-      #   1. GitHub deliberately does not trigger `pull_request`/`push`
-      #      workflows on PRs opened by GITHUB_TOKEN — so main's required
-      #      checks never start and the PR cannot be merged until a
-      #      maintainer pushes to the branch (a re-run, an empty commit, or
-      #      closing/reopening the PR).
-      #   2. Independently of (1), the repo/org policy at Settings → Actions
-      #      → General → "Allow GitHub Actions to create and approve pull
-      #      requests" gates PR *creation* itself. With that box unchecked,
-      #      this step fails outright with "GitHub Actions is not permitted
-      #      to create or approve pull requests" — no PR, no branch left
-      #      pushed (peter-evans/create-pull-request pushes the branch
-      #      first, then fails the PR-creation call; the branch must be
-      #      deleted by hand). See issue #273. That box was checked
-      #      2026-07-30 to fix this; if it is ever unchecked again (a repo
-      #      transfer, an org policy reset), set BADGE_REFRESH_TOKEN to a
-      #      PAT with `repo` scope instead — the workflow already prefers
-      #      it — which sidesteps both (1) and (2) since a PAT-authored PR
-      #      is not GITHUB_TOKEN-authored.
+      # source: ADR-0806
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       - name: Open refresh PR
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:

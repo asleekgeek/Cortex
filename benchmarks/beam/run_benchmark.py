@@ -1,23 +1,6 @@
 """BEAM benchmark for Cortex memory system.
 
-Runs the BEAM benchmark (Tavakoli et al., ICLR 2026) — "Beyond a Million Tokens:
-Benchmarking and Enhancing Long-Term Memory in LLMs."
-Uses the production PostgreSQL + pgvector retrieval pipeline.
-
-10 memory abilities tested:
-  1. Abstention — withhold answers when evidence is missing
-  2. Contradiction Resolution — detect inconsistent statements
-  3. Event Ordering — reconstruct sequences of evolving information
-  4. Information Extraction — recall entities and factual details
-  5. Instruction Following — sustain adherence to constraints
-  6. Knowledge Update — revise facts as new information emerges
-  7. Multi-hop Reasoning — integrate evidence across non-adjacent segments
-  8. Preference Following — adapt to evolving user preferences
-  9. Summarization — abstract and compress dialogue content
-  10. Temporal Reasoning — reason about time relations
-
-Run:
-    python3 benchmarks/beam/run_benchmark.py [--split 100K] [--limit N]
+source: ADR-0818
 """
 
 from __future__ import annotations
@@ -50,24 +33,23 @@ from mcp_server.core.context_assembly.stage_detector import (
     ExplicitStageDetector,
 )
 
-# Minimum turn length for a turn to seed an 80-char prefix match key.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0818
+
+# source: ADR-0818
 _MIN_SOURCE_TURN_CHARS = 10
 
-# Top-1 retrieval score below which the system counts as having found nothing
-# confident (abstention success).
-# source: engineering heuristic documented in evaluate_retrieval below —
-# "BEAM paper uses LLM-as-judge to evaluate abstention quality. We approximate
-# by checking if top retrieval score is low"
+# source: ADR-0818
+
+
+# source: ADR-0818
 _ABSTENTION_SCORE_GATE = 0.3
 
-# Minimum answer length for an answer substring match to carry signal.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0818
+
+
 _MIN_ANSWER_MATCH_CHARS = 2
 
-# source: structural — the K in the reported Recall@5 / Recall@10 metrics
+# source: ADR-0818
 _RECALL_AT_5_K = 5
 _RECALL_AT_10_K = 10
 
@@ -90,10 +72,7 @@ def _get_stage_detector():
 def _current_stage_for_question(q: dict, conversation_turns: list[dict]) -> str:
     """Determine the stage ID the question is about.
 
-    In oracle mode: uses plan_id > time_anchor from source turns.
-    In temporal mode: uses the TemporalStageDetector's day-bucket
-    format so the assembler's stage filter matches memory created_at.
-    """
+    source: ADR-0818"""
     mode = os.environ.get("CORTEX_STAGE_DETECTOR", "oracle")
 
     raw_ids = q.get("source_chat_ids", [])
@@ -164,18 +143,15 @@ def evaluate_retrieval(
             else:
                 source_ids = raw_ids if isinstance(raw_ids, list) else []
 
-            # Abstention: no source_ids by design — still evaluate
+            # source: ADR-0818
             if not source_ids and ability != "abstention":
                 continue
 
-            # Optional: use the structured 3-phase context assembler
-            # instead of flat top-k WRRF. Gated by env var so we can A/B
-            # on the same benchmark without touching the production code.
+            # source: ADR-0818
+
             if os.environ.get("CORTEX_USE_ASSEMBLER") == "1":
-                # Benchmark has no LLM reader: token_budget=None means
-                # pure rank-based retrieval (Swift pattern: budget is
-                # caller-provided from reasoner.contextWindowSize when
-                # a reader exists; benchmarks have no reader).
+                # source: ADR-0818
+
                 bstr = os.environ.get("CORTEX_ASSEMBLER_BUDGET")
                 tbudget: int | None = int(bstr) if bstr else None
                 # Stage detector: oracle (plan_id) or temporal (timestamp gaps)
@@ -200,14 +176,8 @@ def evaluate_retrieval(
 
             answer = q.get("answer", "")
 
-            # Build source content set from turn IDs.
-            # Match strategy: 80-char prefix of source turns compared against
-            # retrieved content. This is an engineering heuristic — BEAM paper
-            # evaluates via LLM-as-judge on full QA, not retrieval matching.
-            # We use prefix matching as a proxy for retrieval quality since we
-            # evaluate retrieval only (no LLM judge). The 80-char threshold
-            # balances specificity (longer = fewer false positives) against
-            # robustness (shorter = tolerates prefix variations).
+            # source: ADR-0818
+
             source_contents = set()
             for turn in conversation_turns:
                 turn_id = turn.get("id", -1)
@@ -221,12 +191,8 @@ def evaluate_retrieval(
             answer_lower = answer.lower().strip() if answer else ""
 
             if ability == "abstention":
-                # Abstention: success = retrieval returns no confident match.
-                # Threshold 0.3 is an engineering heuristic — BEAM paper uses
-                # LLM-as-judge to evaluate abstention quality. We approximate
-                # by checking if top retrieval score is low (indicating the
-                # system correctly found nothing relevant). Needs calibration
-                # against actual abstention accuracy.
+                # source: ADR-0818
+
                 if (
                     not retrieved
                     or retrieved[0].get("score", 0) < _ABSTENTION_SCORE_GATE
@@ -285,7 +251,7 @@ def evaluate_retrieval(
     return metrics
 
 
-# ── Main Benchmark ───────────────────────────────────────────────────────
+# source: ADR-0818
 
 
 def run_benchmark(
@@ -295,6 +261,8 @@ def run_benchmark(
     n_runs: int = 1,
 ) -> dict:
     """Run BEAM retrieval benchmark using production PG retrieval.
+
+    source: ADR-0818
 
     Precondition: PG schema initialised; split in {"100K","500K","1M","10M"};
     n_runs >= 1 (default 1 preserves single-run behaviour).
@@ -316,12 +284,11 @@ def run_benchmark(
         print(f"  n_runs: {n_runs} (will report mean ± std and 95 % CI)")
     print()
 
-    # Capture reproducibility sidecar once at benchmark start.
+    # source: ADR-0818
     repro = build_repro_manifest()
 
-    # LIGHT (LLM-as-judge QA) scores from Tavakoli et al., ICLR 2026
-    # Table 2, "LIGHT" column, 100K split. These are full QA scores
-    # (not retrieval-only) shown for reference comparison only.
+    # source: ADR-0818
+
     light_scores = {
         "abstention": 0.750,
         "contradiction_resolution": 0.050,
@@ -372,7 +339,7 @@ def run_benchmark(
                 if not questions:
                     continue
 
-                # Clean up previous, load new
+                # source: ADR-0818
                 db.clear()
                 mem_ids, _source_map = db.load_memories(memories, domain="beam")
 

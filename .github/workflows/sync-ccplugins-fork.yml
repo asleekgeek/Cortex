@@ -62,9 +62,9 @@ jobs:
           git fetch upstream main --prune
           git checkout main
           BEFORE="$(git rev-parse HEAD)"
-          # Try ff-only first — that preserves history if we had any
-          # local commits that somehow landed. Fall back to hard reset
-          # (the fork is meant to be a clean mirror, not an author).
+          # source: ADR-0810
+          #
+          #
           if git merge --ff-only upstream/main; then
             echo "fast-forwarded"
           else

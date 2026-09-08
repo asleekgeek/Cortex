@@ -1,23 +1,23 @@
 name: HOL plugin scanner
 
-# The HOL Plugin Registry (hol.org/registry/plugins/cdeust%2Fcortex) scans
-# this repository independently and applies a 10% trust-score reduction to
-# projects that do not run the scanner in their own CI (source:
-# hashgraph-online/awesome-ai-plugins SCANNER_GUIDE.md, "Scanner CI",
-# read 2026-09-02). Beyond the score, the scan is a useful supply-chain
-# check in its own right: committed secrets, dangerous hooks or MCP
-# commands, unpinned actions, over-broad workflow permissions, and
-# malformed plugin metadata — evaluated against the same rules the
-# registry applies, so a regression is caught here before it is published
-# there.
+# source: ADR-0804
+
+
+
+
+
+
+
+
+
 #
-# The action installs an exact `plugin-scanner` PyPI release and verifies
-# its provenance before running; the default scan reads local repository
-# content only (no live network probing, no submission automation).
-# Non-blocking for merges (not in ci.yml's `CI Green` gate): the registry's
-# rule set evolves on its own schedule, and a new upstream rule must not
-# freeze unrelated PRs. The severity/score gates below still make the job
-# red on a real regression.
+# source: ADR-0804
+
+
+
+
+
+
 
 on:
   push:
@@ -30,7 +30,7 @@ on:
 permissions:
   contents: read
 
-# source: W1-7 in tasks/codex-green-remediation-plan.md; superseded PR checks.
+# source: ADR-0804
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -39,7 +39,7 @@ jobs:
   scan:
     name: HOL plugin scan
     runs-on: ubuntu-latest
-    # source: run 34030977899 (2026-09-06), max 59s; ceil(2 * 59 / 60).
+    # source: ADR-0804
     timeout-minutes: 2
     permissions:
       contents: read
@@ -57,11 +57,11 @@ jobs:
           output: hol-plugin-scan.sarif
           upload_sarif: "true"
           sarif_category: hol-plugin-scanner
-          # source: measured 2026-09-02 on a `git archive HEAD` export of
-          # a093c7ef with plugin-scanner 3.0.48 — repository score 83/100
-          # (grade B) before this workflow's sibling fixes, 0 critical/high
-          # findings. The floor sits under the measured value so it catches
-          # a regression, not routine rule churn.
+          # source: ADR-0804
+
+
+
+
           min_score: "80"
           fail_on_severity: high
           cisco_skill_scan: "off"

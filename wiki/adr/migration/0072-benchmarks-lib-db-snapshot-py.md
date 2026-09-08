@@ -1,0 +1,81 @@
+# ADR-0072: benchmarks/lib/db_snapshot.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `benchmarks/lib/db_snapshot.py`; original SHA-256 `239c8b1dc625e7503a4572acf5bb917dad35cd4c51bfa0fb6c3d2354ecf70337`.
+
+## Original docstring, lines 1–7
+
+````text
+"""Postgres snapshot/restore with fingerprint + version-drift enforcement.
+pg_dump --format=custom round-trips index bytes so dump+restore collapses
+HNSW build non-determinism to a single outcome.
+Source: docs/provenance/hnsw-determinism-playbook.md §2 mechanism, §5 manifest.
+API: create_snapshot, restore_snapshot, fingerprint, verify_fingerprint,
+     verify_compatibility.
+"""
+````
+
+## Original comment, lines 25–25
+
+````text
+# source: spec — refuse non-allow-listed prod DB names without --allow-prod.
+````
+
+## Original comment, lines 28–28
+
+````text
+# source: playbook §5 — 10 GUCs the manifest must capture.
+````
+
+## Original comment, lines 61–65
+
+````text
+# source: PG docs https://www.postgresql.org/docs/current/view-pg-config.html
+    # pg_config() exposes PKGLIBDIR which locates the loaded extension binary.
+    # SHA-256 of the actual .so/.dylib catches distro patches that share an
+    # upstream extversion label — closes the "same version, different code"
+    # gap that pgvector_version alone cannot detect.
+````
+
+## Original comment, lines 66–66
+
+````text
+# "" = unresolved (remote DB, missing pg_config)
+````
+
+## Original comment, lines 192–193
+
+````text
+# source: pgvector installs as `vector.so` / `.dylib` / `.dll` per platform.
+# Order matters only if multiple are present (shouldn't happen on a single host).
+````
+
+## Original docstring, lines 198–213
+
+````text
+"""Return (path, sha256) of the pgvector shared library on disk.
+
+    Strategy: query pg_config view for PKGLIBDIR (PG docs: pg_config view
+    exposes the same info as the pg_config CLI). Probe for vector.{so,
+    dylib,dll} in that directory; sha256 the first one found.
+
+    Critically, this is DECOUPLED from `pg_extension` presence — the
+    binary file exists on disk for the cluster regardless of which DBs
+    have run CREATE EXTENSION. This matters because the version-drift
+    check runs against the admin `postgres` DB, which typically has no
+    user extensions installed. Without this decoupling, the lib SHA
+    check would silently skip with `live_sha == "absent"`.
+
+    Returns ("", "") if pg_config unavailable; (libdir, "") if no
+    vector.* found in PKGLIBDIR; (path, sha256) on success.
+    """
+````
+
+## Original comment, lines 239–239
+
+````text
+# Locale is per-database (source: PG docs, pg_database catalog).
+````
+

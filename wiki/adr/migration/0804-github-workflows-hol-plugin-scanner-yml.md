@@ -1,0 +1,58 @@
+---
+title: "ADR-0804 — .github/workflows/hol-plugin-scanner.yml rationale"
+status: accepted
+source: .github/workflows/hol-plugin-scanner.yml
+---
+
+# ADR-0804 — .github/workflows/hol-plugin-scanner.yml
+
+Source rationale preserved verbatim. Identifiers inside historical quotations are not current identities.
+
+## .github/workflows/hol-plugin-scanner.yml — original line 3
+
+````text
+# The HOL Plugin Registry (hol.org/registry/plugins/cdeust%2Fcortex) scans
+# this repository independently and applies a 10% trust-score reduction to
+# projects that do not run the scanner in their own CI (source:
+# hashgraph-online/awesome-ai-plugins SCANNER_GUIDE.md, "Scanner CI",
+# read 2026-09-02). Beyond the score, the scan is a useful supply-chain
+# check in its own right: committed secrets, dangerous hooks or MCP
+# commands, unpinned actions, over-broad workflow permissions, and
+# malformed plugin metadata — evaluated against the same rules the
+# registry applies, so a regression is caught here before it is published
+# there.
+````
+
+## .github/workflows/hol-plugin-scanner.yml — original line 14
+
+````text
+# The action installs an exact `plugin-scanner` PyPI release and verifies
+# its provenance before running; the default scan reads local repository
+# content only (no live network probing, no submission automation).
+# Non-blocking for merges (not in ci.yml's `CI Green` gate): the registry's
+# rule set evolves on its own schedule, and a new upstream rule must not
+# freeze unrelated PRs. The severity/score gates below still make the job
+# red on a real regression.
+````
+
+## .github/workflows/hol-plugin-scanner.yml — original line 33
+
+````text
+# source: W1-7 in tasks/codex-green-remediation-plan.md; superseded PR checks.
+````
+
+## .github/workflows/hol-plugin-scanner.yml — original line 42
+
+````text
+# source: run 34030977899 (2026-09-06), max 59s; ceil(2 * 59 / 60).
+````
+
+## .github/workflows/hol-plugin-scanner.yml — original line 60
+
+````text
+# source: measured 2026-09-02 on a `git archive HEAD` export of
+# a093c7ef with plugin-scanner 3.0.48 — repository score 83/100
+# (grade B) before this workflow's sibling fixes, 0 critical/high
+# findings. The floor sits under the measured value so it catches
+# a regression, not routine rule churn.
+````

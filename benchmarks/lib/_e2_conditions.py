@@ -1,20 +1,12 @@
 """Shared E2 condition primitives — env-var toggles for cortex_full vs cortex_flat.
 
-Extracted from n_scan_runner.py so the latency runner (synthetic, formerly
-n_scan) and the new E2 retrieval runners (subsample, zipf) share a single
-source of truth for the ablation condition. Production write paths read
-the env vars; this module only sets/restores them.
-
-Per E2 falsifiability protocol (docs/provenance/verification-protocol.md §E2):
-- cortex_full:  no env overrides; production defaults active.
-- cortex_flat:  decay disabled, heat constant 0.5, consolidation disabled.
-"""
+source: ADR-0060"""
 
 from __future__ import annotations
 
 import os
 
-# source: docs/provenance/verification-protocol.md §E2 flat-baseline definition.
+# source: ADR-0060
 FLAT_ENV_VARS: dict[str, str] = {
     "CORTEX_DECAY_DISABLED": "1",
     "CORTEX_HEAT_CONSTANT": "0.5",
@@ -60,8 +52,5 @@ def restore_env(saved: dict[str, str | None]) -> None:
 def heat_for(condition: str, default: float = 1.0) -> float:
     """Heat for inserted memories under ``condition``.
 
-    cortex_flat forces heat=0.5 so the flat-importance condition is
-    observable even when downstream code does not yet read CORTEX_HEAT_CONSTANT.
-    source: docs/provenance/verification-protocol.md §E2 flat-baseline definition.
-    """
+    source: ADR-0060"""
     return 0.5 if condition == "cortex_flat" else default

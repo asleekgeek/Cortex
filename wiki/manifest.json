@@ -103,6 +103,246 @@
     "ADR-0056": {
       "mirror": "ADR-0056-wiki-decisions-and-reviewable-mirrors.md",
       "path": "adr/cortex/0056-wiki-decisions-and-reviewable-mirrors.md"
+    },
+    "ADR-0057": {
+      "mirror": "ADR-0057-regulated-write-classes.md",
+      "path": "adr/0057-regulated-write-classes.md"
+    },
+    "ADR-0058": {
+      "mirror": "ADR-0058-reversible-extinction.md",
+      "path": "adr/0058-reversible-extinction.md"
+    },
+    "ADR-0059": {
+      "mirror": "ADR-0059-benchmarks-lib-init-py.md",
+      "path": "adr/migration/0059-benchmarks-lib-init-py.md"
+    },
+    "ADR-0060": {
+      "mirror": "ADR-0060-benchmarks-lib-e2-conditions-py.md",
+      "path": "adr/migration/0060-benchmarks-lib-e2-conditions-py.md"
+    },
+    "ADR-0062": {
+      "mirror": "ADR-0062-benchmarks-lib-xb-drivers-py.md",
+      "path": "adr/migration/0062-benchmarks-lib-xb-drivers-py.md"
+    },
+    "ADR-0063": {
+      "mirror": "ADR-0063-benchmarks-lib-ablation-runner-py.md",
+      "path": "adr/migration/0063-benchmarks-lib-ablation-runner-py.md"
+    },
+    "ADR-0064": {
+      "mirror": "ADR-0064-benchmarks-lib-adversarial-corpus-py.md",
+      "path": "adr/migration/0064-benchmarks-lib-adversarial-corpus-py.md"
+    },
+    "ADR-0065": {
+      "mirror": "ADR-0065-benchmarks-lib-bench-container-sh.md",
+      "path": "adr/migration/0065-benchmarks-lib-bench-container-sh.md"
+    },
+    "ADR-0066": {
+      "mirror": "ADR-0066-benchmarks-lib-bench-db-py.md",
+      "path": "adr/migration/0066-benchmarks-lib-bench-db-py.md"
+    },
+    "ADR-0067": {
+      "mirror": "ADR-0067-benchmarks-lib-bench-regression-sh.md",
+      "path": "adr/migration/0067-benchmarks-lib-bench-regression-sh.md"
+    },
+    "ADR-0068": {
+      "mirror": "ADR-0068-benchmarks-lib-blend-weight-sweep-py.md",
+      "path": "adr/migration/0068-benchmarks-lib-blend-weight-sweep-py.md"
+    },
+    "ADR-0069": {
+      "mirror": "ADR-0069-benchmarks-lib-capture-origin-mix-py.md",
+      "path": "adr/migration/0069-benchmarks-lib-capture-origin-mix-py.md"
+    },
+    "ADR-0070": {
+      "mirror": "ADR-0070-benchmarks-lib-cross-benchmark-runner-py.md",
+      "path": "adr/migration/0070-benchmarks-lib-cross-benchmark-runner-py.md"
+    },
+    "ADR-0071": {
+      "mirror": "ADR-0071-benchmarks-lib-db-setup-py.md",
+      "path": "adr/migration/0071-benchmarks-lib-db-setup-py.md"
+    },
+    "ADR-0072": {
+      "mirror": "ADR-0072-benchmarks-lib-db-snapshot-py.md",
+      "path": "adr/migration/0072-benchmarks-lib-db-snapshot-py.md"
+    },
+    "ADR-0073": {
+      "mirror": "ADR-0073-benchmarks-lib-decay-sweep-runner-py.md",
+      "path": "adr/migration/0073-benchmarks-lib-decay-sweep-runner-py.md"
+    },
+    "ADR-0074": {
+      "mirror": "ADR-0074-benchmarks-lib-disk-space-snapshot-py.md",
+      "path": "adr/migration/0074-benchmarks-lib-disk-space-snapshot-py.md"
+    },
+    "ADR-0075": {
+      "mirror": "ADR-0075-benchmarks-lib-e2-subsample-runner-py.md",
+      "path": "adr/migration/0075-benchmarks-lib-e2-subsample-runner-py.md"
+    },
+    "ADR-0795": {
+      "mirror": "ADR-0795-clusterfuzzlite-Dockerfile.md",
+      "path": "adr/migration/0795-clusterfuzzlite-Dockerfile.md"
+    },
+    "ADR-0796": {
+      "mirror": "ADR-0796-clusterfuzzlite-build-sh.md",
+      "path": "adr/migration/0796-clusterfuzzlite-build-sh.md"
+    },
+    "ADR-0797": {
+      "mirror": "ADR-0797-devcontainer-Dockerfile.md",
+      "path": "adr/migration/0797-devcontainer-Dockerfile.md"
+    },
+    "ADR-0798": {
+      "mirror": "ADR-0798-devcontainer-docker-compose-yml.md",
+      "path": "adr/migration/0798-devcontainer-docker-compose-yml.md"
+    },
+    "ADR-0799": {
+      "mirror": "ADR-0799-devcontainer-initdb-01-extensions-sql.md",
+      "path": "adr/migration/0799-devcontainer-initdb-01-extensions-sql.md"
+    },
+    "ADR-0800": {
+      "mirror": "ADR-0800-github-actions-test-suite-action-yml.md",
+      "path": "adr/migration/0800-github-actions-test-suite-action-yml.md"
+    },
+    "ADR-0801": {
+      "mirror": "ADR-0801-github-dependabot-yml.md",
+      "path": "adr/migration/0801-github-dependabot-yml.md"
+    },
+    "ADR-0802": {
+      "mirror": "ADR-0802-github-workflows-ci-yml.md",
+      "path": "adr/migration/0802-github-workflows-ci-yml.md"
+    },
+    "ADR-0803": {
+      "mirror": "ADR-0803-github-workflows-fuzz-yml.md",
+      "path": "adr/migration/0803-github-workflows-fuzz-yml.md"
+    },
+    "ADR-0804": {
+      "mirror": "ADR-0804-github-workflows-hol-plugin-scanner-yml.md",
+      "path": "adr/migration/0804-github-workflows-hol-plugin-scanner-yml.md"
+    },
+    "ADR-0805": {
+      "mirror": "ADR-0805-github-workflows-marketplace-pins-yml.md",
+      "path": "adr/migration/0805-github-workflows-marketplace-pins-yml.md"
+    },
+    "ADR-0806": {
+      "mirror": "ADR-0806-github-workflows-mcp-toplist-badge-yml.md",
+      "path": "adr/migration/0806-github-workflows-mcp-toplist-badge-yml.md"
+    },
+    "ADR-0807": {
+      "mirror": "ADR-0807-github-workflows-publish-ccplugins-yml.md",
+      "path": "adr/migration/0807-github-workflows-publish-ccplugins-yml.md"
+    },
+    "ADR-0808": {
+      "mirror": "ADR-0808-github-workflows-release-yml.md",
+      "path": "adr/migration/0808-github-workflows-release-yml.md"
+    },
+    "ADR-0809": {
+      "mirror": "ADR-0809-github-workflows-scorecard-yml.md",
+      "path": "adr/migration/0809-github-workflows-scorecard-yml.md"
+    },
+    "ADR-0810": {
+      "mirror": "ADR-0810-github-workflows-sync-ccplugins-fork-yml.md",
+      "path": "adr/migration/0810-github-workflows-sync-ccplugins-fork-yml.md"
+    },
+    "ADR-0811": {
+      "mirror": "ADR-0811-github-workflows-upstream-identity-yml.md",
+      "path": "adr/migration/0811-github-workflows-upstream-identity-yml.md"
+    },
+    "ADR-0812": {
+      "mirror": "ADR-0812-Dockerfile.md",
+      "path": "adr/migration/0812-Dockerfile.md"
+    },
+    "ADR-0813": {
+      "mirror": "ADR-0813-Makefile.md",
+      "path": "adr/migration/0813-Makefile.md"
+    },
+    "ADR-0814": {
+      "mirror": "ADR-0814-benchmarks--repro.md",
+      "path": "adr/migration/0814-benchmarks--repro.md"
+    },
+    "ADR-0815": {
+      "mirror": "ADR-0815-benchmarks-active-forgetting-run-benchmark.md",
+      "path": "adr/migration/0815-benchmarks-active-forgetting-run-benchmark.md"
+    },
+    "ADR-0816": {
+      "mirror": "ADR-0816-benchmarks-beam-ablation.md",
+      "path": "adr/migration/0816-benchmarks-beam-ablation.md"
+    },
+    "ADR-0817": {
+      "mirror": "ADR-0817-benchmarks-beam-data.md",
+      "path": "adr/migration/0817-benchmarks-beam-data.md"
+    },
+    "ADR-0818": {
+      "mirror": "ADR-0818-benchmarks-beam-run-benchmark.md",
+      "path": "adr/migration/0818-benchmarks-beam-run-benchmark.md"
+    },
+    "ADR-0819": {
+      "mirror": "ADR-0819-benchmarks-decision-ids-run-bench.md",
+      "path": "adr/migration/0819-benchmarks-decision-ids-run-bench.md"
+    },
+    "ADR-0820": {
+      "mirror": "ADR-0820-benchmarks-energy-measurement.md",
+      "path": "adr/migration/0820-benchmarks-energy-measurement.md"
+    },
+    "ADR-0821": {
+      "mirror": "ADR-0821-benchmarks-energy-run-sh.md",
+      "path": "adr/migration/0821-benchmarks-energy-run-sh.md"
+    },
+    "ADR-0822": {
+      "mirror": "ADR-0822-benchmarks-energy-run-embedding-energy.md",
+      "path": "adr/migration/0822-benchmarks-energy-run-embedding-energy.md"
+    },
+    "ADR-0823": {
+      "mirror": "ADR-0823-benchmarks-energy-workload.md",
+      "path": "adr/migration/0823-benchmarks-energy-workload.md"
+    },
+    "ADR-0824": {
+      "mirror": "ADR-0824-benchmarks-entity-dedup-run-benchmark.md",
+      "path": "adr/migration/0824-benchmarks-entity-dedup-run-benchmark.md"
+    },
+    "ADR-0825": {
+      "mirror": "ADR-0825-benchmarks-episodic-run-benchmark.md",
+      "path": "adr/migration/0825-benchmarks-episodic-run-benchmark.md"
+    },
+    "ADR-0826": {
+      "mirror": "ADR-0826-benchmarks-evermembench-run-benchmark.md",
+      "path": "adr/migration/0826-benchmarks-evermembench-run-benchmark.md"
+    },
+    "ADR-0827": {
+      "mirror": "ADR-0827-benchmarks-forgetting-curve---init--.md",
+      "path": "adr/migration/0827-benchmarks-forgetting-curve---init--.md"
+    },
+    "ADR-0828": {
+      "mirror": "ADR-0828-benchmarks-forgetting-curve-criteria.md",
+      "path": "adr/migration/0828-benchmarks-forgetting-curve-criteria.md"
+    },
+    "ADR-0829": {
+      "mirror": "ADR-0829-benchmarks-forgetting-curve-curve-fit.md",
+      "path": "adr/migration/0829-benchmarks-forgetting-curve-curve-fit.md"
+    },
+    "ADR-0830": {
+      "mirror": "ADR-0830-benchmarks-forgetting-curve-run-benchmark.md",
+      "path": "adr/migration/0830-benchmarks-forgetting-curve-run-benchmark.md"
+    },
+    "ADR-0831": {
+      "mirror": "ADR-0831-benchmarks-gate-precision-run-benchmark.md",
+      "path": "adr/migration/0831-benchmarks-gate-precision-run-benchmark.md"
+    },
+    "ADR-0832": {
+      "mirror": "ADR-0832-benchmarks-hnsw-probe-phase1-b-e-sql.md",
+      "path": "adr/migration/0832-benchmarks-hnsw-probe-phase1-b-e-sql.md"
+    },
+    "ADR-0833": {
+      "mirror": "ADR-0833-benchmarks-hnsw-probe-phase2-c-d-sql.md",
+      "path": "adr/migration/0833-benchmarks-hnsw-probe-phase2-c-d-sql.md"
+    },
+    "ADR-0834": {
+      "mirror": "ADR-0834-benchmarks-hnsw-probe-run-conditions-sql.md",
+      "path": "adr/migration/0834-benchmarks-hnsw-probe-run-conditions-sql.md"
+    },
+    "ADR-0835": {
+      "mirror": "ADR-0835-benchmarks-hnsw-probe-setup-sql.md",
+      "path": "adr/migration/0835-benchmarks-hnsw-probe-setup-sql.md"
+    },
+    "ADR-1014": {
+      "mirror": "ADR-1014-tests-py-invariants-test-i2-canonical-writer-py.md",
+      "path": "adr/migration/1014-tests-py-invariants-test-i2-canonical-writer-py.md"
     }
   },
   "project": "cortex",

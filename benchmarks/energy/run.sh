@@ -40,8 +40,8 @@ stop_meter() {
     return
   fi
   if kill -0 "${ENERGY_METER_PID}" 2>/dev/null; then
-    # source: macOS sudo(8), Signal handling: user-sent SIGINT is relayed
-    # to the command. Signal the existing sudo parent; no fresh ticket needed.
+    # source: ADR-0821
+    #
     if ! kill -INT "${ENERGY_METER_PID}"; then
       print -u2 "Failed to stop sensor ${ENERGY_METER_PID}; refusing to wait indefinitely."
       return 1
@@ -49,8 +49,8 @@ stop_meter() {
   fi
   local ENERGY_WAIT_STATUS=0
   wait "${ENERGY_METER_PID}" || ENERGY_WAIT_STATUS=$?
-  # source: zsh exit status for SIGINT is 128 + signal 2; powermetrics(1)
-  # specifies SIGINT as its normal stop-sampling-and-exit signal.
+  # source: ADR-0821
+  #
   if (( ENERGY_WAIT_STATUS != 0 && ENERGY_WAIT_STATUS != 130 )); then
     print -u2 "Sensor exited with status ${ENERGY_WAIT_STATUS}."
     return ${ENERGY_WAIT_STATUS}
@@ -78,8 +78,8 @@ trap 'exit 143' TERM
 print "Authorizing the macOS energy sensor (Cortex remains non-root)..."
 sudo -v
 ENERGY_POWER_FILE=$(mktemp /private/tmp/cortex-energy.XXXXXX.txt)
-# source: powermetrics(1): 0 samples means continuous capture; buffer-size 1
-# flushes each sample. The EXIT trap stops the sensor after the Python run.
+# source: ADR-0821
+#
 sudo -n /usr/bin/powermetrics \
   --samplers cpu_power,gpu_power,ane_power \
   --sample-rate "${ENERGY_SAMPLE_RATE_MS}" --sample-count 0 --buffer-size 1 \

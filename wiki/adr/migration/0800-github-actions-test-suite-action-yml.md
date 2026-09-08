@@ -1,0 +1,245 @@
+---
+title: "ADR-0800 — .github/actions/test-suite/action.yml rationale"
+status: accepted
+source: .github/actions/test-suite/action.yml
+---
+
+# ADR-0800 — .github/actions/test-suite/action.yml
+
+Source rationale preserved verbatim. Identifiers inside historical quotations are not current identities.
+
+## .github/actions/test-suite/action.yml — original line 7
+
+````text
+# Extracted per issue #336, originally shared between ci.yml's `test` matrix
+# and release.yml's own pre-release test job: the two jobs ran the exact
+# same suite against the same Postgres service as two separate copies with
+# non-overlapping triggers — a tag push never reaches ci.yml — so every
+# hardening pass applied to one copy silently drifted from the other, with
+# nothing to report it. Release run 30741657854 (v4.17.0) is what that cost:
+# the FlashRank fetch hung until pytest-timeout killed the suite, blocking
+# every downstream publish job on a tag whose tree had just passed 20 green
+# checks on PR #334; #335 restored parity by hand, this action made the
+# next divergence structurally impossible instead of merely visible.
+````
+
+## .github/actions/test-suite/action.yml — original line 18
+
+````text
+# Issue #392 removed the second caller: release.yml no longer runs a test
+# job at all (the tag is now an output of `ci.yml`'s own `release-gate`, run
+# only after `ci-green` succeeds — see that job's comment). This action is
+# ci.yml's `test` matrix's sole caller now; its two former per-caller inputs
+# (`requirements-file`, `include-tree-sitter`) were retired as speculative
+# generality once a single value was all either of them could ever carry
+# (coding-standards.md §9) — see `run-extended-checks` below for the one
+# input that still varies, across the matrix's four legs.
+````
+
+## .github/actions/test-suite/action.yml — original line 27
+
+````text
+# WHY A COMPOSITE ACTION AND NOT A REUSABLE WORKFLOW. The first attempt at
+# #336 shared this as `.github/workflows/test-suite.yml` behind a
+# `workflow_call`. A job that delegates via `uses:` reports its check as
+# "<caller job name> / <called job name>", so the four matrix legs published
+# "Test (Python X.Y) / Test (Python X.Y)" instead of the bare
+# "Test (Python X.Y)" that branch protection on `main` requires — GitHub
+# always composes the two names and offers no way to suppress the prefix.
+# The PR sat BLOCKED with zero red checks, because the four required
+# contexts were reported by nobody. source: run 31250898534 on PR #387.
+# Sharing at the STEP level instead leaves the caller's job name — and
+# therefore every required status-check context — untouched. That rationale
+# survives the second caller's removal: a reusable workflow would still
+# rename this action's one remaining caller's four matrix-leg contexts.
+````
+
+## .github/actions/test-suite/action.yml — original line 57
+
+````text
+# A reusable workflow could carry this as a job-level `env:`; a composite
+# action has no job scope, so the value is published once here and read by
+# every step below (and by pytest itself) instead of being repeated.
+````
+
+## .github/actions/test-suite/action.yml — original line 69
+
+````text
+# Provision PostgreSQL + pgvector on the runner itself, instead of a
+# Docker-Hub service container. Anonymous `pgvector/pgvector:pg17` pulls
+# from registry-1.docker.io are rate-limited and outage-prone (observed:
+# "context deadline exceeded" failing container init before any test ran,
+# CI run 27190427877). The runner ships PostgreSQL preinstalled; pgvector
+# comes from the PGDG apt repo (apt.postgresql.org) — no registry, no pull
+# rate limit. source: runner image (actions/runner-images) + PGDG.
+````
+
+## .github/actions/test-suite/action.yml — original line 122
+
+````text
+# Both callers install a hash-pinned requirements file into the same
+# OS/Python combination; sharing one pip cache keyspace is safe (pip's
+# own cache is keyed by wheel hash internally, regardless of which
+# requirements file requested a given wheel). Previously this step
+# existed only in ci.yml — release.yml's test job had no pip cache at
+# all, an unremarked asymmetry (not documented as intentional anywhere)
+# closed here as part of the issue #336 extraction.
+````
+
+## .github/actions/test-suite/action.yml — original line 143
+
+````text
+# FlashRank is NOT huggingface_hub. It fetches its ONNX model with a bare
+# `requests.get(..., stream=True)` carrying no timeout, so HF_HUB_OFFLINE
+# never reaches it and a stalled connect blocks the thread indefinitely
+# instead of raising — reranker.py's `except Exception` cannot engage
+# against a hang. CI run 30263190266 (main, Python 3.13, 2026-07-27) hung
+# in `sock.connect` inside a recall test until pytest-timeout killed the
+# whole suite at 300s, while every other leg happened to download fine.
+# Cache the model so the fetch happens once, not once per leg.
+````
+
+## .github/actions/test-suite/action.yml — original line 159
+
+````text
+# Hash-pinned from uv.lock (scripts/generate_pip_constraints.py).
+# --no-deps on BOTH installs: the file is the complete, uv-resolved
+# dependency graph, so pip must not re-derive it. Without --no-deps
+# on the requirements-file install too, pip re-validates every listed
+# package's declared metadata dependencies against the rest of the
+# file — which breaks the moment pyproject.toml's [tool.uv]
+# override-dependencies steers a package (mpmath) past a bound
+# another package's metadata still declares (sympy's `mpmath<1.4`):
+# uv's resolver honours the override, but the exported
+# requirements.txt format cannot carry it, so pip's own
+# re-derivation sees only the unresolved conflict (issue: PR #332,
+# `ResolutionImpossible` on every install job).
+# requirements/ci-postgresql.txt inline: this action's sole caller
+# (ci.yml's `test` matrix) always installs it — issue #392 removed the
+# only other caller, which installed requirements/release.txt instead.
+````
+
+## .github/actions/test-suite/action.yml — original line 178
+
+````text
+# Populate the HuggingFace cache before the (offline) test run. A transient
+# huggingface.co blip must not leave the cache empty — that surfaced as 58
+# spurious "couldn't connect to huggingface.co" test failures on a single
+# matrix leg (CI run 28495801728, Python 3.10, 2026-07-01) while every other
+# leg was fine. Retry with backoff so a blip self-heals; fail loudly here (no
+# continue-on-error) instead of cascading into a misleading test failure.
+````
+
+## .github/actions/test-suite/action.yml — original line 195
+
+````text
+# Same retry-and-fail-loudly shape as the step above, for the reranker.
+# Deliberately runs WITHOUT CORTEX_RERANKER_OFFLINE: this is the one place
+# allowed to download the model, so that the test steps below never can.
+# `ensure_reranker_loaded` reports the load state instead of degrading
+# silently, so a failed fetch fails this step rather than surfacing later
+# as first-stage-only recall scores (the 2026-07-10 FlashRank incident).
+````
+
+## .github/actions/test-suite/action.yml — original line 212
+
+````text
+# tree-sitter-language-pack fetches each grammar's shared library lazily
+# over the network at `get_parser()` call time, not at install time — a
+# cold cache mid-suite is a real, previously-uncaught `DownloadError`
+# (main-red, CI run 30592244731, 2026-07-31:
+# tests_py/core/test_ast_extractors.py + benchmarks/test_codebase_
+# alteration.py). Needs the package importable, so — unlike the HF/
+# FlashRank cache steps above — this must come after "Install
+# dependencies"; same cache-then-prefetch-with-retries shape otherwise,
+# for the same reason: fetch once here so `pytest` itself never touches
+# the network for a grammar.
+````
+
+## .github/actions/test-suite/action.yml — original line 223
+
+````text
+# requirements/ci-postgresql.txt (installed above) always includes
+# tree-sitter-language-pack, so this action's sole caller always needs
+# these three steps — unlike the removed requirements/release.txt
+# caller, which omitted tree-sitter + tree-sitter-language-pack (as it
+# omits igraph/leidenalg/texttable) and would ImportError on the import
+# below. No `if:` gate remains now that only one caller exists.
+````
+
+## .github/actions/test-suite/action.yml — original line 239
+
+````text
+# The language set is read from AST_SUPPORTED (not hand-copied here) so
+# this step cannot drift from the languages ast_parser.py actually uses.
+````
+
+## .github/actions/test-suite/action.yml — original line 252
+
+````text
+# Offline: both models are already cached by the steps above, so tests must
+# never reach out to huggingface.co mid-suite — deterministic and flake-free.
+````
+
+## .github/actions/test-suite/action.yml — original line 261
+
+````text
+# --cov-fail-under is the statement-coverage floor (issue #196
+# criterion 4): seeded at the number this job itself achieved
+# (82.02% — 30,229 of 36,854 statements, run 30316539703,
+# coverage.py 7.15.2) so the figure can only ratchet up, never
+# silently fall back. Raise the floor when coverage rises.
+# W1-3: collect coverage during this same suite execution on the
+# extended leg, preserving both reports and the existing floor.
+````
+
+## .github/actions/test-suite/action.yml — original line 276
+
+````text
+# Match the primary Claude and additive Codex client identities against
+# a real, explicitly configured PostgreSQL instance. Explicit targets
+# cannot fall back, so successful memory_stats calls prove PostgreSQL
+# was selected for both host contracts.
+````
+
+## .github/actions/test-suite/action.yml — original line 294
+
+````text
+# The advertised test count is the one claim the static gate cannot check
+# without collecting the suite, so it is checked in the job that already
+# has the suite installed. `--collect-only` re-collects (~seconds) rather
+# than parsing the run above, so the number is the collector's own.
+# W1-3 retains this separate assertion: it executes no tests and keeps
+# the advertised count and badge independent of coverage/run summaries.
+````
+
+## .github/actions/test-suite/action.yml:runs.steps.2.run — original line 4
+
+````text
+# Ensure the PGDG apt repo (canonical pgvector source); idempotent.
+````
+
+## .github/actions/test-suite/action.yml:runs.steps.2.run — original line 10
+
+````text
+# Structured retry (not `A && break || sleep`, shellcheck SC2015: that
+# form silently swallows exhaustion — see issue #247): each loop fails
+# the step loudly if every attempt is exhausted, and reports the
+# attempt number it is on (shellcheck SC2034: the counter must be read).
+````
+
+## .github/actions/test-suite/action.yml:runs.steps.14.run — original line 2
+
+````text
+# Parse the collector's own summary line ("N tests collected in Xs")
+# by its label rather than by position, and fail loudly if the line
+# is not there — an unparsed count must never silently skip the check.
+````
+
+## .github/actions/test-suite/action.yml:runs.steps.14.run — original line 12
+
+````text
+# The tests badge is a committed SVG carrying this same number, so
+# it is checked where the number is known. The other repo-derived
+# badges are checked in the static job, which needs no suite.
+````

@@ -25,11 +25,11 @@ from benchmarks.energy.workload import Phase
 
 
 REPO = Path(__file__).resolve().parent.parent.parent
-# source: W0-2 functional unit in tasks/codex-green-remediation-plan.md.
+# source: ADR-0820
 TOKENS_PER_UNIT = 1000
-# source: NIST SP 811 ch. 4 (W = J/s, kilo = 10^3), ch. 5 (h = 3600 s).
+# source: ADR-0820
 JOULES_PER_KWH = 3_600_000
-# source: NIST SP 811 ch. 4, milli = 10^-3.
+# source: ADR-0820
 MILLIWATTS_PER_WATT = 1000
 COMBINED_POWER_RE = re.compile(
     r"Combined Power \(CPU \+ GPU \+ ANE\):\s*([0-9.]+)\s*mW"
@@ -50,7 +50,7 @@ class MeasuredPhase:
 
     @property
     def raw_system_energy_j(self) -> float:
-        # source: NIST SP 811 ch. 4, W = J/s; sampled mean power approximation.
+        # source: ADR-0820
         return self.mean_system_power_w * self.phase.elapsed_s
 
     @property
@@ -125,7 +125,7 @@ def carbon_per_1k_tokens(
         raise ValueError("token count must be positive")
     if any(not math.isfinite(x) or x < 0 for x in (energy_j, intensity, embodied_g)):
         raise ValueError("energy and carbon inputs must be finite and nonnegative")
-    # source: https://sci.greensoftware.foundation/ : O = E*I, SCI = (O+M)/R.
+    # source: ADR-0820
     operational_g = energy_j / JOULES_PER_KWH * intensity
     return (operational_g + embodied_g) * TOKENS_PER_UNIT / tokens
 

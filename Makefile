@@ -1,17 +1,17 @@
-# Benchmark reproduction targets. See benchmarks/README.md for what each
-# measures, requirements, and honest wall-clock numbers.
-#
-# THE single source of truth is `make reproduce` -> benchmarks/reproduce.sh.
-# Everything else here is a thin scope-narrowed shortcut into that one script,
-# so any invocation runs the identical clean-DB / production-recall pipeline and
-# yields the same numbers. Take it, hit play, reproduce.
+# source: ADR-0813
+
+
+
+
+
+
 
 .PHONY: reproduce reproduce-smoke longmemeval longmemeval-smoke
 
-# EVERYTHING: all retrieval benchmarks (LongMemEval-S, LoCoMo, BEAM-100K) plus
-# the v4.0 ablation sweep, one ephemeral clean pgvector DB, one consolidated
-# table + JSON manifest. Fully local, no API keys. Several hours for the full
-# run (per-benchmark ~40 min + the ablation sweep).
+# source: ADR-0813
+
+
+
 reproduce:
 	bash benchmarks/reproduce.sh
 
@@ -22,7 +22,7 @@ reproduce-smoke:
 
 # ── Scoped shortcuts (all delegate to reproduce.sh) ──────────────────────────
 
-# LongMemEval-S only, no ablation (the historical entry point).
+# source: ADR-0813
 longmemeval:
 	bash benchmarks/reproduce.sh --only longmemeval --no-ablation
 

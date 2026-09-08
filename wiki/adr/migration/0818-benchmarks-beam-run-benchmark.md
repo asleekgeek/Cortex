@@ -1,0 +1,167 @@
+---
+title: "ADR-0818 — benchmarks/beam/run_benchmark.py rationale"
+status: accepted
+source: benchmarks/beam/run_benchmark.py
+---
+
+# ADR-0818 — benchmarks/beam/run_benchmark.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+BEAM benchmark for Cortex memory system.
+````
+
+## module — original line 3 (docstring)
+
+````text
+Runs the BEAM benchmark (Tavakoli et al., ICLR 2026) — "Beyond a Million Tokens:
+Benchmarking and Enhancing Long-Term Memory in LLMs."
+Uses the production PostgreSQL + pgvector retrieval pipeline.
+````
+
+## module — original line 7 (docstring)
+
+````text
+10 memory abilities tested:
+  1. Abstention — withhold answers when evidence is missing
+  2. Contradiction Resolution — detect inconsistent statements
+  3. Event Ordering — reconstruct sequences of evolving information
+  4. Information Extraction — recall entities and factual details
+  5. Instruction Following — sustain adherence to constraints
+  6. Knowledge Update — revise facts as new information emerges
+  7. Multi-hop Reasoning — integrate evidence across non-adjacent segments
+  8. Preference Following — adapt to evolving user preferences
+  9. Summarization — abstract and compress dialogue content
+  10. Temporal Reasoning — reason about time relations
+````
+
+## module — original line 19 (docstring)
+
+````text
+Run:
+    python3 benchmarks/beam/run_benchmark.py [--split 100K] [--limit N]
+
+````
+
+## _current_stage_for_question — original line 93 (docstring)
+
+````text
+    In oracle mode: uses plan_id > time_anchor from source turns.
+    In temporal mode: uses the TemporalStageDetector's day-bucket
+    format so the assembler's stage filter matches memory created_at.
+    
+````
+
+## run_benchmark — original line 297 (docstring)
+
+````text
+Run BEAM retrieval benchmark using production PG retrieval.
+````
+
+## module — original line 53 (comment)
+
+````text
+# Minimum turn length for a turn to seed an 80-char prefix match key.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## module — original line 58 (comment)
+
+````text
+# Top-1 retrieval score below which the system counts as having found nothing
+# confident (abstention success).
+# source: engineering heuristic documented in evaluate_retrieval below —
+# "BEAM paper uses LLM-as-judge to evaluate abstention quality. We approximate
+# by checking if top retrieval score is low"
+````
+
+## module — original line 65 (comment)
+
+````text
+# Minimum answer length for an answer substring match to carry signal.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## module — original line 70 (comment)
+
+````text
+# source: structural — the K in the reported Recall@5 / Recall@10 metrics
+````
+
+## module — original line 167 (comment)
+
+````text
+# Abstention: no source_ids by design — still evaluate
+````
+
+## module — original line 171 (comment)
+
+````text
+# Optional: use the structured 3-phase context assembler
+# instead of flat top-k WRRF. Gated by env var so we can A/B
+# on the same benchmark without touching the production code.
+````
+
+## module — original line 175 (comment)
+
+````text
+# Benchmark has no LLM reader: token_budget=None means
+# pure rank-based retrieval (Swift pattern: budget is
+# caller-provided from reasoner.contextWindowSize when
+# a reader exists; benchmarks have no reader).
+````
+
+## module — original line 203 (comment)
+
+````text
+# Build source content set from turn IDs.
+# Match strategy: 80-char prefix of source turns compared against
+# retrieved content. This is an engineering heuristic — BEAM paper
+# evaluates via LLM-as-judge on full QA, not retrieval matching.
+# We use prefix matching as a proxy for retrieval quality since we
+# evaluate retrieval only (no LLM judge). The 80-char threshold
+# balances specificity (longer = fewer false positives) against
+# robustness (shorter = tolerates prefix variations).
+````
+
+## module — original line 224 (comment)
+
+````text
+# Abstention: success = retrieval returns no confident match.
+# Threshold 0.3 is an engineering heuristic — BEAM paper uses
+# LLM-as-judge to evaluate abstention quality. We approximate
+# by checking if top retrieval score is low (indicating the
+# system correctly found nothing relevant). Needs calibration
+# against actual abstention accuracy.
+````
+
+## module — original line 288 (comment)
+
+````text
+# ── Main Benchmark ───────────────────────────────────────────────────────
+````
+
+## module — original line 319 (comment)
+
+````text
+# Capture reproducibility sidecar once at benchmark start.
+````
+
+## module — original line 322 (comment)
+
+````text
+# LIGHT (LLM-as-judge QA) scores from Tavakoli et al., ICLR 2026
+# Table 2, "LIGHT" column, 100K split. These are full QA scores
+# (not retrieval-only) shown for reference comparison only.
+````
+
+## module — original line 375 (comment)
+
+````text
+# Clean up previous, load new
+````

@@ -35,105 +35,29 @@ _MCP_ROOT = _REPO_ROOT / "mcp_server"
 # line_number) site that writes ``memories.heat_base``. Any new site must
 # either route through ``bump_heat_raw`` / ``update_memories_heat_batch``
 # OR be added here with a source-commented ADR justification.
+# source: ADR-1014  # noqa: ERA001
 _ALLOWED_WRITERS: set[tuple[str, int]] = {
-    # Line pins re-computed on the 2026-07-11 merge train (7.2 + 7.4 +
-    # silent-except-sweep + spread-activation) — each branch had pinned its own
-    # pre-merge offsets; the test itself was used as the oracle.
-    # All eleven pins shifted +1..+13 on the PLR2004/E501 sweep
-    # (#197 family 3): named-constant extractions and line rewraps above
-    # the writer sites moved them down; same writers, no new ones (the
-    # test itself was the oracle, as on the 2026-07-11 re-pin).
-    # Anchor transfer at supersession (read-path PR, decision 2026-07-07):
-    # _transfer_anchor_on runs INSIDE the supersede transaction (bump_heat_raw
-    # commits on its own connection, so routing through it would break
-    # supersession atomicity). GREATEST(heat_base, old) never lowers heat.
-    # Source: docs/program/pr2-read-path-supersession-audit.json.
-    # Shifted 685->686 by the silent-except-sweep audit (2026-07-11) adding
-    # one `from mcp_server.observability import silent_failure` import line
-    # above this site.
-    # Shifted 724->726 (and the two entries below by the same +2/+3) by the
-    # S110 sweep (#197): teardown/DEALLOCATE excepts above these sites grew
-    # a logger.debug line each.
-    # Shifted 695->724 by the module-level hash helpers extraction
-    # (feat/migrate-entrypoint, PR #101): compute_ddl_hash()/
-    # read_schema_hash() were pulled out of PgMemoryStore as module-level
-    # functions (net +29 lines above this site — 33 lines of new function
-    # bodies/docstrings added, 4 lines of inline hash-computation removed
-    # from _recorded_schema_hash, which now delegates to read_schema_hash).
-    # Shifted -7 (pg_store) / -1 (anchor) by the PLC0415 sweep (#197
-    # family 4): function-level imports above these sites hoisted to the
-    # module top; same writers, no new ones (the test was the oracle,
-    # as on every prior re-pin).
-    # Shifted +5 (pg_store) / +2 (sqlite_store) by issue #252: both stores'
-    # created_at normalization lost its `"T" not in raw_created` pre-test
-    # (a substring test that skipped every string containing a T, e.g.
-    # "8 May 2023 13:56 EST") and gained the comment explaining why; the
-    # sqlite site also hoisted its function-level import. Same writers, no
-    # new ones — this test was the oracle, as on every prior re-pin.
-    #
-    # pg_store.py (1384 lines, over the 300-line §4.1 cap) split into
-    # concern-scoped Pg*Mixin modules (pg_store_heat.py, pg_store_supersede.py,
-    # ...) behind the pg_store.py facade. Same three writers, relocated —
-    # no new ones. _transfer_anchor_on's docstring (pg_store_supersede.py)
-    # still explains why it cannot route through bump_heat_raw.
+    # PostgreSQL anchor transfer.
     ("infrastructure/pg_store_supersede.py", 169),
-    # W4-3: get_memories_by_ids adds 14 lines above both writers. Source:
-    # bodies byte-identical to 02543fa6; only these two locations changed.
-    # Canonical single-row writer (all callers route through this).
+    # PostgreSQL single-row writer.
     ("infrastructure/pg_store_heat.py", 70),
-    # A3 batched writer (homeostatic cohort branch + any other batch consumer).
+    # PostgreSQL batched writer.
     ("infrastructure/pg_store_heat.py", 168),
-    # SQLite parity of the anchor transfer (same transactional rationale).
-    # Shifted 389->440->447->493->529->530 (M-D3, then #169 added _fts_augment /
-    # _migrate_fts_code_tokenize / unconditional embedding_model stamp above it;
-    # then #206 added _register_json_codec above the class, +36 lines).
-    # All three sqlite_store pins shifted +8 (549/579/643 -> 557/587/651) by
-    # #368's capture-origin backfill: _run_column_migrations gained the
-    # COLUMN_BACKFILLS import and turned its `except OperationalError: pass`
-    # into `continue` + a conditional backfill execute (net +8 lines, all
-    # above line 166). Same three writers, byte-identical SQL — verified by
-    # diffing each site against origin/main; the test was the oracle, as on
-    # every prior re-pin.
+    # SQLite anchor transfer.
     ("infrastructure/sqlite_store.py", 557),
-    # SQLite parity: canonical bump_heat_raw / update_memories_heat_batch.
-    # Shifted 419->470->477->523->559->562, 463->534->541->587->623->626 for
-    # the same
-    # reasons (#169's _stamp_embedding_model / select_fallback_embeddings /
-    # reembed_memory, then #206's _register_json_codec).
+    # SQLite single-row writer.
     ("infrastructure/sqlite_store.py", 587),
+    # SQLite batched writer.
     ("infrastructure/sqlite_store.py", 651),
-    # Homeostatic fold (amortized ~once/month per (domain, write_class)).
-    # M-D3 (7.1, 2026-07-10): split out of homeostatic.py into
-    # homeostatic_apply.py (§4.1 500-line file cap — stratification by
-    # write class grew homeostatic.py past the limit). Same rare
-    # amortized fold UPDATE, now scoped to a class's own source values.
-    # Shifted 233->234 (issue #406): write_class import moved to
-    # `from mcp_server.shared import write_class` (core/ -> shared/ move,
-    # infrastructure/core layer-violation fix), adding one import line
-    # above this site. Same writer, not new.
+    # Homeostatic fold.
     ("handlers/consolidation/homeostatic_apply.py", 234),
-    # Anchor pin: heat_base=1.0 + no_decay=TRUE preserves resist-decay.
+    # Anchor pin.
     ("handlers/anchor.py", 149),
-    # Preemptive boost: heat_base += 0.1 on Read/Edit/Write hook.
-    # W2-4: private cooldown paths shifted these sites; both writer function
-    # sources remain byte-identical to 3243dfed, including their A3 SQL.
+    # Preemptive boost.
     ("hooks/preemptive_context.py", 148),
-    # Pipeline-impact boost: heat_base += 0.15 for symbols touched by an
-    # edit, resolved via pipeline detect_changes (PostToolUse hook).
+    # Pipeline-impact boost.
     ("hooks/pipeline_impact_bump.py", 184),
-    # I6-D5 deliberate re-heat campaign (INC6.6): CAS-guarded single-row
-    # writer. Cannot route through bump_heat_raw — that would (1) turn a
-    # concurrent-write race into a silent overwrite instead of a detected
-    # skip (apply_reheat's WHERE clause requires heat_base still equal to
-    # the value observed at scan time) and (2) stamp heat_base_set_at,
-    # resetting the decay clock the campaign's J+30 re-measurement
-    # (2026-08-09) depends on staying untouched. Source: ADR-0053
-    # (docs/adr/ADR-0053-deliberate-reheat-cas-writer-i2-exception.md).
-    # Shifted 157->160 when M-D3 (7.1) added a write_class='auto' filter
-    # comment to the homeostatic_state join above it.
-    # Shifted 177->182 when the bare-container contract fix (5d71069c)
-    # moved the module's psycopg import under TYPE_CHECKING, adding the
-    # guard block above this writer.
+    # CAS-guarded deliberate reheat.
     ("infrastructure/pg_store_memory_reheat.py", 183),
 }
 
@@ -154,13 +78,8 @@ def _scan_heat_writers() -> set[tuple[str, int]]:
 
     offenders: set[tuple[str, int]] = set()
     for py in _MCP_ROOT.rglob("*.py"):
-        # Relative to the scan root, never the absolute path. An agent
-        # worktree lives at <repo>/.claude/worktrees/<name>/, so when the
-        # suite runs FROM one, every absolute path contains "worktree" and
-        # this check skipped the entire package: the scan found zero writers,
-        # `unexpected` was empty, and the invariant passed vacuously — it
-        # could not have caught a new unauthorized writer at all. Only the
-        # stale-entry half of the assertion made the breakage visible.
+        # source: ADR-1014  # noqa: ERA001
+        # Match excluded paths relative to the scan root.
         if "worktree" in str(py.relative_to(_MCP_ROOT)):
             continue
         try:
@@ -229,13 +148,8 @@ def test_i2_no_legacy_heat_column_writes() -> None:
     """
     offenders: set[tuple[str, int]] = set()
     for py in _MCP_ROOT.rglob("*.py"):
-        # Relative to the scan root, never the absolute path. An agent
-        # worktree lives at <repo>/.claude/worktrees/<name>/, so when the
-        # suite runs FROM one, every absolute path contains "worktree" and
-        # this check skipped the entire package: the scan found zero writers,
-        # `unexpected` was empty, and the invariant passed vacuously — it
-        # could not have caught a new unauthorized writer at all. Only the
-        # stale-entry half of the assertion made the breakage visible.
+        # source: ADR-1014  # noqa: ERA001
+        # Match excluded paths relative to the scan root.
         if "worktree" in str(py.relative_to(_MCP_ROOT)):
             continue
         try:
