@@ -27,6 +27,8 @@ from pathlib import Path
 from mcp_server.handlers.injection_receipts import (
     emit_hook_receipt,
     emit_injection_receipt,
+    MEMORY_MARKER_PREFIX,
+    memory_marker,
     receipt_marker,
     session_id_from_transcript,
 )
@@ -81,6 +83,25 @@ def _has_sentence_transformers() -> bool:
 def _short(text: str, max_len: int = 120) -> str:
     text = text.strip().replace("\n", " ")
     return text if len(text) <= max_len else text[: max_len - 1] + "..."
+
+
+def _body(memory: dict, max_len: int = 120) -> str:
+    """Render one memory's content for a banner line, keeping a fetch key
+    when — and only when — the line is actually truncated.
+
+    An untruncated line needs no key: the whole memory is already there.
+    A truncated one does, otherwise the reader can see that content was
+    cut but has no way to ask for the rest (``memory_marker`` docstring).
+    Emitting the key only on cut lines keeps the cost proportional to the
+    loss instead of taxing every line.
+
+    Truncation itself is byte-identical to ``_short`` — this changes what
+    a cut line CARRIES, not where it is cut.
+    """
+    content = memory["content"].strip().replace("\n", " ")
+    if len(content) <= max_len:
+        return content
+    return f"{content[: max_len - 1]}... {memory_marker(memory['id'])}"
 
 
 # ── Database checks ──────────────────────────────────────────────────────
@@ -652,7 +673,7 @@ def _build_context(
     if anchors:
         lines.append("### Anchored Memories (critical)")
         for a in anchors:
-            lines.append(f"- {_short(a['content'])}{_freshness(a, now)}")
+            lines.append(f"- {_body(a)}{_freshness(a, now)}")
         lines.append("")
 
     # Team decisions from other agents (TMS directory layer, Wegner 1987)
@@ -661,7 +682,7 @@ def _build_context(
         for d in team_decisions:
             agent = d.get("agent", "")
             prefix = f"[{agent}] " if agent else ""
-            lines.append(f"- {prefix}{_short(d['content'])}{_freshness(d, now)}")
+            lines.append(f"- {prefix}{_body(d)}{_freshness(d, now)}")
         lines.append("")
 
     if hot:
@@ -669,7 +690,7 @@ def _build_context(
         for m in hot:
             heat_bar = "+" * min(5, int(m["heat"] * 5))
             domain_hint = f" [{m['domain']}]" if m.get("domain") else ""
-            bullet = f"- [{heat_bar}]{domain_hint} {_short(m['content'])}"
+            bullet = f"- [{heat_bar}]{domain_hint} {_body(m)}"
             lines.append(f"{bullet}{_freshness(m, now)}")
         lines.append("")
 
@@ -709,6 +730,13 @@ def _build_context(
         "*Use `recall` to retrieve full memories. "
         "Use `anchor` to protect critical facts.*"
     )
+    # Only explain the key when at least one line actually carries one —
+    # a legend for a notation absent from the text above is pure noise.
+    if any(MEMORY_MARKER_PREFIX in line for line in lines):
+        lines.append(
+            f"*Lines ending in `{MEMORY_MARKER_PREFIX}id\u27e7` are truncated; "
+            "read the full memory with `recall(memory_id=id)`.*"
+        )
 
     # Warn if semantic search is degraded
     if not _has_sentence_transformers():
