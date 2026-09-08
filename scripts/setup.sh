@@ -1,18 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Cortex — Single-command setup
-# Installs PostgreSQL + pgvector, Python deps, DB schema, embedding model.
-# Usage: bash scripts/setup.sh
-#
-# What this does:
-#   1. Detects OS (macOS / Linux)
-#   2. Installs PostgreSQL 17 + pgvector if missing
-#   3. Starts PostgreSQL service
-#   4. Installs Python dependencies (psycopg, sentence-transformers, flashrank)
-#   5. Creates database + extensions + schema
-#   6. Pre-caches embedding model (~100MB download)
-#   7. Verifies everything works
+# source: ADR-0783
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -226,17 +215,7 @@ ok "Python $PY_VERSION"
 echo "Installing Python packages..."
 mkdir -p "$DEPS_DIR"
 
-# Hash-pinned from uv.lock (scripts/generate_pip_constraints.py). This
-# replaced a hand-written package list that duplicated pyproject.toml and had
-# already drifted from it — the list asked for "sentence-transformers>=2.2.0"
-# against a real floor of >=3.0.0, so a machine set up by this script could
-# run a version the project does not support. A floor is also not a pin at
-# all: it accepts whatever the index serves today.
-#
-# 2>/dev/null is gone with it. It was hiding pip's stderr, which is where a
-# resolution failure, a hash mismatch and a network error all appear — the
-# script would print "Python packages installed" over any of them. The exit
-# status is now checked instead.
+# source: ADR-0783
 if ! python3 -m pip install -q --target "$DEPS_DIR" \
     --require-hashes -r "$PROJECT_DIR/requirements/setup.txt"; then
     fail "Dependency install failed (see pip output above)"
@@ -348,13 +327,7 @@ sys.exit(0 if all_ok else 1)
 
 echo ""
 
-# ── Pipeline auto-install (silent, best-effort) ────────────────────────
-# Cortex's ingest_codebase tool depends on the upstream
-# ai-architect-mcp-codebase MCP binary. Install it now so users don't see
-# their first ingest_codebase call fail. Bootstraps the Rust toolchain
-# via rustup if cargo is missing. Skip via:
-#   CORTEX_AUTO_INSTALL_PIPELINE=0   (skip everything)
-#   CORTEX_AUTO_INSTALL_RUST=0       (skip rust install only)
+# source: ADR-0783
 
 step "Installing ai-architect-mcp-codebase (silent)"
 

@@ -276,19 +276,7 @@ class TestWriteTimeHint:
         assert write_time_hint(r, "deliberate") == write_time_hint(r, "deliberate")
 
 
-# ── write_time_hint dead-ref states (issue #345) ────────────────────────────
-#
-# Reproduced live on memory 4341427 (2026-08-08): 3 real repo-relative paths
-# graded dead because `directory` was never passed to `remember`, so
-# resolution silently fell back to the process's cwd (the repo's PARENT,
-# not the repo itself). The naive "no ref found" -> "name the dead refs"
-# fix alone still misdiagnoses that case as "these paths are wrong" when
-# they are not -- the ROOT they were checked against is. Three mutually
-# exclusive states, per `_unverifiable_hint`'s contract:
-#   1. no references extracted at all (existing coverage above)
-#   2a. references extracted, resolution root is not a real directory
-#   2b. references extracted, root is real but was never explicitly given
-#   3.  references extracted, root explicit and real, refs genuinely absent
+# source: ADR-0923
 
 
 def _dead_report(

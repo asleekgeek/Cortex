@@ -45,16 +45,7 @@ set -euo pipefail
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
-# On native Windows, CLAUDE_PLUGIN_ROOT (or $PWD) arrives in backslash form
-# (e.g. D:\a\Cortex\Cortex from GitHub Actions' github.workspace). Every
-# later use of PLUGIN_ROOT in this script concatenates it with a
-# forward-slash suffix ("$PLUGIN_ROOT/scripts/setup.py" etc.), which would
-# otherwise produce a mixed-separator path. Normalize once, here, via
-# cygpath (shipped with Git Bash/MSYS2) to the Windows mixed form
-# (drive letter + forward slashes, e.g. D:/a/Cortex/Cortex) so every
-# concatenation downstream is forward-slash-only and Windows programs
-# (native python.exe) still resolve it correctly. A no-op on macOS/Linux,
-# where cygpath doesn't exist. source: issue #113 CI run 29360566538.
+# source: ADR-0740
 if command -v cygpath >/dev/null 2>&1; then
     PLUGIN_ROOT="$(cygpath -m "$PLUGIN_ROOT")"
 fi
@@ -112,18 +103,12 @@ case "${CORTEX_BACKEND:-}" in
     postgres|postgresql) REQUESTED="postgresql" ;;
     sqlite)              REQUESTED="${REQUESTED:-sqlite}" ;;
 esac
-# CI/testing contract from issue #113: CORTEX_MEMORY_STORE_BACKEND=sqlite
-# forces the SQLite path (scripts/setup.py honors the same variable).
+# source: ADR-0740
 if [ "${CORTEX_MEMORY_STORE_BACKEND:-}" = "sqlite" ] && [ -z "$REQUESTED" ]; then
     REQUESTED="sqlite"
 fi
 
-# detect_existing_postgres — protect a working PostgreSQL install.
-# Returns 0 (and says why) when any of these hold:
-#   a) an operator-configured URL is present in the environment
-#   b) a prior install persisted backend=postgresql in the marker
-#   c) a local PostgreSQL answers on 127.0.0.1:5432 AND already has a
-#      cortex database (i.e. a previous full install provisioned it)
+# source: ADR-0740
 detect_existing_postgres() {
     if [ -n "${DATABASE_URL:-}" ] || [ -n "${CORTEX_MEMORY_DATABASE_URL:-}" ]; then
         say "Existing PostgreSQL config detected (DATABASE_URL/CORTEX_MEMORY_DATABASE_URL set)"
@@ -133,8 +118,7 @@ detect_existing_postgres() {
         say "Existing PostgreSQL install detected (marker: $MARKER_PATH)"
         return 0
     fi
-    # 127.0.0.1:5432 mirrors memory_config.MemorySettings.DATABASE_URL,
-    # the default every previous plugin install provisioned against.
+    # source: ADR-0740
     if command -v psql >/dev/null 2>&1 \
         && psql -h 127.0.0.1 -p 5432 -d cortex -tAc "SELECT 1" >/dev/null 2>&1; then
         say "Existing local cortex database detected (127.0.0.1:5432)"
@@ -152,24 +136,7 @@ else
 fi
 say "Backend: $BACKEND"
 
-# ── Phase 1: install ────────────────────────────────────────────────────
-#
-# SQLite (default): scripts/setup.py in SQLite mode on every OS —
-# Python deps + verification only; no PostgreSQL, no pgvector, no eager
-# embedding-model download (lazy on first use; see
-# mcp_server/infrastructure/embedding_engine.py).
-#
-# PostgreSQL (opt-in / protected existing install): the single,
-# most-upstream OS-dispatch point for that path — do not duplicate this
-# branch in setup.sh or plugin.json. manifest.json declares win32 as a
-# compatible platform, but scripts/setup.sh only knows how to provision
-# PostgreSQL via brew/apt (macOS/Linux) and previously failed with a
-# bare "Unsupported OS" on every other uname -s, including the
-# MINGW64_NT-*/MSYS_NT-*/CYGWIN_NT-* values Git Bash reports on native
-# Windows (fixes #113). Git Bash is the shell postInstall actually runs
-# under on Windows (plugin.json invokes `bash ...`), so on those uname
-# patterns we delegate to the already cross-platform scripts/setup.py
-# instead of scripts/setup.sh.
+# source: ADR-0740
 if [ "$BACKEND" = "sqlite" ]; then
     CORTEX_MEMORY_STORE_BACKEND=sqlite "$PY" "$PLUGIN_ROOT/scripts/setup.py" \
         || fail "scripts/setup.py failed. Re-run manually: CORTEX_MEMORY_STORE_BACKEND=sqlite \"$PY\" \"$PLUGIN_ROOT/scripts/setup.py\""
