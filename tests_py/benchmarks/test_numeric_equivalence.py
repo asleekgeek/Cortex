@@ -19,11 +19,14 @@ from benchmarks.lib.numeric_equivalence import (
 # source: PR #495 body, measured 2026-09-07, sentence-transformers/
 # all-MiniLM-L6-v2 rev 1110a243, CPU float32.
 PR_495_VECTOR_DELTA = 1.6391277313232422e-07
+# source: PR #495 body, same measurement conditions as above.
 PR_495_SCORE_DELTA = 1.1920928955078125e-07
 
 # source: PR #497 body, same measurement conditions.
 PR_497_VECTOR_DELTA = 1.0617077350616455e-07
+# source: PR #497 body, same measurement conditions.
 PR_497_LESSONS_DELTA = 9.313225746154785e-08
+# source: PR #497 body, same measurement conditions.
 PR_497_COMPRESSION_DELTA = 1.3969838619232178e-07
 
 
