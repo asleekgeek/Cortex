@@ -54,9 +54,9 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # Anchor pin.
     ("handlers/anchor.py", 145),
     # Preemptive boost.
-    ("hooks/preemptive_context.py", 148),
+    ("hooks/preemptive_context.py", 125),
     # Pipeline-impact boost.
-    ("hooks/pipeline_impact_bump.py", 184),
+    ("hooks/pipeline_impact_bump.py", 164),
     # CAS-guarded deliberate reheat.
     ("infrastructure/pg_store_memory_reheat.py", 183),
 }

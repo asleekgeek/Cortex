@@ -3925,32 +3925,12 @@
     {
       "file": "mcp_server/handlers/validate_memory.py",
       "kind": "unsourced-constant",
-      "detail": "_DEFAULT_URL_CHECK_LIMIT"
-    },
-    {
-      "file": "mcp_server/handlers/validate_memory.py",
-      "kind": "unsourced-constant",
       "detail": "_HTTP_REACHABLE_END"
     },
     {
       "file": "mcp_server/handlers/validate_memory.py",
       "kind": "unsourced-constant",
       "detail": "_URL_CHECK_TIMEOUT_S"
-    },
-    {
-      "file": "mcp_server/handlers/why.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/handlers/why.py",
-      "kind": "unsourced-constant",
-      "detail": "_INT4_MAX"
-    },
-    {
-      "file": "mcp_server/handlers/why.py",
-      "kind": "unsourced-constant",
-      "detail": "_MAX_RECEIPT_IDS"
     },
     {
       "file": "mcp_server/handlers/wiki_adr.py",
@@ -3971,11 +3951,6 @@
       "file": "mcp_server/handlers/wiki_consolidate.py",
       "kind": "method-size",
       "detail": "handler"
-    },
-    {
-      "file": "mcp_server/handlers/wiki_consolidate_staleness.py",
-      "kind": "method-size",
-      "detail": "run_staleness_pass"
     },
     {
       "file": "mcp_server/handlers/wiki_curate.py",
@@ -4108,11 +4083,6 @@
       "detail": "_sync_page_and_cite"
     },
     {
-      "file": "mcp_server/handlers/wiki_write.py",
-      "kind": "method-size",
-      "detail": "write_governed_page"
-    },
-    {
       "file": "mcp_server/hooks/agent_briefing.py",
       "kind": "layer-violation",
       "detail": "mcp_server.handlers.injection_receipts"
@@ -4213,11 +4183,6 @@
       "detail": "mcp_server.handlers.ingest_codebase"
     },
     {
-      "file": "mcp_server/hooks/ingest_codebase_background.py",
-      "kind": "method-size",
-      "detail": "main"
-    },
-    {
       "file": "mcp_server/hooks/pipeline_impact_bump.py",
       "kind": "layer-violation",
       "detail": "mcp_server.handlers.ingest_helpers"
@@ -4243,11 +4208,6 @@
       "detail": "_MAX_BUMPS"
     },
     {
-      "file": "mcp_server/hooks/post_commit_reindex.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
       "file": "mcp_server/hooks/post_tool_capture.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
@@ -4271,11 +4231,6 @@
       "file": "mcp_server/hooks/post_tool_capture.py",
       "kind": "unsourced-constant",
       "detail": "_MIN_OUTPUT_LENGTH"
-    },
-    {
-      "file": "mcp_server/hooks/preemptive_context.py",
-      "kind": "method-size",
-      "detail": "_prime_file_memories"
     },
     {
       "file": "mcp_server/hooks/preemptive_context.py",
@@ -4416,21 +4371,6 @@
       "file": "mcp_server/infrastructure/ap_sync_loop.py",
       "kind": "layer-violation",
       "detail": "mcp_server.errors"
-    },
-    {
-      "file": "mcp_server/infrastructure/artifact_gc.py",
-      "kind": "method-size",
-      "detail": "delete_artifact_if_unreferenced"
-    },
-    {
-      "file": "mcp_server/infrastructure/document_reader.py",
-      "kind": "unsourced-constant",
-      "detail": "MAX_DOCUMENT_BYTES"
-    },
-    {
-      "file": "mcp_server/infrastructure/groomer_coordinator.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "mcp_server/infrastructure/groomer_coordinator.py",
