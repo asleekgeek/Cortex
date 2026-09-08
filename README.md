@@ -572,6 +572,86 @@ Clean Architecture with strict dependency rules — inner layers never import ou
 
 ---
 
+## Green software engineering
+
+Cortex runs a standing efficiency programme, gated by the same evidence rule as
+the retrieval work: **no unsourced efficiency claim ships.** Waste is treated as
+a defect with a reproduction, not as a virtue to advertise.
+
+### The measurement harness — and what it does not establish
+
+`benchmarks/energy/` implements the [Green Software Foundation SCI
+specification](https://sci.greensoftware.foundation/): operational emissions
+`O = E × I`, embodied allocation `M = TE × TS × RS`, reported per functional
+unit. For the embedding path the functional unit is **1000 model input tokens**,
+counted from the tokenizer's own `attention_mask` — never estimated from
+characters.
+
+Read `benchmarks/energy/README.md` before quoting anything from it. Its own
+first paragraph is the important one: the automated fixtures exercise arithmetic
+and failure paths, they **do not measure device energy and do not establish an
+energy improvement.** Further, by design:
+
+- **No default carbon factors.** `--carbon-intensity` (gCO2eq/kWh) and
+  `--embodied` (gCO2eq/s, an *already allocated* rate) are mandatory operator
+  inputs, validated before any model import. The harness records the values and
+  their units; it does not vouch for their provenance. You supply the region,
+  observation period, lifecycle assessment and reservation assumptions.
+- **A stated boundary.** `raw_system_energy_j` is the sensor's combined
+  CPU+GPU+ANE estimate. It is neither wall-plug energy nor a complete device SCI
+  score: memory, storage, screen, power-supply losses, model warm-up and token
+  counting are all excluded.
+- **Artifacts or it did not happen.** A successful run preserves `results.json`,
+  a `MANIFEST.json` of commit and source hashes, and the exact analyzed
+  `powermetrics.txt` snapshot.
+
+No energy results are committed to this repository. That is deliberate: a
+figure measured on one operator's machine, region and duty cycle is not a
+property of the software, and publishing it as one would be the drift this
+programme exists to prevent.
+
+### What has actually shipped
+
+Efficiency work lands as ordinary reviewed PRs. Two workstreams are merged:
+
+| Workstream | Change | PR |
+|---|---|---|
+| **CI / build** | run pytest once, on the coverage leg, instead of twice | [#475](https://github.com/cdeust/Cortex/pull/475) |
+| | build runtime images only on Docker changes + a weekly validation | [#476](https://github.com/cdeust/Cortex/pull/476) |
+| | cache pinned dependency and actionlint downloads | [#477](https://github.com/cdeust/Cortex/pull/477) |
+| | sdist under 5 MB, with a byte-identical wheel | [#478](https://github.com/cdeust/Cortex/pull/478) |
+| | measured job timeouts; cancel superseded PR runs | [#479](https://github.com/cdeust/Cortex/pull/479) |
+| | bound the local Docker build context | [#481](https://github.com/cdeust/Cortex/pull/481) |
+| | stop exporting an unreadable layer cache on every PR run | [#506](https://github.com/cdeust/Cortex/pull/506) |
+| **Runtime** | defer unused pipeline hook imports | [#482](https://github.com/cdeust/Cortex/pull/482) |
+| | route PostToolUse hooks by the tool names they handle | [#483](https://github.com/cdeust/Cortex/pull/483) |
+| | audit and clean orphan plugin dependencies | [#484](https://github.com/cdeust/Cortex/pull/484) |
+| | rotate telemetry and detached-worker logs | [#485](https://github.com/cdeust/Cortex/pull/485) |
+| | persist hook cascade cadence; cool down misses | [#486](https://github.com/cdeust/Cortex/pull/486) |
+| | pinned CPU-only Torch on Linux — no CUDA payload pulled | [#487](https://github.com/cdeust/Cortex/pull/487) |
+
+The hook work is the load-bearing one, because hooks run on *every* tool event.
+Deferring the handler/store stack keeps hook boot at **~0.05 s** against
+**~0.6 s** for the full registry import (measured 2026-07-28; the constant is
+cited in `mcp_server/hooks/auto_recall.py` at its call sites, per the
+no-invented-constants rule).
+
+### Demand reduction is the primary lever
+
+The largest efficiency term in an LLM-assisted workflow is not this server's own
+CPU — it is the tokens a model must process because the right context was not
+found the first time. That makes retrieval quality an energy property, and it is
+why the benchmark tables above and this section are the same programme:
+`response_budget.py` bounds a payload and keeps ids so truncation stays
+resumable, the reranker degrades to first-stage scores rather than fetching a
+model, and `CORTEX_RERANKER_OFFLINE=1` refuses the download outright.
+
+This paragraph is a design rationale, not a measurement. Cortex publishes no
+token-savings or CO2 figure for end-to-end agent sessions, because it has not
+measured one.
+
+---
+
 ## Verification
 
 Every benchmark headline above is backed by a per-mechanism ablation campaign — full *n*, single-seed, with code SHAs, dirty flags, manifests, and per-row JSON preserved:
