@@ -1,33 +1,19 @@
 """Homeostatic plasticity — distribution health metrics.
 
-Split from homeostatic_plasticity.py to keep files under 300 lines.
-Computes statistical health metrics for value distributions (heats, weights)
-to determine whether homeostatic mechanisms need to intervene.
-
-References:
-    Pfister R et al. (2013) Good things peak in pairs: a note on the
-        bimodality coefficient. Frontiers in Psychology 4:700
-    Pébay P (2008) Formulas for Robust, One-Pass Parallel Computation of
-        Covariances and Arbitrary-Order Statistical Moments. Sandia Report
-        SAND2008-6212. Equations 2.1 (M1), 2.2 (M2), 2.3 (M3), 2.4 (M4).
-
-Pure business logic — no I/O.
-"""
+source: ADR-0190"""
 
 from __future__ import annotations
 
 import math
 
-# Numerical floor below which the standard deviation is treated as zero
-# (skew/kurtosis are undefined).
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0190
+
+# source: ADR-0190
 _STD_EPSILON = 1e-10
 
-# Standard deviation below which the heat distribution counts as
-# under-dispersed and is penalized.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0190
+
+# source: ADR-0190
 _LOW_STD_THRESHOLD = 0.05
 
 
@@ -36,22 +22,7 @@ def _compute_moments(
 ) -> tuple[float, float, float, float]:
     """Compute mean, std, skewness, and excess kurtosis in a single pass.
 
-    Uses Welford's online algorithm extended to third and fourth central
-    moments (Pébay 2008, §2, equations 2.1–2.4). We maintain running
-    ``M2`` (sum of squared deviations), ``M3`` (sum of cubed deviations),
-    and ``M4`` (sum of quartic deviations) via the incremental update
-    formulas. This is numerically stable and touches each value once —
-    four generator-expression passes over the full list are gone.
-
-    Equations (Pébay 2008, after observing the n-th value ``x``):
-        delta   = x - M1_{n-1}
-        delta_n = delta / n
-        term1   = delta * delta_n * (n-1)
-        M1_n    = M1_{n-1} + delta_n
-        M4_n    = M4_{n-1} + term1 * delta_n^2 * (n^2 - 3n + 3)
-                + 6 * delta_n^2 * M2_{n-1} - 4 * delta_n * M3_{n-1}
-        M3_n    = M3_{n-1} + term1 * delta_n * (n-2) - 3 * delta_n * M2_{n-1}
-        M2_n    = M2_{n-1} + term1
+    source: ADR-0190
 
     After the loop, the variance, skewness and excess-kurtosis estimators
     match the biased-n formulations used by the original implementation:
@@ -68,10 +39,9 @@ def _compute_moments(
 
     Precondition: values is iterable of finite floats.
     Postcondition: results are within 1e-9 of the four-pass implementation
-        on any well-conditioned input (Pébay 2008, §4 stability analysis).
-    Invariant (per iteration): after processing n values, (m1, M2, M3, M4)
-        equal the exact running moments for the first n values.
-    """
+    on well-conditioned inputs.
+    Invariant: after n values, (m1, M2, M3, M4) are the running moments.
+    source: ADR-0190"""
     n = 0
     m1 = 0.0
     m2 = 0.0
@@ -206,11 +176,7 @@ def compute_distribution_health_streaming(
 ) -> tuple[dict[str, float], int]:
     """Streaming moments over chunks of values — never fully materializes.
 
-    Phase 4: used when the caller iterates values via a server-side
-    cursor (``store.iter_memories_for_decay``). Applies Pébay 2008
-    pairwise-combination formulas to merge chunk moments into running
-    totals — mathematically identical to ``_compute_moments`` on the
-    concatenated list, but peak memory is O(chunk) not O(total).
+    source: ADR-0190
 
     Args:
         value_chunks: iterable yielding lists of floats.
@@ -220,10 +186,7 @@ def compute_distribution_health_streaming(
         (health_dict, total_count). Returns the empty-health dict with
         count=0 when every chunk is empty.
 
-    Source: Pébay (2008). "Formulas for Robust, One-Pass Parallel
-    Computation of Covariances and Arbitrary-Order Statistical Moments."
-    Sandia Report SAND2008-6212. §3.1 (pairwise merge of moments).
-    """
+    source: ADR-0190"""
     # Running aggregated moments (Pébay §3.1 notation).
     n, m1, m2, m3, m4 = 0, 0.0, 0.0, 0.0, 0.0
 
@@ -247,12 +210,7 @@ def _merge_chunk_moments(
 ) -> tuple[int, float, float, float, float]:
     """Fold one chunk's raw moments into the running (n, M1, M2, M3, M4).
 
-    Extracted from ``compute_distribution_health_streaming`` so the same
-    tested pairwise-merge (Pébay 2008 §3.1, eq. 2.1-2.4) can be reused by
-    the per-write-class streaming variant below without duplicating the
-    equations — one canonical implementation, two callers (§8 coding
-    standards: no invented/duplicated math).
-    """
+    source: ADR-0190"""
     n_b, m1_b, m2_b, m3_b, m4_b = _chunk_raw_moments(chunk)
     if n_b == 0:
         return n, m1, m2, m3, m4
@@ -265,11 +223,8 @@ def _merge_chunk_moments(
     delta_n = delta / n_ab
     delta_n2 = delta_n * delta_n
     na_nb = n * n_b
-    # M4_ab = M4_a + M4_b  # noqa: ERA001 -- Pebay 2008 M4 formula doc, not code
-    #   + δ^4 · n_a·n_b·(n_a² - n_a·n_b + n_b²) / n_ab^3
-    #   + 6·δ²·(n_a²·M2_b + n_b²·M2_a) / n_ab²
-    #   + 4·δ·(n_a·M3_b - n_b·M3_a) / n_ab
-    # Factor δ⁴/n_ab³ = delta * delta_n³.
+    # source: ADR-0190
+
     m4_new = (
         m4
         + m4_b
@@ -316,23 +271,15 @@ def compute_distribution_health_streaming_by_class(
 ) -> dict[str, tuple[dict[str, float], int]]:
     """Per-write-class streaming moments — M-D3 full stratification.
 
-    Same Pébay pairwise-merge as ``compute_distribution_health_streaming``
-    (reused via ``_merge_chunk_moments``, not reimplemented), but keeps one
-    running-moments accumulator per class instead of one global one, so
-    each class's health is measured against its own distribution rather
-    than the corpus mean it would otherwise be diluted into (the exact
-    failure this stratification fixes — see homeostatic.py module
-    docstring / M-D3).
+    source: ADR-0190
 
     Args:
-        class_chunks: iterable yielding ``dict[class_name, list[float]]``
-            — one bucketed-by-class heat list per DB chunk. Buckets absent
-            from a given chunk are simply omitted (sparse).
-        target_mean: shared homeostatic target (0.4, Turrigiano 2008).
-        classes: the full set of classes to report on (``ALL_WRITE_
-            CLASSES``) — classes with zero observations across every
-            chunk still appear in the result with the empty-health dict
-            and count 0, so callers never need a membership check.
+        class_chunks: Iterable of dict[class_name, list[float]] buckets
+            per database chunk; absent buckets are omitted.
+        target_mean: Shared homeostatic target (0.4).
+        classes: Full class set; classes with no observations return
+            empty-health dictionaries and zero counts.
+    source: ADR-0190
 
     Returns:
         ``{class_name: (health_dict, count)}`` for every class in
@@ -362,10 +309,7 @@ def _chunk_raw_moments(
     """Raw (n, M1, M2, M3, M4) for a single chunk — inputs to the pairwise
     merge formulas in ``compute_distribution_health_streaming``.
 
-    Uses the same single-pass update as ``_compute_moments`` but returns
-    the raw moment sums (M2, M3, M4) rather than converting to (std,
-    skew, kurtosis). Callers that merge chunks need the raw form.
-    """
+    source: ADR-0190"""
     n = 0
     m1 = 0.0
     m2 = 0.0

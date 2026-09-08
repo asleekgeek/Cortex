@@ -1,19 +1,6 @@
 """Knowledge graph pruning via disparity filter and orphan detection.
 
-Edge pruning uses the multiscale backbone extraction algorithm from:
-  Serrano MA, Boguna M, Vespignani A (2009) "Extracting the multiscale
-  backbone of complex weighted networks." PNAS 106(16):6483-6488.
-
-For each edge (i,j) with weight w_ij, the disparity filter computes a
-p-value alpha_ij = (1 - p_ij)^{k_i - 1} where p_ij = w_ij / strength(i).
-Edges kept when alpha < threshold at EITHER endpoint (statistically
-significant at either end).
-
-Temporal decay follows Aggarwal & Subbian (2014): effective weight decays
-exponentially with hours since last co-access, half-life = 168h (7 days).
-
-Pure business logic -- no I/O.
-"""
+source: ADR-0205"""
 
 from __future__ import annotations
 
@@ -23,12 +10,12 @@ from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 
 # -- Defaults ----------------------------------------------------------------
 
-_ALPHA_THRESHOLD: float = 0.05  # Standard significance level (Serrano 2009)
-_TEMPORAL_HALF_LIFE_HOURS: float = 168.0  # 7 days (Aggarwal & Subbian 2014)
+_ALPHA_THRESHOLD: float = 0.05  # source: ADR-0205
+_TEMPORAL_HALF_LIFE_HOURS: float = 168.0  # source: ADR-0205
 
-# Heat below which both edge endpoints count as cold.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0205
+
+# source: ADR-0205
 _COLD_ENDPOINT_HEAT: float = 0.1
 _MIN_ENTITY_HEAT: float = 0.02
 _MIN_ACCESS_COUNT: int = 2
@@ -38,9 +25,7 @@ _PROTECTION_ACCESS_THRESHOLD: int = 5
 def _temporal_decay(hours: float, half_life: float) -> float:
     """Exponential temporal decay: exp(-lambda * hours).
 
-    lambda = ln(2) / half_life so that weight halves every half_life hours.
-    Aggarwal & Subbian (2014).
-    """
+    source: ADR-0205"""
     if hours <= 0:
         return 1.0
     lam = math.log(2) / half_life
@@ -81,9 +66,7 @@ def _build_adjacency(
 def _disparity_alpha(p: float, k: int) -> float:
     """Compute disparity filter p-value: alpha = (1 - p)^{k - 1}.
 
-    Serrano et al. (2009) Eq. 2. Under the null hypothesis of uniform
-    weight distribution across k edges, alpha is the probability of
-    observing a normalized weight >= p.
+    source: ADR-0205
 
     For k <= 1, every edge is significant (alpha = 0).
     """
@@ -99,13 +82,9 @@ def identify_prunable_edges(
     alpha_threshold: float = _ALPHA_THRESHOLD,
     half_life: float = _TEMPORAL_HALF_LIFE_HOURS,
 ) -> list[dict[str, Any]]:
-    """Identify edges to prune via Serrano et al. (2009) disparity filter.
+    """Identify graph edges to prune using the disparity filter.
 
-    Steps:
-      1. Apply temporal decay to raw weights (Aggarwal & Subbian 2014).
-      2. For each edge, compute disparity alpha at both endpoints.
-      3. Keep edge if alpha < threshold at EITHER endpoint.
-      4. Never prune edges touching protected entities.
+    source: ADR-0205
 
     Returns list of edge dicts augmented with prune_reason metadata.
     """
@@ -154,7 +133,10 @@ def _classify_prune_reasons(
     alpha_src: float,
     alpha_tgt: float,
 ) -> list[str]:
-    """Classify why an edge was pruned for diagnostic reporting."""
+    """Classify why an edge was pruned for diagnostic reporting.
+
+    source: ADR-0205
+    """
     reasons = ["disparity_insignificant"]
     if edge.get("hours_since_co_access", 0) > _TEMPORAL_HALF_LIFE_HOURS:
         reasons.append("stale")

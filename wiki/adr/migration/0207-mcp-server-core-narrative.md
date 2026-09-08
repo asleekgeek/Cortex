@@ -1,0 +1,66 @@
+---
+title: "ADR-0207 — mcp_server/core/narrative.py rationale"
+status: accepted
+source: mcp_server/core/narrative.py
+---
+
+# ADR-0207 — mcp_server/core/narrative.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Generates prose summaries of project activity from memory records:
+  - Decision extraction: keyword + tag matching
+  - Event extraction: high-importance memories + event keywords
+  - Entity aggregation: top entities by frequency
+  - Topic discovery: high-heat focus areas
+````
+
+## module — original line 9 (docstring)
+
+````text
+Pure business logic — no I/O. Receives memory data, returns narratives.
+
+````
+
+## extract_decisions — original line 98 (docstring)
+
+````text
+Extract decision statements from memories.
+````
+
+## extract_decisions — original line 100 (docstring)
+
+````text
+    A memory is a decision if:
+      - Content matches decision keywords, OR
+      - Tags include "decision"
+    
+````
+
+## extract_top_entities — original line 161 (docstring)
+
+````text
+    Uses simple word-frequency heuristic on CamelCase and file paths.
+    
+````
+
+## module — original line 62 (comment)
+
+````text
+# Snippet truncation cap (chars) for decision/event summaries.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## module — original line 143 (comment)
+
+````text
+# Gate the ellipsis on the CLEANED length — what was truncated —
+# not the raw content: a stripped tool header used to trigger a
+# spurious "..." with nothing cut (latent bug surfaced by the
+# #197 family-3 constant extraction; extract_decisions was
+# already correct).
+````

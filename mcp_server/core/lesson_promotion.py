@@ -1,29 +1,14 @@
 """Pure logic for lesson promotion (M-D6, INC 7.6).
 
-The lesson (a memory tagged ``lesson`` or ``lesson-candidate``) is the
-canonical form; ``memory_rules``, ``prospective_memories``, and wiki pages
-are *projections* of it (design doc §M-D6). This module classifies a
-lesson's likely projection and builds the job payload the in-session LLM
-consumes to actually perform (or skip) the promotion — no I/O, mirrors the
-role ``core.auto_curator`` plays for ``curate_wiki``'s jobs.
-
-No auto-promotion happens here or anywhere server-side: a rule changes
-recall behavior for every future query (high stakes), so the decision
-stays with the LLM/user reading the job, exactly like ``curate_wiki``
-never calls ``wiki_write`` itself.
-"""
+source: ADR-0196"""
 
 from __future__ import annotations
 
 from typing import Any
 
-# Keyword triage — SUGGESTS a promotion kind, never decides one. A lesson
-# whose text talks about recall/ranking mechanics is more likely to want a
-# memory_rules row; one phrased as a future-conditional ("next time X,
-# do Y") is more likely to want a prospective trigger; anything else
-# defaults to the documentary catch-all (wiki page). Wrong suggestions
-# cost nothing — see ``promotion_instructions`` below: the reviewing LLM
-# reads ``content`` itself and may pick any of the three, or none.
+# source: ADR-0196
+
+
 _RULE_KEYWORDS = (
     "recall",
     "rerank",
@@ -109,14 +94,10 @@ def build_promotion_job(candidate: dict[str, Any]) -> dict[str, Any]:
 def build_promotion_jobs(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build promotion jobs for every candidate, skipping already-promoted ones.
 
-    Precondition: ``candidates`` is a list of rows shaped as documented in
-    ``build_promotion_job``.
-    Postcondition: ``len(result) <= len(candidates)`` — only candidates
-    whose ``tags`` do NOT already carry a ``promoted:*`` marker are
-    included (defense-in-depth alongside the SQL-side exclusion in
-    ``list_lesson_promotion_candidates``; kept here too because this
-    function is the pure, directly-testable boundary).
-    """
+    Precondition: candidates are rows shaped as build_promotion_job documents.
+    Postcondition: len(result) <= len(candidates); rows whose tags already
+    carry a promoted:* marker are excluded.
+    source: ADR-0196"""
     return [
         build_promotion_job(c)
         for c in candidates

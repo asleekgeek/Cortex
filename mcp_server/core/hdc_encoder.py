@@ -1,21 +1,6 @@
 """Hyperdimensional Computing (HDC) encoder for structured query encoding.
 
-Implements the bind/bundle/permute algebra over dense bipolar vectors (+1/-1).
-Used as retrieval signal 5 in the WRRF fusion pipeline.
-
-Key operations:
-  - bind  (⊗) : element-wise multiply — encodes associations  (A AND B)
-  - bundle(⊕) : element-wise sum + sign  — encodes superposition (A OR B)
-  - permute(ρ) : circular left-shift by n  — encodes sequence/order
-
-Usage in recall:
-  1. Encode query as HDC vector by bundling word-hash vectors
-  2. Encode each memory's content the same way (on-the-fly)
-  3. HDC similarity = dot(query_hdc, memory_hdc) / dim  (ranges -1 to +1)
-  4. Use as an additional retrieval signal alongside vector/FTS/heat/Hopfield
-
-No I/O — pure numpy operations.
-"""
+source: ADR-0188"""
 
 from __future__ import annotations
 
@@ -24,14 +9,14 @@ import hashlib
 import numpy as np
 from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 
-# Default HDC dimensionality — large dim reduces false positives
+# source: ADR-0188
 HDC_DIM = 1024
 
 # Random-projection seed for reproducibility across processes
 _SEED = 0xDEADBEEF
 
-# source: structural — a bigram is a pair of adjacent words, so at least
-# two words are required
+# source: ADR-0188
+
 _MIN_WORDS_FOR_BIGRAM = 2
 
 # ── Atom generation ───────────────────────────────────────────────────────
@@ -40,8 +25,7 @@ _MIN_WORDS_FOR_BIGRAM = 2
 def _word_to_hdc(word: str, dim: int = HDC_DIM) -> np.ndarray:
     """Map a word to a deterministic bipolar (+1/-1) hypervector.
 
-    Uses double-hashing to fill the vector uniformly. This is a
-    fixed (not trained) mapping — reproducible across processes.
+    source: ADR-0188
 
     Args:
         word: The word/token to encode.
@@ -72,8 +56,7 @@ def bundle(vectors: list[np.ndarray]) -> np.ndarray:
     Result encodes the superposition (A OR B OR ...).
     Similar to the original vectors but not identical to any single one.
 
-    Ties (sum == 0) broken by a fixed tiebreak vector seeded from dim.
-    """
+    source: ADR-0188"""
     if not vectors:
         raise ValueError("bundle requires at least one vector")
     if len(vectors) == 1:

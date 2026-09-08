@@ -1,0 +1,33 @@
+---
+title: "ADR-0228 — mcp_server/core/profile_builder.py rationale"
+status: accepted
+source: mcp_server/core/profile_builder.py
+---
+
+# ADR-0228 — mcp_server/core/profile_builder.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 23 (comment)
+
+````text
+# Ratio above which one session mode dominates.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## module — original line 28 (comment)
+
+````text
+# Session duration (ms) above which behavior reads as reflective (30 min).
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## module — original line 33 (comment)
+
+````text
+# Fraction of the tool mix above which one tool family dominates.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````

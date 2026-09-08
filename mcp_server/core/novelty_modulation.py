@@ -23,7 +23,7 @@ def apply_modulation(
     """Apply the original multiply/clamp order; absent mechanisms are identity."""
     if observed.gain is None:
         return score, None
-    # source: write_gate.apply_goal_maintenance and habituate_novelty at a284e473.
+    # source: ADR-0210
     modulated = max(0.0, min(1.0, score * observed.gain))
     return modulated, {
         **(observed.details or {}),

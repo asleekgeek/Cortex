@@ -1,0 +1,170 @@
+---
+title: "ADR-0222 — mcp_server/core/platt_calibration.py rationale"
+status: accepted
+source: mcp_server/core/platt_calibration.py
+---
+
+# ADR-0222 — mcp_server/core/platt_calibration.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+Platt scaling calibration for FlashRank cross-encoder scores.
+````
+
+## module — original line 3 (docstring)
+
+````text
+Fits a logistic regression  P(useful | raw_score) = 1 / (1 + exp(A*s + B))
+over (raw_score, label) pairs collected from user ``rate_memory`` feedback.
+````
+
+## module — original line 6 (docstring)
+
+````text
+Per Taleb antifragile audit AF-2: turns retrieval failures into
+calibration fuel. Each "not useful" rating tightens the calibration;
+each "useful" rating reinforces. With enough samples the system gets
+better with use, not worse.
+````
+
+## module — original line 11 (docstring)
+
+````text
+Important context — historical ablation (2026-04-03, see reranker.py):
+  Platt-style calibration with HAND-PICKED A, B on benchmark data
+  regressed every benchmark (BEAM -0.148, LoCoMo -5.1pp MRR). This
+  module targets a DIFFERENT input distribution: user rate_memory
+  feedback, not benchmark max_CE. Whether it improves ranking is an
+  empirical question — the calibration is loaded only after MIN_SAMPLES
+  real ratings, and any caller can disable via apply=False.
+````
+
+## module — original line 19 (docstring)
+
+````text
+Reference:
+    Platt, J. C. (1999). "Probabilistic outputs for support vector
+        machines and comparisons to regularized likelihood methods."
+        *Advances in Large Margin Classifiers*, MIT Press.
+````
+
+## module — original line 24 (docstring)
+
+````text
+Pure business logic — no I/O. Fitting uses Newton-Raphson on the
+log-likelihood, which is the standard stable approach for Platt's
+2-parameter sigmoid.
+
+````
+
+## PlattParams — original line 53 (docstring)
+
+````text
+Fitted logistic regression parameters for Platt scaling.
+````
+
+## _smoothed_target — original line 99 (docstring)
+
+````text
+Platt-smoothed regression target for one example.
+````
+
+## _smoothed_target — original line 101 (docstring)
+
+````text
+    source: Platt 1999 Eq.7 / Lin-Lin-Weng (2007) Eq.2 —
+      positive example (y == 1): t = (N+ + 1) / (N+ + 2)  -> uses n_pos
+      negative example (y == 0): t = 1 / (N- + 2)         -> uses n_neg
+    
+````
+
+## fit_platt — original line 132 (docstring)
+
+````text
+    source: Lin, Lin & Weng (2007) Algorithm 1 gradient/Hessian; standard
+    logistic-regression Newton step (also in any GLM text).
+    
+````
+
+## calibrate_score — original line 193 (docstring)
+
+````text
+Return the calibrated P(useful | raw_score).
+````
+
+## pairwise_discrimination — original line 223 (docstring)
+
+````text
+Fraction of (useful, not-useful) pairs where calibrated(useful) >
+    calibrated(not-useful).
+````
+
+## pairwise_discrimination — original line 226 (docstring)
+
+````text
+    Used as the post-training sanity check: a correctly-fit Platt must
+    rank useful above not-useful on its training support at least as
+    well as the raw scores do (otherwise the fit is miscalibrated and
+    would hurt retrieval).
+````
+
+## module — original line 34 (comment)
+
+````text
+# Determinant magnitude below which the 2x2 Hessian is treated as
+# singular.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## module — original line 42 (comment)
+
+````text
+# source: engineering default (Platt 1999 prescribes no minimum); calibration
+# pending. Below this, refuse to fit — too few pairs to estimate 2 params.
+````
+
+## module — original line 45 (comment)
+
+````text
+# source: Lin, Lin & Weng (2007) Algorithm 1, "maxiter = 100".
+````
+
+## module — original line 47 (comment)
+
+````text
+# source: Lin, Lin & Weng (2007) Algorithm 1 stopping criterion |g| < 1e-5.
+````
+
+## inline — original line 93 (directive-rationale)
+
+````text
+# noqa: N803 -- Platt 1999 notation
+````
+
+## module — original line 143 (comment)
+
+````text
+# Good initial guess per Platt 1999 Eq. (4): based on class-prior.
+````
+
+## inline — original line 147 (directive-rationale)
+
+````text
+# noqa: N806 -- Platt 1999 notation
+````
+
+## inline — original line 177 (directive-rationale)
+
+````text
+# noqa: N806 -- Platt 1999 notation
+````
+
+## inline — original line 178 (directive-rationale)
+
+````text
+# noqa: N806 -- Platt 1999 notation
+````

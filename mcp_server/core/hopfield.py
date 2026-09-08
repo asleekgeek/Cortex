@@ -1,18 +1,6 @@
 """Modern Hopfield Networks for energy-based associative memory retrieval.
 
-Implements the continuous Hopfield model from Ramsauer et al. (2021),
-"Hopfield Networks is All You Need". Retrieval is equivalent to
-transformer attention: softmax(beta * X^T * query).
-
-Pure business logic — operates on numpy arrays directly.
-Storage access is handled by the caller.
-
-Key capabilities:
-  - Dense retrieval via softmax attention over stored patterns
-  - Sparse retrieval via sparsemax (Hopfield-Fenchel-Young)
-  - Pattern completion via iterative Hopfield dynamics
-  - Energy-based novelty detection
-"""
+source: ADR-0192"""
 
 from __future__ import annotations
 
@@ -30,9 +18,7 @@ def _softmax(logits: np.ndarray) -> np.ndarray:
 def _sparsemax(logits: np.ndarray) -> np.ndarray:
     """Sparsemax: projects logits onto the probability simplex.
 
-    Produces exact zeros for irrelevant entries, unlike softmax.
-    Algorithm from Martins & Astudillo (2016).
-    """
+    source: ADR-0192"""
     n = len(logits)
     if n == 0:
         return logits

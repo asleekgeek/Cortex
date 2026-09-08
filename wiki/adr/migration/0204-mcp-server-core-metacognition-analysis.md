@@ -1,0 +1,32 @@
+---
+title: "ADR-0204 — mcp_server/core/metacognition_analysis.py rationale"
+status: accepted
+source: mcp_server/core/metacognition_analysis.py
+---
+
+# ADR-0204 — mcp_server/core/metacognition_analysis.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 21 (comment)
+
+````text
+# Coverage classification cutoffs.
+# source: pre-existing tuned values, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## module — original line 27 (comment)
+
+````text
+# source: structural — primacy + recency positioning needs at least two
+# selected chunks
+````
+
+## module — original line 31 (comment)
+
+````text
+# Overflow-summary text cap (chars).
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````

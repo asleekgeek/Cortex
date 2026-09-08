@@ -1,0 +1,161 @@
+---
+title: "ADR-0217 — mcp_server/core/pg_recall_assembly.py rationale"
+status: accepted
+source: mcp_server/core/pg_recall_assembly.py
+---
+
+# ADR-0217 — mcp_server/core/pg_recall_assembly.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+Structured 3-phase context assembly (issue #368 split).
+````
+
+## module — original line 3 (docstring)
+
+````text
+Extracted verbatim from ``core/pg_recall.py``, which had grown to 833 lines
+against the 500-line limit in coding-standards.md §4.1. The seam is the one
+the file already documented with its own section banner: recall ORCHESTRATION
+(intent, weights, WRRF, reranking) on one side, and the budgeted slot-filled
+CONTEXT ASSEMBLY that consumes recall's output on the other. They change for
+different reasons — the first when ranking changes, the second when the
+prompt budget or stage model changes — so §1.1 puts them in different files.
+````
+
+## module — original line 11 (docstring)
+
+````text
+``pg_recall`` re-exports ``assemble_context`` so no caller had to move; that
+facade holds no implementation (same pattern as ``synaptic_plasticity.py``).
+
+````
+
+## assemble_context — original line 51 (docstring)
+
+````text
+    Returns a `dict` with:
+      - 'assembled_context' (str): the full prompt-ready text
+      - 'own_stage_context' (str), 'adjacent_stage_context' (str),
+        'stage_summaries' (str): the three phases separately
+      - 'metadata' (dict): bookkeeping (token counts, stages covered)
+      - 'selected_memories' (list[dict]): the memory dicts chosen in
+        Phase 1 + Phase 2, with their 'memory_id' preserved so the
+        caller can score retrieval hits against gold.
+````
+
+## assemble_context — original line 60 (docstring)
+
+````text
+    This is the new retrieval primitive that replaces flat top-k for
+    long-context scenarios. See `mcp_server/core/context_assembly/` for
+    the full design and paper citations.
+````
+
+## assemble_context — original line 49 (mixed-contract-rationale)
+
+````text
+    Args:
+        query: raw user query text.
+        store: PgMemoryStore (for entity graph + memory fetch).
+        embeddings: EmbeddingEngine (for query encoding in Phase 1).
+        current_stage: the stage ID the query is "about" (e.g. the
+            conversation ID for BEAM, or the current agent_topic for
+            production).
+        token_budget: target total tokens for the assembled context.
+            Default 6000 matches Swift Stage5PRD.
+        domain: optional domain filter for Phase 1 retrieval.
+        stage_field: memory field used to determine stage. Default
+            "plan_id" for BEAM; use "agent_topic" or similar in prod.
+        budget_split: (own, adjacent, summaries) proportions summing
+            to 1.0. Default (0.6, 0.3, 0.1) matches Swift.
+        max_chunks_per_phase: hard cap on chunks selected per phase.
+        diversity_lambda: MMR diversity weight for Phase 1 submodular
+            selection. Default 0.5.
+    
+````
+
+## module — original line 26 (comment)
+
+````text
+# Entity names shorter than this are too generic to match against content.
+# source: pre-existing tuned value, moved unchanged with its only consumer in
+# the #368 split (was #197 family 3); provenance not recorded at introduction.
+````
+
+## module — original line 94 (comment)
+
+````text
+# Cache entity graph + entity-id→name lookup once per assemble call
+# so we don't re-query on every phase.
+````
+
+## module — original line 119 (comment)
+
+````text
+# ── Retrieval callback for Phase 1 (own-stage) ────────────────────
+# Runs intent-adaptive recall, filters to current stage, and tags
+# each candidate with its entity IDs. Entity lookup uses substring
+# matching of known entity names against memory content — NOT a
+# fresh extraction pass. The reason: knowledge_graph.extract_entities
+# is regex-based for code patterns (imports, def, class) and misses
+# all entities from prose content. But the graph WAS populated at
+# ingest time from the union of all memory contents, so every entity
+# appearing in any memory is present in the graph. Substring
+# matching from the graph down to each memory gives complete
+# memory→entity linkage for both code and prose.
+````
+
+## module — original line 131 (comment)
+
+````text
+# Deferred: assembly consumes recall's output, and pg_recall re-exports
+# assemble_context, so a module-level import here would close the cycle.
+# The dependency is genuinely one-directional at RUNTIME — assembly
+# calls recall, never the reverse — so the deferral expresses the real
+# shape rather than hiding a design problem.
+````
+
+## inline — original line 136 (directive-rationale)
+
+````text
+# noqa: PLC0415 — breaks the facade import cycle; see comment above
+````
+
+## module — original line 181 (comment)
+
+````text
+# ── Memories-by-entity callback for Phase 2 aggregation ───────────
+# Cortex's store looks up memories by entity NAME via FTS on content
+# (there is no junction table). We translate PPR top-k entity IDs
+# back to names and run a content search per name. Each returned
+# memory is annotated with its full entity_ids list (derived via
+# substring match against the graph) so score_memories_by_ppr can
+# compute PPR mass correctly — without this, mass is always 0 and
+# Phase 2 returns nothing.
+````
+
+## module — original line 238 (comment)
+
+````text
+# Minimal implementation: walk memories and return truncated
+# content of the first non-current-stage hit. Good enough for
+# the benchmark until we add real summarization.
+````
+
+## module — original line 260 (comment)
+
+````text
+# Truncation-awareness pass: each phase above enforces its own
+# sub-budget independently (per-phase submodular selection caps),
+# so their sum can still exceed the caller's total token_budget —
+# estimate_tokens is a heuristic and per-phase caps do not
+# renegotiate against each other. condense_assembled_context is a
+# no-op (returns the identical header+concatenation) whenever the
+# three phases already fit; only priority-condenses when they don't.
+# Skipped when token_budget is None (stage_assembler's own
+# "no token truncation" mode — nothing to condense against).
+````

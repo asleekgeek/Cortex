@@ -123,11 +123,8 @@ def _build_single_domain(
 
     data_quality = min(len(convs) / 10, 1.0)
     confidence = round(min(len(convs) / 50, 1.0) * data_quality * 100) / 100
-    # When a canonical (git-derived) domain_id grouped multiple projects,
-    # the label should reflect that canonical name, not a random member's
-    # stripped path tail. Bare lower-case domain_ids (e.g. "ai-architect")
-    # title-case to a clean human label; otherwise fall back to the legacy
-    # per-project derivation for un-resolved single-project domains.
+    # source: ADR-0227
+
     if domain_id and "-" in domain_id and not domain_id.startswith("-"):
         label = domain_id.replace("-", " ").title()
     else:

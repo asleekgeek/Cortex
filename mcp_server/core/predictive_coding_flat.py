@@ -1,24 +1,6 @@
 """Flat 4-signal novelty computation for the write gate.
 
-Embedding, entity, temporal, and structural novelty signals used by
-the remember handler and predictive coding gate.
-
-Provenance: Friston 2005 grounds the CONCEPT — gating writes by prediction
-error / novelty — not the specific weights, timescales, or fallback priors
-below. Those are engineering defaults. The honesty discriminator is the
-per-constant disclaimer, not the citation (see docs/provenance/
-paper-implementation-audit.md, Wave 3). The combination weights are validated
-end-to-end: the resulting flat scorer separates novel content from duplicates
-at ROC-AUC=0.9998 (flat mode, benchmarks/gate_precision, 2026-06-11) — the
-hierarchical alternative scored only 0.5514 on the same corpus, which is why
-flat is the default path.
-
-References:
-    Friston K (2005) A theory of cortical responses.
-        Phil Trans R Soc B 360:815-836 — concept only (prediction-error gating).
-
-Pure business logic -- no I/O.
-"""
+source: ADR-0223"""
 
 from __future__ import annotations
 
@@ -39,8 +21,8 @@ _LIST_RE = re.compile(r"^[\s]*[-*+]\s+\S", re.MULTILINE)
 def compute_embedding_novelty(similarities: list[float]) -> float:
     """Embedding novelty = 1 - max(similarities). 0.5 if no data."""
     if not similarities:
-        # source: engineering default — neutral prior (mid-scale) when there is
-        # no similarity evidence to judge novelty either way.
+        # source: ADR-0223
+
         return 0.5
     return max(0.0, min(1.0, 1.0 - max(similarities)))
 
@@ -54,8 +36,8 @@ def compute_entity_novelty(
 ) -> float:
     """Fraction of entities that are truly new. 0.5 if none extracted."""
     if not new_entity_names:
-        # source: engineering default — neutral prior when no entities were
-        # extracted (no evidence either way).
+        # source: ADR-0223
+
         return 0.5
     truly_new = sum(1 for e in new_entity_names if e not in known_entity_names)
     return truly_new / len(new_entity_names)
@@ -67,21 +49,21 @@ def compute_entity_novelty(
 def compute_temporal_novelty(hours_since_similar: float | None) -> float:
     """Temporal novelty via exponential saturation: 1 - exp(-hours/24)."""
     if hours_since_similar is None:
-        # source: engineering default — mildly-novel prior when temporal
-        # distance to a similar memory is unknown.
+        # source: ADR-0223
+
         return 0.8
     if hours_since_similar <= 0:
         return 0.0
-    # source: engineering default — 24h (one-day) saturation timescale. Friston
-    # 2005 motivates temporal prediction error; the timescale is not paper-set.
+    # source: ADR-0223
+
     return min(1.0, 1.0 - math.exp(-hours_since_similar / 24.0))
 
 
 # -- Structural novelty -------------------------------------------------------
 
 
-# source: engineering default — order-of-magnitude length buckets
-# (snippet / paragraph / section / page / document) for shape comparison.
+# source: ADR-0223
+
 _SNIPPET_MAX_CHARS = 100
 _PARAGRAPH_MAX_CHARS = 500
 _SECTION_MAX_CHARS = 2000
@@ -115,8 +97,8 @@ def _structural_features(content: str) -> dict[str, int | float]:
 def compute_structural_novelty(content: str, recent_contents: list[str]) -> float:
     """Structural novelty by comparing document shape to recent memories."""
     if not recent_contents:
-        # source: engineering default — mildly-novel prior when there is no
-        # recent content to compare document shape against.
+        # source: ADR-0223
+
         return 0.7
     candidate = _structural_features(content)
     keys = list(candidate.keys())
@@ -139,10 +121,8 @@ def compute_novelty_score(
     structural_novelty: float,
 ) -> float:
     """Combined novelty score from the 4-signal gate. Returns [0, 1]."""
-    # source: engineering default — hand-tuned blend (embedding-dominant, then
-    # entity / temporal / structural). NOT from Friston 2005. Validated
-    # end-to-end: this blend yields ROC-AUC=0.9998 separating novel from
-    # duplicate content (flat mode, benchmarks/gate_precision, 2026-06-11).
+    # source: ADR-0223
+
     return (
         0.40 * embedding_novelty
         + 0.25 * entity_novelty

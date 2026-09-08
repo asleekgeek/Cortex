@@ -1,0 +1,59 @@
+---
+title: "ADR-0195 — mcp_server/core/knowledge_graph.py rationale"
+status: accepted
+source: mcp_server/core/knowledge_graph.py
+---
+
+# ADR-0195 — mcp_server/core/knowledge_graph.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Extracts entities (functions, dependencies, errors, decisions, technologies)
+and typed relationships (imports, calls, resolved_by, decided_to_use, co_occurrence)
+from memory content using regex-based heuristics. No LLM needed.
+````
+
+## module — original line 7 (docstring)
+
+````text
+Pure business logic — no I/O. Storage is handled by the caller.
+````
+
+## module — original line 9 (docstring)
+
+````text
+Clean architecture split: core = extraction logic, infrastructure = persistence.
+
+````
+
+## _extract_pattern_entities — original line 131 (docstring)
+
+````text
+Extract error-fix, decision, file path, and CamelCase entities.
+````
+
+## module — original line 76 (comment)
+
+````text
+# Private function names shorter than this are noise (e.g. "_x").
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## module — original line 81 (comment)
+
+````text
+# CamelCase tokens of length <= 2 are ignored as noise.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## module — original line 86 (comment)
+
+````text
+# source: structural — a decided_to_use edge links the first two decisions,
+# so at least two are required
+````

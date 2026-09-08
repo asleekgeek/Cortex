@@ -1,29 +1,6 @@
 """Platt scaling calibration for FlashRank cross-encoder scores.
 
-Fits a logistic regression  P(useful | raw_score) = 1 / (1 + exp(A*s + B))
-over (raw_score, label) pairs collected from user ``rate_memory`` feedback.
-
-Per Taleb antifragile audit AF-2: turns retrieval failures into
-calibration fuel. Each "not useful" rating tightens the calibration;
-each "useful" rating reinforces. With enough samples the system gets
-better with use, not worse.
-
-Important context — historical ablation (2026-04-03, see reranker.py):
-  Platt-style calibration with HAND-PICKED A, B on benchmark data
-  regressed every benchmark (BEAM -0.148, LoCoMo -5.1pp MRR). This
-  module targets a DIFFERENT input distribution: user rate_memory
-  feedback, not benchmark max_CE. Whether it improves ranking is an
-  empirical question — the calibration is loaded only after MIN_SAMPLES
-  real ratings, and any caller can disable via apply=False.
-
-Reference:
-    Platt, J. C. (1999). "Probabilistic outputs for support vector
-        machines and comparisons to regularized likelihood methods."
-        *Advances in Large Margin Classifiers*, MIT Press.
-
-Pure business logic — no I/O. Fitting uses Newton-Raphson on the
-log-likelihood, which is the standard stable approach for Platt's
-2-parameter sigmoid.
+source: ADR-0222
 """
 
 from __future__ import annotations
@@ -31,26 +8,27 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-# Determinant magnitude below which the 2x2 Hessian is treated as
-# singular.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0222
+
+# source: ADR-0222
 _SINGULAR_DET_EPS = 1e-12
 
 # ── Defaults ───────────────────────────────────────────────────────────
 
-# source: engineering default (Platt 1999 prescribes no minimum); calibration
-# pending. Below this, refuse to fit — too few pairs to estimate 2 params.
+# source: ADR-0222
+# source: ADR-0222
 MIN_SAMPLES: int = 50
-# source: Lin, Lin & Weng (2007) Algorithm 1, "maxiter = 100".
+# source: ADR-0222
 MAX_ITERATIONS: int = 100
-# source: Lin, Lin & Weng (2007) Algorithm 1 stopping criterion |g| < 1e-5.
+# source: ADR-0222
 CONVERGENCE_TOL: float = 1e-5  # Gradient norm below this -> fit done.
 
 
 @dataclass(frozen=True)
 class PlattParams:
     """Fitted logistic regression parameters for Platt scaling.
+
+    source: ADR-0222
 
     Invariants:
       - A and B are finite real numbers.
@@ -90,7 +68,7 @@ def _sigmoid(x: float) -> float:
     return ex / (1.0 + ex)
 
 
-def _predict_platt(A: float, B: float, s: float) -> float:  # noqa: N803 -- Platt 1999 notation
+def _predict_platt(A: float, B: float, s: float) -> float:  # noqa: N803 — source: ADR-0222
     """Predicted P(useful | s) under parameters (A, B)."""
     return _sigmoid(-(A * s + B))
 
@@ -98,9 +76,7 @@ def _predict_platt(A: float, B: float, s: float) -> float:  # noqa: N803 -- Plat
 def _smoothed_target(y: int, n_pos: int, n_neg: int) -> float:
     """Platt-smoothed regression target for one example.
 
-    source: Platt 1999 Eq.7 / Lin-Lin-Weng (2007) Eq.2 —
-      positive example (y == 1): t = (N+ + 1) / (N+ + 2)  -> uses n_pos
-      negative example (y == 0): t = 1 / (N- + 2)         -> uses n_neg
+    source: ADR-0222
     """
     if y == 1:
         return (n_pos + 1.0) / (n_pos + 2.0)
@@ -129,9 +105,7 @@ def fit_platt(
       Hess = sum_i p_i * (1 - p_i) * [[s_i^2, s_i], [s_i, 1]]
       [A, B] -= Hess^-1 @ grad
 
-    source: Lin, Lin & Weng (2007) Algorithm 1 gradient/Hessian; standard
-    logistic-regression Newton step (also in any GLM text).
-    """
+    source: ADR-0222"""
     n = len(samples)
     if n < min_samples:
         return None
@@ -140,11 +114,11 @@ def fit_platt(
         # Degenerate: logistic MLE diverges when classes are pure.
         return None
 
-    # Good initial guess per Platt 1999 Eq. (4): based on class-prior.
+    # source: ADR-0222
     n_pos = sum(labels)
     n_neg = n - n_pos
     prior1 = (n_pos + 1.0) / (n + 2.0)  # Laplace-smoothed base rate.
-    A, B = 0.0, math.log((n_neg + 1.0) / (n_pos + 1.0))  # noqa: N806 -- Platt 1999 notation
+    A, B = 0.0, math.log((n_neg + 1.0) / (n_pos + 1.0))  # noqa: N806 — source: ADR-0222
 
     for _ in range(max_iter):
         # Accumulate gradient and Hessian.
@@ -174,8 +148,8 @@ def fit_platt(
         inv = 1.0 / det
         d_a = inv * (h_bb * g_a - h_ab * g_b)
         d_b = inv * (-h_ab * g_a + h_aa * g_b)
-        A -= d_a  # noqa: N806 -- Platt 1999 notation
-        B -= d_b  # noqa: N806 -- Platt 1999 notation
+        A -= d_a  # noqa: N806 — source: ADR-0222
+        B -= d_b  # noqa: N806 — source: ADR-0222
 
     # Guard: reject non-finite parameters.
     if not (math.isfinite(A) and math.isfinite(B)):
@@ -191,6 +165,8 @@ def fit_platt(
 
 def calibrate_score(raw_score: float, params: PlattParams | None) -> float:
     """Return the calibrated P(useful | raw_score).
+
+    source: ADR-0222
 
     Contract:
       pre:  raw_score is finite; params is either None or a fitted PlattParams.
@@ -223,10 +199,7 @@ def pairwise_discrimination(
     """Fraction of (useful, not-useful) pairs where calibrated(useful) >
     calibrated(not-useful).
 
-    Used as the post-training sanity check: a correctly-fit Platt must
-    rank useful above not-useful on its training support at least as
-    well as the raw scores do (otherwise the fit is miscalibrated and
-    would hurt retrieval).
+    source: ADR-0222
 
     Returns a float in [0, 1]. 1.0 = perfect pairwise separation.
     """

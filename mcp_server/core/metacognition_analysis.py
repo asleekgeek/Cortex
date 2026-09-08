@@ -18,19 +18,19 @@ _RECENCY_THRESHOLDS = [
 ]
 _RECENCY_DEFAULT = 0.2
 
-# Coverage classification cutoffs.
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0204
+
+# source: ADR-0204
 _COVERAGE_SUFFICIENT = 0.7
 _COVERAGE_PARTIAL = 0.4
 
-# source: structural — primacy + recency positioning needs at least two
-# selected chunks
+# source: ADR-0204
+
 _MIN_CHUNKS_FOR_PRIMACY_RECENCY = 2
 
-# Overflow-summary text cap (chars).
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0204
+
+# source: ADR-0204
 _SUMMARY_MAX_CHARS = 300
 
 

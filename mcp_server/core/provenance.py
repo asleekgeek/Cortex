@@ -1,55 +1,6 @@
 """Provenance grading — pure business logic (I6-D6).
 
-Grades a memory's content by the CONTROLLABILITY of the external references
-it makes: file paths, git commit SHAs, URLs, and content-addressed artifact
-digests (``infrastructure/artifact_store.py``, ``sha256[:16]``). Citation
-references (DOI / arXiv id) are recognized but never auto-checked — no
-source exists to verify them against (coding-standards.md §8: "no source,
-no implementation" applies equally to verification code).
-
-Grade vocabulary (persisted to ``memories.source_attribution`` by
-``handlers/validate_memory.py``, the sole writer of this grade going
-forward — I6-D6):
-
-  VERIFIED     — every controllable reference in the memory currently
-                 checks out (all file paths exist, all commit SHAs resolve
-                 in their memory's local repo, all artifact digests match).
-  VERIFIABLE   — the memory carries references, but at least one could not
-                 be conclusively checked here and now (repo unavailable
-                 locally, URL not sampled this pass, a citation with no
-                 automated check), and no CHECKED reference came back dead.
-  UNVERIFIABLE — no reference at all (testimony only), OR at least one
-                 checked reference is dead (missing file, unreachable URL,
-                 missing/mismatched artifact digest).
-
-Per-type grade ceiling (from the I6-D6 design table — not every reference
-type can reach every grade):
-  file path        → VERIFIED (exists) | UNVERIFIABLE (missing)
-  git commit SHA    → VERIFIED (found in a locally-available repo) |
-                       VERIFIABLE (repo unavailable locally, or the check
-                       was inconclusive — a stale/shallow local clone is
-                       indistinguishable from a genuinely dead SHA, so we
-                       never penalize the memory to UNVERIFIABLE from a
-                       commit ref alone)
-  URL               → VERIFIABLE (2xx/3xx, or not sampled this pass) |
-                       UNVERIFIABLE (4xx/5xx/timeout) — a URL can never
-                       raise a memory to VERIFIED; the web fluctuates and
-                       a dead link does not invalidate a historical fact
-                       (kept OUT of the staleness score for the same
-                       reason — see core/staleness.py).
-  artifact digest   → VERIFIED (recomputed sha256[:16] matches) |
-                       UNVERIFIABLE (artifact missing or hash mismatch)
-  citation (DOI/arXiv) → VERIFIABLE at best — never auto-verified, never
-                       marked dead.
-
-The memory's overall grade is the WORST outcome among its references
-(min over the ranking UNVERIFIABLE < VERIFIABLE < VERIFIED). A memory with
-zero extractable references is UNVERIFIABLE (testimony only).
-
-No I/O performed here. Callers (validate_memory) resolve existence /
-reachability / repo availability and pass the outcomes in — the same
-caller-resolves-I/O separation as core/staleness.py.
-"""
+source: ADR-0231"""
 
 from __future__ import annotations
 
@@ -78,7 +29,7 @@ _ARTIFACT_RE = re.compile(
     r"([\w./\\-]*artifacts[/\\]\d{4}-\d{2}[/\\]([0-9a-f]{16})\.md)"
 )
 
-# Citation markers this tool recognizes but never auto-checks: DOI and arXiv ids.
+# source: ADR-0231
 _CITATION_RE = re.compile(
     r"\b(?:10\.\d{4,9}/\S+|arXiv:\d{4}\.\d{4,5})\b", re.IGNORECASE
 )
@@ -122,7 +73,10 @@ def extract_artifact_refs(content: str) -> list[tuple[str, str]]:
 
 
 def has_citation_ref(content: str) -> bool:
-    """True iff content carries a structured DOI/arXiv citation marker."""
+    """True iff content carries a structured DOI/arXiv citation marker.
+
+    source: ADR-0231
+    """
     return bool(_CITATION_RE.search(content or ""))
 
 
@@ -253,16 +207,8 @@ def _ref_counts(
     }
 
 
-# ── Write-time feedback (M-D5, 7.5) ─────────────────────────────────────────
-#
-# NOT a grade write path: this is a lookup table over the existing grade
-# vocabulary (no new inference), used to hand the WRITER of a memory an
-# immediate, human-readable nudge in the `remember()` response. Never
-# persisted — `handlers/validate_memory.py` remains the sole writer of the
-# grade vocabulary to `memories.source_attribution` (I6-D6); see that
-# module's docstring and `handlers/remember_helpers.py::insert_and_post_process`
-# for why a second writer to that column would silently defeat the C1
-# confabulation gate (`core/source_monitoring.py::recall_confabulation_risk`).
+# source: ADR-0231
+
 
 _WRITE_TIME_HINTS: dict[str, str] = {
     VERIFIED: "All checkable references verified locally.",
@@ -277,11 +223,9 @@ _WRITE_TIME_HINTS: dict[str, str] = {
     ),
 }
 
-# M-D2 (7.4) named the 'deliberate' write class as the one meant to carry
-# durable, considered testimony -- an unverifiable deliberate write gets a
-# stronger call-to-action than an unverifiable auto/derived/mechanical one
-# (those are machine-authored by construction; asking them for a citation
-# is meaningless).
+# source: ADR-0231
+
+
 _DELIBERATE_UNVERIFIABLE_SUFFIX = (
     " For a durable claim, add one -- testimony without a reference "
     "degrades under recall competition and stays 'unverifiable' through "
@@ -297,9 +241,10 @@ def _named_dead_refs(dead_refs: list[str]) -> str:
 
 
 def _dead_ref_hint_root_missing(report: ProvenanceReport, root: str) -> str:
-    """State 2a (issue #345): the resolution root itself is not a directory
-    on disk, so every file ref under it was necessarily unresolvable --
-    the dead-refs list says nothing about whether the PATHS are wrong."""
+    """State 2a: the resolution root itself is not a directory on disk.
+
+    source: ADR-0231
+    """
     return (
         f"{len(report.dead_refs)} checkable reference(s) could not be "
         f"resolved because the resolution root '{root}' is not a directory "
@@ -309,9 +254,10 @@ def _dead_ref_hint_root_missing(report: ProvenanceReport, root: str) -> str:
 
 
 def _dead_ref_hint_root_implicit(report: ProvenanceReport, root: str) -> str:
-    """State 2b (issue #345): no `directory` argument was given, so
-    resolution silently fell back to the server process's current working
-    directory, which need not be the writer's project root."""
+    """State 2b: no `directory` argument was given.
+
+    source: ADR-0231
+    """
     total = sum(report.ref_counts.values())
     return (
         f"{len(report.dead_refs)} of {total} checkable reference(s) could "
@@ -324,8 +270,11 @@ def _dead_ref_hint_root_implicit(report: ProvenanceReport, root: str) -> str:
 
 
 def _dead_ref_hint_root_explicit(report: ProvenanceReport, root: str) -> str:
-    """State 3 (issue #345): resolved against a real, explicitly-given
-    root, and the reference(s) are genuinely absent there."""
+    """State 3: resolved against a real, explicitly-given root, and the reference(s)
+    are genuinely absent there.
+
+    source: ADR-0231
+    """
     total = sum(report.ref_counts.values())
     return (
         f"{len(report.dead_refs)} of {total} checkable reference(s) could "
@@ -341,22 +290,9 @@ def _unverifiable_hint(
     resolution_root_explicit: bool,
     resolution_root_exists: bool,
 ) -> str:
-    """UNVERIFIABLE-branch hint (issue #345).
+    """UNVERIFIABLE-branch hint.
 
-    ``grade_provenance`` folds three distinct UNVERIFIABLE causes into one
-    grade -- ``report.dead_refs`` (from ``_build_reason`` above) already
-    separates "no reference at all" from "reference(s) resolved dead", but
-    a caller reproduction (memory 4341427, 2026-08-08) showed a second dead
-    -ref cause the naive fix still mislabels: refs that are perfectly real
-    but were checked against the WRONG resolution root because the caller
-    never passed ``directory`` (``grade_from_content``'s ``base_dir =
-    directory or os.getcwd()`` fallback, ``handlers/remember_helpers.py``).
-    Both a genuinely-dead ref and a wrong-root ref land in ``dead_refs``
-    identically from ``grade_provenance``'s point of view (it only sees
-    pre-resolved existence booleans) -- the distinction is caller-side
-    context (was ``directory`` explicit? does the resolved root even exist
-    on disk?), passed in here as booleans rather than re-derived with I/O
-    (core/ stays zero-I/O; see module docstring).
+    source: ADR-0231
 
     precondition: ``report.grade == UNVERIFIABLE``; ``resolution_root`` is
         the directory refs were resolved against (may be "");
@@ -392,24 +328,13 @@ def write_time_hint(
 ) -> str:
     """Deterministic, templated feedback for the write-time caller (M-D5).
 
-    precondition: ``report`` came from ``grade_from_content``
-        (``handlers/validate_memory.py``, write-path) or ``grade_provenance``
-        generally; ``write_class`` is the resolved write class of the
-        memory being written (M-D2, 7.4), or "" when not applicable.
-        ``resolution_root``/``resolution_root_explicit``/
-        ``resolution_root_exists`` (issue #345) describe the directory the
-        caller resolved file refs against -- default to the pre-#345
-        behaviour (explicit, existing, unnamed) so a caller that has not
-        been updated to pass them gets the old wording unchanged.
-    postcondition: returns a hint string keyed by ``report.grade``. For
-        VERIFIED/VERIFIABLE this is a pure lookup (no new inference). For
-        UNVERIFIABLE it further branches on ``report.dead_refs`` and the
-        resolution-root booleans (issue #345) so a write whose references
-        were extracted but resolved dead is told WHICH ones and AGAINST
-        WHAT ROOT, instead of being told none was found -- a stronger
-        call-to-action is appended when ``write_class == "deliberate"``.
-        Never persisted; callers surface this in the write response only.
-    """
+    precondition: report comes from grade_from_content or grade_provenance;
+        write_class is the resolved class or an empty string. The resolution
+        root flags describe the caller's reference-resolution directory.
+    postcondition: returns a non-persisted hint keyed by report.grade.
+        VERIFIED/VERIFIABLE use a lookup. UNVERIFIABLE includes dead refs
+        and resolution root details, with an additional deliberate-write hint.
+    source: ADR-0231"""
     if report.grade == UNVERIFIABLE:
         hint = _unverifiable_hint(
             report,

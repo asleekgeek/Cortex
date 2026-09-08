@@ -1,0 +1,41 @@
+---
+title: "ADR-0225 — mcp_server/core/predictive_coding_signals.py rationale"
+status: accepted
+source: mcp_server/core/predictive_coding_signals.py
+---
+
+# ADR-0225 — mcp_server/core/predictive_coding_signals.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Level 0 (Sensory): Raw content features (length, structure, code blocks, file refs).
+Level 1 (Entity): Entity and relationship pattern novelty.
+Level 2 (Schema): Domain-level regularity matching.
+````
+
+## module — original line 7 (docstring)
+
+````text
+Also re-exports flat 4-signal novelty functions used by the remember handler
+and write_gate (embedding, entity, temporal, structural).
+````
+
+## module — original line 10 (docstring)
+
+````text
+References:
+    Friston K (2005) A theory of cortical responses.
+        Phil Trans R Soc B 360:815-836
+    Bastos AM et al. (2012) Canonical microcircuits for predictive coding.
+        Neuron 76:695-711
+````
+
+## module — original line 16 (docstring)
+
+````text
+Pure business logic -- no I/O.
+
+````

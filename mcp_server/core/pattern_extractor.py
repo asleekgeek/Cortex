@@ -120,14 +120,14 @@ def extract_entry_points(conversations: list[dict]) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-# Minimum token length kept by the tokenizer.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0213
+
+
 _MIN_TOKEN_LEN = 2
 
-# Minimum shared keywords for two ngrams to join the same group.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0213
+
+
 _MIN_SHARED_KEYWORDS = 2
 
 

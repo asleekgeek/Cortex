@@ -1429,11 +1429,6 @@
     },
     {
       "file": "mcp_server/core/goal_maintenance.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/goal_maintenance.py",
       "kind": "method-size",
       "detail": "build_goal_from_triggers"
     },
@@ -1456,11 +1451,6 @@
       "file": "mcp_server/core/grooming_health.py",
       "kind": "unsourced-constant",
       "detail": "GROOMING_STALENESS_THRESHOLD_DAYS"
-    },
-    {
-      "file": "mcp_server/core/habituation.py",
-      "kind": "method-size",
-      "detail": "habituate_novelty"
     },
     {
       "file": "mcp_server/core/habituation.py",
@@ -1518,26 +1508,6 @@
       "detail": "_compute_moments"
     },
     {
-      "file": "mcp_server/core/homeostatic_health.py",
-      "kind": "method-size",
-      "detail": "_merge_chunk_moments"
-    },
-    {
-      "file": "mcp_server/core/homeostatic_health.py",
-      "kind": "method-size",
-      "detail": "compute_distribution_health_streaming_by_class"
-    },
-    {
-      "file": "mcp_server/core/homeostatic_plasticity.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/homeostatic_plasticity.py",
-      "kind": "unsourced-constant",
-      "detail": "_BCM_THETA_DECAY"
-    },
-    {
       "file": "mcp_server/core/homeostatic_plasticity.py",
       "kind": "unsourced-constant",
       "detail": "_DEFAULT_COHORT_SIGMA"
@@ -1555,11 +1525,6 @@
     {
       "file": "mcp_server/core/homeostatic_plasticity.py",
       "kind": "unsourced-constant",
-      "detail": "_MIN_GLOBAL_EXCITABILITY"
-    },
-    {
-      "file": "mcp_server/core/homeostatic_plasticity.py",
-      "kind": "unsourced-constant",
       "detail": "_SCALING_RATE"
     },
     {
@@ -1568,24 +1533,9 @@
       "detail": "_TARGET_ACTIVE_FRACTION"
     },
     {
-      "file": "mcp_server/core/homeostatic_plasticity.py",
-      "kind": "unsourced-constant",
-      "detail": "_TARGET_HEAT"
-    },
-    {
       "file": "mcp_server/core/hopfield.py",
       "kind": "layer-violation",
       "detail": "numpy"
-    },
-    {
-      "file": "mcp_server/core/interference.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/interference.py",
-      "kind": "method-size",
-      "detail": "compute_retrieval_suppression"
     },
     {
       "file": "mcp_server/core/interference.py",
@@ -1624,11 +1574,6 @@
     },
     {
       "file": "mcp_server/core/interference_detection.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/interference_detection.py",
       "kind": "unsourced-constant",
       "detail": "_CONTEXT_DISCOUNT"
     },
@@ -1653,11 +1598,6 @@
       "detail": "decompose_memory"
     },
     {
-      "file": "mcp_server/core/memory_dedup_exact.py",
-      "kind": "method-size",
-      "detail": "elect_survivor"
-    },
-    {
       "file": "mcp_server/core/memory_ingest.py",
       "kind": "layer-violation",
       "detail": "mcp_server.observability"
@@ -1666,11 +1606,6 @@
       "file": "mcp_server/core/memory_ingest.py",
       "kind": "method-size",
       "detail": "ingest_memory"
-    },
-    {
-      "file": "mcp_server/core/memory_reheat.py",
-      "kind": "method-size",
-      "detail": "compute_reheat_target"
     },
     {
       "file": "mcp_server/core/memory_reheat.py",
@@ -1720,22 +1655,12 @@
     {
       "file": "mcp_server/core/microglial_pruning.py",
       "kind": "unsourced-constant",
-      "detail": "_ALPHA_THRESHOLD"
-    },
-    {
-      "file": "mcp_server/core/microglial_pruning.py",
-      "kind": "unsourced-constant",
       "detail": "_MIN_ENTITY_HEAT"
     },
     {
       "file": "mcp_server/core/microglial_pruning.py",
       "kind": "unsourced-constant",
       "detail": "_PROTECTION_ACCESS_THRESHOLD"
-    },
-    {
-      "file": "mcp_server/core/microglial_pruning.py",
-      "kind": "unsourced-constant",
-      "detail": "_TEMPORAL_HALF_LIFE_HOURS"
     },
     {
       "file": "mcp_server/core/mmr_diversity.py",
@@ -1751,11 +1676,6 @@
       "file": "mcp_server/core/narrative.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/neuromodulation_channels.py",
-      "kind": "method-size",
-      "detail": "compute_dopamine_rpe"
     },
     {
       "file": "mcp_server/core/neuromodulation_channels.py",
@@ -1809,18 +1729,8 @@
     },
     {
       "file": "mcp_server/core/oscillatory_phases.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/oscillatory_phases.py",
       "kind": "unsourced-constant",
       "detail": "ACH_BASELINE"
-    },
-    {
-      "file": "mcp_server/core/oscillatory_phases.py",
-      "kind": "unsourced-constant",
-      "detail": "GAMMA_CAPACITY"
     },
     {
       "file": "mcp_server/core/oscillatory_phases.py",
@@ -1881,11 +1791,6 @@
       "file": "mcp_server/core/pg_recall_weights.py",
       "kind": "layer-violation",
       "detail": "os"
-    },
-    {
-      "file": "mcp_server/core/pg_recall_weights.py",
-      "kind": "method-size",
-      "detail": "compute_pg_weights"
     },
     {
       "file": "mcp_server/core/platt_calibration.py",
@@ -1953,11 +1858,6 @@
       "detail": "exceeds 300-line cap"
     },
     {
-      "file": "mcp_server/core/profile_assembler.py",
-      "kind": "method-size",
-      "detail": "_build_single_domain"
-    },
-    {
       "file": "mcp_server/core/profile_builder.py",
       "kind": "unsourced-constant",
       "detail": "_BURST_THRESHOLD_MS"
@@ -1976,11 +1876,6 @@
       "file": "mcp_server/core/provenance.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/provenance.py",
-      "kind": "method-size",
-      "detail": "_unverifiable_hint"
     },
     {
       "file": "mcp_server/core/provenance.py",
