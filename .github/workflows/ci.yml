@@ -906,7 +906,16 @@ jobs:
     if: github.event_name != 'pull_request' || needs.changes.outputs.code == 'true' || needs.changes.outputs.deps == 'true' || needs.changes.outputs.workflows == 'true' || needs.changes.outputs.docker == 'true'
     name: Docker Smoke (bare-container DB-less contract)
     runs-on: ubuntu-latest
-    # source: run 33951959734 (2026-09-05), max 369s; ceil(2 * 369 / 60).
+    # source: run 34217523633 job 102032799571 (2026-09-08, push to main,
+    # warm cache): whole job 242s, of which the build step 225s — the steady
+    # state this bound is sized against; ceil(2 * 242 / 60) = 9, kept at 13
+    # for headroom over the 369s tail measured on run 33951959734
+    # (2026-09-05). The bound is NOT sized against a cold `mode=max` cache
+    # EXPORT: run 34225008423 job 102057139452 (2026-09-08, PR #492) finished
+    # building at 70.8s and was still in `exporting to GitHub Actions Cache`
+    # when the 13-minute bound fired at 827s, so the smoke-test body never
+    # ran. That export is removed from pull_request runs below rather than
+    # budgeted for — see the cache-to comment.
     timeout-minutes: 13
     # BLOCKING: this job asserts the exact contract that silently broke for
     # two months (fix/bare-container-contract, commit 5d71069c) — third-party
@@ -939,7 +948,25 @@ jobs:
           tags: cortex-smoke:local
           load: true
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Write the layer cache only on pushes to a branch, never on a
+          # pull_request run. GitHub Actions scopes a cache entry to the ref
+          # that created it: the default branch's entries are readable from
+          # every branch, but an entry a PR run writes is readable only by
+          # that same PR's later runs. This job runs once per head commit, so
+          # a PR-written entry is exported and then never read — pure cost on
+          # the critical path. `cache-from` is unconditional, so PRs keep
+          # reading main's warm cache and the torch CPU-wheel layer is still
+          # not re-downloaded.
+          # source: GitHub Actions cache "Restrictions for accessing a cache"
+          # (docs.github.com/actions/writing-workflows/choosing-what-your-
+          # workflow-does/caching-dependencies-to-speed-up-workflows), and
+          # the measurement below.
+          # The condition is written as `!= 'pull_request' && <value> || ''`
+          # and not `== 'pull_request' && '' || <value>`: GitHub expressions
+          # return the operand, not a boolean, and the empty string is
+          # falsy, so the latter form would fall through to <value> on
+          # every event and disable nothing.
+          cache-to: ${{ github.event_name != 'pull_request' && 'type=gha,mode=max' || '' }}
 
       # Reuses the build above (load: true made it visible to the local
       # docker daemon) instead of rebuilding — scripts/docker_smoke.sh is the

@@ -8,6 +8,18 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Docker Smoke no longer times out on pull requests.** The job wrote its
+  buildx layer cache with `cache-to: type=gha,mode=max` on every event. On
+  run 34225008423 (PR #492) the image build finished at 70.8s and the job
+  was still in `exporting to GitHub Actions Cache` when the 13-minute bound
+  fired at 827s — the smoke-test body never ran, so the PR went red on a
+  step that asserts nothing. GitHub scopes a cache entry to the ref that
+  wrote it, and this job runs once per head commit, so a PR-written entry is
+  exported and never read. The export is now skipped on `pull_request`;
+  `cache-from` stays unconditional, so PRs keep reading `main`'s warm cache
+  (whole job 242s there, run 34217523633). The two sibling `Docker Build`
+  jobs already used `mode=min`; this removes the odd one out.
+
 - **A truncated SessionStart banner line is no longer a dead end.** Every
   memory line in the banner is cut at 120 characters by `_short`, but the
   rendered line carried no id — the reader could see that content had been
