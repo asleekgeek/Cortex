@@ -6,6 +6,20 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`benchmarks/reproduce.sh`'s published `FLOOR_*` check no longer blocks
+  the build.** `main` itself measures below the published floors (LongMemEval
+  MRR 0.904988 < 0.914, LoCoMo MRR 3-run mean 0.779868 < 0.805, Recall@10
+  0.889506 < 0.915 — cdeust/Cortex PR #492), so every PR built on `main`
+  inherited an already-failing gate. `check_floors` stays informational
+  (rounds `got` to the same 4-decimal precision it prints before comparing,
+  matching what's on screen) but no longer `exit 1`s — same disposition as
+  the pyright ratchet (issue #188). Added `--no-regression` /
+  `--baseline-ref`: the blocking gate a PR should use instead of lowering
+  `FLOOR_*`, comparing HEAD against a baseline ref's own measured scores
+  rather than a fixed number.
+
 ## [4.19.1] - 2026-09-03
 
 ### Fixed
