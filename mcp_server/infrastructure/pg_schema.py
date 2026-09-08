@@ -831,6 +831,17 @@ CREATE INDEX IF NOT EXISTS idx_memories_store_type
     ON memories (store_type);
 CREATE INDEX IF NOT EXISTS idx_memories_created_at
     ON memories (created_at);
+-- source: W4-1/F4 and bounded-io Phase 2 M2. Match the hot/recency
+-- predicates exactly; NULL source/is_stale rows stay excluded. No clock
+-- expression in an index: heat still sorts by exact effective_heat.
+CREATE INDEX IF NOT EXISTS idx_memories_curated_heat_base
+    ON memories (heat_base)
+    WHERE source <> 'post_tool_capture' AND NOT is_stale
+      AND superseded_by_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_memories_curated_created_at
+    ON memories (created_at DESC)
+    WHERE source <> 'post_tool_capture' AND NOT is_stale
+      AND superseded_by_id IS NULL;
 CREATE INDEX IF NOT EXISTS idx_memories_stage
     ON memories (consolidation_stage);
 -- Grooming telemetry (get_grooming_health): candidate/backlog counts filter
@@ -1227,22 +1238,10 @@ $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 #
 # Source: docs/program/phase-3-a3-migration-design.md §4.
 #
-# Body:
-# 1. Fetches per-domain homeostatic factor via LEFT JOIN with default 1.0.
-# 2. Pre-filters a `candidates` CTE by heat_base >= p_min_heat / factor —
-#    monotonic threshold transform so idx_memories_*_heat_base stays
-#    usable for the prefilter.
-# 3. Every CTE reads from `candidates` instead of `memories`.
-# 4. Every `m.heat` reference becomes `effective_heat(m, NOW(), hs.factor)`.
-# 5. Final SELECT returns `effective_heat(...)` as the `heat` output so
-#    downstream Python sees the same schema.
-#
-# Benchmark regression gate: LongMemEval R@10 ≥ 97.8%, LoCoMo R@10 ≥ 92.6%,
-# BEAM ≥ 0.543 (scores from v3.11 pre-scalability baseline, README.md).
-# Because effective_heat() preserves the order relation used by the hot
-# CTE (positive factor + monotonic decay curve), the top-N hot memories
-# remain the same on fresh stores where factor=1.0 and all memories have
-# hours_elapsed=0 (benchmark fixtures load memories with synthetic timestamps).
+# Each signal plans against the filter-only eligible relation; only the union
+# of its bounded pools is materialized. The fusion below is normalized TMM,
+# not rank-only RRF. Heat filtering and sorting retain effective_heat exactly.
+# source: docs/provenance/pg-recall-pools-design.md (W4-1 / F4).
 
 RECALL_MEMORIES_LAZY_FN = """
 DROP FUNCTION IF EXISTS recall_memories(
@@ -1328,15 +1327,9 @@ BEGIN
 
     RETURN QUERY
     WITH
-    -- Prefilter: narrow memories by cheap heat_base threshold + stale/
-    -- domain/directory gates. All downstream CTEs read `candidates` not
-    -- `memories` — that's where the score-fusion (TMM) signal-processing happens.
-    -- Reads current_memories (chain heads only): superseded versions are
-    -- excluded at the source, so every downstream pool, the TMM fusion and
-    -- all client-side re-sorts (RRF, FlashRank, rules, strategic ordering)
-    -- are supersession-safe by construction. The tier-sort in the final
-    -- ORDER BY is kept verbatim as a constant-true belt-and-braces.
-    candidates AS (
+    -- Inline the common filters into each independently planned signal.
+    -- source: PostgreSQL 16 queries-with.html, CTE materialization.
+    eligible AS NOT MATERIALIZED (
         SELECT m.*
         FROM current_memories m
         WHERE m.heat_base >= v_min_heat_base
@@ -1350,7 +1343,7 @@ BEGIN
     vec AS (
         SELECT c.id,
                (1.0 - (c.embedding <=> p_query_emb))::REAL AS raw_score
-        FROM candidates c
+        FROM eligible c
         WHERE c.embedding IS NOT NULL
           AND effective_heat(c, NOW(), v_factor) >= p_min_heat
         ORDER BY c.embedding <=> p_query_emb
@@ -1360,7 +1353,7 @@ BEGIN
     fts AS (
         SELECT c.id,
                ts_rank_cd(c.content_tsv, v_tsq)::REAL AS raw_score
-        FROM candidates c
+        FROM eligible c
         WHERE c.content_tsv @@ v_tsq
           AND effective_heat(c, NOW(), v_factor) >= p_min_heat
         ORDER BY ts_rank_cd(c.content_tsv, v_tsq) DESC
@@ -1370,16 +1363,17 @@ BEGIN
     ngram AS (
         SELECT c.id,
                similarity(c.content, p_query_text)::REAL AS raw_score
-        FROM candidates c
+        FROM eligible c
         WHERE effective_heat(c, NOW(), v_factor) >= p_min_heat
+          AND c.content % p_query_text
           AND similarity(c.content, p_query_text) > 0.1
         ORDER BY similarity(c.content, p_query_text) DESC
         LIMIT v_pool
     ),
-    -- Signal 4: Heat (now lazy via effective_heat). Post-A3 the hot CTE
-    -- orders by effective_heat directly; the B-tree on heat_base is still
-    -- used by the prefilter, so this is NOT a full candidates scan —
-    -- candidates is already bounded.
+    -- Signal 4: exact lazy heat, with an indexable heat_base prefilter.
+    -- Age/stage/valence differ by row: heat_base ordering is not equivalent.
+    -- This pool may still scan/sort all eligible curated rows; it is not
+    -- bounded until LIMIT. The partial Btree supports its cheap prefilter.
     -- Auto-captures are excluded from the heat and recency pools
     -- (bounded-io Phase 2 F2, docs/provenance/bounded-io-phase2-design.md M2):
     -- their freshness is a mechanical artifact of one-write-per-tool-call
@@ -1392,7 +1386,7 @@ BEGIN
     hot AS (
         SELECT c.id,
                effective_heat(c, NOW(), v_factor) AS raw_score
-        FROM candidates c
+        FROM eligible c
         WHERE effective_heat(c, NOW(), v_factor) >= p_min_heat
           AND c.source <> 'post_tool_capture'
         ORDER BY effective_heat(c, NOW(), v_factor) DESC
@@ -1403,11 +1397,20 @@ BEGIN
         SELECT c.id,
                EXP(-0.01 * EXTRACT(EPOCH FROM (NOW() - c.created_at))
                    / 86400.0)::REAL AS raw_score
-        FROM candidates c
+        FROM eligible c
         WHERE effective_heat(c, NOW(), v_factor) >= p_min_heat
           AND c.source <> 'post_tool_capture'
         ORDER BY c.created_at DESC
         LIMIT v_pool
+    ),
+    -- Load full rows once, only for the union of the five bounded pools.
+    candidates AS MATERIALIZED (
+        SELECT m.* FROM current_memories m
+        JOIN (
+            SELECT id FROM vec UNION SELECT id FROM fts
+            UNION SELECT id FROM ngram UNION SELECT id FROM hot
+            UNION SELECT id FROM recency
+        ) pool_ids ON pool_ids.id = m.id
     ),
     -- Per-signal observed max for TMM normalization (Bruch 2023)
     vec_max  AS (SELECT COALESCE(MAX(raw_score), 0.001) AS hi FROM vec),
@@ -1544,7 +1547,16 @@ BEGIN
     ORDER BY (c.superseded_by_id IS NOT NULL), tw.final_score DESC
     LIMIT p_max_results * 3;
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE plpgsql STABLE
+-- source: PostgreSQL 16 runtime-config-query.html#GUC-PLAN-CACHE-MODE and
+-- sql-prepare.html; W4-1 30k-row experiment 2026-09-07: automatic generic
+-- plans stop using HNSW after the first five calls (16k versus 8.6k buffers).
+-- These selective pools depend on actual query/filter values. Keep replanning
+-- local to this function; caller settings and ANN parameters are preserved.
+SET plan_cache_mode = 'force_custom_plan'
+-- source: existing strict similarity > 0.1 cutoff above; pg_trgm % is
+-- indexable but otherwise inherits a caller's potentially stricter setting.
+SET pg_trgm.similarity_threshold = '0.1';
 """
 
 # ── PL/pgSQL: spread_activation ──────────────────────────────────────────

@@ -18,6 +18,8 @@ behavior in isolation.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from functools import partial
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -79,15 +81,23 @@ def store():
 
 
 def _recall(store: PgMemoryStore, query: str, weights: dict) -> list[dict]:
-    return store.recall_memories(
-        query_text=query,
-        query_embedding=_emb(0),
-        intent="general",
-        domain=_DOMAIN,
-        min_heat=0.05,
-        max_results=10,
-        weights=weights,
-    )
+    # Score semantics require complete vector-pool membership. HNSW is
+    # approximate and a shared test table retains index history after DELETE.
+    # Match test_pg_recall_indexed_pools: test ANN plans separately. Pin the
+    # real SQL to this connection so pooled execution cannot lose SET LOCAL.
+    with store.interactive_pool.connection() as conn, conn.transaction():
+        conn.execute("SET LOCAL enable_indexscan = off")
+        conn.execute("SET LOCAL enable_bitmapscan = off")
+        with patch.object(store, "_execute", partial(store._execute_on_conn, conn)):
+            return store.recall_memories(
+                query_text=query,
+                query_embedding=_emb(0),
+                intent="general",
+                domain=_DOMAIN,
+                min_heat=0.05,
+                max_results=10,
+                weights=weights,
+            )
 
 
 class TestAutoCaptureDebias:
