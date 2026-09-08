@@ -1,0 +1,43 @@
+{
+  "benchmark": "decision_ids",
+  "scope": "wiki-only known-item source coverage; no PG ranking claim",
+  "baseline_ref": "e81735de3eb2248c134980008b2485d7d2a6dcc9",
+  "known_ids": [
+    "ADR-0001",
+    "ADR-0055",
+    "ADR-0056",
+    "ADR-2019",
+    "ADR-9999"
+  ],
+  "before": {
+    "n_queries": 5,
+    "ranks": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "recall_at_1": 0.0,
+    "mrr_at_10": 0.0
+  },
+  "after": {
+    "n_queries": 5,
+    "ranks": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "recall_at_1": 1.0,
+    "mrr_at_10": 1.0
+  },
+  "exact_path_calls": {
+    "embedding": 0,
+    "memory_store": 0,
+    "ap": 0,
+    "semantic_recall": 0
+  },
+  "passed": true
+}

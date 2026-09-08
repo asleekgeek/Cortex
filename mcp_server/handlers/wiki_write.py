@@ -55,7 +55,7 @@ from mcp_server.infrastructure.wiki_store import (
 
 from mcp_server.handlers._tool_meta import IDEMPOTENT_WRITE
 from mcp_server.observability import silent_failure
-from mcp_server.handlers import remember
+from mcp_server.handlers import remember, project_wiki
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +87,12 @@ schema = {
         "type": "object",
         "required": ["path"],
         "properties": {
+            "project_root": {
+                "type": "string",
+                "description": (
+                    "Repository with wiki/manifest.json; filesystem-only project mode."
+                ),
+            },
             "path": {
                 "type": "string",
                 "description": (
@@ -248,57 +254,11 @@ async def write_governed_page(
     tags: list[str] | None = None,
     memory_ids: list[int] | None = None,
 ) -> dict[str, Any]:
-    """The governed wiki-write path — adds pointer-memory + citation
-    bookkeeping on top of a plain ``write_page`` call.
+    """Write global wiki content and best-effort pointer/citation metadata.
 
-    precondition: ``root`` is a wiki root (production ``WIKI_ROOT`` or, for a
-    caller operating on an alternate tree such as a test fixture, that
-    tree's own root); ``rel_path`` is root-relative; ``content`` is the full
-    markdown (frontmatter + body) to persist.
-    postcondition: write-time frontmatter normalization (issue #107) is
-    enforced by ``write_page`` itself (issue #110 — the choke point moved
-    down to ``infrastructure.wiki_store`` so it covers every caller, not
-    just this one), so this function no longer needs to (and does not)
-    call ``normalize_frontmatter`` a second time. On success, the page is
-    written atomically (tmp+rename, ``write_page``'s existing guarantee)
-    AND a protected ``write_class='mechanical'`` pointer memory is stored
-    via ``remember`` (best-effort — never blocks or fails the write;
-    mechanical is correct per remember_schema.py's own vocabulary:
-    "structural indexing — ... wiki pointer sync — bypasses the gate
-    entirely, force=true semantics"; this call stores a 500-char pointer,
-    not the full authored content, so the class describes the
-    pointer-write, not who authored the page body) AND
-    ``wiki.pages``/``wiki.citations`` are synced best-effort (same
-    degrade-to-no-op discipline as ``_sync_page_and_cite``'s own contract).
-    Write-time provenance grading (``INC7.5`` — ``grade_from_content``,
-    triggered inside ``remember()``'s insert path) fires automatically as a
-    consequence of routing through here; no separate grading call is needed.
-    Returns ``{path, mode, created, bytes_written, root, citations_written}``
-    or ``{error}``.
-
-    This is the ONLY function in the codebase that may register the
-    pointer-memory + citations governance side effects — the interactive
-    ``wiki_write`` MCP tool (``handler``, below) and the headless
-    authoring worker (``consolidation/page_io.py``) both route through
-    here so no caller performing an authored, citable write skips that
-    bookkeeping. It is emphatically NOT the only caller of ``write_page``:
-    several handlers (redirect stubs, generated reference/PRD/finding
-    pages, ADRs, links) call ``write_page`` directly because pointer
-    memories and citations do not apply to their output — see
-    ``tests_py/architecture/test_write_page_call_sites.py`` for the
-    audited whitelist that guards against a new, unreviewed direct
-    caller appearing silently. Frontmatter normalization is unconditional
-    for all of them regardless (see ``write_page``'s own contract).
-
-    raises: ``UnclosedFrontmatterError`` (propagated, uncaught, from
-    ``write_page``'s call to ``normalize_frontmatter``) when ``content``
-    opens a frontmatter fence it never closes — the one shape that is
-    structurally inexploitable. The interactive tool call (``handler``,
-    below, registered via ``safe_handler``) turns this into a
-    ``mcp.server.mcpserver.exceptions.ToolError`` automatically (the repo's standing
-    idiom — see commits c7dfc243/49f29e98); ``consolidation/page_io.py``'s
-    non-tool callers catch it explicitly and degrade to their existing
-    failure contract.
+    Source: ADR-0056 (governance contract). Storage normalizes frontmatter;
+    malformed open fences propagate, while ordinary write errors are returned.
+    Project branch publication uses project_wiki instead to avoid global state.
     """
     try:
         result = write_page(root, rel_path, content, mode=mode)
@@ -351,6 +311,12 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
                 "(e.g. via wiki_adr for ADRs) and pass the final markdown."
             )
         }
+
+    if args.get("project_root") is not None:
+        try:
+            return project_wiki.write(args)
+        except (ValueError, OSError, WikiExistsError, WikiMissingError) as exc:
+            return {"error": f"project wiki publication failed: {exc}"}
 
     tags = [str(t) for t in (args.get("tags") or [])]
     memory_ids = [int(m) for m in (args.get("memory_ids") or [])]

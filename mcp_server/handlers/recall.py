@@ -14,6 +14,11 @@ from typing import Any
 
 from mcp_server.core import memory_rules
 from mcp_server.handlers._telemetry_wrap import instrument
+from mcp_server.handlers.decision_recall import (
+    SCOPE_PROPERTIES,
+    bounded_exact,
+    exact_lookup,
+)
 from mcp_server.core.knowledge_graph import extract_entities
 from mcp_server.core.pg_recall import recall as pg_recall
 from mcp_server.core.query_intent import QueryIntent, classify_query_intent
@@ -67,7 +72,9 @@ schema = {
                             "properties": {
                                 "id": {
                                     "type": "string",
-                                    "description": "Memory UUID.",
+                                    "description": (
+                                        "Memory UUID or wiki:ADR-NNNN identity."
+                                    ),
                                 },
                                 "content": {
                                     "type": "string",
@@ -192,12 +199,16 @@ schema = {
         "replay_count increment and hippocampal_dependency decays (CLS-B, "
         "Ketz et al. 2023) — so repeat calls are not idempotent "
         "(`track_replay_event`, `replay_tracking.py`). Returns ranked "
-        "memories with scores, heat, and source."
+        "memories with scores, heat, and source. Bare ADR-NNNN queries "
+        "resolve the canonical wiki page before semantic retrieval; project_root "
+        "explicitly selects a tracked project wiki. Page longer decisions with "
+        "the same query and content_offset."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["query"],
         "properties": {
+            **SCOPE_PROPERTIES,
             "query": {
                 "type": "string",
                 "description": (
@@ -547,6 +558,10 @@ def _fetch_by_id(
 
 async def _handler_impl(args: dict[str, Any] | None = None) -> dict[str, Any]:
     """Retrieve memories: pg_recall base + production enrichments."""
+    if args and (args.get("memory_id") is None or args.get("exact_id")):
+        exact = exact_lookup(args)
+        if exact is not None:
+            return bounded_exact(exact, args)
     fmt = parse_format(args.get("format") if args else None)
     if args and args.get("memory_id") is not None:
         return _fetch_by_id(

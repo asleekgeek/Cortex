@@ -43,6 +43,7 @@ from pathlib import Path
 
 from mcp_server.shared.wiki_frontmatter_validation import normalize_frontmatter
 import os
+import tempfile
 
 WriteMode = str  # "create" | "append" | "replace"
 
@@ -226,9 +227,13 @@ def _atomic_write_bytes_str(safe_path: str, content: str) -> int:
     parent = os.path.dirname(safe_path)
     if parent and not os.path.isdir(parent):
         os.makedirs(parent, exist_ok=True)
-    tmp = safe_path + ".tmp"
+    # source: ADR-0056
+    descriptor, temporary = tempfile.mkstemp(prefix=".wiki-write-", dir=parent)
     data = content.encode("utf-8")
-    with open(tmp, "wb") as f:
-        f.write(data)
-    os.replace(tmp, safe_path)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(data)
+        os.replace(temporary, safe_path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
     return len(data)

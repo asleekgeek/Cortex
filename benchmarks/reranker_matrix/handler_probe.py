@@ -1,7 +1,8 @@
 """Execute real handler/recall function bodies with fake IO and neural stages.
 
 This contract probe reports cardinalities, never latency or model quality.
-It stops at the handler's pre-enrichment cap. No production module is imported.
+It stops at the handler's pre-enrichment cap. Exact-ID dispatch uses the
+production helper; the ordinary fixture performs no I/O.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import re
 from types import SimpleNamespace
 
 from benchmarks.reranker_matrix.runtime import fetched
+from mcp_server.handlers.decision_recall import exact_lookup
 
 
 class ProbeFinishedError(Exception):
@@ -135,6 +137,7 @@ def handler_globals(multiplier: int, observations: dict) -> dict:
         },
     )
     return {
+        "exact_lookup": exact_lookup,
         "parse_format": lambda fmt: fmt,
         "root_agent_topic": lambda: None,
         "get_memory_settings": lambda: SimpleNamespace(WRRF_K=60),
