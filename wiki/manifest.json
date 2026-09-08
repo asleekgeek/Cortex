@@ -1856,6 +1856,190 @@
       "mirror": "ADR-0529-hook-cascade-counter.md",
       "path": "adr/migration/0529-hook-cascade-counter.md"
     },
+    "ADR-0530": {
+      "mirror": "ADR-0530-hook-counter-lock.md",
+      "path": "adr/migration/0530-hook-counter-lock.md"
+    },
+    "ADR-0531": {
+      "mirror": "ADR-0531-mcp-call-timeout.md",
+      "path": "adr/migration/0531-mcp-call-timeout.md"
+    },
+    "ADR-0532": {
+      "mirror": "ADR-0532-mcp-client.md",
+      "path": "adr/migration/0532-mcp-client.md"
+    },
+    "ADR-0533": {
+      "mirror": "ADR-0533-mcp-client-pool.md",
+      "path": "adr/migration/0533-mcp-client-pool.md"
+    },
+    "ADR-0534": {
+      "mirror": "ADR-0534-memory-config.md",
+      "path": "adr/migration/0534-memory-config.md"
+    },
+    "ADR-0535": {
+      "mirror": "ADR-0535-memory-store.md",
+      "path": "adr/migration/0535-memory-store.md"
+    },
+    "ADR-0536": {
+      "mirror": "ADR-0536-otel-exporter.md",
+      "path": "adr/migration/0536-otel-exporter.md"
+    },
+    "ADR-0537": {
+      "mirror": "ADR-0537-pg-schema.md",
+      "path": "adr/migration/0537-pg-schema.md"
+    },
+    "ADR-0538": {
+      "mirror": "ADR-0538-pg-store.md",
+      "path": "adr/migration/0538-pg-store.md"
+    },
+    "ADR-0539": {
+      "mirror": "ADR-0539-pg-store-archive.md",
+      "path": "adr/migration/0539-pg-store-archive.md"
+    },
+    "ADR-0540": {
+      "mirror": "ADR-0540-pg-store-checkpoint.md",
+      "path": "adr/migration/0540-pg-store-checkpoint.md"
+    },
+    "ADR-0541": {
+      "mirror": "ADR-0541-pg-store-cls.md",
+      "path": "adr/migration/0541-pg-store-cls.md"
+    },
+    "ADR-0542": {
+      "mirror": "ADR-0542-pg-store-co-access.md",
+      "path": "adr/migration/0542-pg-store-co-access.md"
+    },
+    "ADR-0543": {
+      "mirror": "ADR-0543-pg-store-consolidation-stage.md",
+      "path": "adr/migration/0543-pg-store-consolidation-stage.md"
+    },
+    "ADR-0544": {
+      "mirror": "ADR-0544-pg-store-cortical-schema.md",
+      "path": "adr/migration/0544-pg-store-cortical-schema.md"
+    },
+    "ADR-0545": {
+      "mirror": "ADR-0545-pg-store-ddl.md",
+      "path": "adr/migration/0545-pg-store-ddl.md"
+    },
+    "ADR-0546": {
+      "mirror": "ADR-0546-pg-store-engram.md",
+      "path": "adr/migration/0546-pg-store-engram.md"
+    },
+    "ADR-0547": {
+      "mirror": "ADR-0547-pg-store-entities.md",
+      "path": "adr/migration/0547-pg-store-entities.md"
+    },
+    "ADR-0548": {
+      "mirror": "ADR-0548-pg-store-entity-merge.md",
+      "path": "adr/migration/0548-pg-store-entity-merge.md"
+    },
+    "ADR-0549": {
+      "mirror": "ADR-0549-pg-store-heat.md",
+      "path": "adr/migration/0549-pg-store-heat.md"
+    },
+    "ADR-0550": {
+      "mirror": "ADR-0550-pg-store-host.md",
+      "path": "adr/migration/0550-pg-store-host.md"
+    },
+    "ADR-0551": {
+      "mirror": "ADR-0551-pg-store-lesson-promotion.md",
+      "path": "adr/migration/0551-pg-store-lesson-promotion.md"
+    },
+    "ADR-0552": {
+      "mirror": "ADR-0552-pg-store-memory-dedup.md",
+      "path": "adr/migration/0552-pg-store-memory-dedup.md"
+    },
+    "ADR-0553": {
+      "mirror": "ADR-0553-pg-store-memory-domain.md",
+      "path": "adr/migration/0553-pg-store-memory-domain.md"
+    },
+    "ADR-0554": {
+      "mirror": "ADR-0554-pg-store-memory-meta.md",
+      "path": "adr/migration/0554-pg-store-memory-meta.md"
+    },
+    "ADR-0555": {
+      "mirror": "ADR-0555-pg-store-memory-reheat.md",
+      "path": "adr/migration/0555-pg-store-memory-reheat.md"
+    },
+    "ADR-0556": {
+      "mirror": "ADR-0556-pg-store-memory-write-class.md",
+      "path": "adr/migration/0556-pg-store-memory-write-class.md"
+    },
+    "ADR-0557": {
+      "mirror": "ADR-0557-pg-store-near-dup.md",
+      "path": "adr/migration/0557-pg-store-near-dup.md"
+    },
+    "ADR-0558": {
+      "mirror": "ADR-0558-pg-store-procedural.md",
+      "path": "adr/migration/0558-pg-store-procedural.md"
+    },
+    "ADR-0559": {
+      "mirror": "ADR-0559-pg-store-prospective.md",
+      "path": "adr/migration/0559-pg-store-prospective.md"
+    },
+    "ADR-0560": {
+      "mirror": "ADR-0560-pg-store-queries.md",
+      "path": "adr/migration/0560-pg-store-queries.md"
+    },
+    "ADR-0561": {
+      "mirror": "ADR-0561-pg-store-query-stream.md",
+      "path": "adr/migration/0561-pg-store-query-stream.md"
+    },
+    "ADR-0562": {
+      "mirror": "ADR-0562-pg-store-receipts.md",
+      "path": "adr/migration/0562-pg-store-receipts.md"
+    },
+    "ADR-0563": {
+      "mirror": "ADR-0563-pg-store-relationships.md",
+      "path": "adr/migration/0563-pg-store-relationships.md"
+    },
+    "ADR-0565": {
+      "mirror": "ADR-0565-pg-store-schema.md",
+      "path": "adr/migration/0565-pg-store-schema.md"
+    },
+    "ADR-0566": {
+      "mirror": "ADR-0566-pg-store-search.md",
+      "path": "adr/migration/0566-pg-store-search.md"
+    },
+    "ADR-0567": {
+      "mirror": "ADR-0567-pg-store-serialize.md",
+      "path": "adr/migration/0567-pg-store-serialize.md"
+    },
+    "ADR-0568": {
+      "mirror": "ADR-0568-pg-store-signals.md",
+      "path": "adr/migration/0568-pg-store-signals.md"
+    },
+    "ADR-0569": {
+      "mirror": "ADR-0569-pg-store-stats.md",
+      "path": "adr/migration/0569-pg-store-stats.md"
+    },
+    "ADR-0570": {
+      "mirror": "ADR-0570-pg-store-supersede.md",
+      "path": "adr/migration/0570-pg-store-supersede.md"
+    },
+    "ADR-0571": {
+      "mirror": "ADR-0571-pg-store-wiki.md",
+      "path": "adr/migration/0571-pg-store-wiki.md"
+    },
+    "ADR-0572": {
+      "mirror": "ADR-0572-pg-store-wiki-citation-seed.md",
+      "path": "adr/migration/0572-pg-store-wiki-citation-seed.md"
+    },
+    "ADR-0573": {
+      "mirror": "ADR-0573-pg-store-wiki-claims.md",
+      "path": "adr/migration/0573-pg-store-wiki-claims.md"
+    },
+    "ADR-0574": {
+      "mirror": "ADR-0574-pg-store-wiki-common.md",
+      "path": "adr/migration/0574-pg-store-wiki-common.md"
+    },
+    "ADR-0575": {
+      "mirror": "ADR-0575-pg-store-wiki-concepts.md",
+      "path": "adr/migration/0575-pg-store-wiki-concepts.md"
+    },
+    "ADR-0576": {
+      "mirror": "ADR-0576-pg-store-wiki-domain.md",
+      "path": "adr/migration/0576-pg-store-wiki-domain.md"
+    },
     "ADR-0795": {
       "mirror": "ADR-0795-clusterfuzzlite-Dockerfile.md",
       "path": "adr/migration/0795-clusterfuzzlite-Dockerfile.md"

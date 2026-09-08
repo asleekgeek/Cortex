@@ -4378,11 +4378,6 @@
       "detail": "mcp_server.observability"
     },
     {
-      "file": "mcp_server/infrastructure/mcp_call_timeout.py",
-      "kind": "unsourced-constant",
-      "detail": "_DEFAULT_CALL_TIMEOUT_S"
-    },
-    {
       "file": "mcp_server/infrastructure/mcp_client.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
@@ -4418,16 +4413,6 @@
       "detail": "exceeds 300-line cap"
     },
     {
-      "file": "mcp_server/infrastructure/pg_schema.py",
-      "kind": "method-size",
-      "detail": "get_all_ddl"
-    },
-    {
-      "file": "mcp_server/infrastructure/pg_store_entities.py",
-      "kind": "method-size",
-      "detail": "PgEntityMixin.insert_entity"
-    },
-    {
       "file": "mcp_server/infrastructure/pg_store_entity_merge.py",
       "kind": "method-size",
       "detail": "PgEntityMergeMixin.merge_entities"
@@ -4438,16 +4423,6 @@
       "detail": "list_exact_duplicate_groups"
     },
     {
-      "file": "mcp_server/infrastructure/pg_store_memory_dedup.py",
-      "kind": "unsourced-constant",
-      "detail": "DEFAULT_DEDUP_SCAN_LIMIT"
-    },
-    {
-      "file": "mcp_server/infrastructure/pg_store_memory_domain.py",
-      "kind": "method-size",
-      "detail": "list_domainless_memories"
-    },
-    {
       "file": "mcp_server/infrastructure/pg_store_memory_meta.py",
       "kind": "layer-violation",
       "detail": "mcp_server.observability"
@@ -4455,22 +4430,7 @@
     {
       "file": "mcp_server/infrastructure/pg_store_memory_reheat.py",
       "kind": "method-size",
-      "detail": "apply_reheat"
-    },
-    {
-      "file": "mcp_server/infrastructure/pg_store_memory_reheat.py",
-      "kind": "method-size",
       "detail": "list_deliberate_below_target"
-    },
-    {
-      "file": "mcp_server/infrastructure/pg_store_memory_reheat.py",
-      "kind": "unsourced-constant",
-      "detail": "DEFAULT_REHEAT_SCAN_LIMIT"
-    },
-    {
-      "file": "mcp_server/infrastructure/pg_store_near_dup.py",
-      "kind": "method-size",
-      "detail": "fetch_member_stats"
     },
     {
       "file": "mcp_server/infrastructure/pg_store_near_dup.py",
@@ -4478,34 +4438,9 @@
       "detail": "list_candidate_pairs"
     },
     {
-      "file": "mcp_server/infrastructure/pg_store_near_dup.py",
-      "kind": "unsourced-constant",
-      "detail": "DEFAULT_ANCHOR_LIMIT"
-    },
-    {
-      "file": "mcp_server/infrastructure/pg_store_near_dup.py",
-      "kind": "unsourced-constant",
-      "detail": "DEFAULT_TOP_K"
-    },
-    {
       "file": "mcp_server/infrastructure/pg_store_relationships.py",
       "kind": "method-size",
       "detail": "PgRelationshipMixin.reinforce_or_create_relationship"
-    },
-    {
-      "file": "mcp_server/infrastructure/pg_store_supersede.py",
-      "kind": "unsourced-constant",
-      "detail": "_CHAIN_HEAD_MAX_DEPTH"
-    },
-    {
-      "file": "mcp_server/infrastructure/pg_store_supersede.py",
-      "kind": "unsourced-constant",
-      "detail": "_SUPERSEDE_REBASE_ATTEMPTS"
-    },
-    {
-      "file": "mcp_server/infrastructure/pg_store_wiki_citation_seed.py",
-      "kind": "unsourced-constant",
-      "detail": "DEFAULT_SEED_SCAN_LIMIT"
     },
     {
       "file": "mcp_server/infrastructure/pg_store_wiki_drafts.py",

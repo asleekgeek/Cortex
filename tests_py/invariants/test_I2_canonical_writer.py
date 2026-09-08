@@ -38,11 +38,11 @@ _MCP_ROOT = _REPO_ROOT / "mcp_server"
 # source: ADR-1014  # noqa: ERA001
 _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # PostgreSQL anchor transfer.
-    ("infrastructure/pg_store_supersede.py", 169),
+    ("infrastructure/pg_store_supersede.py", 122),
     # PostgreSQL single-row writer.
-    ("infrastructure/pg_store_heat.py", 70),
+    ("infrastructure/pg_store_heat.py", 49),
     # PostgreSQL batched writer.
-    ("infrastructure/pg_store_heat.py", 168),
+    ("infrastructure/pg_store_heat.py", 121),
     # SQLite anchor transfer.
     ("infrastructure/sqlite_store.py", 557),
     # SQLite single-row writer.
@@ -58,7 +58,7 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # Pipeline-impact boost.
     ("hooks/pipeline_impact_bump.py", 164),
     # CAS-guarded deliberate reheat.
-    ("infrastructure/pg_store_memory_reheat.py", 183),
+    ("infrastructure/pg_store_memory_reheat.py", 104),
 }
 
 
