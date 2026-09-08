@@ -111,7 +111,23 @@ jobs:
 
   test-sqlite:
     needs: [changes, lint]
-    if: github.event_name != 'schedule' && (github.event_name != 'pull_request' || needs.changes.outputs.code == 'true' || needs.changes.outputs.deps == 'true' || needs.changes.outputs.workflows == 'true')
+    # `docs` is in this condition and NOT in the other test jobs' on purpose.
+    # Part of the suite this job runs takes documentation as its INPUT and
+    # asserts on its content — tests_py/scripts/test_codex_plugin_contract.py
+    # reads README.md and checks the canonical published identities (the
+    # hypermnesia-mcp-viz anchor, the viz/spec migration strings). Excluding
+    # '*.md' from the `code` filter therefore switched those guards OFF exactly
+    # when their subject changed: PR #509 was a README-only diff, every test job
+    # was skipped, it merged green, and the push to main went red on that test
+    # across five jobs (run 34238410970, 2026-09-08 — 7663 passed, 1 failed;
+    # fixed by #510).
+    #
+    # This job, not the 3.10-3.13 matrix, because it already runs THE FULL SUITE
+    # (see the "Scope" note on its pytest step) in one ~5-minute job, so it
+    # covers the doc-contract tests at the smallest cost that still closes the
+    # gap. Waking the whole matrix on every prose edit would undo the CI work in
+    # #475-#481.
+    if: github.event_name != 'schedule' && (github.event_name != 'pull_request' || needs.changes.outputs.code == 'true' || needs.changes.outputs.deps == 'true' || needs.changes.outputs.workflows == 'true' || needs.changes.outputs.docs == 'true')
     name: Test (SQLite backend)
     runs-on: ubuntu-latest
     # source: run 33806380625 (2026-09-03), max 292s; ceil(2 * 292 / 60).
