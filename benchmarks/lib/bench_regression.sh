@@ -41,6 +41,37 @@ REGRESSION_TOLERANCE="${REGRESSION_TOLERANCE:-0.005}"
 BASELINE_REF="${BASELINE_REF:-origin/main}"
 BASELINE_RESULTS_DIR=""
 
+# Baseline worktrees omit ignored datasets. Reuse the exact HEAD inputs,
+# never a second download which could change the corpus between comparisons.
+preflight_regression_datasets() {
+    local name relative
+    for name in longmemeval locomo; do
+        if ! want_bench "$name"; then continue; fi
+        case "$name" in
+            longmemeval) relative="benchmarks/longmemeval/longmemeval_s.json" ;;
+            locomo) relative="benchmarks/locomo/locomo10.json" ;;
+        esac
+        if [ ! -r "$REPO_ROOT/$relative" ]; then
+            echo "error: regression dataset missing or unreadable: $REPO_ROOT/$relative" >&2
+            return 1
+        fi
+    done
+}
+
+copy_regression_datasets() {
+    local destination="$1" name relative
+    preflight_regression_datasets || return 1
+    for name in longmemeval locomo; do
+        if ! want_bench "$name"; then continue; fi
+        case "$name" in
+            longmemeval) relative="benchmarks/longmemeval/longmemeval_s.json" ;;
+            locomo) relative="benchmarks/locomo/locomo10.json" ;;
+        esac
+        cp "$REPO_ROOT/$relative" "$destination/$relative" || return 1
+        cmp -s "$REPO_ROOT/$relative" "$destination/$relative" || return 1
+    done
+}
+
 # Run the same benchmark set (respecting --only/--quick/--limit) against
 # BASELINE_REF's code, in an isolated git worktree, writing results under
 # $RESULTS_DIR/baseline/. Reuses the already-running container: harnesses
@@ -83,6 +114,10 @@ run_baseline_benchmarks() {
     # running it under HEAD's resolved env would not actually measure the
     # baseline's code.
     (
+        # Preserve errexit while cleaning up even when provisioning or a runner
+        # fails. An OR-list around this subshell would disable errexit within it.
+        trap 'git -C "$REPO_ROOT" worktree remove --force "$wt_dir" >/dev/null 2>&1 || true' EXIT
+        copy_regression_datasets "$wt_dir"
         cd "$wt_dir"
         if want_bench longmemeval; then
             echo "==> [baseline] longmemeval-s"
