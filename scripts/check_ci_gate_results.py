@@ -82,6 +82,18 @@ def _required_jobs(flags: dict[str, bool], event_name: str, fork: bool) -> set[s
         required.add("docker-smoke")
     if flags["docker"] or event_name in ("schedule", "workflow_dispatch"):
         required.update(DOCKER_BUILD_JOBS)
+    # A docs-only PR must still run the one full-suite job. Part of that
+    # suite takes documentation as its INPUT — tests_py/scripts/
+    # test_codex_plugin_contract.py asserts on README.md's canonical published
+    # identities — so excluding '*.md' from `code` switched those guards off
+    # exactly when their subject changed. PR #509 was a README-only diff, every
+    # test job skipped, it merged green, and the push to main went red on that
+    # test across five jobs (run 34238410970, 2026-09-08; fixed by #510).
+    # Mirrors ci.yml's test-sqlite predicate, which carries the same note; this
+    # module and that predicate must stay in exact agreement (see the docstring
+    # on check_policy).
+    if not full and event_name == "pull_request" and flags["docs"]:
+        required.add("test-sqlite")
     if fork:
         required.discard("mcp-host-config")
     return required

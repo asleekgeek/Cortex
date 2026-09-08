@@ -24,9 +24,8 @@ Structure (Cortex#173 — the file was split along three seams):
 Device selection:
   Default is "cpu" for embedding consistency (GPU float32 arithmetic produces
   bit-different vectors from CPU). GPU is opt-in via CORTEX_MEMORY_EMBEDDING_DEVICE
-  env var. If GPU inference fails at runtime (OOM, MPS reset after sleep), the
-  engine automatically falls back to CPU; if CPU also fails, it degrades to the
-  algorithmic fallback provider. The engine never crashes on encode().
+  env var. Failed GPU inference retries on CPU (e.g. after OOM or MPS reset)
+  before using the algorithmic fallback provider.
 """
 
 from __future__ import annotations
@@ -185,8 +184,9 @@ class EmbeddingEngine(
 
     def _encode_vec(self, text: str) -> bytes:
         """Encode text via model with GPU fallback. Always returns bytes."""
+        model_input = self._prefix_guard.shorten(text) if self._prefix_guard else text
         try:
-            vec = self._model.encode(text)
+            vec = self._model.encode(model_input)
         except RuntimeError:
             if self._device == "cpu":
                 raise  # Already on CPU — genuine bug, don't mask
@@ -194,7 +194,7 @@ class EmbeddingEngine(
             if self._unavailable or self._model is None:
                 return self._fallback_encode(text)
             try:
-                vec = self._model.encode(text)
+                vec = self._model.encode(model_input)
             except RuntimeError:
                 logger.error("CPU encode also failed, using hash fallback")
                 return self._fallback_encode(text)

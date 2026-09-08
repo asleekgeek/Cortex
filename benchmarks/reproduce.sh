@@ -33,6 +33,17 @@
 #   --reranker-cell <id>  W4-2 experiment (l2-2x|l2-3x|l12-2x|l12-3x);
 #                         requires --no-ablation and pre-provisioned pinned cache.
 #   --results-dir <path>  Explicit cell output directory (default remains timestamped).
+#   --no-regression       Blocking gate: also run --baseline-ref's benchmarks
+#                          in the same container and fail only if HEAD is
+#                          worse than ITS OWN baseline by more than
+#                          REGRESSION_TOLERANCE — use this instead of
+#                          lowering FLOOR_* when main itself no longer
+#                          clears the published floors (see check_floors'
+#                          comment below and benchmarks/lib/bench_regression.sh).
+#                          Full runs (no --quick/--limit) only; roughly
+#                          doubles wall time (runs the suite twice).
+#   --baseline-ref <ref>   Ref --no-regression compares HEAD against.
+#                          Default: origin/main.
 #   Anything else is passed through to the underlying run_benchmark.py calls.
 #
 # Environment overrides:
@@ -94,13 +105,26 @@ DATASET_URL="https://huggingface.co/datasets/xiaowu0162/LongMemEval/resolve/main
 # byte-identical to the file behind every published Cortex result.
 DATASET_SHA256="08d8dad4be43ee2049a22ff5674eb86725d0ce5ff434cde2627e5e8e7e117894"
 
-# ── Published floors the FULL runs are gated against. --limit/--quick runs
-# skip the gate (partial runs are not comparable to n=500 / n=1986 figures).
+# ── Published floors the FULL runs are checked against. --limit/--quick runs
+# skip the check (partial runs are not comparable to n=500 / n=1986 figures).
 # Values: README benchmark tables (E1 v3 campaign). Tolerance 0.005 (0.5 pp)
 # per the regression gate in benchmarks/results/a3_longmemeval_post_refactor.md
-# (design §8). BEAM-100K is intentionally NOT gated: its published proxy
+# (design §8). BEAM-100K is intentionally NOT checked: its published proxy
 # numbers predate the 200→395-question split re-basing, and the README scopes
 # BEAM to within-system comparison only.
+#
+# NON-BLOCKING as of the fix below (same disposition as the pyright ratchet,
+# issue #188: "raising the floor would just hide the debt" — NO rebaseline,
+# keep the drift visible without failing builds). Source: main@6ec76a0e
+# measures LongMemEval MRR 0.904988 (< 0.914), LoCoMo MRR 3-run mean
+# 0.779868 (< 0.805) and Recall@10 0.889506 (< 0.915) via THIS SAME script
+# (cdeust/Cortex PR #492, 2026-09-07) — main itself no longer clears these
+# floors, so treating them as blocking fails every PR built on top of main
+# regardless of what that PR changes. The blocking gate for a PR is
+# --no-regression (benchmarks/lib/bench_regression.sh): whether HEAD is
+# worse than its OWN baseline, not whether it clears a number nothing
+# currently clears. check_floors below still prints PASS/FAIL per metric —
+# that visibility is the point — it just no longer exits 1.
 FLOOR_LME_R10=0.982
 FLOOR_LME_MRR=0.914
 FLOOR_LOCOMO_R10=0.915
@@ -134,8 +158,12 @@ QUICK=0
 LIMIT=""
 KEEP_DB=0
 RERANKER_CELL=""        # explicit W4-2 experiment; production defaults unchanged
+NO_REGRESSION=0
 PASSTHROUGH=()
 started_container=0
+
+# shellcheck source=benchmarks/lib/bench_regression.sh
+. "$REPO_ROOT/benchmarks/lib/bench_regression.sh"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 need_cmd() {
@@ -162,6 +190,9 @@ parse_args() {
             --keep-db)       KEEP_DB=1; shift ;;
             --reranker-cell) RERANKER_CELL="$2"; shift 2 ;;
             --results-dir)   RESULTS_DIR="$2"; shift 2 ;;
+            --no-regression) NO_REGRESSION=1; shift ;;
+            --baseline-ref)  BASELINE_REF="$2"; shift 2 ;;
+            --baseline-ref=*) BASELINE_REF="${1#*=}"; shift ;;
             *)               PASSTHROUGH+=("$1"); shift ;;
         esac
     done
@@ -358,12 +389,15 @@ print("=" * 68)
 PY
 }
 
-# Gate full-run results against the published floors: any score more than
-# FLOOR_TOLERANCE below its floor fails the whole run with exit 1. A deviation
-# from the published numbers means the code is wrong — this makes that loud
-# instead of silent.
+# Report full-run results against the published floors: any score more than
+# FLOOR_TOLERANCE below its floor prints FAIL. NON-BLOCKING (see the
+# FLOOR_* comment above) — informational only, never exits 1. Rounds `got`
+# to the same 4-decimal precision this prints before computing delta/status,
+# so the verdict matches exactly what's on screen: comparing at a hidden
+# precision beyond what's displayed is how a value that reads "0.9140" on
+# one line could judge differently than "0.9140" on another.
 #
-# CAVEAT — this gates a SINGLE run, but LoCoMo's own same-commit noise is
+# CAVEAT — this checks a SINGLE run, but LoCoMo's own same-commit noise is
 # large relative to FLOOR_TOLERANCE. Measured 2026-07-14 at HEAD 5542aa71
 # (v4.14.1), 3 isolated reps via `--only locomo`: MRR 0.7978 / 0.8019 / 0.8010
 # (mean 0.8002, stdev 0.0022) against FLOOR_LOCOMO_MRR=0.805 tol=0.005 (needs
@@ -401,16 +435,16 @@ for stem, expected in floors.items():
             print(f"FLOOR CHECK {stem}.{key}: metric missing — FAIL")
             failed = True
             continue
+        got = round(got, 4)
         delta = got - floor
         status = "PASS" if delta >= -tol else "FAIL"
         if status == "FAIL":
             failed = True
         print(f"FLOOR CHECK {stem}.{key}: {got:.4f} vs floor {floor:.4f} ({delta:+.4f}) {status}")
 if failed:
-    print("\nFLOOR CHECK FAILED: full-run scores deviate from the published numbers.")
-    print("A deviation means the code is wrong — do not ship. Bisect against the")
-    print("last passing commit recorded in benchmarks/results/repro/.")
-    sys.exit(1)
+    print("\nFLOOR CHECK: full-run scores deviate from the published numbers (non-blocking).")
+    print("This does not fail the build — see the FLOOR_* comment above for why, and use")
+    print("--no-regression to gate a PR against its own baseline instead.")
 PY
 }
 
@@ -469,6 +503,21 @@ main() {
     if [ "$RUN_BENCHMARKS" = "1" ] && [ -z "$LIMIT" ] && [ "$QUICK" = "0" ]; then
         check_floors
     fi
+
+    # No-regression gate (blocking): run the same suite on BASELINE_REF in
+    # this same container, then fail only if HEAD is worse than that
+    # baseline by more than REGRESSION_TOLERANCE. See --no-regression above
+    # and benchmarks/lib/bench_regression.sh's header for why this replaces
+    # the (now non-blocking) floor check as the thing a PR must pass.
+    if [ "$NO_REGRESSION" = "1" ]; then
+        if [ "$RUN_BENCHMARKS" != "1" ] || [ -n "$LIMIT" ] || [ "$QUICK" = "1" ]; then
+            echo "error: --no-regression requires a full benchmark run (no --ablation-only, --quick or --limit)." >&2
+            exit 1
+        fi
+        run_baseline_benchmarks
+        check_regression
+    fi
+
     echo
     echo "==> All artifacts under: $RESULTS_DIR"
     if [ "$RUN_ABLATION" = "1" ]; then
