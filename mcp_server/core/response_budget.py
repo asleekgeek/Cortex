@@ -6,17 +6,23 @@ rejected wholesale and dumped to a file (Claude Code behaviour, observed
 therefore happen on our side of the wire, where we control which bytes
 survive.
 
-Budget derivation (measured, not invented):
+Historical budget derivation (not a current host-token guarantee):
 
 - Claude Code enforces ``MAX_MCP_OUTPUT_TOKENS`` on MCP tool results.
   source: Claude Code 2.1.170 binary, extracted 2026-06-10 —
     default   ``d4O = 25000`` tokens,
     estimator ``Xz(text) = round(len(text) / 4)`` (4 chars/token),
     char cap  ``l4O() = limit * 4`` → 100,000 chars.
-- The counted text is the compact-JSON serialization of the payload:
+- The historical reproduction used the compact-JSON payload:
   ``len(json.dumps(payload, separators=(",", ":"), ensure_ascii=False))``
   reproduced Claude Code's reported count exactly (324,429 == 324,429,
   measured 2026-06-10 on a rejected recall response).
+- W4-4 audit, 2026-09-06: the locked MCP SDK now emits indented JSON;
+  Claude Code 2.1.263 estimates UTF-16 length / 4, then may use its
+  countTokens API above half the configured limit. Compact Python
+  character length is neither that wire length nor the model token count.
+  See docs/provenance/response-budget-audit.md for sources and the pending
+  100-response calibration. Existing constants remain pending measurement.
 - Safety factor 0.75 applied to the host cap. The host counts JS
   ``String.length`` (UTF-16 code units) while Python ``len()`` counts
   code points — non-BMP characters (emoji, rare CJK) count 2:1, so a
@@ -100,10 +106,10 @@ class _Cell:
 
 
 def serialized_length(payload: Any) -> int:
-    """Char count of the payload exactly as the MCP host counts it.
+    """Compact JSON code-point count used by this legacy allocation policy.
 
-    Compact separators + ensure_ascii=False reproduce the host's count
-    (verified char-exact against a rejected response, 2026-06-10).
+    This is not the current SDK wire size or Claude's token count; the
+    W4-4 audit documents both mismatches and the pending calibration.
     ``default=str`` mirrors lossy-but-total serialization of exotic
     values; handlers ship JSON-native types so it never fires in practice.
     """
