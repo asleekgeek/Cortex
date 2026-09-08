@@ -8,6 +8,23 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **A truncated SessionStart banner line is no longer a dead end.** Every
+  memory line in the banner is cut at 120 characters by `_short`, but the
+  rendered line carried no id — the reader could see that content had been
+  cut and had no handle to fetch the rest, only a fresh search whose top hit
+  is not guaranteed to be the same row. This was the one truncation path in
+  the system that dropped the key: `core/response_budget.py` already states
+  "Truncated items ... keep their id, so truncation is never a dead end", and
+  `core/gist_extraction.py` keeps its artifact pointer. Truncated banner
+  lines now end in `\u27e6mem:<id>\u27e7`, readable back with
+  `recall(memory_id=...)`. Untruncated lines are unchanged (no key needed —
+  the whole memory is already there), so the cost is proportional to what was
+  actually lost, and the one-line legend is emitted only when a key was.
+  Where lines are cut is byte-identical; only what a cut line carries
+  changes. Distinct from the `\u27e6rcpt:id\u27e7` receipt, which answers
+  *which* memories were in context (`why`, Pearl rung-1) and never hands back
+  content.
+
 - **`benchmarks/reproduce.sh`'s published `FLOOR_*` check no longer blocks
   the build.** `main` itself measures below the published floors (LongMemEval
   MRR 0.904988 < 0.914, LoCoMo MRR 3-run mean 0.779868 < 0.805, Recall@10
