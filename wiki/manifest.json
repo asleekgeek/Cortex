@@ -3144,6 +3144,10 @@
       "mirror": "ADR-0878-scripts-v3-13-0-a3-rollback-sql.md",
       "path": "adr/migration/0878-scripts-v3-13-0-a3-rollback-sql.md"
     },
+    "ADR-0879": {
+      "mirror": "ADR-0879-video-generate.md",
+      "path": "adr/migration/0879-video-generate.md"
+    },
     "ADR-0880": {
       "mirror": "ADR-0880-fuzz-fuzz-yaml-frontmatter-py.md",
       "path": "adr/migration/0880-fuzz-fuzz-yaml-frontmatter-py.md"
@@ -3216,9 +3220,185 @@
       "mirror": "ADR-0951-tests-py-handlers-test-injection-receipts-emitter-py.md",
       "path": "adr/migration/0951-tests-py-handlers-test-injection-receipts-emitter-py.md"
     },
+    "ADR-0953": {
+      "mirror": "ADR-0953-tests-py-handlers-test-remember-helpers-silent-failures-py.md",
+      "path": "adr/migration/0953-tests-py-handlers-test-remember-helpers-silent-failures-py.md"
+    },
+    "ADR-0954": {
+      "mirror": "ADR-0954-tests-py-handlers-test-remember-link-provenance-py.md",
+      "path": "adr/migration/0954-tests-py-handlers-test-remember-link-provenance-py.md"
+    },
+    "ADR-0955": {
+      "mirror": "ADR-0955-tests-py-handlers-test-remember-provenance-at-write-py.md",
+      "path": "adr/migration/0955-tests-py-handlers-test-remember-provenance-at-write-py.md"
+    },
+    "ADR-0960": {
+      "mirror": "ADR-0960-tests-py-handlers-test-why-py.md",
+      "path": "adr/migration/0960-tests-py-handlers-test-why-py.md"
+    },
+    "ADR-0962": {
+      "mirror": "ADR-0962-tests-py-handlers-test-wiki-redirect-handlers-py.md",
+      "path": "adr/migration/0962-tests-py-handlers-test-wiki-redirect-handlers-py.md"
+    },
+    "ADR-0963": {
+      "mirror": "ADR-0963-tests-py-handlers-test-wiki-seed-codebase-py.md",
+      "path": "adr/migration/0963-tests-py-handlers-test-wiki-seed-codebase-py.md"
+    },
+    "ADR-0966": {
+      "mirror": "ADR-0966-tests-py-handlers-test-wiki-write-path-governance-py.md",
+      "path": "adr/migration/0966-tests-py-handlers-test-wiki-write-path-governance-py.md"
+    },
+    "ADR-0967": {
+      "mirror": "ADR-0967-tests-py-hooks-test-agent-briefing-py.md",
+      "path": "adr/migration/0967-tests-py-hooks-test-agent-briefing-py.md"
+    },
+    "ADR-0971": {
+      "mirror": "ADR-0971-tests-py-hooks-test-hook-receipts-py.md",
+      "path": "adr/migration/0971-tests-py-hooks-test-hook-receipts-py.md"
+    },
+    "ADR-0972": {
+      "mirror": "ADR-0972-tests-py-hooks-test-hook-receipts-unit-py.md",
+      "path": "adr/migration/0972-tests-py-hooks-test-hook-receipts-unit-py.md"
+    },
+    "ADR-0973": {
+      "mirror": "ADR-0973-tests-py-hooks-test-preemptive-context-py.md",
+      "path": "adr/migration/0973-tests-py-hooks-test-preemptive-context-py.md"
+    },
+    "ADR-0976": {
+      "mirror": "ADR-0976-tests-py-infrastructure-test-capture-origin-legacy-backfill-py.md",
+      "path": "adr/migration/0976-tests-py-infrastructure-test-capture-origin-legacy-backfill-py.md"
+    },
+    "ADR-0978": {
+      "mirror": "ADR-0978-tests-py-infrastructure-test-config-py.md",
+      "path": "adr/migration/0978-tests-py-infrastructure-test-config-py.md"
+    },
+    "ADR-0981": {
+      "mirror": "ADR-0981-tests-py-infrastructure-test-embedding-live-contract-py.md",
+      "path": "adr/migration/0981-tests-py-infrastructure-test-embedding-live-contract-py.md"
+    },
+    "ADR-0983": {
+      "mirror": "ADR-0983-tests-py-infrastructure-test-injection-receipts-store-py.md",
+      "path": "adr/migration/0983-tests-py-infrastructure-test-injection-receipts-store-py.md"
+    },
+    "ADR-0984": {
+      "mirror": "ADR-0984-tests-py-infrastructure-test-mcp-client-py.md",
+      "path": "adr/migration/0984-tests-py-infrastructure-test-mcp-client-py.md"
+    },
+    "ADR-0985": {
+      "mirror": "ADR-0985-tests-py-infrastructure-test-pg-alpha-integral-py.md",
+      "path": "adr/migration/0985-tests-py-infrastructure-test-pg-alpha-integral-py.md"
+    },
+    "ADR-0986": {
+      "mirror": "ADR-0986-tests-py-infrastructure-test-pg-decay-clock-anchor-py.md",
+      "path": "adr/migration/0986-tests-py-infrastructure-test-pg-decay-clock-anchor-py.md"
+    },
+    "ADR-0987": {
+      "mirror": "ADR-0987-tests-py-infrastructure-test-pg-effective-stage-parity-py.md",
+      "path": "adr/migration/0987-tests-py-infrastructure-test-pg-effective-stage-parity-py.md"
+    },
+    "ADR-0991": {
+      "mirror": "ADR-0991-tests-py-infrastructure-test-pg-recall-scoring-debias-py.md",
+      "path": "adr/migration/0991-tests-py-infrastructure-test-pg-recall-scoring-debias-py.md"
+    },
+    "ADR-0993": {
+      "mirror": "ADR-0993-tests-py-infrastructure-test-pg-spread-activation-scoping-py.md",
+      "path": "adr/migration/0993-tests-py-infrastructure-test-pg-spread-activation-scoping-py.md"
+    },
+    "ADR-0995": {
+      "mirror": "ADR-0995-tests-py-infrastructure-test-pg-store-near-dup-py.md",
+      "path": "adr/migration/0995-tests-py-infrastructure-test-pg-store-near-dup-py.md"
+    },
+    "ADR-0997": {
+      "mirror": "ADR-0997-tests-py-infrastructure-test-pg-user-mood-py.md",
+      "path": "adr/migration/0997-tests-py-infrastructure-test-pg-user-mood-py.md"
+    },
+    "ADR-0998": {
+      "mirror": "ADR-0998-tests-py-infrastructure-test-pipeline-discovery-py.md",
+      "path": "adr/migration/0998-tests-py-infrastructure-test-pipeline-discovery-py.md"
+    },
+    "ADR-0999": {
+      "mirror": "ADR-0999-tests-py-infrastructure-test-schema-integrity-py.md",
+      "path": "adr/migration/0999-tests-py-infrastructure-test-schema-integrity-py.md"
+    },
+    "ADR-1005": {
+      "mirror": "ADR-1005-tests-py-infrastructure-test-stdio-late-response-py.md",
+      "path": "adr/migration/1005-tests-py-infrastructure-test-stdio-late-response-py.md"
+    },
+    "ADR-1011": {
+      "mirror": "ADR-1011-tests-py-integration-test-recall-trust-ranking-py.md",
+      "path": "adr/migration/1011-tests-py-integration-test-recall-trust-ranking-py.md"
+    },
+    "ADR-1012": {
+      "mirror": "ADR-1012-tests-py-integration-test-spread-activation-candidate-contract-py.md",
+      "path": "adr/migration/1012-tests-py-integration-test-spread-activation-candidate-contract-py.md"
+    },
     "ADR-1014": {
       "mirror": "ADR-1014-tests-py-invariants-test-i2-canonical-writer-py.md",
       "path": "adr/migration/1014-tests-py-invariants-test-i2-canonical-writer-py.md"
+    },
+    "ADR-1015": {
+      "mirror": "ADR-1015-tests-py-invariants-test-guard-against-populated-db-py.md",
+      "path": "adr/migration/1015-tests-py-invariants-test-guard-against-populated-db-py.md"
+    },
+    "ADR-1016": {
+      "mirror": "ADR-1016-tests-py-invariants-test-guard-against-populated-db-structural-py.md",
+      "path": "adr/migration/1016-tests-py-invariants-test-guard-against-populated-db-structural-py.md"
+    },
+    "ADR-1017": {
+      "mirror": "ADR-1017-tests-py-invariants-test-guard-blocks-populated-db-py.md",
+      "path": "adr/migration/1017-tests-py-invariants-test-guard-blocks-populated-db-py.md"
+    },
+    "ADR-1020": {
+      "mirror": "ADR-1020-tests-py-invariants-test-pg-schema-provision-ready-py.md",
+      "path": "adr/migration/1020-tests-py-invariants-test-pg-schema-provision-ready-py.md"
+    },
+    "ADR-1021": {
+      "mirror": "ADR-1021-tests-py-invariants-test-pg-throwaway-db-py.md",
+      "path": "adr/migration/1021-tests-py-invariants-test-pg-throwaway-db-py.md"
+    },
+    "ADR-1025": {
+      "mirror": "ADR-1025-tests-py-scripts-craftsmanship-support-py.md",
+      "path": "adr/migration/1025-tests-py-scripts-craftsmanship-support-py.md"
+    },
+    "ADR-1028": {
+      "mirror": "ADR-1028-tests-py-scripts-test-check-craftsmanship-exploits-py.md",
+      "path": "adr/migration/1028-tests-py-scripts-test-check-craftsmanship-exploits-py.md"
+    },
+    "ADR-1030": {
+      "mirror": "ADR-1030-tests-py-scripts-test-check-marketplace-pins-registry-py.md",
+      "path": "adr/migration/1030-tests-py-scripts-test-check-marketplace-pins-registry-py.md"
+    },
+    "ADR-1034": {
+      "mirror": "ADR-1034-tests-py-scripts-test-craftsmanship-imports-py.md",
+      "path": "adr/migration/1034-tests-py-scripts-test-craftsmanship-imports-py.md"
+    },
+    "ADR-1039": {
+      "mirror": "ADR-1039-tests-py-scripts-test-launcher-constraints-extras-py.md",
+      "path": "adr/migration/1039-tests-py-scripts-test-launcher-constraints-extras-py.md"
+    },
+    "ADR-1041": {
+      "mirror": "ADR-1041-tests-py-scripts-test-launcher-pins-match-lock-py.md",
+      "path": "adr/migration/1041-tests-py-scripts-test-launcher-pins-match-lock-py.md"
+    },
+    "ADR-1042": {
+      "mirror": "ADR-1042-tests-py-scripts-test-mcp-json-contract-py.md",
+      "path": "adr/migration/1042-tests-py-scripts-test-mcp-json-contract-py.md"
+    },
+    "ADR-1048": {
+      "mirror": "ADR-1048-tests-py-scripts-test-wiki-backfill-ids-py.md",
+      "path": "adr/migration/1048-tests-py-scripts-test-wiki-backfill-ids-py.md"
+    },
+    "ADR-1054": {
+      "mirror": "ADR-1054-tests-py-shared-test-platform-py.md",
+      "path": "adr/migration/1054-tests-py-shared-test-platform-py.md"
+    },
+    "ADR-1055": {
+      "mirror": "ADR-1055-tests-py-shared-test-project-ids-py.md",
+      "path": "adr/migration/1055-tests-py-shared-test-project-ids-py.md"
+    },
+    "ADR-1057": {
+      "mirror": "ADR-1057-tests-py-shared-test-wiki-classification-py.md",
+      "path": "adr/migration/1057-tests-py-shared-test-wiki-classification-py.md"
     }
   },
   "project": "cortex",
