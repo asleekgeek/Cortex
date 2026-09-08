@@ -10,13 +10,8 @@
 
 
 --
--- Strategy:
---   Entity-driven nested loop with bitmap-index probes against
---   idx_memories_content_trgm (GIN gin_trgm_ops). For each eligible
---   entity, the pg_trgm index returns the candidate memories whose
---   content contains the entity's name as a substring; the heap recheck
---   applies ILIKE precisely. This is O(entities × avg_candidates_per_probe)
---   not O(entities × memories).
+-- Use entity-driven trigram probes with an exact ILIKE heap recheck.
+-- source: ADR-0875
 --
 -- source: ADR-0875
 
@@ -33,9 +28,8 @@
 --   runs of this script are both safe. The composite PK does the work.
 --
 -- Timeouts:
---   SET LOCAL statement_timeout = '1h'  -- backfill window on 66K store
---   SET LOCAL lock_timeout = '5s'       -- fail fast if concurrent DDL
---   Both are local to this transaction; they do not modify postgresql.conf.
+-- Transaction-local timeouts: statement_timeout = '1h'; lock_timeout = '5s'.
+-- source: ADR-0875
 --
 -- source: ADR-0875
 
@@ -46,11 +40,7 @@
 -- source: ADR-0875
 
 --
---   Naive single-statement (planner default):     217.5 s   (plan A below)
---   Forced bitmap-index single-statement:           6.57 s  (plan A, forced)
---   Chunked PL/pgSQL (section B, 500/chunk):        6.63 s  (35 chunks × ~190ms)
---   Tuples inserted: 91,125  (matches Curie audit's eligible-pairs count)
---   Conflicting tuples: 640  (the write-time persist_entities baseline)
+-- source: ADR-0875
 --
 -- source: ADR-0875
 
@@ -64,19 +54,7 @@
 
 
 --
--- Plan evidence (saved here for auditability):
---
---   Without forcing (seq+materialize):
---     Nested Loop (cost=0..92663, rows=22988) actual=217527ms rows=91765
---       -> Seq Scan on entities e (rows=16977)
---       -> Materialize (loops=16977, rows=800 each)   [the cost trap]
---
---   With `enable_seqscan=off, enable_material=off`:
---     Nested Loop actual=6660ms rows=91765
---       -> Seq Scan on entities e (rows=16977)
---       -> Bitmap Heap Scan on memories m (loops=16977, rows=5 avg)
---            Recheck Cond: content ~~* ('%' || e.name || '%')
---            -> Bitmap Index Scan on idx_memories_content_trgm (rows=13 avg)
+-- source: ADR-0875
 --
 -- =============================================================================
 
@@ -100,9 +78,8 @@
 --          (SELECT COUNT(*) FROM memories)  AS n_memories;
 
 -- =============================================================================
--- Section A — one-shot single-statement backfill (preferred on stores
--- where the 1h statement_timeout is comfortable, i.e. local `cortex` and
--- anything up to ~200K memories).
+-- Section A — one-shot single-statement backfill.
+-- source: ADR-0875
 -- =============================================================================
 
 BEGIN;
@@ -152,10 +129,8 @@ COMMIT;
 --   ) t;
 
 -- =============================================================================
--- Section B — chunked PL/pgSQL backfill (for stores where a single
--- transaction risks timing out or holding locks too long).  Each chunk
--- is its own sub-transaction via EXCEPTION handling.  Emits a NOTICE every
--- 500 entities processed.
+-- Section B — chunked PL/pgSQL backfill; each chunk is a subtransaction and emits progress.
+-- source: ADR-0875
 --
 -- To use section B: comment out Section A above and uncomment the DO block.
 -- Both sections are idempotent; running B after A is a no-op beyond the

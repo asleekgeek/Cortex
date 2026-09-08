@@ -135,12 +135,8 @@ FLOOR_TOLERANCE=0.005
 # ── Ephemeral PostgreSQL + pgvector (any PG>=15 with vector works; the schema
 # code creates the extension itself on first connect).
 #
-# CONTAINER and PG_PORT are per-run and finalized inside start_db(): the name
-# carries this process's PID + a random suffix (mirrors conftest.py's
-# cortex_test_pw<pid>_<hex>), and the port is kernel-assigned (docker -p 0)
-# unless CORTEX_BENCH_PORT pins one explicitly. BENCH_DB_URL is therefore
-# only valid AFTER start_db() returns — nothing before it in this script
-# reads BENCH_DB_URL.
+# Finalize CONTAINER, PG_PORT, and BENCH_DB_URL inside start_db(); read the URL only afterward.
+# source: ADR-0859
 PG_IMAGE="pgvector/pgvector:pg16"
 CONTAINER="cortex-bench-pg-$$-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
 PG_PORT=""
@@ -359,8 +355,8 @@ for f in sorted(repro_dir.glob("*.json")):
     if f.name == "MANIFEST.json": continue
     d = load(f)
     mrr = d.get("overall_mrr")
-    # BEAM's runner writes overall_r10 / total_questions; the others write
-    # overall_recall10 / n_questions. Explicit None checks — 0.0 is a value.
+    # Read the runner-specific metric and question-count keys; accept numeric zero.
+    # source: ADR-0859
     r10 = d.get("overall_recall10")
     if r10 is None:
         r10 = d.get("overall_r10")
@@ -506,7 +502,8 @@ main() {
 
     write_manifest
     print_summary
-    # Full runs only: partial runs are not comparable to the published n.
+    # Compare published question counts only for full runs.
+    # source: ADR-0859
     if [ "$RUN_BENCHMARKS" = "1" ] && [ -z "$LIMIT" ] && [ "$QUICK" = "0" ]; then
         check_floors
     fi

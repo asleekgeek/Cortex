@@ -72,3 +72,46 @@ Source rationale preserved verbatim. Identifiers inside historical quotations ar
 -- consolidate so no cron needed.
 -- ----------------------------------------------------------------------------
 ````
+
+## Final non-Python residual audit
+
+### scripts/v3_13_0_a3_migration.sql — pre-cleanup line 27
+
+````text
+--   - INSERT INTO copy of memories → partitioned memories; tested on
+--     darval-scale 66K in ~4 minutes per spec §1.3.
+````
+
+### scripts/v3_13_0_a3_migration.sql — pre-cleanup line 68
+
+````text
+-- Back-populate heat_base_set_at from last_accessed (Lamport §3: the last
+-- known causal touch is our best proxy for when heat_base was last valid).
+````
+
+### scripts/v3_13_0_a3_migration.sql — pre-cleanup line 79
+
+````text
+-- Feynman: heat is a function, not a state — the cycle adjusts a scalar.
+````
+
+### scripts/v3_13_0_a3_migration.sql — pre-cleanup line 99
+
+````text
+-- 1.4 Monthly RANGE partition on memories.created_at (Thompson D1).
+-- Strategy: rename memories → memories_pre_a3, create new partitioned
+-- memories with IDENTICAL schema, INSERT INTO to copy data, drop old.
+-- For stores < 1M rows this finishes in ≤5 min per spec §1.3.
+````
+
+## Final non-Python residual audit
+
+### scripts/v3_13_0_a3_migration.sql — pre-cleanup line 18
+
+````text
+-- What this DDL does NOT do (that's steps 2-8 of the spec):
+--   - Add effective_heat() function (step 2 lands that in pg_schema.py).
+--   - Rewrite recall_memories() (step 6).
+--   - Delete decay_memories() (step 7).
+--   - Flip the A3_LAZY_HEAT flag (step 9).
+````

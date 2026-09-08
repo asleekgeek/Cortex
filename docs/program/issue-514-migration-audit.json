@@ -60,25 +60,25 @@
       "file": ".clusterfuzzlite/build.sh",
       "base_blob": "c0736e88e1b59146a209623da744e055a326c711",
       "base_sha256": "fc01597a6fb688e18265aa0b865a88b4038113308cfd1c73952f366a5ee4b49a",
-      "migrated_sha256": "ddbe9dc55563a0e082fafb999c074a4f6e25f62d50ea466922ac5bb19a6521c6",
+      "migrated_sha256": "73f9aa6b1eeda8690ef46b58c2625cb8046cf53097a0a31019530d1f56ce2cbe",
       "lines_before": 34,
-      "lines_after": 34
+      "lines_after": 32
     },
     {
       "file": ".devcontainer/Dockerfile",
       "base_blob": "e85e3214ea1655c3e4eafdc39d743a1a539a2d51",
       "base_sha256": "0adb5be958384ee45e65403fea3fbfd2315051c969054a6cfc5c06a4670875e7",
-      "migrated_sha256": "9bc088897485739efb33faac2b6b81a29c99db9282dc55f6432b11e052879ba0",
+      "migrated_sha256": "21a22b5d5f0bc4125444585250bbb68d6f007443c962c6abee0b2b24ecbf6d6b",
       "lines_before": 109,
-      "lines_after": 109
+      "lines_after": 106
     },
     {
       "file": ".devcontainer/docker-compose.yml",
       "base_blob": "5ea1606373d6f5c6f0cbd5a96eccb50262c77796",
       "base_sha256": "c115ad741be1c75f47dc5b7d42334b078c1894d66434d977c6acac870a4ec6f2",
-      "migrated_sha256": "c993d0d2a3684d08dbc67dd2b4b00e9bd01d2cc7ae9cdc867a197de4436f496a",
+      "migrated_sha256": "2311dd112d012151e6f5f536409744088ccc9e53705dea233f3eab39bf19c5af",
       "lines_before": 53,
-      "lines_after": 53
+      "lines_after": 51
     },
     {
       "file": ".devcontainer/initdb/01-extensions.sql",
@@ -108,9 +108,9 @@
       "file": ".github/workflows/ci.yml",
       "base_blob": "f363cd2df214aa7c4bcf6e4953a3a9b9025ecc3b",
       "base_sha256": "0ab387a84b8f7ab36e4e9b601402d87097b21aa00f2f0c0828bd5c0a5854641e",
-      "migrated_sha256": "a4866940e37bf7bf7af8518878f12b7cb8167f7f8ab01dc6ecb613edf72856e6",
+      "migrated_sha256": "55f5bb9ce5f83933f9d74f853597d0a0754ac4431a27a710580b17f6904a6db5",
       "lines_before": 1208,
-      "lines_after": 1208
+      "lines_after": 1195
     },
     {
       "file": ".github/workflows/fuzz.yml",
@@ -132,15 +132,15 @@
       "file": ".github/workflows/marketplace-pins.yml",
       "base_blob": "fbabbd00112943549fb860e39b6052e29b399b29",
       "base_sha256": "568d526b2cfaabe9ab59835626fe14908e8316849c726cf51e5b5cd2715f9aea",
-      "migrated_sha256": "ce7d15ec465898c196bd0834b4fa99e4dc389356fe2be66981c6e5a5af72f739",
+      "migrated_sha256": "974e34889352d780154a18d1c4305ca1bf337e188e1a53e771cb5924ea0e4ad1",
       "lines_before": 40,
-      "lines_after": 40
+      "lines_after": 38
     },
     {
       "file": ".github/workflows/mcp-toplist-badge.yml",
       "base_blob": "8ea4a6aaeed1ca9cefa67758ca57662d3400d7db",
       "base_sha256": "f24a3c7a307abf348c610177442e2c6c7b10f8b086e6d7751276a0f0ceb19749",
-      "migrated_sha256": "2612c28fa98e433e5f846097607bc746b7e58571553ceee498fbf817c68f0147",
+      "migrated_sha256": "a3d94d0f78eb5f611ba1a12a0f13d7e4daf6134f1c0dc60f7425eea9ca19493b",
       "lines_before": 91,
       "lines_after": 91
     },
@@ -156,9 +156,9 @@
       "file": ".github/workflows/release.yml",
       "base_blob": "d1344648c0928a41eaad7446263109e4babea62a",
       "base_sha256": "bb062335e50904edcc061780f10a21375b7f600ef425124e470a142a21a7833c",
-      "migrated_sha256": "56f6d688d5a93dc0f863adf0027dc1a386c8ee19bceae9f2cd9ba5a2e38c5961",
+      "migrated_sha256": "f4041b66d572d61c23d65ae93fd50c5fdbcbf09427c473c2acd39c008276a3ec",
       "lines_before": 529,
-      "lines_after": 529
+      "lines_after": 524
     },
     {
       "file": ".github/workflows/scorecard.yml",
@@ -172,15 +172,15 @@
       "file": ".github/workflows/sync-ccplugins-fork.yml",
       "base_blob": "2488361c8f3c45fc40593dbd22c7223b834bc22d",
       "base_sha256": "ab93a023ba9434c2be0f634b08159a5a610b4527133bd561dbad0a789277a99e",
-      "migrated_sha256": "a548b2326dc72173bc87a8e6e553935efb3af5713dd581ef771da3a22be29cbf",
+      "migrated_sha256": "606e1861d5ca458759107726a421ba53954c42fa19422bcf0d7c919c3b2d3e7b",
       "lines_before": 90,
-      "lines_after": 90
+      "lines_after": 84
     },
     {
       "file": ".github/workflows/upstream-identity.yml",
       "base_blob": "8924d6585c4b984dc3b5a243b673f2d75fc18157",
       "base_sha256": "a39d279d1d8b864734e28151fbdc2725868ed9ddfd10f4f9bd5242ae32cbac35",
-      "migrated_sha256": "fabc218084a3f012d74a383719ea72bc8ac5048e939f0bdebb70735139e444ff",
+      "migrated_sha256": "180137ea461c81a05324a7ac70fc0f636748051a308220651734b03c7f18687d",
       "lines_before": 122,
       "lines_after": 122
     },
@@ -188,7 +188,7 @@
       "file": "Dockerfile",
       "base_blob": "cd24b68108f9d377b6784725b6343f862b298474",
       "base_sha256": "f8cc8c339269253d9a6d84ebbe87e1fa67191b4b95912aa2fe9e69c0a3d43a71",
-      "migrated_sha256": "427db4b3326e6d7a8b28828466e190454b1e098628c8e4ee246a6700a2845065",
+      "migrated_sha256": "33030185858c7528b07f259e55d0f007c1c52dd77c9f18dcb25c2504cc925c26",
       "lines_before": 149,
       "lines_after": 149
     },
@@ -365,7 +365,7 @@
       "file": "benchmarks/hnsw_probe/phase1_b_e.sql",
       "base_blob": "0e20c1d606381f4896ddbdc33faa158c5d0fe994",
       "base_sha256": "2b844dc6b2cecde2b70f249c4a146addb4dcf34c8721deb238c1e729d396fedc",
-      "migrated_sha256": "157219f656d50108f036d6b3362eaf2661e1553493038b09a75dd15302eea8e0",
+      "migrated_sha256": "85a12938779516a3d40ba3863bcaa9fe211be6883b28ea53b29db8fd1549e936",
       "lines_before": 59,
       "lines_after": 59
     },
@@ -381,7 +381,7 @@
       "file": "benchmarks/hnsw_probe/run_conditions.sql",
       "base_blob": "eeb97fb4caf46b3a549947585edb950d90147bbf",
       "base_sha256": "a9af1efec5fdbe83de2b84d70f6859c1eb8bc7de75cf7b4c03009401f73a1b07",
-      "migrated_sha256": "9a66950195a2f018d1d42f1bbd984919d1e276a3214925d484be7be7da0e5788",
+      "migrated_sha256": "6a4366f7c110c03ce956dcd9d882eb904e7c9f5d6e947157aa917fe5ce18cf81",
       "lines_before": 138,
       "lines_after": 138
     },
@@ -389,7 +389,7 @@
       "file": "benchmarks/hnsw_probe/setup.sql",
       "base_blob": "0ce3fe7ecd6b16f870da1e8b8f0337b5b63113b5",
       "base_sha256": "6fd73ba6c6ebdcc97363a682f813d8f892cbe214efbfefd7f0cd801db78f391a",
-      "migrated_sha256": "b28a9cff9dd4421580b751fbb0bbd8543266251839e475d540a668e7d27a8961",
+      "migrated_sha256": "18dae0f57bf019403549de1131e58d2b16c1518494d6dc8dc3c8f9efe6a27751",
       "lines_before": 58,
       "lines_after": 58
     },
@@ -451,9 +451,9 @@
       "file": "benchmarks/lib/bench_container.sh",
       "base_blob": "e2b755d1570162f9b78395f3e72eead77a1ab29f",
       "base_sha256": "edad26e1d9ffd8691760da03c913e6ee0e1ce7a924cec901b9d28860fe736c6f",
-      "migrated_sha256": "65f2d1d04a829055755257ba1647034c951e85855f6a679630b2f5ccfd5a9538",
+      "migrated_sha256": "5d389d6f06ccef1f698026f5157a3fb2d6ef85bae8d507bb83213d3c3d341a10",
       "lines_before": 140,
-      "lines_after": 93
+      "lines_after": 88
     },
     {
       "file": "benchmarks/lib/bench_db.py",
@@ -468,9 +468,9 @@
       "file": "benchmarks/lib/bench_regression.sh",
       "base_blob": "a75b58bd6476374ce76add25492588bb7f39476a",
       "base_sha256": "aeac114807f760a997399f674f245aad5ed0cc5ebb75ecf46cb32f1f2a414290",
-      "migrated_sha256": "8cd974e5ec5041d613de445f922523b6b04aff8c00c5abab3f4353e44ed1cdb6",
+      "migrated_sha256": "c90a8ca73ab45505cf034bf5dfac22ff704f582a5805579e0ba0a2a9829311d3",
       "lines_before": 195,
-      "lines_after": 151
+      "lines_after": 141
     },
     {
       "file": "benchmarks/lib/blend_weight_sweep.py",
@@ -897,9 +897,9 @@
       "file": "benchmarks/reproduce.sh",
       "base_blob": "39708896d717a927b64bd8429daf44444a8ccecc",
       "base_sha256": "52ad0dc2139f51dc21b9aa9f9d9a37f36726e6ce94cf862a2231f971008a2309",
-      "migrated_sha256": "da64bfc68179526cb2190bc2f0881600710eaab8087f3aea536b5ec333eb2059",
+      "migrated_sha256": "d8d0a29bc0178168ed0603c9e7772dacd8c96d806febe89d9ca99cea2475224d",
       "lines_before": 535,
-      "lines_after": 535
+      "lines_after": 532
     },
     {
       "file": "benchmarks/reranker_matrix/cache.py",
@@ -1012,17 +1012,17 @@
       "file": "docker/Dockerfile",
       "base_blob": "554e14704e43ee60cfca472d76ddaa40ed310a72",
       "base_sha256": "9386d3b3426fa2ed18f9cf99f7db83580ae21690dfe9d5e1e695969db707da76",
-      "migrated_sha256": "9afb9fe0aeb09214ad3e6a46ab185fa2367c2a4720f719501b4cd1b467d15cad",
+      "migrated_sha256": "6cadfc004b3a46584d2417fece3febf5aa2b64e33b49f85e6c85f5ba3bc6ebaa",
       "lines_before": 202,
-      "lines_after": 202
+      "lines_after": 196
     },
     {
       "file": "docker/entrypoint.sh",
       "base_blob": "2871fefce5683f75777c8a2f36db51c7af95cb77",
       "base_sha256": "d0f13e0f86401655a5a01bd7a181e6c86b6dc79840b75a175d4d35bcba5a30ca",
-      "migrated_sha256": "71c0723cd3d3e4e80b08594bbffb35f0517b026e28f3517d8d43654748182849",
+      "migrated_sha256": "e5b719178ac22ae3b47ff690543799eda2153901725caf51abc9769752fd3d93",
       "lines_before": 176,
-      "lines_after": 176
+      "lines_after": 177
     },
     {
       "file": "fuzz/fuzz_yaml_frontmatter.py",
@@ -6545,9 +6545,9 @@
       "file": "pyproject.toml",
       "base_blob": "48f347e6c2bc24951ffefb87b50a9557251ac780",
       "base_sha256": "6ea701afd4d345c7af04a9ca87597c5f42867f16fcb564ac7fccff2c2307b403",
-      "migrated_sha256": "0b093549a3fc338dd7c851223b6db32ca9a82bacd52b5032a8dfe71983f0aec3",
+      "migrated_sha256": "b2340fbde2fca4e5bb025bf8625f74de0e0163739a6d7b808473a653df6dddfa",
       "lines_before": 762,
-      "lines_after": 762
+      "lines_after": 747
     },
     {
       "file": "scripts/aggregate_hook_timings.py",
@@ -6813,9 +6813,9 @@
       "file": "scripts/docker_smoke.sh",
       "base_blob": "6a1656f6e7bf10761e3fcefa0f65e35f3a4be887",
       "base_sha256": "8e5092da61ae402ad035c84e5c1d8ceacf1e665321d224c65223da6630dc760a",
-      "migrated_sha256": "ad80bd3782d3812cba9d990cd3c03b40244af049d545fff0f416e03e6f792d21",
+      "migrated_sha256": "b8a3f0f94547380c857f71d4197a37480886c0fe0f3d782d646d045e08f3a8aa",
       "lines_before": 76,
-      "lines_after": 36
+      "lines_after": 35
     },
     {
       "file": "scripts/docker_smoke_client.py",
@@ -6884,9 +6884,9 @@
       "file": "scripts/install-plugin.sh",
       "base_blob": "2b0109f74831821914e15f0a032246ead53c0426",
       "base_sha256": "d98096fd885fdc2cf2acdfc9af0ca3c6884742cc1f38d9886f0b935db2562331",
-      "migrated_sha256": "d590e7b5ffcdc4a91bb1af1be4eea61fcac35e0518126cb0a9a10a424a082559",
+      "migrated_sha256": "93c5d9ce896c0d1c4d6e5a6b5d00e371b28dd4758a01ad1d1d99e2872d9a3818",
       "lines_before": 298,
-      "lines_after": 265
+      "lines_after": 253
     },
     {
       "file": "scripts/install_hooks.py",
@@ -7197,9 +7197,9 @@
       "file": "scripts/phase_0_4_5_backfill.sql",
       "base_blob": "6dffd731d15fbfca5b62a0be42568fc6ff57191d",
       "base_sha256": "995b7d3cdcef7f107f188cc78524275ff92ed73d1f33c254a356c8c075a36246",
-      "migrated_sha256": "5ef64812a1c9a3c62aac8f2cfa6092b71989689610da2223f322f21d76e09b3c",
+      "migrated_sha256": "fdbe95e28f7d1710d0700e519fadc1d692b743b5fdd55b5a4029f8ee74ca0913",
       "lines_before": 218,
-      "lines_after": 218
+      "lines_after": 193
     },
     {
       "file": "scripts/pip_constraint_sets.py",
@@ -7326,9 +7326,9 @@
       "file": "scripts/v3_13_0_a3_migration.sql",
       "base_blob": "d5ac9e67fdabbad4f60f62766e4ffa552369ce08",
       "base_sha256": "ec7c35fc5fb5cc0bf1bda4fb156423421b00b1133e9bca3ad42a252348b5e3a9",
-      "migrated_sha256": "108eb4ce954ded3da85dcc6fe993263c183ea30b701e62e6ccb7c5315246974c",
+      "migrated_sha256": "80c9de8dd05294ad537456061ae7af1fc670fd3ebc17226c2ed5a006f896f062",
       "lines_before": 238,
-      "lines_after": 238
+      "lines_after": 233
     },
     {
       "file": "scripts/v3_13_0_a3_rollback.sql",

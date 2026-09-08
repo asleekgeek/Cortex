@@ -15,17 +15,14 @@
 
 
 --
--- What this DDL does NOT do (that's steps 2-8 of the spec):
---   - Add effective_heat() function (step 2 lands that in pg_schema.py).
---   - Rewrite recall_memories() (step 6).
---   - Delete decay_memories() (step 7).
---   - Flip the A3_LAZY_HEAT flag (step 9).
+-- This DDL leaves effective_heat(), recall_memories(), decay_memories(), and A3_LAZY_HEAT unchanged.
+-- source: ADR-0877
 --
 -- Safety:
 --   - Wrapped in a single BEGIN/COMMIT with 30-min statement_timeout.
 --   - Every DDL is IF NOT EXISTS or DROP IF EXISTS (idempotent re-run).
---   - INSERT INTO copy of memories → partitioned memories; tested on
---     darval-scale 66K in ~4 minutes per spec §1.3.
+--   - Copy memories into the partitioned table.
+-- source: ADR-0877
 --   - Companion rollback at scripts/v3_13_0_a3_rollback.sql.
 --
 -- Runbook:
@@ -65,8 +62,8 @@ ALTER TABLE memories
     ADD COLUMN IF NOT EXISTS heat_base_set_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS no_decay BOOLEAN NOT NULL DEFAULT FALSE;
 
--- Back-populate heat_base_set_at from last_accessed (Lamport §3: the last
--- known causal touch is our best proxy for when heat_base was last valid).
+-- Back-populate heat_base_set_at from last_accessed.
+-- source: ADR-0877
 UPDATE memories
    SET heat_base_set_at = COALESCE(last_accessed, created_at, NOW())
  WHERE heat_base_set_at IS NULL;
@@ -76,7 +73,7 @@ ALTER TABLE memories ALTER COLUMN heat_base_set_at SET DEFAULT NOW();
 
 -- ----------------------------------------------------------------------------
 -- 1.3 Homeostatic state (one row per domain, scalar factor).
--- Feynman: heat is a function, not a state — the cycle adjusts a scalar.
+-- source: ADR-0877
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS homeostatic_state (
     domain     TEXT PRIMARY KEY,
@@ -96,10 +93,8 @@ SELECT DISTINCT COALESCE(domain, ''), 1.0
 ON CONFLICT (domain) DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- 1.4 Monthly RANGE partition on memories.created_at (Thompson D1).
--- Strategy: rename memories → memories_pre_a3, create new partitioned
--- memories with IDENTICAL schema, INSERT INTO to copy data, drop old.
--- For stores < 1M rows this finishes in ≤5 min per spec §1.3.
+-- Create monthly RANGE partitions on memories.created_at and copy the existing rows.
+-- source: ADR-0877
 -- ----------------------------------------------------------------------------
 DO $$ DECLARE
     is_partitioned BOOLEAN;

@@ -73,3 +73,38 @@ Source: `scripts/install-plugin.sh`; original SHA-256 `d98096fd885fdc2cf2acdfc9a
 
 ````
 
+
+## Final non-Python residual audit
+
+### scripts/install-plugin.sh — pre-cleanup line 23
+
+````text
+#   2. Remove stale OTHER versions of Cortex installed elsewhere on the
+#      machine, so the freshly-installed plugin is the single source of
+#      truth.
+````
+
+### scripts/install-plugin.sh — pre-cleanup line 70
+
+````text
+# CURRENT_VERSION is read via an env var, NOT by interpolating $PLUGIN_JSON
+# into the -c source string. Splicing an arbitrary path into a Python
+# single-quoted string literal re-parses any backslash-letter sequence it
+# contains as a Python string escape — e.g. the "\a" in a GitHub Actions
+# Windows workspace path (D:\a\Cortex\Cortex) becomes ASCII BEL (0x07),
+# corrupting the path to D:\x07\Cortex\Cortex and failing to open it
+# (CI run 29360566538). Environment variables are passed as raw bytes with
+# no escape reinterpretation, so this is safe for any path content
+# (backslashes, spaces, quotes) on every OS, not just Windows.
+````
+
+### scripts/install-plugin.sh — pre-cleanup line 158
+
+````text
+# Persist the provisioned backend for scripts/launcher.py (marker is the
+# backend NAME only — never a URL, so no credentials touch disk here).
+# The path is computed with Path.home() INSIDE python, not interpolated
+# from $HOME: on Windows Git Bash $HOME is a POSIX-style path (/c/Users/x)
+# that native python.exe would misresolve, while Path.home() matches
+# exactly how backend_marker.py resolves the marker at read time.
+````
