@@ -76,6 +76,16 @@ def _insert(
         return cur.fetchone()["id"]
 
 
+def _exact_candidate_pairs(conn):
+    # These small fixtures assert pair semantics, not approximate ANN recall.
+    # Keep the shared table's HNSW history from deciding fixture membership;
+    # transaction-local settings leave production and later queries unchanged.
+    with conn.transaction():
+        conn.execute("SET LOCAL enable_indexscan = off")
+        conn.execute("SET LOCAL enable_bitmapscan = off")
+        return list_candidate_pairs(conn, top_k=10, min_similarity=0.75)
+
+
 class TestListCandidatePairs:
     def test_near_identical_vectors_form_a_candidate_pair(self):
         store = _pg_only()
@@ -87,7 +97,7 @@ class TestListCandidatePairs:
             conn.commit()
         try:
             with store.batch_pool.connection() as conn:
-                pairs = list_candidate_pairs(conn, top_k=10, min_similarity=0.75)
+                pairs = _exact_candidate_pairs(conn)
             matched = [p for p in pairs if {p.id_a, p.id_b} == {id_a, id_b}]
             assert len(matched) == 1
             assert matched[0].similarity == pytest.approx(1.0, abs=1e-4)
@@ -110,7 +120,7 @@ class TestListCandidatePairs:
             conn.commit()
         try:
             with store.batch_pool.connection() as conn:
-                pairs = list_candidate_pairs(conn, top_k=10, min_similarity=0.75)
+                pairs = _exact_candidate_pairs(conn)
             matched = [p for p in pairs if {p.id_a, p.id_b} == {id_a, id_b}]
             assert matched == []
         finally:
@@ -127,7 +137,7 @@ class TestListCandidatePairs:
             conn.commit()
         try:
             with store.batch_pool.connection() as conn:
-                pairs = list_candidate_pairs(conn, top_k=10, min_similarity=0.75)
+                pairs = _exact_candidate_pairs(conn)
             matched = [p for p in pairs if {p.id_a, p.id_b} == {id_a, id_b}]
             assert len(matched) == 1
             assert matched[0].id_a == min(id_a, id_b)
