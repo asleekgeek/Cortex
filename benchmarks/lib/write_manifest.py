@@ -1,15 +1,5 @@
 """Write the MANIFEST.json describing exactly what produced a benchmark run.
 
-Extracted verbatim from the heredoc previously embedded in
-``benchmarks/reproduce.sh::write_manifest`` (behaviour unchanged) so the shell
-driver stays within the size limits of coding-standards.md §4 and so this
-provenance logic can be read, diffed and tested as Python.
-
-Machine-load and disk-space snapshots live in sibling modules
-(``machine_load_snapshot.py``, ``disk_space_snapshot.py``) — see their
-docstrings for the two incidents that motivate recording them alongside
-``git_sha`` in every manifest.
-
 Usage (from reproduce.sh):
     python benchmarks/lib/write_manifest.py \\
         RESULTS_DIR GIT_SHA DATASET_SHA256 PG_IMAGE CONTAINER PG_PORT RUNNER_PID
@@ -17,7 +7,8 @@ Usage (from reproduce.sh):
     # Cell-start snapshot (call BEFORE start_db, so it also predates the
     # benchmark's own container/DB overhead):
     python benchmarks/lib/write_manifest.py --snapshot RESULTS_DIR
-"""
+
+source: ADR-0091"""
 
 import json
 import platform
@@ -61,12 +52,10 @@ def write_start_snapshot(results_dir: str) -> Path:
 def _read_start_snapshot(results_dir: str) -> dict | None:
     """Read back the cell-start snapshot written by `write_start_snapshot`.
 
-    Returns None (never raises) when absent — e.g. a `reproduce.sh` call
-    that predates this fix, or a caller that skipped the `--snapshot` step.
-    A missing start snapshot must not block the end-of-run manifest from
-    being written; the `_at_start` fields are simply absent in that case,
-    which is itself an observable fact rather than a silent guess.
-    """
+    Returns None (never raises) when the start snapshot is absent. A missing start
+    snapshot does not block the end-of-run manifest.
+
+    source: ADR-0091"""
     path = Path(results_dir) / _START_SNAPSHOT_NAME
     try:
         return json.loads(path.read_text())
@@ -88,13 +77,7 @@ def ver(pkg: str) -> str:
 def embedding_revision() -> str:
     """Exact model revision this run's EmbeddingEngine loaded.
 
-    i7d3 reproducibility-gap fix (2026-07-11): uv.lock pins the Python package
-    version but NOT the HF model weights an unpinned model name resolves
-    against (refs/main can move independently of any pyproject/uv.lock change,
-    with zero signal in this manifest before this fix). See
-    mcp_server/infrastructure/embedding_engine.py's "Model revision pin"
-    docstring for the incident this closes.
-    """
+    source: ADR-0091"""
     try:
         # noqa: PLC0415 — ImportError-probe boundary: the except arm IS the
         # degraded mode ("unresolved" in the manifest).
@@ -110,12 +93,7 @@ def embedding_revision() -> str:
 def reranker_fields() -> dict:
     """Load state + weights sha256 of the reranker, as this run observed it.
 
-    Reranker cache-durability fix (2026-07-11, incident: silent reranker skip).
-    Same shape of gap as embedding_revision above: a bare-except swallow in
-    mcp_server.core.reranker let 6 LongMemEval runs execute with CE reranking
-    silently disabled (MRR 0.9163 -> 0.8636), with nothing in the manifest to
-    show it.
-    """
+    source: ADR-0091"""
     try:
         # noqa: PLC0415 — ImportError-probe boundary: the except arm IS the
         # degraded mode (reranker_state "unresolved" in the manifest).
@@ -183,21 +161,13 @@ def build_manifest(
 ) -> dict:
     return {
         "git_sha": git_sha,
-        # Alongside git_sha, not buried: see machine_load_snapshot.py and
-        # disk_space_snapshot.py's docstrings for why (2026-08-10 sweep
-        # incidents — CPU contention, then a full disk, both invisible in
-        # a cell that merely finishes). Two points per resource, not one.
+        # source: ADR-0091
         **_start_snapshot_fields(results_dir),
         "machine_load_at_end": machine_load_snapshot(),
         "disk_space_at_end": disk_space_snapshot(),
         "longmemeval_dataset_sha256": ds_sha,
         "pg_image": pg_image,
-        # Per-run container isolation fix (2026-07-11, incident: two concurrent
-        # runs from different worktrees shared one fixed container/port and
-        # silently cross-contaminated scores — 0.9163 isolated vs. 0.78-0.86
-        # under concurrency). Recorded so a future diagnostic can always match a
-        # result set to the exact container/port/PID that produced it instead
-        # of guessing.
+        # source: ADR-0091
         "bench_container_name": container,
         "bench_container_port": int(pg_port),
         "bench_runner_pid": int(pid),

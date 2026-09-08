@@ -1,15 +1,6 @@
 #!/usr/bin/env python3
 """Fuzz the hand-rolled YAML frontmatter parser.
 
-Why this target
----------------
-`parse_yaml_frontmatter` is a hand-written parser — not a hardened library —
-and it reads the front matter of memory and wiki documents. Those documents
-carry LLM output and anything else that reaches the ingest path, so its input
-is untrusted by the standard's own rule (§13.1 D2). A parser over untrusted
-text with no fuzzing is exactly where crash-on-input bugs outlive a green
-unit suite, because tests encode the shapes the author thought of.
-
 It is also regex-driven (`^---\\s*\\n([\\s\\S]*?)\\n---\\s*\\n([\\s\\S]*)$`
 over the whole document), which puts pathological backtracking on the table
 for a document a user can supply. libFuzzer's own timeout is what surfaces
@@ -20,7 +11,8 @@ Properties asserted (all total-function properties, not parse correctness):
   * `meta` is always a dict — callers index it without a None check;
   * every key is lowercased, which is the documented contract;
   * `body` is a substring of the input — the parser must not invent text.
-"""
+
+source: ADR-0880"""
 
 from __future__ import annotations
 

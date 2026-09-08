@@ -1,0 +1,28 @@
+# ADR-0086: benchmarks/lib/run_e1_v3_lme.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `benchmarks/lib/run_e1_v3_lme.py`; original SHA-256 `88dc3432f62e1c88f2e3f5c0f591ad41c0688b01e9965ac8d19e20b53addd85b`.
+
+## Original docstring, lines 1–16
+
+````text
+"""E1 v3 — LongMemEval-S per-mechanism ablation runner.
+
+Drives `benchmarks/longmemeval/run_benchmark.py --variant s` once per row
+(BASELINE + 16 mechanisms), serially, against the same PG instance. Each row
+writes its result JSON via `--results-out`. After all rows complete, an
+aggregate `summary.csv` and `manifest.json` are written.
+
+Output: benchmarks/results/ablation/longmemeval-s_v3/
+
+Why serial: the harness mutates a shared PG database (db.clear() per question).
+Parallel rows would contaminate each other's haystacks.
+
+Source / scope: task #54 — paper §6.3 read-path ablation evidence.
+n=500 (full LME-S). Estimated wall ~11h. No --with-consolidation
+(consolidation-only mechanisms are routed to LME-LoCoMo, task #55).
+"""
+````
+

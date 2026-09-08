@@ -176,6 +176,150 @@
       "mirror": "ADR-0075-benchmarks-lib-e2-subsample-runner-py.md",
       "path": "adr/migration/0075-benchmarks-lib-e2-subsample-runner-py.md"
     },
+    "ADR-0076": {
+      "mirror": "ADR-0076-benchmarks-lib-e2-zipf-runner-py.md",
+      "path": "adr/migration/0076-benchmarks-lib-e2-zipf-runner-py.md"
+    },
+    "ADR-0077": {
+      "mirror": "ADR-0077-benchmarks-lib-fusion-py.md",
+      "path": "adr/migration/0077-benchmarks-lib-fusion-py.md"
+    },
+    "ADR-0078": {
+      "mirror": "ADR-0078-benchmarks-lib-latency-runner-py.md",
+      "path": "adr/migration/0078-benchmarks-lib-latency-runner-py.md"
+    },
+    "ADR-0079": {
+      "mirror": "ADR-0079-benchmarks-lib-longitudinal-runner-py.md",
+      "path": "adr/migration/0079-benchmarks-lib-longitudinal-runner-py.md"
+    },
+    "ADR-0080": {
+      "mirror": "ADR-0080-benchmarks-lib-machine-load-snapshot-py.md",
+      "path": "adr/migration/0080-benchmarks-lib-machine-load-snapshot-py.md"
+    },
+    "ADR-0081": {
+      "mirror": "ADR-0081-benchmarks-lib-n-scan-runner-py.md",
+      "path": "adr/migration/0081-benchmarks-lib-n-scan-runner-py.md"
+    },
+    "ADR-0082": {
+      "mirror": "ADR-0082-benchmarks-lib-noise-floor-py.md",
+      "path": "adr/migration/0082-benchmarks-lib-noise-floor-py.md"
+    },
+    "ADR-0083": {
+      "mirror": "ADR-0083-benchmarks-lib-numeric-equivalence-py.md",
+      "path": "adr/migration/0083-benchmarks-lib-numeric-equivalence-py.md"
+    },
+    "ADR-0085": {
+      "mirror": "ADR-0085-benchmarks-lib-retriever-py.md",
+      "path": "adr/migration/0085-benchmarks-lib-retriever-py.md"
+    },
+    "ADR-0086": {
+      "mirror": "ADR-0086-benchmarks-lib-run-e1-v3-lme-py.md",
+      "path": "adr/migration/0086-benchmarks-lib-run-e1-v3-lme-py.md"
+    },
+    "ADR-0087": {
+      "mirror": "ADR-0087-benchmarks-lib-run-e1-v3-locomo-py.md",
+      "path": "adr/migration/0087-benchmarks-lib-run-e1-v3-locomo-py.md"
+    },
+    "ADR-0088": {
+      "mirror": "ADR-0088-benchmarks-lib-sweep-progress-py.md",
+      "path": "adr/migration/0088-benchmarks-lib-sweep-progress-py.md"
+    },
+    "ADR-0089": {
+      "mirror": "ADR-0089-benchmarks-lib-trust-factor-sweep-py.md",
+      "path": "adr/migration/0089-benchmarks-lib-trust-factor-sweep-py.md"
+    },
+    "ADR-0090": {
+      "mirror": "ADR-0090-benchmarks-lib-verification-report-py.md",
+      "path": "adr/migration/0090-benchmarks-lib-verification-report-py.md"
+    },
+    "ADR-0091": {
+      "mirror": "ADR-0091-benchmarks-lib-write-manifest-py.md",
+      "path": "adr/migration/0091-benchmarks-lib-write-manifest-py.md"
+    },
+    "ADR-0093": {
+      "mirror": "ADR-0093-mcp-server---main--.md",
+      "path": "adr/migration/0093-mcp-server---main--.md"
+    },
+    "ADR-0095": {
+      "mirror": "ADR-0095-mcp-server-core-ablation.md",
+      "path": "adr/migration/0095-mcp-server-core-ablation.md"
+    },
+    "ADR-0096": {
+      "mirror": "ADR-0096-mcp-server-core-ablation-report.md",
+      "path": "adr/migration/0096-mcp-server-core-ablation-report.md"
+    },
+    "ADR-0097": {
+      "mirror": "ADR-0097-mcp-server-core-abstention-gate.md",
+      "path": "adr/migration/0097-mcp-server-core-abstention-gate.md"
+    },
+    "ADR-0098": {
+      "mirror": "ADR-0098-mcp-server-core-active-forgetting.md",
+      "path": "adr/migration/0098-mcp-server-core-active-forgetting.md"
+    },
+    "ADR-0099": {
+      "mirror": "ADR-0099-mcp-server-core-ast-extractor-registry.md",
+      "path": "adr/migration/0099-mcp-server-core-ast-extractor-registry.md"
+    },
+    "ADR-0100": {
+      "mirror": "ADR-0100-mcp-server-core-ast-extractors.md",
+      "path": "adr/migration/0100-mcp-server-core-ast-extractors.md"
+    },
+    "ADR-0101": {
+      "mirror": "ADR-0101-mcp-server-core-ast-extractors-clike.md",
+      "path": "adr/migration/0101-mcp-server-core-ast-extractors-clike.md"
+    },
+    "ADR-0102": {
+      "mirror": "ADR-0102-mcp-server-core-ast-extractors-extra.md",
+      "path": "adr/migration/0102-mcp-server-core-ast-extractors-extra.md"
+    },
+    "ADR-0103": {
+      "mirror": "ADR-0103-mcp-server-core-ast-extractors-jvm.md",
+      "path": "adr/migration/0103-mcp-server-core-ast-extractors-jvm.md"
+    },
+    "ADR-0104": {
+      "mirror": "ADR-0104-mcp-server-core-ast-extractors-scripting.md",
+      "path": "adr/migration/0104-mcp-server-core-ast-extractors-scripting.md"
+    },
+    "ADR-0105": {
+      "mirror": "ADR-0105-mcp-server-core-ast-parser.md",
+      "path": "adr/migration/0105-mcp-server-core-ast-parser.md"
+    },
+    "ADR-0106": {
+      "mirror": "ADR-0106-mcp-server-core-attentional-control.md",
+      "path": "adr/migration/0106-mcp-server-core-attentional-control.md"
+    },
+    "ADR-0107": {
+      "mirror": "ADR-0107-mcp-server-core-attribution-tracer.md",
+      "path": "adr/migration/0107-mcp-server-core-attribution-tracer.md"
+    },
+    "ADR-0108": {
+      "mirror": "ADR-0108-mcp-server-core-auto-curator.md",
+      "path": "adr/migration/0108-mcp-server-core-auto-curator.md"
+    },
+    "ADR-0109": {
+      "mirror": "ADR-0109-mcp-server-core-auto-task-record.md",
+      "path": "adr/migration/0109-mcp-server-core-auto-task-record.md"
+    },
+    "ADR-0110": {
+      "mirror": "ADR-0110-mcp-server-core-behavioral-crosscoder.md",
+      "path": "adr/migration/0110-mcp-server-core-behavioral-crosscoder.md"
+    },
+    "ADR-0111": {
+      "mirror": "ADR-0111-mcp-server-core-blindspot-detector.md",
+      "path": "adr/migration/0111-mcp-server-core-blindspot-detector.md"
+    },
+    "ADR-0112": {
+      "mirror": "ADR-0112-mcp-server-core-blindspot-patterns.md",
+      "path": "adr/migration/0112-mcp-server-core-blindspot-patterns.md"
+    },
+    "ADR-0113": {
+      "mirror": "ADR-0113-mcp-server-core-bridge-finder.md",
+      "path": "adr/migration/0113-mcp-server-core-bridge-finder.md"
+    },
+    "ADR-0114": {
+      "mirror": "ADR-0114-mcp-server-core-capture-origin.md",
+      "path": "adr/migration/0114-mcp-server-core-capture-origin.md"
+    },
     "ADR-0795": {
       "mirror": "ADR-0795-clusterfuzzlite-Dockerfile.md",
       "path": "adr/migration/0795-clusterfuzzlite-Dockerfile.md"
@@ -339,6 +483,166 @@
     "ADR-0835": {
       "mirror": "ADR-0835-benchmarks-hnsw-probe-setup-sql.md",
       "path": "adr/migration/0835-benchmarks-hnsw-probe-setup-sql.md"
+    },
+    "ADR-0836": {
+      "mirror": "ADR-0836-benchmarks-llm-head-to-head---init--.md",
+      "path": "adr/migration/0836-benchmarks-llm-head-to-head---init--.md"
+    },
+    "ADR-0837": {
+      "mirror": "ADR-0837-benchmarks-llm-head-to-head-cortex-caller.md",
+      "path": "adr/migration/0837-benchmarks-llm-head-to-head-cortex-caller.md"
+    },
+    "ADR-0838": {
+      "mirror": "ADR-0838-benchmarks-llm-head-to-head-data-loader.md",
+      "path": "adr/migration/0838-benchmarks-llm-head-to-head-data-loader.md"
+    },
+    "ADR-0839": {
+      "mirror": "ADR-0839-benchmarks-llm-head-to-head-generator.md",
+      "path": "adr/migration/0839-benchmarks-llm-head-to-head-generator.md"
+    },
+    "ADR-0840": {
+      "mirror": "ADR-0840-benchmarks-llm-head-to-head-judge.md",
+      "path": "adr/migration/0840-benchmarks-llm-head-to-head-judge.md"
+    },
+    "ADR-0841": {
+      "mirror": "ADR-0841-benchmarks-llm-head-to-head-long-context-truncator.md",
+      "path": "adr/migration/0841-benchmarks-llm-head-to-head-long-context-truncator.md"
+    },
+    "ADR-0842": {
+      "mirror": "ADR-0842-benchmarks-llm-head-to-head-manifest.md",
+      "path": "adr/migration/0842-benchmarks-llm-head-to-head-manifest.md"
+    },
+    "ADR-0843": {
+      "mirror": "ADR-0843-benchmarks-llm-head-to-head-oracle-loader.md",
+      "path": "adr/migration/0843-benchmarks-llm-head-to-head-oracle-loader.md"
+    },
+    "ADR-0844": {
+      "mirror": "ADR-0844-benchmarks-llm-head-to-head-orchestrator.md",
+      "path": "adr/migration/0844-benchmarks-llm-head-to-head-orchestrator.md"
+    },
+    "ADR-0845": {
+      "mirror": "ADR-0845-benchmarks-llm-head-to-head-pilot.md",
+      "path": "adr/migration/0845-benchmarks-llm-head-to-head-pilot.md"
+    },
+    "ADR-0846": {
+      "mirror": "ADR-0846-benchmarks-llm-head-to-head-retriever-baselines.md",
+      "path": "adr/migration/0846-benchmarks-llm-head-to-head-retriever-baselines.md"
+    },
+    "ADR-0847": {
+      "mirror": "ADR-0847-benchmarks-locomo-rrf-vs-tmm-ablation.md",
+      "path": "adr/migration/0847-benchmarks-locomo-rrf-vs-tmm-ablation.md"
+    },
+    "ADR-0848": {
+      "mirror": "ADR-0848-benchmarks-locomo-run-benchmark.md",
+      "path": "adr/migration/0848-benchmarks-locomo-run-benchmark.md"
+    },
+    "ADR-0849": {
+      "mirror": "ADR-0849-benchmarks-locomo-run-benchmark-agents.md",
+      "path": "adr/migration/0849-benchmarks-locomo-run-benchmark-agents.md"
+    },
+    "ADR-0850": {
+      "mirror": "ADR-0850-benchmarks-longmemeval-run-benchmark.md",
+      "path": "adr/migration/0850-benchmarks-longmemeval-run-benchmark.md"
+    },
+    "ADR-0851": {
+      "mirror": "ADR-0851-benchmarks-longmemeval-run-sqlite-fallback-bench.md",
+      "path": "adr/migration/0851-benchmarks-longmemeval-run-sqlite-fallback-bench.md"
+    },
+    "ADR-0852": {
+      "mirror": "ADR-0852-benchmarks-mcp-profile-tokens.md",
+      "path": "adr/migration/0852-benchmarks-mcp-profile-tokens.md"
+    },
+    "ADR-0853": {
+      "mirror": "ADR-0853-benchmarks-memoryagentbench-run-benchmark.md",
+      "path": "adr/migration/0853-benchmarks-memoryagentbench-run-benchmark.md"
+    },
+    "ADR-0854": {
+      "mirror": "ADR-0854-benchmarks-pg-recall-plans-evidence.md",
+      "path": "adr/migration/0854-benchmarks-pg-recall-plans-evidence.md"
+    },
+    "ADR-0855": {
+      "mirror": "ADR-0855-benchmarks-pg-recall-plans-fixture.md",
+      "path": "adr/migration/0855-benchmarks-pg-recall-plans-fixture.md"
+    },
+    "ADR-0856": {
+      "mirror": "ADR-0856-benchmarks-pg-recall-plans-sql.md",
+      "path": "adr/migration/0856-benchmarks-pg-recall-plans-sql.md"
+    },
+    "ADR-0857": {
+      "mirror": "ADR-0857-benchmarks-quick-test-sh.md",
+      "path": "adr/migration/0857-benchmarks-quick-test-sh.md"
+    },
+    "ADR-0858": {
+      "mirror": "ADR-0858-benchmarks-repro-longmemeval-sh.md",
+      "path": "adr/migration/0858-benchmarks-repro-longmemeval-sh.md"
+    },
+    "ADR-0859": {
+      "mirror": "ADR-0859-benchmarks-reproduce-sh.md",
+      "path": "adr/migration/0859-benchmarks-reproduce-sh.md"
+    },
+    "ADR-0860": {
+      "mirror": "ADR-0860-benchmarks-reranker-matrix-cache.md",
+      "path": "adr/migration/0860-benchmarks-reranker-matrix-cache.md"
+    },
+    "ADR-0861": {
+      "mirror": "ADR-0861-benchmarks-reranker-matrix-entry.md",
+      "path": "adr/migration/0861-benchmarks-reranker-matrix-entry.md"
+    },
+    "ADR-0862": {
+      "mirror": "ADR-0862-benchmarks-reranker-matrix-handler-probe.md",
+      "path": "adr/migration/0862-benchmarks-reranker-matrix-handler-probe.md"
+    },
+    "ADR-0863": {
+      "mirror": "ADR-0863-benchmarks-reranker-matrix-matrix.md",
+      "path": "adr/migration/0863-benchmarks-reranker-matrix-matrix.md"
+    },
+    "ADR-0864": {
+      "mirror": "ADR-0864-benchmarks-reranker-matrix-pins.md",
+      "path": "adr/migration/0864-benchmarks-reranker-matrix-pins.md"
+    },
+    "ADR-0865": {
+      "mirror": "ADR-0865-benchmarks-spell-alteration-run-benchmark.md",
+      "path": "adr/migration/0865-benchmarks-spell-alteration-run-benchmark.md"
+    },
+    "ADR-0866": {
+      "mirror": "ADR-0866-benchmarks-streaming-calibration-run.md",
+      "path": "adr/migration/0866-benchmarks-streaming-calibration-run.md"
+    },
+    "ADR-0867": {
+      "mirror": "ADR-0867-benchmarks-supersession-gate-guard-atomic-upperbound.md",
+      "path": "adr/migration/0867-benchmarks-supersession-gate-guard-atomic-upperbound.md"
+    },
+    "ADR-0868": {
+      "mirror": "ADR-0868-benchmarks-supersession-gate-guard-chunk-granularity.md",
+      "path": "adr/migration/0868-benchmarks-supersession-gate-guard-chunk-granularity.md"
+    },
+    "ADR-0869": {
+      "mirror": "ADR-0869-benchmarks-supersession-gate-guard-session-granularity.md",
+      "path": "adr/migration/0869-benchmarks-supersession-gate-guard-session-granularity.md"
+    },
+    "ADR-0870": {
+      "mirror": "ADR-0870-benchmarks-tabular-170-measure.md",
+      "path": "adr/migration/0870-benchmarks-tabular-170-measure.md"
+    },
+    "ADR-0871": {
+      "mirror": "ADR-0871-benchmarks-trust-factor-sweep-sh.md",
+      "path": "adr/migration/0871-benchmarks-trust-factor-sweep-sh.md"
+    },
+    "ADR-0872": {
+      "mirror": "ADR-0872-docker-Dockerfile.md",
+      "path": "adr/migration/0872-docker-Dockerfile.md"
+    },
+    "ADR-0873": {
+      "mirror": "ADR-0873-docker-entrypoint-sh.md",
+      "path": "adr/migration/0873-docker-entrypoint-sh.md"
+    },
+    "ADR-0880": {
+      "mirror": "ADR-0880-fuzz-fuzz-yaml-frontmatter-py.md",
+      "path": "adr/migration/0880-fuzz-fuzz-yaml-frontmatter-py.md"
+    },
+    "ADR-0881": {
+      "mirror": "ADR-0881-fuzz-replay-corpus-py.md",
+      "path": "adr/migration/0881-fuzz-replay-corpus-py.md"
     },
     "ADR-1014": {
       "mirror": "ADR-1014-tests-py-invariants-test-i2-canonical-writer-py.md",

@@ -1,0 +1,24 @@
+---
+title: "ADR-0857 — benchmarks/quick_test.sh rationale"
+status: accepted
+source: benchmarks/quick_test.sh
+---
+
+# ADR-0857 — benchmarks/quick_test.sh
+
+Source rationale preserved verbatim. Identifiers inside historical quotations are not current identities.
+
+## benchmarks/quick_test.sh — original line 1
+
+````text
+#!/bin/bash
+# Quick benchmark suite — scoped for fast iteration
+# Runs ~2-3 minutes total instead of ~30 minutes for full suite
+````
+
+## benchmarks/quick_test.sh — original line 4
+
+````text
+#
+# Usage: bash benchmarks/quick_test.sh
+````

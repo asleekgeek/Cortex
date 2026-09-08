@@ -1,26 +1,6 @@
 """Controlled RRF-vs-TMM fusion ablation on LoCoMo.
 
-Purpose: produce the within-Cortex head-to-head that the paper's fusion
-justification needs. Both arms compute IDENTICAL per-signal ranked lists
-(reusing the production scoring functions and the all-MiniLM-L6-v2 vector
-signal); only the fusion function is swapped:
-
-  - RRF  : benchmarks.lib.fusion.wrrf_fuse  (Weighted Reciprocal Rank Fusion,
-           contribution = w / (k + rank + 1), k=60 -- Cormack 2009)
-  - TMM  : theoretical-min-max weighted score fusion mirroring the production
-           PL/pgSQL recall_memories() in mcp_server/infrastructure/pg_schema.py
-           contribution = w * (raw - m_c) / (max_c - m_c), summed over signals.
-
-Evaluation reuses the LoCoMo runner's own gold logic: retrieval unit = session,
-gold = evidence target sessions, hit = first retrieved session in the gold set,
-MRR = 1/rank, R@k = hit within top-k. Reranking is intentionally DISABLED so the
-comparison isolates the fusion function (FlashRank blends both arms identically
-and would only add noise/latency without changing what is being tested).
-
-This runs WITHOUT Postgres: signals are computed in-process over the LoCoMo
-sessions, exactly as benchmarks/lib/retriever.py does. Absolute numbers will
-differ from the production-PG paper figures; the RRF-vs-TMM DELTA is the result.
-"""
+source: ADR-0847"""
 
 from __future__ import annotations
 
@@ -37,8 +17,8 @@ from mcp_server.core.scoring import (
 )
 from mcp_server.core.query_intent import classify_query_intent, QueryIntent
 
-# Import wrrf_fuse directly from the module file to avoid benchmarks.lib.__init__,
-# which pulls in bench_db -> pg_store -> psycopg (Postgres, not needed here).
+# source: ADR-0847
+
 import importlib.util as _ilu
 
 _fusion_path = (
@@ -57,24 +37,21 @@ from benchmarks.locomo.data import (  # noqa: E402
 )
 import os  # noqa: E402
 
-DATA_PATH = "/Users/cdeust/Documents/Developments/personal/Cortex/benchmarks/locomo/locomo10.json"  # noqa: E501 — absolute dataset path, one token with no whitespace to split on
+DATA_PATH = "/Users/cdeust/Documents/Developments/personal/Cortex/benchmarks/locomo/locomo10.json"  # noqa: E501 — source: ADR-0847
 
-# source: structural — the K in the reported R@10 metric
+# source: ADR-0847
 _RECALL_AT_10_K = 10
 
-# Theoretical minima per signal (mirrors pg_schema.py: cosine in [-1,1] -> m=-1;
-# all other signals are already in [0,1] -> m=0). Our vector signal is clamped
-# to [0,1] (see _score_vector using max(0.0, sim)), so m_vec=0 here too, which
-# matches the effective production behaviour for non-negative cosine.
+# source: ADR-0847
+
+
 SIGNAL_MIN = {"vector": 0.0, "keyword": 0.0, "ngram": 0.0, "bm25": 0.0, "recency": 0.0}
 
 
 def tmm_fuse(signal_results, signal_weights):
-    """Weighted theoretical-min-max score fusion (Bruch 2023 / pg_schema.py).
+    """Weighted theoretical-min-max score fusion.
 
-    contribution(item, signal) = w * (raw - m) / (max_observed - m)
-    fused = sum over signals. Mirrors the production SUM(w*raw/max) with the
-    -1 min only for cosine; here all signals are non-negative so m=0.
+    source: ADR-0847
     """
     scores = defaultdict(float)
     for name, results in signal_results.items():
@@ -201,7 +178,7 @@ def rrf_fuse(signals, weights):
 def main():
 
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
-    from sentence_transformers import SentenceTransformer  # noqa: PLC0415 — optional dependency (sentence-transformers (multi-second model load)); imported where used so environments without it keep working
+    from sentence_transformers import SentenceTransformer  # noqa: PLC0415 — source: ADR-0847
 
     model_path = os.environ.get("MINILM_PATH", "/tmp/minilm")
     model = SentenceTransformer(model_path)
@@ -242,7 +219,7 @@ def main():
     print("\n=== DELTA (TMM - RRF) ===")
     print(f"  MRR: {delta_mrr:+.4f}   R@10: {delta_r10:+.4f}")
 
-    out = "/Users/cdeust/Documents/Developments/personal/Cortex/benchmarks/results/rrf_vs_tmm_locomo.json"  # noqa: E501 — absolute output path, one token with no whitespace to split on
+    out = "/Users/cdeust/Documents/Developments/personal/Cortex/benchmarks/results/rrf_vs_tmm_locomo.json"  # noqa: E501 — source: ADR-0847
     with open(out, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nWrote {out}")

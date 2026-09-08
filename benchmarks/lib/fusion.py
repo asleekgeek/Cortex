@@ -15,10 +15,7 @@ class QualityZone:
     FAILED = "failed"  # >25 chunks
 
 
-# Upper chunk count of each quality zone.
-# source: quality zones from ai-architect RAGCriticalMassMonitor (Liu et al.
-# 2024), as banded in the QualityZone comments above (5-10 / 11-15 / 16-20 /
-# 21-25 / >25 chunks)
+# source: ADR-0077
 _OPTIMAL_MAX_CHUNKS = 10
 _ACCEPTABLE_MAX_CHUNKS = 15
 _DEGRADED_MAX_CHUNKS = 20

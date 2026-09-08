@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# source: HF model metadata API, verified 2026-09-06; see README.md provenance.
+# source: ADR-0864
 REVISION = "858a1ac046a05663a35367eac852d7f76feeefdd"
 REPOSITORY = "prithivida/flashrank"
-# source: uv.lock / scripts/launcher_pins.py; inspected installed Config.py/Ranker.py.
+# source: ADR-0864
 FLASHRANK_VERSION = "0.2.10"
-# source: W4-2 matrix in tasks/codex-green-remediation-plan.md.
+# source: ADR-0864
 MULTIPLIERS = (2, 3)
 
 
@@ -24,7 +24,7 @@ class ModelPin:
         return f"https://huggingface.co/{REPOSITORY}/resolve/{REVISION}/{self.name}.zip"
 
 
-# source: FlashRank 0.2.10 Config.py names/files, HF pinned revision LFS SHA256.
+# source: ADR-0864
 MODELS = {
     "l2": ModelPin(
         "ms-marco-TinyBERT-L-2-v2",

@@ -1,13 +1,6 @@
 """LoCoMo agent-topic benchmark — validates agent-scoped memory retrieval.
 
-Same as run_benchmark.py but assigns agent_topics to memories based on
-content classification, then uses scoped recall. Compares scoped vs
-unscoped retrieval to measure whether agent_topic improves precision.
-
-NOT an official benchmark — validates the agent_topic architecture.
-
-Run:
-    python3 benchmarks/locomo/run_benchmark_agents.py [--limit N]
+source: ADR-0849
 """
 
 from __future__ import annotations

@@ -1,19 +1,6 @@
 """Pilot (Stage 1) — Haiku 4.5 × {B, C} × 196 items + GPT-4o judge.
 
-Per protocol §8: cheapest stress-test of the harness. Conditions A and D
-are skipped in pilot because they're not load-bearing for the §8 GO/NO-GO
-gate (which checks judge κ, end-to-end success rate, and B-vs-C signal
-direction).
-
-This file's --dry-run mode is the Stage-0 deliverable. It:
-  1. Loads N BEAM items (default 3).
-  2. Builds condition contexts for A, B, C, D — verifying every builder
-     produces a non-degenerate output without firing any API.
-  3. Prints token counts, retrieved-passage counts, oracle-turn counts.
-  4. Renders the answer prompt that WOULD be sent to the generator.
-  5. Estimates Stage 2.1 cost.
-  6. Does NOT call any vendor API; does NOT touch the production DB
-     (condition C is stubbed in dry-run mode — see below).
+source: ADR-0845
 
 precondition: ``--dry-run`` is sufficient for Stage 0. Live pilot
   requires API keys + production DB seeded with BEAM memories per
@@ -76,7 +63,7 @@ SMOKE_COST_CEILING_USD = 0.15
 STAGE2_1_CONDITIONS = ("A", "B", "C", "D")
 
 
-# source: structural — the k-suffix in a token count is the thousands unit
+# source: ADR-0845
 _TOKENS_PER_K = 1_000
 
 
@@ -92,15 +79,7 @@ def _build_dryrun_context(condition: str, item: BeamItem) -> tuple[str, dict[str
     Conditions A and D are pure offline: A truncates the BEAM turn list,
     D looks up oracle turns. They run in dry-run as-is.
 
-    Conditions B and C require runtime resources we don't want to spin
-    up at scaffold time:
-      - B needs a per-conversation BenchmarkDB with memories loaded into
-        an HNSW-indexed table.
-      - C needs the production memory store seeded under domain="beam".
-    For dry-run we emit a placeholder block with the budget envelope
-    (~4500 tokens per protocol §7) so the prompt rendering is exercised
-    end-to-end. The token counts in the cost estimate use the same §7
-    figures.
+    source: ADR-0845
 
     pre: ``condition`` ∈ {'A','B','C','D'}.
     post: returns (text, diagnostics).
@@ -155,7 +134,7 @@ def dry_run(n: int, split: str = "10M") -> int:
 
     try:
         items_iter = data_loader.iter_items(split)
-    except Exception as e:  # noqa: BLE001 — bench harness is fail-soft — failure is printed and the run continues or exits with a report
+    except Exception as e:  # noqa: BLE001 — source: ADR-0845
         print(
             f"[pilot] could not load BEAM-{split} dataset: {type(e).__name__}: {e}",
             file=sys.stderr,
@@ -186,8 +165,8 @@ def dry_run(n: int, split: str = "10M") -> int:
         for cond in ("A", "B", "C", "D"):
             text, diag = _build_dryrun_context(cond, item)
             print(f"  [{cond}] {diag}")
-            # Print first 200 chars of rendered prompt so the reader can
-            # eyeball the format without 196k tokens of dump.
+            # source: ADR-0845
+
             rendered = render_answer_prompt(answer_template, text, item.question)
             preview = rendered[:240].replace("\n", " ⏎ ")
             print(f"  [{cond}] prompt preview: {preview!r}")
@@ -253,22 +232,7 @@ def run_pilot_live(
 ) -> int:
     """Stage-0 / Stage-1 LIVE pilot — real API calls, real judge, real manifest.
 
-    pre:
-      - ``ANTHROPIC_API_KEY`` and ``OPENAI_API_KEY`` are set in the env
-        (the cross-vendor judge needs both for the Haiku × GPT-4o pairing).
-      - ``DATABASE_URL`` points at the local Cortex Postgres; pgvector +
-        pg_trgm extensions installed; production schema migrated.
-      - Network reachable for Anthropic + OpenAI APIs.
-    post:
-      - Writes ``output_dir/manifest.json`` and ``output_dir/items.jsonl``.
-      - Each item × condition cell appears as one items.jsonl line with
-        a real generator_response and judge_label.
-      - Returns 0 on success (all cells produced); 4 on cost-ceiling abort;
-        5 on dataset load failure; 6 on DB connection failure.
-    invariant:
-      - The smoke is bounded by ``cost_ceiling_usd`` (defence-in-depth on
-        the Stage 0 $0.15 cap); the run aborts mid-loop if exceeded.
-    """
+    source: ADR-0845"""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     generator_model = GENERATOR_ALIASES.get(generator_alias, generator_alias)
@@ -282,7 +246,7 @@ def run_pilot_live(
             if len(items) >= n:
                 break
             items.append(it)
-    except Exception as e:  # noqa: BLE001 — bench harness is fail-soft — failure is printed and the run continues or exits with a report
+    except Exception as e:  # noqa: BLE001 — source: ADR-0845
         print(
             f"[pilot] failed to load BEAM-{split}: {type(e).__name__}: {e}",
             file=sys.stderr,
@@ -292,15 +256,11 @@ def run_pilot_live(
         print("[pilot] no items loaded; aborting.", file=sys.stderr)
         return 5
 
-    # Pre-flight: open BenchmarkDB and seed memories under domain="beam".
-    # This single DB instance serves BOTH:
-    #   - Condition B (direct cosine query against the same memories table)
-    #   - Condition C (production handler reads same memories table)
-    # That's by design — protocol §2.B/C compares retrieval STACKS over
-    # the same ground-truth memory population.
+    # source: ADR-0845
+
     try:
-        from benchmarks.lib.bench_db import BenchmarkDB  # noqa: PLC0415 — deferred: module hard-imports pgvector/psycopg/psycopg_pool at top level; hoisting would break installs without it
-    except Exception as e:  # noqa: BLE001 — bench harness is fail-soft — failure is printed and the run continues or exits with a report
+        from benchmarks.lib.bench_db import BenchmarkDB  # noqa: PLC0415 — source: ADR-0845
+    except Exception as e:  # noqa: BLE001 — source: ADR-0845
         print(
             f"[pilot] could not import BenchmarkDB: {type(e).__name__}: {e}",
             file=sys.stderr,
@@ -314,8 +274,8 @@ def run_pilot_live(
     )
     print(f"[pilot] output_dir={output_dir}", file=sys.stderr)
 
-    # Build the manifest scaffold up-front (write_manifest emits
-    # manifest.json so cost_tracking can be patched later).
+    # source: ADR-0845
+
     repo_root = Path(__file__).resolve().parents[2]
     answer_prompt_path = PROMPTS_DIR / "answer.md"
     judge_prompt_path = PROMPTS_DIR / "judge.md"
@@ -350,10 +310,8 @@ def run_pilot_live(
     answer_template = answer_prompt_path.read_text()
     judge_template = judge_prompt_path.read_text()
 
-    # Open BenchmarkDB and seed BEAM memories. The seeded conversation
-    # is whichever conv the items belong to; for n≤3 they share the same
-    # conversation_idx in BEAM-10M (one mega-convo per record). We seed
-    # ALL turns from the items' conversations, deduplicated by content.
+    # source: ADR-0845
+
     seen_convs: set[int] = set()
     rc = 0
     with BenchmarkDB() as db:

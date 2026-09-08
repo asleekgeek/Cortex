@@ -1,17 +1,4 @@
-"""Machine-load snapshot for a benchmark cell (issue #368 follow-up).
-
-2026-08-10 incident: a 5-cell trust-factor sweep ran while three other
-agents' full pytest suites were active on the same machine (load average
-~11-14 on a 10-core box); one cell crashed on a native fatal error, and the
-crash was the ONLY visible signal — cells that merely finished under the
-same contention could have returned degraded numbers (saturated connection
-pool, cold cache, GC pressure) with nothing in the artifact to show it. The
-whole grid was discarded and re-run rather than salvaged, per this
-project's own rule: a measurement from a harness with a known defect is
-invalid and is redone, not patched after the fact — and contention is
-exactly such a defect. This snapshot is recorded so that rule can be
-applied by inspection later, instead of by asking whoever happened to be
-watching at the time.
+"""Machine-load snapshot for a benchmark cell.
 
 Taken TWICE per cell (same-day follow-up, same incident): once at cell
 START (`write_manifest.write_start_snapshot`, called before `start_db` so
@@ -21,10 +8,7 @@ cell that merely FINISHES under contention is the invisible one, and a
 single end-of-run snapshot cannot distinguish "ran under load throughout"
 from "load spiked right at the end". Two points at least bound the window.
 
-Every probe here is best-effort: a failure records `None` rather than
-aborting manifest generation, matching every other field `write_manifest.py`
-records.
-"""
+source: ADR-0080"""
 
 from __future__ import annotations
 
@@ -44,19 +28,7 @@ def _run(cmd: list[str], *, env: dict[str, str] | None = None) -> str | None:
 def count_pytest_processes() -> int | None:
     """Concurrent `pytest` processes system-wide, or None if unreadable.
 
-    Filtered in Python, not via a shell `grep -c "[p]ytest"` idiom: a
-    subprocess.run argv has no shell to bracket-escape a self-match, so the
-    filter runs here instead, over the same process list that idiom reads.
-
-    The `COLUMNS` override fixes a real undercount, not just a test flake
-    (caught by tests_py/benchmarks/test_write_manifest_machine_load.py's
-    own self-referential assertion failing on GitHub's Linux CI runner,
-    2026-08-10): both BSD ps (macOS) and GNU procps (Linux) truncate the
-    COMMAND column to `$COLUMNS` when stdout is not a terminal and COLUMNS
-    is unset, and `ps aux`'s fixed-width USER/PID/... columns alone can
-    exceed a default 80-column budget before COMMAND even starts — cutting
-    off the "pytest" substring entirely on a long interpreter path.
-    """
+    source: ADR-0080"""
     ps_out = _run(["ps", "aux"], env={**os.environ, "COLUMNS": "1000"})
     if ps_out is None:
         return None
@@ -75,7 +47,9 @@ def count_docker_containers() -> int | None:
 
 def machine_load_snapshot() -> dict:
     """Load average + concurrent pytest/container counts, as this run saw
-    them. See this module's docstring for why."""
+        them.
+
+    source: ADR-0080"""
     try:
         load1, load5, load15 = os.getloadavg()
     except OSError:  # not available on this platform (e.g. Windows)

@@ -1,17 +1,6 @@
 """MemoryAgentBench benchmark for Cortex memory system.
 
-Tests 4 core memory competencies (Hu et al., ICLR 2026):
-  1. Accurate Retrieval — recall facts from injected context
-  2. Test-Time Learning — few-shot classification from examples in memory
-  3. Long-Range Understanding — summarize/reason over large contexts
-  4. Conflict Resolution — handle contradictory information
-
-Evaluation: F1, Exact Match, Substring Match per split.
-Dataset: HuggingFace "ai-hyz/MemoryAgentBench" (146 rows)
-
-Run:
-    python3 benchmarks/memoryagentbench/run_benchmark.py
-        [--split Accurate_Retrieval] [--limit N]
+source: ADR-0853
 """
 
 from __future__ import annotations
@@ -87,7 +76,10 @@ def best_score(prediction: str, answer_list: list[str], metric_fn) -> float:
 
 
 class MABRetriever:
-    """Chunk-and-retrieve adapter wrapping shared BenchmarkRetriever."""
+    """Chunk-and-retrieve adapter wrapping shared BenchmarkRetriever.
+
+    source: ADR-0853
+    """
 
     def __init__(self, chunk_size: int = 500):
 
@@ -113,12 +105,15 @@ class MABRetriever:
         return "\n\n".join(r["content"] for r in results)
 
 
-# ── Main Benchmark ───────────────────────────────────────────────────────
+# source: ADR-0853
 
 
 def run_benchmark(splits: list[str] | None = None, limit: int | None = None):
-    """Run MemoryAgentBench retrieval benchmark."""
-    from datasets import load_dataset  # noqa: PLC0415 — optional dependency ([benchmarks] extra); imported where used so environments without it keep working
+    """Run MemoryAgentBench retrieval benchmark.
+
+    source: ADR-0853
+    """
+    from datasets import load_dataset  # noqa: PLC0415 — source: ADR-0853
 
     splits = splits or SPLITS
     retriever = MABRetriever(chunk_size=500)
@@ -132,7 +127,7 @@ def run_benchmark(splits: list[str] | None = None, limit: int | None = None):
         print(f"\n--- {split_name} ---")
         try:
             ds = load_dataset("ai-hyz/MemoryAgentBench", split=split_name)
-        except Exception as e:  # noqa: BLE001 — bench harness is fail-soft — failure is printed and the run continues or exits with a report
+        except Exception as e:  # noqa: BLE001 — source: ADR-0853
             print(f"  Error loading split: {e}")
             continue
 

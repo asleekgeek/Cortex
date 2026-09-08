@@ -1,16 +1,6 @@
 """Retrieval abstention gate using cortex-beam-abstain model.
 
-Filters retrieval results that don't actually answer the query.
-The model is a fine-tuned DistilBERT trained on BEAM (query, passage,
-relevant/irrelevant) pairs with hard-negative mining.
-
-When the model is unavailable, falls back to no-op (returns results
-unchanged) — never breaks retrieval.
-
-Source model: github.com/cdeust/cortex-know-when-to-stop-training-model
-
-Pure business logic — no I/O beyond model inference.
-"""
+source: ADR-0097"""
 
 from __future__ import annotations
 
@@ -24,11 +14,9 @@ logger = logging.getLogger(__name__)
 _classifier = None
 _load_attempted = False
 
-# Calibrated thresholds (from v0.1 model evaluation):
-#   Score range on diverse queries: 0.215 - 0.830
-#   F1-optimal threshold: 0.45
-#   Precision-optimal threshold: 0.55
-#   Recall-optimal threshold: 0.35
+# source: ADR-0097
+
+
 DEFAULT_THRESHOLD = 0.45
 
 
@@ -48,7 +36,7 @@ def _get_classifier() -> Any:
     _load_attempted = True
     try:
         # Lazy import — package is optional
-        from cortex_beam_abstain import (  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode # pyright: ignore[reportMissingImports] — optional package, not installed in the type-check env; the except ImportError arm IS the contract
+        from cortex_beam_abstain import (  # noqa: PLC0415 # pyright: ignore[reportMissingImports] — source: ADR-0097
             AbstentionClassifier,
         )
 
@@ -64,7 +52,7 @@ def _get_classifier() -> Any:
             "Install: pip install cortex-beam-abstain"
         )
         _classifier = None
-    except Exception as e:  # noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
+    except Exception as e:  # noqa: BLE001 — source: ADR-0097
         logger.warning("Failed to load abstention classifier: %s", e)
         _classifier = None
 
@@ -82,11 +70,10 @@ def filter_by_abstention(
     Args:
         query: The original query text.
         candidates: Retrieved memory dicts with 'content' field.
-        threshold: Minimum relevance score to keep a result.
-            Default 0.45 (F1-optimal from v0.1 evaluation).
-        keep_at_least: Always return at least this many results,
-            even if all score below threshold. 0 = strict filtering
-            (may return empty list = abstention).
+        threshold: Minimum relevance score to keep a result (default 0.45).
+        keep_at_least: Minimum results retained, even below the threshold;
+            zero enables strict filtering and may return no results.
+    source: ADR-0097
 
     Returns:
         (filtered_candidates, scores) tuple. The scores list parallels

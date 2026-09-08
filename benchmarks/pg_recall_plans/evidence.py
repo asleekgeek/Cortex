@@ -11,9 +11,9 @@ from statistics import median
 from benchmarks.pg_recall_plans.fixture import MIN_ROWS
 from benchmarks.pg_recall_plans.sql import REPETITIONS, case_labels
 
-# source: W4-1 acceptance limits, tasks/codex-green-remediation-plan.md.
+# source: ADR-0854
 MAX_BUFFERS = 10_000
-# source: W4-1 acceptance latency, tasks/codex-green-remediation-plan.md.
+# source: ADR-0854
 MAX_LATENCY_MS = 200
 REQUIRED_INDEXES = {
     "idx_memories_embedding",
@@ -153,8 +153,11 @@ def compare_rows(before: list[dict], after: list[dict]) -> dict:
 
 
 def canonical_rows(rows: list[dict]) -> dict:
-    """PostgreSQL NaN compares equal to itself, unlike Python float NaN."""
-    # source: PostgreSQL 16 datatype-numeric.html, floating point special values.
+    """PostgreSQL NaN compares equal to itself, unlike Python float NaN.
+
+    source: ADR-0854
+    """
+    # source: ADR-0854
     return {
         row["memory_id"]: {
             key: "NaN" if isinstance(value, float) and math.isnan(value) else value

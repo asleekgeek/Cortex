@@ -1,23 +1,6 @@
 """Condition C — Cortex-assembled context.
 
-PROTOCOL §11.1 ANTI-CHEATING (load-bearing invariant for the whole study):
-
-This module MUST invoke the production handler entry point
-``mcp_server.handlers.recall.handler`` directly, with arguments that
-already exist in the production schema. NO monkey-patching. NO benchmark-
-only kwargs. NO ``--benchmark-mode`` flag. NO alternative code path.
-
-The unit test ``tests_py/handlers/test_beam_anticheat.py`` reads THIS
-file's source code and asserts:
-  1. The only import targeting ``mcp_server.handlers.recall`` is exactly
-     ``from mcp_server.handlers.recall import handler``.
-  2. No call to ``setattr``, ``__class__``, or any monkey-patch primitive.
-  3. The kwargs passed to ``handler({...})`` are a subset of the keys
-     declared in ``recall.schema['inputSchema']['properties']``.
-
-If you change this file, the anti-cheating test must still pass without
-modification, OR a protocol addendum must be filed (§11 forbids silent
-deviation).
+source: ADR-0837
 
 precondition: the production memory store has been seeded with the BEAM
   conversation's memories under ``domain="beam"`` (the orchestrator does
@@ -41,8 +24,8 @@ from typing import Any
 from mcp_server.handlers.recall import handler  # noqa: E402
 
 
-# Pre-registered max_results value matching condition B's k=20 (protocol §2.C
-# uses the same retrieval depth as B so the comparison isolates the stack).
+# source: ADR-0837
+
 CORTEX_MAX_RESULTS = 20
 
 
@@ -58,9 +41,8 @@ def cortex_recall(question: str, domain: str = "beam") -> list[dict[str, Any]]:
     if not question or not question.strip():
         return []
 
-    # The production handler is async. Run it on a fresh loop so the
-    # benchmark orchestrator (synchronous) can call us. This is the same
-    # pattern any synchronous caller of an MCP tool uses.
+    # source: ADR-0837
+
     args = {
         "query": question,
         "domain": domain,

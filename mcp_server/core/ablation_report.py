@@ -79,9 +79,9 @@ def _format_result_section(result: AblationResult) -> list[str]:
     ]
 
 
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction. Mirror the interpretation
-# thresholds in mcp_server.core.ablation.generate_interpretation.
+# source: ADR-0096
+
+# source: ADR-0096
 _CRITICAL_IMPACT_THRESHOLD = 0.5
 _IMPORTANT_IMPACT_THRESHOLD = 0.3
 

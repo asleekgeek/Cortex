@@ -1,9 +1,6 @@
 """BEAM-10M data loader — 196 items, source_chat_ids → gold-supporting turns.
 
-Reuses ``benchmarks.beam.data`` (the existing 196-item discovery + chat-id
-flattening). This module is the SINGLE source of truth for "what items are
-in the protocol universe" — every condition builder receives items from
-``load_items()`` so they all see the same questions in the same order.
+source: ADR-0838
 
 precondition: HuggingFace ``datasets`` package installed; network reachable
   on first run (cached afterwards) per ``benchmarks/beam/data.py::load_beam_dataset``.
@@ -36,7 +33,7 @@ from benchmarks.beam.data import (  # noqa: E402
 )
 
 
-# Pre-registered universe size from protocol §5 (Tavakoli et al. 2026, Table 2).
+# source: ADR-0838
 EXPECTED_ITEM_COUNT = 196
 
 # pre-registered RNG seeds (protocol §10 manifest, §11.5 anti-cheating).
@@ -49,9 +46,7 @@ BOOTSTRAP_SEED = 20260503
 class BeamItem:
     """One BEAM-10M probing question + its conversation context.
 
-    Equality is on ``question_id`` only so the same item from two loads
-    is deduplicated correctly.
-    """
+    source: ADR-0838"""
 
     question_id: str
     conversation_idx: int
@@ -146,11 +141,7 @@ def iter_items(split: str = "10M") -> Iterator[BeamItem]:
 def load_items(split: str = "10M", strict: bool = True) -> list[BeamItem]:
     """Materialise all items into a list. Verifies the universe size.
 
-    pre: ``strict=True`` enforces the 196-item invariant from protocol §5.
-    post: returns ``EXPECTED_ITEM_COUNT`` items in dataset-iteration order
-      when ``strict=True`` and split=="10M". Mismatch → ValueError. When
-      ``strict=False`` (smoke / dry-run), accepts any count and warns.
-    """
+    source: ADR-0838"""
     items = list(iter_items(split))
     if strict and split == "10M" and len(items) != EXPECTED_ITEM_COUNT:
         raise ValueError(

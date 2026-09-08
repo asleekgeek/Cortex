@@ -14,8 +14,8 @@ from mcp_server.core.codebase_parser import ImportInfo, SymbolDef
 if TYPE_CHECKING:
     from tree_sitter import Node
 
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0100
+
 _MAX_CALL_NAME_LEN = 100  # sanity cap: longer "callee names" are noise
 
 
@@ -32,20 +32,15 @@ def _find_children(node: Node, *types: str) -> list[Node]:
 def _walk_type(node: Node, node_type: str) -> list[Node]:
     """Find `node` and all its descendants of a given type, in document order.
 
-    Iterative on purpose. The recursive form consumed one Python frame per AST
-    level and raised RecursionError at an AST depth of ~1003 under the default
-    limit of 1000 — reachable on minified or generated sources in third-party
-    repositories, and unhandled (no caller catches RecursionError). Heap depth
-    replaces stack depth; the traversal order is unchanged.
-    """
+    source: ADR-0100"""
     results: list[Node] = []
     stack: list[Node] = [node]
     while stack:
         current = stack.pop()
         if current.type == node_type:
             results.append(current)
-        # Reversed, so siblings pop left-to-right and the result stays
-        # pre-order document order — identical to the recursive form.
+        # source: ADR-0100
+
         stack.extend(reversed(current.children))
     return results
 
@@ -107,11 +102,7 @@ def _extract_python_func(
 ) -> None:
     """Extract a single Python function definition.
 
-    Equivalent-mutant note (#369): a `function_definition` node always carries
-    both a `name` and a `parameters` child, so the two `else ""` fallbacks here
-    are unreachable. They are guards against a grammar that stops guaranteeing
-    it, not live branches.
-    """
+    source: ADR-0100"""
     name_node = node.child_by_field_name("name")
     params_node = node.child_by_field_name("parameters")
     name = _text(name_node, source) if name_node else ""
@@ -140,11 +131,7 @@ def _extract_python_class(
 ) -> None:
     """Extract a class and recurse into its body for methods.
 
-    Equivalent-mutant note (#369): a `class_definition` always carries a
-    `name`, so that `else ""` is unreachable. The `superclasses` fallback is
-    NOT — `class C: pass` has no base list — and is pinned in
-    `test_ast_extractor_edges.py::TestSignatureTruncation`.
-    """
+    source: ADR-0100"""
     name_node = node.child_by_field_name("name")
     superclass_node = node.child_by_field_name("superclasses")
     cls_name = _text(name_node, source) if name_node else ""
@@ -185,20 +172,7 @@ def _extract_js_node(
 ) -> None:
     """Recursively extract JS definitions with scope tracking.
 
-    Equivalent-mutant notes (#369), all turning on which callers supply a
-    non-empty `parent`:
-
-    * `parent` is `""` at both entry points here (`extract_js_definitions` and
-      the `export_statement` recursion) and is only non-empty when
-      `_extract_js_class` recurses into a class body. Passing `None` instead of
-      `""` is therefore unobservable — every use is a truthiness test.
-    * `method_definition` is only reached from that class-body recursion, so
-      `parent` is always set when the arm below runs and its `else` branch is
-      unreachable. Mutating the arguments inside it cannot be detected.
-    * `"function"` is a legacy tree-sitter node type. The current grammar emits
-      `function_expression` for anonymous function expressions, so nothing
-      reaches the second entry of the tuple. Kept for grammar compatibility.
-    """
+    source: ADR-0100"""
     if node.type in ("function_declaration", "function"):
         _extract_js_func(node, source, defs, parent)
     elif node.type == "class_declaration":
@@ -293,12 +267,7 @@ def _callee_basename(call_node: Node, source: bytes) -> str:
     anything after the first ``(``, ``[``, or ``<`` (generics, subscripts,
     argument lists that slip into tree-sitter's surface text).
 
-    Equivalent-mutant note (#369): the `1` in both splits is unobservable.
-    `rsplit(sep, n)[-1]` is the text after the last separator for every n, and
-    `split(sep, n)[0]` is the text before the first separator for every n. Only
-    the *direction* matters, and that is pinned — see
-    `test_ast_extractor_edges.py::TestCalleeBasenameEdges`.
-    """
+    source: ADR-0100"""
     fn_ref = call_node.child_by_field_name("function")
     if fn_ref is None:
         return ""
@@ -339,13 +308,7 @@ def _walk_for_calls(
     Postcondition: every named function/method reachable from `node` has
     its qualified name mapped to its deduped callee-basename list in `out`.
 
-    Iterative for the same reason as `_walk_type`: one Python frame per AST
-    level raised RecursionError on deeply nested sources, and no caller
-    catches it. The explicit stack carries the enclosing class scope with
-    each node, and descendants are pushed reversed so they pop before the
-    remaining siblings — preserving the depth-first pre-order the recursive
-    form had, and with it the insertion order of `out`.
-    """
+    source: ADR-0100"""
     stack: list[tuple[Node, str]] = [(c, class_scope) for c in reversed(node.children)]
     while stack:
         child, scope = stack.pop()
@@ -353,34 +316,19 @@ def _walk_for_calls(
         if ntype in _CLASS_NODE_TYPES:
             name_node = child.child_by_field_name("name")
             cls = _text(name_node, source) if name_node else scope
-            # Equivalent-mutant note (#369): mutating "body" here, or the `or`
-            # to `and`, is undetectable. The body node is itself a child, so
-            # descending `child.children` reaches it via the catch-all and
-            # finds the same definitions in the same order. The fallback stays
-            # because grammars without a `body` field rely on it.
+            # source: ADR-0100
+
             body = child.child_by_field_name("body") or child
             inner = cls or scope
             stack.extend((c, inner) for c in reversed(body.children))
         elif ntype == "decorated_definition":
-            # Mirrors `_extract_python_children`'s dispatch, where the same
-            # branch is load-bearing: that function has no catch-all, so
-            # without it a decorated definition is invisible. Here the `else`
-            # below already reaches the wrapped node, which makes this arm
-            # behaviourally identical today — and its mutants unkillable.
-            #
-            # It is kept, not deleted, because it is the seam for behaviour
-            # that was never filled in: calls made *in the decorator*
-            # (`@app.route("/api")`, `@retry(times=3)`) currently produce no
-            # edge anywhere. Issue #372 carries the design decision and the
-            # implementation; deleting the arm would foreclose the question
-            # rather than answer it.
+            # source: ADR-0100
+
             stack.extend((c, scope) for c in reversed(child.children))
         elif ntype in _FUNCTION_NODE_TYPES:
             name_node = child.child_by_field_name("name")
-            # Equivalent-mutant note (#369): the `else ""` arm is unreachable —
-            # every node type in _FUNCTION_NODE_TYPES carries a name in all
-            # grammars in use (verified by sweep). It stays as a guard against
-            # a grammar that stops doing so, which would otherwise crash here.
+            # source: ADR-0100
+
             fn_name = _text(name_node, source) if name_node else ""
             body = child.child_by_field_name("body") or child
             if fn_name:

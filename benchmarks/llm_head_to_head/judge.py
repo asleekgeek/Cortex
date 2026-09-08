@@ -1,12 +1,6 @@
 """Cross-vendor judge — protocol §3 table.
 
-Pairing (load-bearing for §11.3 blind judging):
-  - Haiku 4.5 generator answers      → judged by GPT-4o
-  - Gemini 2.0 Flash generator answers → judged by Claude Opus 4.7
-  - GPT-4o-mini generator answers    → judged by Claude Opus 4.7
-
-Single-judge fallback (budget-tight): all answers judged by Opus only;
-flag Haiku-judged-by-Opus as same-vendor in the manifest.
+source: ADR-0840
 
 precondition: candidate answers are shuffled per-question with seed
   ``JUDGE_SHUFFLE_BASE + question_id_hash`` (protocol §4); judge sees only
@@ -67,14 +61,12 @@ def _shuffle_seed_for(question_id: str) -> int:
     pre: ``question_id`` is the BeamItem identifier (deterministic across runs).
     post: returns a non-negative int derived from a stable hash of the id.
     """
-    # Deterministic hash via Python's ``hash`` is process-salted; use
-    # a stable arithmetic on the bytes instead.
+    # source: ADR-0840
+
     h = 0
     for ch in question_id:
         h = (h * 131 + ord(ch)) & 0x7FFFFFFF
-    # Add the protocol-fixed shuffle-seed base so different runs of the
-    # same code produce the SAME shuffles (protocol §10 manifest field
-    # ``shuffle_seed_base: 20260501``).
+    # source: ADR-0840
 
     return JUDGE_SHUFFLE_BASE + h
 
@@ -139,13 +131,7 @@ def parse_judge_output(
 ) -> list[JudgeVerdict]:
     """Parse the judge's JSONL output into per-condition verdicts.
 
-    pre: ``text`` is the raw judge response. Per Appendix B, it is one
-      JSON object per line with keys ``id`` and ``verdict``.
-    post: returns a list of ``JudgeVerdict`` ordered by alphabetic
-      condition (A, B, C, D — whichever subset is present). Missing or
-      unparseable lines yield ``verdict='incorrect'`` as a conservative
-      default (a missing verdict cannot count as correct).
-    """
+    source: ADR-0840"""
     parsed: dict[int, VerdictLabel] = {}
     for line in text.splitlines():
         line = line.strip()

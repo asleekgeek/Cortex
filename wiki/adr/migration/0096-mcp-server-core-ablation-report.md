@@ -1,0 +1,17 @@
+---
+title: "ADR-0096 — mcp_server/core/ablation_report.py rationale"
+status: accepted
+source: mcp_server/core/ablation_report.py
+---
+
+# ADR-0096 — mcp_server/core/ablation_report.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 82 (comment)
+
+````text
+# source: pre-existing tuned values, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction. Mirror the interpretation
+# thresholds in mcp_server.core.ablation.generate_interpretation.
+````

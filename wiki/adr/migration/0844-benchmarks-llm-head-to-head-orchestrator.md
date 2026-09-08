@@ -1,0 +1,86 @@
+---
+title: "ADR-0844 — benchmarks/llm_head_to_head/orchestrator.py rationale"
+status: accepted
+source: benchmarks/llm_head_to_head/orchestrator.py
+---
+
+# ADR-0844 — benchmarks/llm_head_to_head/orchestrator.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+This is the composition root for the harness (per coding-standards §2.3).
+It is the ONLY layer that imports from all four condition builders, the
+generator, the judge, and the manifest. Each piece below has a single
+responsibility; this module is the only place they're stitched together.
+````
+
+## _generate_one_cell — original line 312 (docstring)
+
+````text
+    pre:
+      - ``condition`` ∈ ALL_CONDITIONS.
+      - ``answer_template`` is the contents of ``prompts/answer.md``.
+      - For B: ``db_for_rag`` is a BenchmarkDB-like with the BEAM memories
+        already loaded under ``domain='beam'``.
+      - For C: the production memory store has been seeded with the same
+        memories under ``domain='beam'``.
+    post:
+      - returns one ``LiveCellResult``; raises ``GeneratorError`` if the
+        vendor call exhausted retries (so the caller can decide whether
+        to skip the cell or abort the run).
+    
+````
+
+## run_live — original line 378 (docstring)
+
+````text
+    pre:
+      - ``items`` is non-empty.
+      - ``conditions`` ⊆ ALL_CONDITIONS.
+      - ``generator_model`` is in ``VENDOR_BY_MODEL`` and has a configured judge.
+      - ``results_dir`` already contains a manifest.json (caller wrote it
+        before calling this function); we only append items.jsonl + patch
+        cost_tracking.
+      - ``cost_ceiling_usd`` is a hard limit; we abort and return early
+        with ``{'aborted': True, ...}`` if the running total exceeds it
+        (defence-in-depth on Stage 0 budget cap).
+    post:
+      - returns a summary dict with totals, per-cell results, and judge
+        verdicts.
+      - one items.jsonl line per (item × condition) is appended.
+      - manifest.json's cost_tracking is incremented.
+    
+````
+
+## _emit_item_line — original line 528 (docstring)
+
+````text
+    pre: ``judge_label`` is one of the protocol verdicts OR the literal
+      ``'error'`` (judge call failed; the cell answer is preserved for audit).
+    post: appends one JSONL line; never raises (failures here would mask
+      cost-tracking already incremented).
+    
+````
+
+## inline — original line 88 (comment)
+
+````text
+# BenchmarkDB-like; only used by condition B
+````
+
+## module — original line 409 (comment)
+
+````text
+# Track running total to enforce ``cost_ceiling_usd``. The estimate
+# is conservative (sum of generator + judge cells already completed).
+````
+
+## module — original line 485 (comment)
+
+````text
+# Cells still produced answers — record with judge_label="error"
+# rather than dropping them silently.
+````

@@ -41,11 +41,9 @@ def _build_layer_nodes(
 # sequential_global). These map directly onto AttributionNode.activation.
 _NUMERIC_CLASSIFIERS = ["activeReflective", "sensingIntuitive", "sequentialGlobal"]
 
-# Classifiers whose CognitiveStyle field is a categorical Literal[str]
-# (types_profiles.CognitiveStyle.problem_decomposition/exploration_style/
-# verification_behavior, e.g. "top-down"/"bottom-up"). These have no
-# legitimate scalar magnitude, so activation stays 0.0 and the
-# classification is carried in categoricalValue instead.
+# source: ADR-0107
+
+
 _CATEGORICAL_CLASSIFIERS = [
     "problemDecomposition",
     "explorationStyle",
@@ -197,8 +195,8 @@ def _compute_mean_baseline(conversations: list[dict], max_samples: int) -> list[
     return mean
 
 
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0107
+# source: ADR-0107
 _MIN_EDGE_WEIGHT = 0.01  # perturbation weights at or below this are noise
 
 

@@ -1,0 +1,112 @@
+---
+title: "ADR-0839 — benchmarks/llm_head_to_head/generator.py rationale"
+status: accepted
+source: benchmarks/llm_head_to_head/generator.py
+---
+
+# ADR-0839 — benchmarks/llm_head_to_head/generator.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Protocol §3 generator panel + §11.6 anti-cheating (one generation per
+item × condition × generator; temperature = 0 or vendor floor; no
+best-of-N).
+````
+
+## module — original line 7 (docstring)
+
+````text
+API keys are read from the environment ONLY:
+  - ANTHROPIC_API_KEY (Haiku 4.5, Opus 4.7)
+  - GOOGLE_API_KEY    (Gemini 2.0 Flash)
+  - OPENAI_API_KEY    (GPT-4o judge — not in current scope per v3 §3
+    table for generators, but kept here for the cross-vendor judge of
+    Haiku answers)
+````
+
+## module — original line 14 (docstring)
+
+````text
+Keys are NEVER logged, NEVER serialised into the manifest, NEVER printed.
+On missing key, ``call_generator`` raises with a clear message naming
+which env var is required for which model.
+````
+
+## call_generator — original line 149 (docstring)
+
+````text
+Issue one generation request to the named model.
+````
+
+## call_generator — original line 151 (docstring)
+
+````text
+    pre:
+      - ``model_id`` is a known pin (entry in ``VENDOR_BY_MODEL``).
+      - ``prompt`` is the rendered Appendix-A template (already filled).
+      - ``max_output_tokens`` ≤ vendor maximum (caller responsibility).
+      - ``temperature`` = 0.0 by default (protocol §11.6 forbids best-of-N).
+    post:
+      - on dry_run: returns a stub with no network access and dry_run=True.
+      - on success: returns ``GeneratorResponse`` with token counts from
+        the vendor (or a heuristic estimate if vendor doesn't provide them).
+      - on failure after MAX_RETRIES: raises ``GeneratorError`` whose
+        message lists the retry log (never includes API keys).
+    invariant: API keys never appear in the response, retries, or error
+      messages.
+    
+````
+
+## _heuristic_word_tokens — original line 230 (docstring)
+
+````text
+    pre: ``text`` is a Python str (possibly empty).
+    post: returns int ≥ 0; 0 only when text is empty.
+    source: GPT-2 BPE empirical word→token ratio ≈ 1.33 (Radford 2019),
+      cross-checked against tiktoken cl100k. See protocol §7.
+    
+````
+
+## module — original line 37 (comment)
+
+````text
+# Verified pricing snapshotted at protocol freeze (protocol §7).
+# source: anthropic api docs (verified 2026-04-30)
+# source: openai api docs (verified 2026-04-30)
+# source: google ai docs paid Tier 1 (verified 2026-04-30)
+````
+
+## module — original line 166 (comment)
+
+````text
+# Stub: no API call, no key required. Token counts heuristic.
+````
+
+## inline — original line 248 (directive-rationale)
+
+````text
+# type: ignore[import-not-found]  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+````
+
+## inline — original line 286 (directive-rationale)
+
+````text
+# type: ignore[import-not-found]  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+````
+
+## module — original line 310 (comment)
+
+````text
+# Google sometimes omits usage on streaming/short responses; fall back
+# to the protocol §7 word→token heuristic so cost-tracking is never
+# silently zero. The fallback is ALWAYS conservative (overcounts).
+````
+
+## inline — original line 336 (directive-rationale)
+
+````text
+# type: ignore[import-not-found]  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+````

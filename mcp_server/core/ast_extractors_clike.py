@@ -1,11 +1,6 @@
 """Tree-sitter extractors for C-family languages: C, C++, and C#.
 
-Node-type names verified empirically against tree-sitter-language-pack
-grammars (c, cpp, csharp). C/C++ carry function names inside nested
-``function_declarator`` nodes; C# uses ``name`` fields like Java.
-
-Split from ast_extractors.py to stay under 300 lines.
-"""
+source: ADR-0101"""
 
 from __future__ import annotations
 
@@ -35,17 +30,7 @@ def extract_c_imports(root: Node, source: bytes) -> list[ImportInfo]:
 def _declarator_name(declarator: Node | None, source: bytes) -> str:
     """Unwrap nested C/C++ declarators down to the identifier.
 
-    Equivalent-mutant note (#369): the two checks below have identical bodies,
-    so which tuple a node type sits in is not observable, and mutating a type
-    string only changes behaviour if that type is the *terminal* declarator of
-    a `function_definition`. In practice the chain terminates at `identifier`
-    (free functions) or `qualified_identifier` (out-of-line members, including
-    `C::~C`), so the remaining four names are carried for grammars and forms
-    that do not currently reach here. They are kept rather than pruned because
-    the split reads as a deliberate plain-vs-qualified distinction that a
-    future caller may need to act on differently — the same judgement as the
-    `decorated_definition` arm in `ast_extractors._walk_for_calls`.
-    """
+    source: ADR-0101"""
     node = declarator
     while node is not None:
         if node.type in ("identifier", "field_identifier", "type_identifier"):
@@ -128,10 +113,7 @@ def extract_csharp_definitions(root: Node, source: bytes) -> list[SymbolDef]:
 def _walk_csharp(node: Node, source: bytes, defs: list[SymbolDef], parent: str) -> None:
     """Extract C# definitions, qualifying methods by type.
 
-    Iterative (see `ast_extractors._walk_type`): one Python frame per AST level
-    raised an uncaught RecursionError on deeply nested sources. Descendants are
-    pushed reversed, so `defs` keeps its depth-first pre-order.
-    """
+    source: ADR-0101"""
     stack: list[tuple[Node, str]] = [(node, parent)]
     while stack:
         current, scope = stack.pop()

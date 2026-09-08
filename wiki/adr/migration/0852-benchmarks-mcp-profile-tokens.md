@@ -1,0 +1,47 @@
+---
+title: "ADR-0852 — benchmarks/mcp_profile_tokens.py rationale"
+status: accepted
+source: benchmarks/mcp_profile_tokens.py
+---
+
+# ADR-0852 — benchmarks/mcp_profile_tokens.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+Measure the per-session token cost of the initialize + tools/list exchange,
+per tool profile (issue #177 criterion 6).
+````
+
+## module — original line 4 (docstring)
+
+````text
+This is the fixed cost a client pays before the user types anything: the
+`initialize.instructions` string plus every advertised tool's schema in
+`tools/list`. The profile filter reduces the tool set; this benchmark quantifies
+the reduction so the claim "reduces bytes per session" is measured, not asserted.
+````
+
+## module — original line 9 (docstring)
+
+````text
+Token estimate: characters / 4. source: OpenAI tokenizer rule of thumb for
+English text (~4 chars/token), https://platform.openai.com/tokenizer — used
+only as an order-of-magnitude estimate; the exact serialized byte count (also
+reported) is unambiguous and tokenizer-independent.
+````
+
+## module — original line 14 (docstring)
+
+````text
+Run: `python -m benchmarks.mcp_profile_tokens` (from repo root, in the venv).
+
+````
+
+## inline — original line 29 (comment)
+
+````text
+# source: OpenAI tokenizer rule of thumb (see module docstring)
+````

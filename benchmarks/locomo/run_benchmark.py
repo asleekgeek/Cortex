@@ -1,13 +1,6 @@
 """LoCoMo benchmark runner for Cortex memory system.
 
-LoCoMo (Maharana et al., ACL 2024): 10 conversations, 1,986 QA pairs, 5 categories.
-Uses the production PostgreSQL + pgvector retrieval pipeline.
-
-Run:
-    python3 benchmarks/locomo/run_benchmark.py [--limit N] [--verbose]
-                                               [--with-consolidation]
-                                               [--ablate MECH]
-                                               [--results-out PATH]
+source: ADR-0848
 """
 
 from __future__ import annotations
@@ -38,8 +31,8 @@ from benchmarks.locomo.data import (
 )
 from mcp_server.handlers import consolidate as consolidate_handler
 
-# source: structural — the K in the reported R@5 / R@10 metrics (the "top 10"
-# the missed-question listing reports is the same cutoff)
+# source: ADR-0848
+# source: ADR-0848
 _RECALL_AT_5_K = 5
 _RECALL_AT_10_K = 10
 
@@ -178,6 +171,8 @@ def run_benchmark(
 ) -> dict:
     """Run the LoCoMo benchmark using production PG retrieval.
 
+    source: ADR-0848
+
     Precondition: PG schema initialised; n_runs >= 1 (default 1 preserves
     single-run behaviour).
     Postcondition: returns metric dict with keys: overall_mrr,
@@ -204,7 +199,7 @@ def run_benchmark(
         print(f"  n_runs: {n_runs} (will report mean ± std and 95 % CI)")
     print()
 
-    # Capture reproducibility sidecar once at benchmark start.
+    # source: ADR-0848
     repro = build_repro_manifest()
 
     runs_mrr: list[float] = []
@@ -230,7 +225,7 @@ def run_benchmark(
             for conv_idx, conv in enumerate(data):
                 sessions = extract_sessions(conv["conversation"])
 
-                # Clean up previous conversation, load new sessions
+                # source: ADR-0848
                 db.clear()
                 memories = [
                     {
@@ -244,13 +239,8 @@ def run_benchmark(
                 ]
                 mem_ids, source_map = db.load_memories(memories, domain="locomo")
 
-                # Consolidation pass between session-load and QA. Off by default
-                # to preserve historical reproducibility. ON exercises the
-                # consolidation-only mechanisms (CASCADE, INTERFERENCE,
-                # HOMEOSTATIC_PLASTICITY, SYNAPTIC_PLASTICITY,
-                # MICROGLIAL_PRUNING, TWO_STAGE_MODEL, EMOTIONAL_DECAY,
-                # TRIPARTITE_SYNAPSE, SCHEMA_ENGINE) so per-mechanism ablation
-                # deltas become attributable on the longitudinal benchmark.
+                # source: ADR-0848
+
                 if with_consolidation:
                     consolidation_total_wall_s += _run_consolidation_pass()
                     consolidation_call_count += 1
@@ -428,9 +418,8 @@ if __name__ == "__main__":
     if args.n_runs < 1:
         parser.error("--n-runs must be >= 1")
 
-    # Export ablation env var BEFORE any handler/store import touches it. The
-    # ablation.is_disabled reads os.environ on every call, so setting it here
-    # is sufficient as long as we do it before run_benchmark.
+    # source: ADR-0848
+
     ablate_mech: str | None = None
     if args.ablate:
         ablate_mech = args.ablate.strip().upper()

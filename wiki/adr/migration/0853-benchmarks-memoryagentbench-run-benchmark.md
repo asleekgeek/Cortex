@@ -1,0 +1,71 @@
+---
+title: "ADR-0853 — benchmarks/memoryagentbench/run_benchmark.py rationale"
+status: accepted
+source: benchmarks/memoryagentbench/run_benchmark.py
+---
+
+# ADR-0853 — benchmarks/memoryagentbench/run_benchmark.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+MemoryAgentBench benchmark for Cortex memory system.
+````
+
+## module — original line 3 (docstring)
+
+````text
+Tests 4 core memory competencies (Hu et al., ICLR 2026):
+  1. Accurate Retrieval — recall facts from injected context
+  2. Test-Time Learning — few-shot classification from examples in memory
+  3. Long-Range Understanding — summarize/reason over large contexts
+  4. Conflict Resolution — handle contradictory information
+````
+
+## module — original line 9 (docstring)
+
+````text
+Evaluation: F1, Exact Match, Substring Match per split.
+Dataset: HuggingFace "ai-hyz/MemoryAgentBench" (146 rows)
+````
+
+## module — original line 12 (docstring)
+
+````text
+Run:
+    python3 benchmarks/memoryagentbench/run_benchmark.py
+        [--split Accurate_Retrieval] [--limit N]
+
+````
+
+## MABRetriever — original line 90 (docstring)
+
+````text
+Chunk-and-retrieve adapter wrapping shared BenchmarkRetriever.
+````
+
+## run_benchmark — original line 120 (docstring)
+
+````text
+Run MemoryAgentBench retrieval benchmark.
+````
+
+## module — original line 116 (comment)
+
+````text
+# ── Main Benchmark ───────────────────────────────────────────────────────
+````
+
+## inline — original line 121 (directive-rationale)
+
+````text
+# noqa: PLC0415 — optional dependency ([benchmarks] extra); imported where used so environments without it keep working
+````
+
+## inline — original line 135 (directive-rationale)
+
+````text
+# noqa: BLE001 — bench harness is fail-soft — failure is printed and the run continues or exits with a report
+````

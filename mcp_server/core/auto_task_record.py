@@ -1,26 +1,6 @@
 """Auto-spawn task-record ADRs from completed session work.
 
-User direction 2026-05-18: every new task / bug / feature should be
-treated with the same detailed approach. This module is the
-machinery that turns a session ending with substantive work into a
-draft ADR carrying the task-record contract (Entry / Mandatory
-elements / How / Result / Serves) — the same shape humans use, so
-nothing is below the level of importance.
-
-The draft is NOT a finished page. It pulls together:
-
-  * Commit messages made during the session (the user-stated intent).
-  * Memories tagged with decision / lesson / fix during the session
-    (the things the user explicitly chose to capture).
-  * Changed files (the artifact of the work).
-  * A frontmatter ``lifecycle: draft`` so the conversational LLM
-    refines it on the next session via ``curate_wiki``'s re-author
-    queue.
-
-Pure logic — the handler ``record_session_end`` invokes
-``build_task_record`` with the inputs already in hand, then writes
-the page via the existing wiki write path.
-"""
+source: ADR-0109"""
 
 from __future__ import annotations
 
@@ -28,10 +8,9 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-# Threshold below which a session isn't substantive enough to warrant a
-# task-record. Tuned so a quick browse / read-only session doesn't
-# pollute the wiki, but any session that produced commits, edits, or
-# explicit memories above the floor gets documented.
+# source: ADR-0109
+
+
 MIN_COMMITS_FOR_RECORD: int = 1
 MIN_MEMORIES_FOR_RECORD: int = 2
 MIN_TOOLS_FOR_RECORD: int = 5
@@ -41,9 +20,7 @@ MIN_TOOLS_FOR_RECORD: int = 5
 class TaskRecordInputs:
     """Bundle of session evidence the auto-ADR builder needs.
 
-    Kept as a DTO so the handler composes whatever it has without a
-    long parameter list (Clean Architecture §4.4).
-    """
+    source: ADR-0109"""
 
     session_id: str
     domain: str
@@ -82,13 +59,7 @@ def _slugify(text: str, max_len: int = 60) -> str:
 def _derive_title(inputs: TaskRecordInputs) -> str:
     """Pick a short specific title from the session evidence.
 
-    Priority:
-      1. First commit message's subject line — usually states intent.
-      2. First memory tagged ``decision``/``lesson`` — the user's
-         explicit capture.
-      3. Tool-heavy session with no commits / decision memories falls
-         back to a generic title; the LLM refines it on the next pass.
-    """
+    source: ADR-0109"""
     if inputs.commits:
         msg = inputs.commits[0].get("message") or ""
         first = _FIRST_LINE_RE.search(msg)
@@ -111,10 +82,7 @@ def _today_iso() -> str:
 def is_substantive(inputs: TaskRecordInputs) -> bool:
     """True when the session produced enough evidence to deserve an ADR.
 
-    The thresholds are deliberately lenient: anything with a commit
-    earns a record. Tool-heavy read-only sessions need a fair amount of
-    activity (5+ tools) AND some captured memories.
-    """
+    source: ADR-0109"""
     if len(inputs.commits) >= MIN_COMMITS_FOR_RECORD:
         return True
     if (
@@ -153,8 +121,8 @@ def _section_entry(inputs: TaskRecordInputs) -> str:
     )
 
 
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0109
+# source: ADR-0109
 _MAX_COMMITS_LISTED = 10  # draft-body cap; the rest is summarised as a count
 _MAX_FILES_LISTED = 20  # draft-body cap; the rest is summarised as a count
 

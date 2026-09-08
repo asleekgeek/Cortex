@@ -1,15 +1,6 @@
 """Empirical noise-floor measurement for verification thresholds.
 
-Runs the SAME benchmark config N times from the SAME DB snapshot and
-reports per-metric mean, std, p95, range. The measured σ becomes the
-'smallest detectable effect' threshold for ablation / N-scan / decay-
-sweep experiments — anything within σ is statistical noise.
-
-Source: Curie verification audit — "the smallest reportable effect must
-exceed the empirical noise floor of the measurement apparatus" (Fisher,
-*The Design of Experiments*, 1935; restated for benchmark harnesses in
-docs/program/n-scan-spec.md §noise_floor).
-"""
+source: ADR-0082"""
 
 from __future__ import annotations
 
@@ -39,8 +30,7 @@ from benchmarks.lib.db_snapshot import (  # noqa: E402
 from benchmarks.lib import db_setup  # noqa: E402
 
 RESULTS_DIR = _ROOT / "benchmarks" / "results" / "noise_floor"
-# source: spec §Deliverable 3 — "smallest detectable effect" defined as
-# 2σ following the standard 95% confidence threshold (Fisher 1935).
+# source: ADR-0082
 SDE_SIGMA_MULTIPLIER = 2.0
 
 
@@ -54,8 +44,7 @@ class RunSample:
     wall_seconds: float
 
 
-# source: structural — a sample standard deviation is undefined below two
-# samples
+# source: ADR-0082
 _MIN_SAMPLES_FOR_STD = 2
 
 

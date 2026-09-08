@@ -96,8 +96,8 @@ def _build_feature_activations(
     return feature_activations
 
 
-# source: structural — cross-domain persistence needs at least two
-# domains to compare
+# source: ADR-0110
+
 _MIN_DOMAINS_FOR_PERSISTENCE = 2
 
 

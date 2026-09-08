@@ -1,0 +1,26 @@
+---
+title: "ADR-0107 — mcp_server/core/attribution_tracer.py rationale"
+status: accepted
+source: mcp_server/core/attribution_tracer.py
+---
+
+# ADR-0107 — mcp_server/core/attribution_tracer.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 44 (comment)
+
+````text
+# Classifiers whose CognitiveStyle field is a categorical Literal[str]
+# (types_profiles.CognitiveStyle.problem_decomposition/exploration_style/
+# verification_behavior, e.g. "top-down"/"bottom-up"). These have no
+# legitimate scalar magnitude, so activation stays 0.0 and the
+# classification is carried in categoricalValue instead.
+````
+
+## module — original line 200 (comment)
+
+````text
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````

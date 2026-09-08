@@ -13,7 +13,7 @@ import uuid
 from benchmarks.reranker_matrix.cache import durable_root, verify
 from benchmarks.reranker_matrix.pins import cell
 
-# source: W4-2 factorial matrix; existing baseline first, no default selection changed.
+# source: ADR-0863
 CELLS = ("l12-3x", "l12-2x", "l2-3x", "l2-2x")
 
 
@@ -76,7 +76,7 @@ def measured_work(evidence: dict) -> dict:
     records = evidence.get("reranks", [])
     if not records:
         return {"state": "not measured"}
-    # source: Python statistics.median; perf_counter_ns/process_time_ns measurements.
+    # source: ADR-0863
     return {
         "state": "measured",
         "calls": len(records),
@@ -125,7 +125,7 @@ def execute(output: Path) -> dict:
         verify(durable_root(), cell(name).model)
     output.mkdir(parents=True, exist_ok=False)
     metadata = plan(output)
-    # source: existing benchmarks.lib.db_setup deterministic-session hook.
+    # source: ADR-0863
     run_id = "w4-2-" + uuid.uuid4().hex
     environment = dict(os.environ, CORTEX_BENCH_DETERMINISTIC_RUN_ID=run_id)
     metadata["deterministic_run_id"] = run_id

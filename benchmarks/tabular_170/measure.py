@@ -1,29 +1,6 @@
-"""Measure the tabular-encoding token delta for recall (issue #170).
+"""Measure the tabular-encoding token delta for recall.
 
-The issue gates the default: on a fixed recall corpus, if the tabular encoding
-cuts serialized size by >= 25% vs the current JSON encoding, ship tabular as
-the default (with ``format="json"`` as the escape hatch); otherwise keep it an
-opt-in ``format`` param.
-
-Corpus (committed, reproducible): ``benchmarks/longmemeval/longmemeval_s.json``.
-Its haystack turns are natural conversational text — a faithful proxy for
-recall memory bodies (varied length, real prose), which is what the tabular
-saving is measured against. Each simulated query returns ``MAX_RESULTS``
-recall-shaped memory dicts carrying exactly the fields the recall handler
-emits (id, content, score, heat, domain, tags, created_at, source). We build
-the recall response envelope, then measure it two ways through the SAME code
-paths the handler uses:
-
-  (a) JSON  — ``encode_within_budget(..., "json")``: array of objects.
-  (b) tabular — ``encode_within_budget(..., "tabular")``: columns-once rows.
-
-Size is counted with ``response_budget.serialized_length`` (the exact char
-count the MCP host enforces) and tokens with the host's own estimator
-(chars / 4, round) — source: core/response_budget.py module docstring
-(Claude Code 2.1.170 ``Xz(text) = round(len(text) / 4)``).
-
-Output: a JSON result + MANIFEST under ``benchmarks/results/tabular-170/``.
-Run: ``python3 benchmarks/tabular_170/measure.py``.
+source: ADR-0870
 """
 
 from __future__ import annotations
@@ -41,20 +18,19 @@ REPO = Path(__file__).resolve().parents[2]
 FIXTURE = REPO / "benchmarks" / "longmemeval" / "longmemeval_s.json"
 OUT_DIR = REPO / "benchmarks" / "results" / "tabular-170"
 
-# Fixed corpus knobs. source: chosen to mirror the recall default
-# (max_results=10, mcp_server/handlers/recall.py inputSchema) over a broad,
-# deterministic query sample; N_QUERIES bounded by fixture size.
+# source: ADR-0870
+
+
 MAX_RESULTS = 10
 N_QUERIES = 100
 
-# The host's own token estimator. source: core/response_budget.py docstring
-# (Claude Code 2.1.170 binary: Xz(text) = round(len(text) / 4)).
+# source: ADR-0870
+
 CHARS_PER_TOKEN = 4
 
-# Char-reduction gate that flips the recall default to tabular. source: issue
-# #170 as quoted in the module docstring — "if the tabular encoding cuts
-# serialized size by >= 25% vs the current JSON encoding, ship tabular as the
-# default".
+# source: ADR-0870
+
+
 DECISION_THRESHOLD_PCT = 25.0
 
 
@@ -159,15 +135,7 @@ def measure() -> dict:
 def sensitivity_by_content_length() -> list[dict]:
     """Tabular reduction as a function of memory content length.
 
-    The tabular saving is fixed field-name overhead per item; its FRACTION of
-    the payload therefore falls as content grows. This sweep makes the
-    crossover explicit — short (budget-truncated) memories save a lot, long
-    prose memories save little — which is exactly why the natural-corpus gate
-    lands where it does. Lengths span the budget-truncation regime up to full
-    prose. source: budget truncation produces short content slices
-    (mcp_server/core/response_budget.py water-filling); prose lengths mirror
-    the fixture's own turn-length distribution (median ~376 chars).
-    """
+    source: ADR-0870"""
     rows: list[dict] = []
     for length in (24, 48, 96, 192, 384, 768):
         memories = [_recall_memory(i, "x" * length) for i in range(MAX_RESULTS)]

@@ -1,0 +1,29 @@
+---
+title: "ADR-0860 — benchmarks/reranker_matrix/cache.py rationale"
+status: accepted
+source: benchmarks/reranker_matrix/cache.py
+---
+
+# ADR-0860 — benchmarks/reranker_matrix/cache.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 40 (comment)
+
+````text
+# source: existing reranker_model.model_sha256 bounded read size.
+````
+
+## module — original line 70 (comment)
+
+````text
+# source: verified TinyBERT archive SHA752eddf1... contains six __MACOSX
+# ._ companions of its directory and five model files. Keep the archive
+# intact, but do not extract metadata as model inputs. Unpaired paths fail.
+````
+
+## module — original line 99 (comment)
+
+````text
+# source: FlashRank 0.2.10 Ranker._get_tokenizer required filenames.
+````

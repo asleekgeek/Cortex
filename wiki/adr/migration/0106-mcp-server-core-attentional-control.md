@@ -1,0 +1,154 @@
+---
+title: "ADR-0106 — mcp_server/core/attentional_control.py rationale"
+status: accepted
+source: mcp_server/core/attentional_control.py
+---
+
+# ADR-0106 — mcp_server/core/attentional_control.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 4 (docstring)
+
+````text
+Baddeley's model of working memory has, besides its storage buffers, a *central
+executive*: an attentional-control system that decides which of the currently-
+held items are in focus for the task at hand. Cortex has the storage side (the
+sensory buffer, a bounded working-memory ring) and a capacity ceiling (Cowan's
+4±1, DEFAULT_MAX_CHUNKS in metacognition_analysis), but no allocation step —
+nothing scores the buffered items against the current query and decides which
+few are "in focus." Everything held is treated as equally available, which is
+exactly what an attentional bottleneck is *not*.
+````
+
+## module — original line 13 (docstring)
+
+````text
+Neuroscience basis (DOIs verified against Crossref):
+  - Baddeley (2003), "Working memory: looking back and looking forward,"
+    Nature Reviews Neuroscience 4:829-839 (doi:10.1038/nrn1201). The central
+    executive as an attentional-control system over the working-memory buffers.
+  - Posner & Petersen (1990), "The attention system of the human brain,"
+    Annual Review of Neuroscience 13:25-42
+    (doi:10.1146/annurev.ne.13.030190.000325). Attention as a separable network
+    with a selective "spotlight" that can be directed top-down.
+  - Cowan (2001), "The magical number 4 in short-term memory,"
+    Behavioral and Brain Sciences 24:87-114 (doi:10.1017/S0140525X01003922).
+    The focus of attention holds ~4 chunks — the capacity ceiling this module
+    enforces via a local FOCUS_CAPACITY_DEFAULT = 4 (the centre of the same 4±1
+    band metacognition_analysis.DEFAULT_MAX_CHUNKS = 5 encodes; not imported).
+````
+
+## module — original line 27 (docstring)
+
+````text
+Mechanism. Content-based attention over a memory set is the transformer
+operation itself: query-weighted soft selection. Each working-set item gets a
+relevance score against the current query/task; a softmax over those scores
+(a local pure-Python reimplementation of the same shift-by-max stabilization
+hopfield.py uses, with an added temperature knob) yields an attention
+distribution; a top-down *temperature* controls how sharply the
+spotlight focuses (low temperature → winner-take-most concentration, high →
+diffuse); the top-weighted items up to the Cowan ceiling are exposed as the
+focus set. An optional bottom-up salience term (importance, |valence|) is added
+to the top-down relevance, so an unbidden but salient item can still capture the
+spotlight — the bottom-up/top-down interaction Posner & Petersen describe.
+````
+
+## module — original line 39 (docstring)
+
+````text
+Honesty note (zetetic standard, matching value_learning.py / source_monitoring.py):
+this is the standard content-based-attention soft-selection, not a *learned*
+top-down controller — the temperature and the salience weight are fixed
+engineering constants, not parameters trained against a task-performance signal.
+The softmax is a small pure-Python reimplementation of the same shift-by-max
+stabilization used by hopfield._softmax, with a temperature knob that hopfield's
+fixed-beta variant does not expose (kept local so this module has no numpy
+dependency). Relevance scoring here is lexical/feature overlap (the caller may
+pass a precomputed semantic score instead); it does not itself embed or call a
+model.
+
+````
+
+## AttentionAllocation — original line 80 (docstring)
+
+````text
+    ``focus``      — the in-focus items (≤ capacity), highest-weight first, each
+                     a dict with the original item plus ``attention_weight``.
+    ``weights``    — attention weight per input item, in input order.
+    ``entropy``    — Shannon entropy of the attention distribution (nats); low =
+                     sharply focused, high = diffuse. A load/uncertainty proxy.
+    ``capacity``   — the Cowan ceiling applied.
+    ``overflow``   — count of items that were held but fell outside the focus.
+    
+````
+
+## attention_allocation_as_dict — original line 97 (docstring)
+
+````text
+A free function, not a method: mutmut categorically excludes the
+    body of any `@dataclass`-decorated class (`mutmut/mutation/
+    file_mutation.py:236`), so logic placed on `AttentionAllocation`
+    methods would carry zero mutation coverage no matter how the test
+    loader names the module (issue #262 3rd pass; issue #282).
+    
+````
+
+## relevance_score — original line 120 (docstring)
+
+````text
+    Jaccard-style query coverage: fraction of query tokens present in the item.
+    A caller with a semantic score (vector similarity) should pass it via
+    ``precomputed_scores`` to allocate_attention instead of relying on this.
+    
+````
+
+## _softmax — original line 137 (docstring)
+
+````text
+    Mirrors hopfield._softmax (same shift-by-max stabilization); kept as a small
+    pure-Python version so this module has no hard numpy dependency, and applies
+    the temperature scaling hopfield's fixed-beta variant does not expose.
+    
+````
+
+## allocate_attention — original line 171 (docstring)
+
+````text
+    Each item (a dict with at least ``content``; optionally ``importance`` and
+    ``valence``) is scored for top-down relevance to ``query`` (or the caller's
+    ``precomputed_scores``), plus a bottom-up salience term. A temperature-scaled
+    softmax turns the scores into an attention distribution; the top ``capacity``
+    items (Cowan ceiling) become the focus set, each annotated with its weight.
+````
+
+## module — original line 57 (comment)
+
+````text
+# ── Constants ───────────────────────────────────────────────────────────────
+# The focus of attention holds ~4 chunks (Cowan 2001). This is the same ceiling
+# metacognition applies for chunking (metacognition_analysis.DEFAULT_MAX_CHUNKS
+# = 5 = 4±1); here we take the centre of that band (4) as the focus size. Kept
+# as a local constant so this module has no import dependency on metacognition.
+````
+
+## module — original line 64 (comment)
+
+````text
+# Top-down control knob. The softmax temperature: <1 sharpens the spotlight
+# (concentrates weight on the best matches), >1 diffuses it. 1.0 is the plain
+# softmax. Fixed engineering default — not learned.
+````
+
+## module — original line 194 (comment)
+
+````text
+# strict=True: top_down is built one score per item three lines above,
+# so the lengths are always equal by construction. Documented
+# equivalent mutant (coding-standards.md §12.1): allocate_attention's
+# earlier `if len(precomputed_scores) != n: raise` (see above) makes a
+# top_down/items length mismatch unreachable through this function's
+# public entry point, so no test can distinguish strict=True from
+# strict=False/None here without bypassing that guard directly.
+````

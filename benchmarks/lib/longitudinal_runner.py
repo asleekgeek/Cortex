@@ -19,16 +19,13 @@ N days ago, we INSERT with a backdated ``created_at`` then UPDATE
 ``effective_heat()`` reads ``t_now - heat_base_set_at`` so this single
 column is the load-bearing dial for decay age.
 
-We use a dedicated database (default ``cortex_longitudinal_test``) to
-avoid polluting production memory. The DB is dropped and recreated at
-run start.
-
 CLI:
     python -m benchmarks.lib.longitudinal_runner
     python -m benchmarks.lib.longitudinal_runner --quick
     python -m benchmarks.lib.longitudinal_runner --n-memories 100000 \\
         --queries-per-bucket 1000 --seed 42
-"""
+
+source: ADR-0079"""
 
 from __future__ import annotations
 
@@ -151,7 +148,7 @@ def insert_memories(
     for uid in range(n):
         bucket = assign_bucket(rng, n_buckets)
         bucket_assignments.append(bucket)
-        # Spread uniformly within the bucket's day range to avoid a spike
+        # source: ADR-0079
         center = BUCKETS_DAYS[bucket]
         jitter = rng.uniform(-15.0, 15.0)
         age = max(0.5, center + jitter)
@@ -182,10 +179,7 @@ def insert_memories(
     _stamp_age(bench_db._store, mem_ids, age_days)
     print(f"[long] backdate done ({time.time() - t0:.1f}s)")
 
-    # strict=False: ingest_memories_batch's contract does not guarantee
-    # len(mem_ids) == n (the store's write path may merge/dedupe an
-    # insert); truncating to the shorter list here matches current
-    # behavior rather than crashing a long-running benchmark run.
+    # source: ADR-0079
     return [
         (uid, mid, b)
         for uid, mid, b in zip(range(n), mem_ids, bucket_assignments, strict=False)

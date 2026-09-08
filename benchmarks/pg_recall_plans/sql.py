@@ -7,13 +7,13 @@ from pathlib import Path
 from benchmarks.pg_recall_plans.fixture import load_sql, recall_sql
 from mcp_server.infrastructure.pg_schema import get_all_ddl
 
-# source: W4-1 adds only these two indexes; the baseline phase excludes them.
+# source: ADR-0856
 NEW_INDEXES = (
     "idx_memories_curated_heat_base",
     "idx_memories_curated_created_at",
 )
-# source: remediation plan §3's four/first-discarded protocol, explicitly
-# extended to this PG experiment by the W4-1 harness review request.
+# source: ADR-0856
+
 REPETITIONS = (1, 2, 3, 4)
 
 
@@ -44,7 +44,7 @@ def phase_sql(phase: str) -> str:
         statements.append(f"SET LOCAL enable_bitmapscan = {scan};")
         query = recall_sql(function, scope == "scoped", exact_witness=mode == "exact")
         statements.append(
-            f"SELECT json_build_object('case', '{label}', 'rows', "  # noqa: S608 — phase allowlist, fixed mode/scope and query grammar
+            f"SELECT json_build_object('case', '{label}', 'rows', "  # noqa: S608 — source: ADR-0856
             f"COALESCE(json_agg(r), '[]'::json)) FROM ({query}) r;"
         )
     return "\n".join(statements)
@@ -69,7 +69,10 @@ def metadata_sql() -> str:
 
 
 def experiment_sql(rows: int) -> str:
-    """One transaction fixes NOW() for both versions and all heat calculations."""
+    """One transaction fixes NOW() for both versions and all heat calculations.
+
+    source: ADR-0856
+    """
     ddl = get_all_ddl()
     added = [s for s in ddl if any(name in s for name in NEW_INDEXES)]
     initial = [s for s in ddl if s not in added]
@@ -81,9 +84,7 @@ def experiment_sql(rows: int) -> str:
             load_sql(rows),
             metadata_sql(),
             "LOAD 'auto_explain';",
-            # source: PostgreSQL 16 auto_explain documentation. Zero logs all
-            # statements, including nested function plans; NOTICE returns them
-            # to psql stderr as well as the container log.
+            # source: ADR-0856
             "SET LOCAL auto_explain.log_min_duration = 0;",
             "SET LOCAL auto_explain.log_analyze = on;",
             "SET LOCAL auto_explain.log_buffers = on;",
