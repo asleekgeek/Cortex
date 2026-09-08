@@ -16,6 +16,7 @@ one object rather than passed as 8-13 positional parameters
 from __future__ import annotations
 
 from mcp_server.shared.telemetry_context import set_retrieval_tier
+from mcp_server.shared.memory_rows import MemoryRows
 from mcp_server.core.pg_recall_context import RecallContext, fetch_and_triage
 from mcp_server.core.pg_recall_signals import (
     _get_active_goal,
@@ -94,7 +95,7 @@ def apply_recollection_pipeline(
     candidates = hopfield_complete(
         candidates,
         ctx.q_emb,
-        ctx.store,
+        ctx.candidate_embeddings if ctx.candidate_embeddings is not None else ctx.store,
         embedding_dim=ctx.embeddings.dimensions if ctx.embeddings else 0,
     )
     candidates = hdc_rerank(candidates, ctx.query)
@@ -205,11 +206,14 @@ def apply_final_stages(candidates: list[dict], ctx: RecallContext) -> list[dict]
 
     if ctx.momentum_state is not None:
         titans = _get_titans()
+        ids = [r["memory_id"] for r in candidates[:10]]
+        # Match get_memory rows on both backends: SQLite rows have no embedding.
+        memories = MemoryRows.read(ctx.store, ids)
         result_embs = []
-        for r in candidates[:10]:
-            mem = ctx.store.get_memory(r["memory_id"])
-            if mem and mem.get("embedding"):
-                result_embs.append(mem["embedding"])
+        for memory_id in ids:
+            emb = (memories.get_memory(memory_id) or {}).get("embedding")
+            if emb is not None and len(emb):
+                result_embs.append(emb)
         surprise = titans.update(ctx.q_emb, result_embs)
         ctx.momentum_state["momentum"] = surprise  # Track for diagnostics
 

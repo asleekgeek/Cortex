@@ -14,6 +14,7 @@ facade holds no implementation (same pattern as ``synaptic_plasticity.py``).
 
 from __future__ import annotations
 from typing import Any
+from mcp_server.shared.memory_rows import MemoryRows
 
 from mcp_server.core.context_assembly.condensers import condense_assembled_context
 from mcp_server.core.context_assembly.stage_assembler import (
@@ -152,9 +153,10 @@ def assemble_context(
             if len(name) >= _MIN_ENTITY_NAME_LEN and eid:
                 entity_pairs.append((name, eid))
 
+        memories = MemoryRows.read(store, [c["memory_id"] for c in candidates])
         filtered: list[dict[str, Any]] = []
         for c in candidates:
-            mem = store.get_memory(c["memory_id"])
+            mem = memories.get_memory(c["memory_id"])
             if not mem:
                 continue
             if detector.stage_of(mem) != stage_id:

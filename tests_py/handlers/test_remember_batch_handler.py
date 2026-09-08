@@ -92,7 +92,8 @@ class RememberBatchCalls(unittest.TestCase):
         scenario = (CONTENT, neighbors, "create")
         old, new = self.run_scenario(scenario, scalar=True), self.run_scenario(scenario)
         self.assertEqual(old.result, new.result)
-        self.assertEqual(old.insert.call_args.args[:14], new.insert.call_args.args[:14])
+        # ObservedNeighbors replaces sims/vec_hits; the store is now at index 13.
+        self.assertEqual(old.insert.call_args.args[:13], new.insert.call_args.args[:13])
         self.assertEqual(old.store.searches, new.store.searches)
         self.assertEqual(old.engine.encode.call_count, 7)
         self.assertEqual(
