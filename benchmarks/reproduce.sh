@@ -472,6 +472,8 @@ main() {
     if [ "$RUN_BENCHMARKS" = "1" ] && want_bench longmemeval; then fetch_longmemeval; fi
     if [ "$RUN_ABLATION" = "1" ] && [ "$ABLATE_ON" = "longmemeval-s" ]; then fetch_longmemeval; fi
 
+    if [ "$NO_REGRESSION" = "1" ]; then preflight_regression_datasets; fi
+
     acquire_lock
     trap teardown EXIT
     start_db
