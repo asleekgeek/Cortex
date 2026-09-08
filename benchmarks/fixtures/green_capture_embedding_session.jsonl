@@ -1,0 +1,14 @@
+{"method": "encode", "text": "# Tool: Bash\n**Command:** `printf capture-measure-0`\n\n**Output:**\n```\nDecision: keep the verified public API unchanged. Unit tests pass and validate expected behavior. Fixture capture-measure-0.\n```"}
+{"method": "encode", "text": "`printf capture-measure-0`\n\nDecision: keep the verified public API unchanged. Unit tests pass and validate expected behavior. Fixture capture-measure-0."}
+{"method": "encode", "text": "# Tool: Bash\n**Command:** `printf capture-measure-1`\n\n**Output:**\n```\nDecision: the orchard irrigation schedule follows measured soil moisture and regional rainfall. Fixture capture-measure-1.\n```"}
+{"method": "encode", "text": "`printf capture-measure-1`\n\nDecision: the orchard irrigation schedule follows measured soil moisture and regional rainfall. Fixture capture-measure-1."}
+{"method": "encode", "text": "`printf capture-measure-0`\n\nDecision: keep the verified public API unchanged. Unit tests pass and validate expected behavior. Fixture capture-measure-0."}
+{"method": "encode", "text": "# Tool: Bash\n**Command:** `printf capture-measure-2`\n\n**Output:**\n```\nDecision: calibrate the orbital camera using star-field observations and its optical distortion map. Fixture capture-measure-2.\n```"}
+{"method": "encode", "text": "`printf capture-measure-2`\n\nDecision: calibrate the orbital camera using star-field observations and its optical distortion map. Fixture capture-measure-2."}
+{"method": "encode", "text": "`printf capture-measure-0`\n\nDecision: keep the verified public API unchanged. Unit tests pass and validate expected behavior. Fixture capture-measure-0."}
+{"method": "encode", "text": "`printf capture-measure-1`\n\nDecision: the orchard irrigation schedule follows measured soil moisture and regional rainfall. Fixture capture-measure-1."}
+{"method": "encode", "text": "# Tool: Bash\n**Command:** `printf capture-measure-3`\n\n**Output:**\n```\nDecision: preserve the museum textile with controlled humidity and reversible conservation materials. Fixture capture-measure-3.\n```"}
+{"method": "encode", "text": "`printf capture-measure-3`\n\nDecision: preserve the museum textile with controlled humidity and reversible conservation materials. Fixture capture-measure-3."}
+{"method": "encode", "text": "`printf capture-measure-1`\n\nDecision: the orchard irrigation schedule follows measured soil moisture and regional rainfall. Fixture capture-measure-1."}
+{"method": "encode", "text": "`printf capture-measure-0`\n\nDecision: keep the verified public API unchanged. Unit tests pass and validate expected behavior. Fixture capture-measure-0."}
+{"method": "encode", "text": "`printf capture-measure-2`\n\nDecision: calibrate the orbital camera using star-field observations and its optical distortion map. Fixture capture-measure-2."}

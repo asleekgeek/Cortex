@@ -1,0 +1,81 @@
+async def _store_file(
+    root: Path,
+    rel_path: str,
+    analysis: Any,
+    domain: str,
+    store: MemoryStore,
+) -> tuple[int | None, int, int]:
+    """Store a single file as a memory with entities.
+
+    Returns:
+        Tuple of (memory_id, entities, relationships).
+    """
+    result = await remember_handler(
+        {
+            "content": build_memory_content(analysis),
+            "tags": _build_tags(rel_path, analysis),
+            "directory": str(root),
+            "domain": domain,
+            "source": CODEBASE_SOURCE,
+            # M-D2 (7.4): a one-shot AST codebase-analysis bulk pass.
+            "write_class": "mechanical",
+            "force": True,
+            "agent_topic": CODEBASE_AGENT_CONTEXT,
+        }
+    )
+    memory_id = result.get("memory_id")
+    if not result.get("stored") or not memory_id:
+        return None, 0, 0
+
+    _set_memory_metadata(store, memory_id)
+    ents, rels = persist_entities(store, analysis, memory_id, domain or "code")
+    return memory_id, ents, rels
+
+
+async def _process_files(
+    source_files: list[Path],
+    root: Path,
+    existing: dict[str, tuple[int, str]],
+    incremental: bool,
+    domain: str,
+    store: MemoryStore,
+) -> tuple[int, int, int, int, int, set[str], list[Any], dict[str, str]]:
+    """Process source files: parse, diff, store.
+
+    Returns counters, seen paths, analyses, and file contents map.
+    """
+    new_count, updated_count, unchanged_count = 0, 0, 0
+    total_entities, total_relationships = 0, 0
+    seen_paths: set[str] = set()
+    all_analyses: list[Any] = []
+    file_contents: dict[str, str] = {}
+
+    for source_path in source_files:
+        rel_path = _resolve_relative(source_path, root)
+        seen_paths.add(rel_path)
+        content = _safe_read(source_path)
+        if content is None:
+            continue
+        file_contents[rel_path] = content
+        analysis = _parse_one_file(rel_path, content)
+        all_analyses.append(analysis)
+        if incremental and rel_path in existing:
+            if existing[rel_path][1] == analysis.content_hash:
+                unchanged_count += 1
+                continue
+        _, ents, rels = await _store_file(root, rel_path, analysis, domain, store)
+        total_entities += ents
+        total_relationships += rels
+        updated_count += 1 if rel_path in existing else 0
+        new_count += 0 if rel_path in existing else 1
+
+    return (
+        new_count,
+        updated_count,
+        unchanged_count,
+        total_entities,
+        total_relationships,
+        seen_paths,
+        all_analyses,
+        file_contents,
+    )

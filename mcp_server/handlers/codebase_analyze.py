@@ -31,6 +31,12 @@ from mcp_server.handlers.codebase_analyze_helpers import (
     persist_entities,
 )
 from mcp_server.handlers.remember import handler as remember_handler
+from mcp_server.handlers.remember_bulk import store_prepared
+from mcp_server.handlers.remember_prepared import InputFailure
+from mcp_server.handlers.codebase_analyze_batch import (
+    FileOperations,
+    prepare_file_jobs,
+)
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
 from mcp_server.handlers._tool_meta import IDEMPOTENT_WRITE
@@ -250,23 +256,27 @@ async def _store_file(
     Returns:
         Tuple of (memory_id, entities, relationships).
     """
-    result = await remember_handler(
-        {
-            "content": build_memory_content(analysis),
-            "tags": _build_tags(rel_path, analysis),
-            "directory": str(root),
-            "domain": domain,
-            "source": CODEBASE_SOURCE,
-            # M-D2 (7.4): a one-shot AST codebase-analysis bulk pass.
-            "write_class": "mechanical",
-            "force": True,
-            "agent_topic": CODEBASE_AGENT_CONTEXT,
-        }
-    )
+    result = await remember_handler(_file_args(root, rel_path, analysis, domain))
+    return _finish_file(store, analysis, result, domain)
+
+
+def _file_args(root: Path, rel_path: str, analysis: Any, domain: str) -> dict:
+    return {
+        "content": build_memory_content(analysis),
+        "tags": _build_tags(rel_path, analysis),
+        "directory": str(root),
+        "domain": domain,
+        "source": CODEBASE_SOURCE,
+        "write_class": "mechanical",
+        "force": True,
+        "agent_topic": CODEBASE_AGENT_CONTEXT,
+    }
+
+
+def _finish_file(store: MemoryStore, analysis: Any, result: dict, domain: str) -> tuple:
     memory_id = result.get("memory_id")
     if not result.get("stored") or not memory_id:
         return None, 0, 0
-
     _set_memory_metadata(store, memory_id)
     ents, rels = persist_entities(store, analysis, memory_id, domain or "code")
     return memory_id, ents, rels
@@ -288,30 +298,30 @@ async def _process_files(
     domain: str,
     store: MemoryStore,
 ) -> tuple[int, int, int, int, int, set[str], list[Any], dict[str, str]]:
-    """Process source files: parse, diff, store.
-
-    Returns counters, seen paths, analyses, and file contents map.
-    """
+    """Return counters, seen paths, analyses and contents after ordered writes."""
     new_count, updated_count, unchanged_count = 0, 0, 0
     total_entities, total_relationships = 0, 0
     seen_paths: set[str] = set()
     all_analyses: list[Any] = []
     file_contents: dict[str, str] = {}
 
-    for source_path in source_files:
-        rel_path = _resolve_relative(source_path, root)
+    context = {"root": root, "domain": domain}
+    context.update(existing=existing, incremental=incremental)
+    jobs = _selected_file_jobs(source_files, context)
+    for job in jobs:
+        if isinstance(job, InputFailure):
+            raise job.error
+        rel_path, content = job["relative"], job["content"]
         seen_paths.add(rel_path)
-        content = _safe_read(source_path)
         if content is None:
             continue
         file_contents[rel_path] = content
-        analysis = _parse_one_file(rel_path, content)
+        analysis = job["analysis"]
         all_analyses.append(analysis)
-        if incremental and rel_path in existing:
-            if existing[rel_path][1] == analysis.content_hash:
-                unchanged_count += 1
-                continue
-        _, ents, rels = await _store_file(root, rel_path, analysis, domain, store)
+        if job["unchanged"]:
+            unchanged_count += 1
+            continue
+        _, ents, rels = await _store_file_job(job, store, domain)
         total_entities += ents
         total_relationships += rels
         updated_count += 1 if rel_path in existing else 0
@@ -327,6 +337,21 @@ async def _process_files(
         all_analyses,
         file_contents,
     )
+
+
+async def _store_file_job(job: dict, store: MemoryStore, domain: str) -> tuple:
+    if "prepared" in job:
+        result = await store_prepared(job["prepared"])
+    else:
+        result = await remember_handler(job["args"])
+    return _finish_file(store, job["analysis"], result, domain)
+
+
+def _selected_file_jobs(source_files: list[Path], context: dict):
+    operations = FileOperations(
+        _resolve_relative, _safe_read, _parse_one_file, _file_args
+    )
+    return prepare_file_jobs(source_files, context, operations)
 
 
 async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:

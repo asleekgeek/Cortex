@@ -69,11 +69,13 @@ def instrument(
     fn: HandlerFn,
     *,
     result_count_key: str | None = None,
+    started_at: float | None = None,
 ) -> HandlerFn:
     """Return an awaitable wrapper that records telemetry around ``fn``.
 
-    precondition: ``fn`` is an async callable accepting a single
-                  ``args`` dict and returning a dict.
+    precondition: ``fn`` is an async callable from one ``args`` dict to a dict.
+                  ``started_at``, when supplied, is this call's perf_counter
+                  timestamp before deferred preparation, not a CPU allocation.
     postcondition: every call to the returned wrapper records exactly
                    one telemetry sample (op, latency_ms, bytes_in/out,
                    result_count, retrieval work, ok) and re-raises any exception
@@ -81,7 +83,7 @@ def instrument(
     """
 
     async def wrapped(args: dict[str, Any] | None = None) -> dict[str, Any]:
-        t0 = time.perf_counter()
+        t0 = time.perf_counter() if started_at is None else started_at
         ok = True
         result: dict[str, Any] | None = None
         with operation_metrics():
