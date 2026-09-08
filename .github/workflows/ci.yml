@@ -262,8 +262,25 @@ jobs:
     # untrusted fork; same-repository PRs and main/workflow_dispatch remain
     # covered by this vendor-parser contract.
     runs-on: ubuntu-latest
-    # source: run 33951959734 (2026-09-05), max 61s; ceil(2 * 61 / 60).
-    timeout-minutes: 3
+    # source: run 34217620888 job 102033099129 (2026-09-08), whole job 52s;
+    # run 34210128951 job 102009142706 (2026-09-08), whole job 194s.
+    # ceil(2 * 194 / 60) = 7.
+    #
+    # The former bound was ceil(2 * 61 / 60) = 3 from run 33951959734
+    # (2026-09-05, max 61s). That 2x margin was computed against a sample
+    # that never saw this job's real tail, and 180s sits INSIDE the range
+    # of a legitimate passing run: the dominant cost is the last step's
+    # `scripts/verify_mcp_hosts.py`, which boots the plugin through `uvx`
+    # against a deliberately COLD uv cache (UV_CACHE_DIR/UV_TOOL_DIR under
+    # RUNNER_TEMP, --allow-bootstrap-network), so it pays a full network
+    # package resolve+build every run. Both samples above PASS the same
+    # assertions and differ only in that bootstrap: 23.98s vs 179.86s
+    # ("PASS codex-cli/lean: initialize + discovery + memory_stats
+    # (10 tools, …)"), a 7.5x spread. The coldness is the point of the
+    # test — it is the path a first-time user hits — so the variance
+    # cannot be engineered away without destroying what the job asserts;
+    # the bound has to cover the measured tail instead.
+    timeout-minutes: 7
     permissions:
       contents: read
 
