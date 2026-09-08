@@ -28,6 +28,9 @@ class NeighborReadTests(unittest.TestCase):
         actual = gate_functions().evaluate_observed_gate(
             request, object(), b"raw", new_engine
         )
+        neighbors = actual.pop("neighbors")
+        self.assertEqual(neighbors.similarities, actual["sims"])
+        self.assertEqual(neighbors.hits, actual["vec_hits"])
         self.assertEqual(actual, expected)
         self.assertEqual(
             new_engine.encode.call_args_list,
@@ -132,6 +135,9 @@ class NeighborReadTests(unittest.TestCase):
                 actual = gate_functions().evaluate_observed_gate(
                     request, object(), b"raw", new_engine
                 )
+                neighbors = actual.pop("neighbors")
+                self.assertEqual(neighbors.similarities, actual["sims"])
+                self.assertEqual(neighbors.hits, actual["vec_hits"])
                 self.assertEqual(actual, expected)
 
     def test_store_and_encoder_errors_propagate_without_retry(self):

@@ -25,6 +25,7 @@ from mcp_server.core.capture_template_normalize import (
 )
 from mcp_server.shared.vader import vader_compound
 from mcp_server.shared.memory_rows import MemoryReader, MemoryRows
+from mcp_server.handlers.remember_prepared import ObservedNeighbors
 from mcp_server.core.dual_store_cls import classify_memory
 from mcp_server.core.predictive_coding_flat import (
     compute_embedding_novelty,
@@ -319,6 +320,7 @@ def evaluate_observed_gate(
             "vec_hits": hits,
             "emb_nov": embedding_novelty,
             "temp_nov": temporal,
+            "neighbors": ObservedNeighbors(sims, hits, memories),
         },
     )
 
@@ -472,8 +474,16 @@ def try_curation(
     try:
         if not embedding or force:
             return "create", None
-        for cand_id, _d in store.search_vectors(embedding, top_k=3, min_heat=0.0):
-            cand = store.get_memory(cand_id)
+        hits = store.search_vectors(embedding, top_k=3, min_heat=0.0)
+        # This search includes old heads. Read their current supersession state
+        # after the search rather than reuse the earlier novelty-gate snapshot.
+        rows = (
+            MemoryRows.read(store, [mid for mid, _d in hits])
+            if hits
+            else MemoryRows({})
+        )
+        for cand_id, _d in hits:
+            cand = rows.get_memory(cand_id)
             if not cand or not cand.get("embedding"):
                 continue
             # Head-check: never merge/link into (or supersede) a superseded
@@ -775,8 +785,7 @@ def insert_and_post_process(
     directory: str,
     action: str,
     merged_id: int | None,
-    sims: list[float],
-    vec_hits: list[tuple],
+    neighbors: ObservedNeighbors,
     ent_names: list[str],
     extracted: list[dict],
     mod: dict,
@@ -801,9 +810,9 @@ def insert_and_post_process(
     stype = classify_memory(content, tags, directory)
     embedding, sep, interf = write_gate.apply_pattern_separation(
         embedding,
-        sims,
-        vec_hits,
-        store,
+        neighbors.similarities,
+        neighbors.hits,
+        neighbors.rows,
         emb_engine,
     )
     # Link provenance is appended AFTER classify_memory so the link marker

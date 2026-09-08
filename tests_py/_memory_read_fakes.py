@@ -129,6 +129,9 @@ class Engine:
 
 def gate_functions():
     scope = {
+        "ObservedNeighbors": lambda sims, hits, rows: SimpleNamespace(
+            similarities=sims, hits=hits, rows=rows
+        ),
         "MemoryRows": MemoryRows,
         "capture_template_normalize": capture_template_normalize,
         "is_auto_capture_template": is_auto_capture_template,
