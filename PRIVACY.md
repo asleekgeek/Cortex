@@ -1,6 +1,6 @@
 # Privacy Policy — Cortex (hypermnesia-mcp)
 
-_Last updated: 2026-07-12_
+_Last updated: 2026-09-06_
 
 Cortex is a **local-first** memory server for Claude. It is designed so that your
 data stays on your machine. This policy describes exactly what data Cortex
@@ -106,6 +106,17 @@ memories over time; this is a local maintenance operation, not a transfer.
 
 ## Your controls
 
+- `CORTEX_CAPTURE_MODE` controls the Claude Code plugin's PostToolUse auto-capture.
+  Unset or `full` preserves the existing capture filters and novelty gate.
+  `writes-only` admits Edit, Write, MultiEdit, NotebookEdit and Bash; Read,
+  NotebookRead, Glob, Grep, WebFetch and WebSearch are excluded. Bash is classified
+  by tool name, so its output may be captured even when the command only reads.
+  `off` disables PostToolUse auto-capture. An invalid value logs a configuration
+  error and skips capture for that event; an empty value is invalid too.
+  Set the variable in the environment that launches Claude Code, for example
+  `CORTEX_CAPTURE_MODE=writes-only claude`. This control governs this hook;
+  session-lifecycle transcript processing and explicit memory tools have their
+  own paths. Previously stored memories and artifacts remain until deleted.
 - `forget` — delete a specific memory. A **hard** delete (the default) removes,
   across every substrate that holds the content:
   1. the memory row itself;

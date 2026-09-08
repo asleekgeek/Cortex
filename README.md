@@ -286,7 +286,32 @@ Cortex needs **no configuration** to run — the SQLite backend is the default a
 
 \* The single-click bundle pins the backend to `sqlite` through the manifest. If you run the server directly (clone / Docker) without setting the variable, the underlying code default is `auto` — it tries PostgreSQL and falls back to SQLite.
 
-That's the entire surface most users touch. Both backends expose the **same 52 memory tools** (55 with the optional ai-architect-mcp-codebase + ai-architect-mcp-spec integrations) and the same retrieval contract; PostgreSQL adds server-side PL/pgSQL fusion and HNSW indexing that pays off at very large scale. Every other knob uses the `CORTEX_MEMORY_` prefix — see `mcp_server/infrastructure/memory_config.py`.
+That's the entire surface most users touch. Both backends expose the **same 52 memory tools** (55 with the optional ai-architect-mcp-codebase + ai-architect-mcp-spec integrations) and the same retrieval contract; PostgreSQL adds server-side PL/pgSQL fusion and HNSW indexing that pays off at very large scale. Memory tuning uses the `CORTEX_MEMORY_` prefix — see `mcp_server/infrastructure/memory_config.py`. Plugin capture has its own control below.
+
+### Claude Code auto-capture
+
+Set `CORTEX_CAPTURE_MODE` in the environment that launches Claude Code:
+
+| Value | PostToolUse capture |
+|---|---|
+| `full` (default when unset) | Existing tool filters and novelty gate. |
+| `writes-only` | Edit, Write, MultiEdit, NotebookEdit and Bash. |
+| `off` | Disabled. |
+
+```sh
+CORTEX_CAPTURE_MODE=writes-only claude
+```
+
+In `writes-only`, Read, NotebookRead, Glob, Grep, WebFetch and WebSearch are
+excluded. Bash remains eligible by tool name, including commands that only
+read. Excluded events do not load memory infrastructure or run periodic
+consolidation; a pending consolidation interval waits for an admitted event.
+`full` retains the existing cadence across all tool events. An invalid or
+empty value reports an error and skips capture rather than selecting a default.
+
+This setting controls PostToolUse capture. Session-lifecycle transcript
+processing and explicit calls such as `remember` keep their own behavior;
+previous memories remain available. See [privacy controls](PRIVACY.md#your-controls).
 
 ---
 
