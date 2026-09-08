@@ -30,6 +30,9 @@
 #   --quick               Small per-benchmark limits (fast end-to-end verification).
 #   --limit N             Explicit per-benchmark question/conversation cap.
 #   --keep-db             Leave the container running afterwards (debugging).
+#   --reranker-cell <id>  W4-2 experiment (l2-2x|l2-3x|l12-2x|l12-3x);
+#                         requires --no-ablation and pre-provisioned pinned cache.
+#   --results-dir <path>  Explicit cell output directory (default remains timestamped).
 #   --no-regression       Blocking gate: also run --baseline-ref's benchmarks
 #                          in the same container and fail only if HEAD is
 #                          worse than ITS OWN baseline by more than
@@ -154,6 +157,7 @@ ABLATE_ON="locomo"
 QUICK=0
 LIMIT=""
 KEEP_DB=0
+RERANKER_CELL=""        # explicit W4-2 experiment; production defaults unchanged
 NO_REGRESSION=0
 PASSTHROUGH=()
 started_container=0
@@ -184,12 +188,28 @@ parse_args() {
             --limit)         LIMIT="$2"; shift 2 ;;
             --limit=*)       LIMIT="${1#*=}"; shift ;;
             --keep-db)       KEEP_DB=1; shift ;;
+            --reranker-cell) RERANKER_CELL="$2"; shift 2 ;;
+            --results-dir)   RESULTS_DIR="$2"; shift 2 ;;
             --no-regression) NO_REGRESSION=1; shift ;;
             --baseline-ref)  BASELINE_REF="$2"; shift 2 ;;
             --baseline-ref=*) BASELINE_REF="${1#*=}"; shift ;;
             *)               PASSTHROUGH+=("$1"); shift ;;
         esac
     done
+    check_reranker_cell
+}
+
+check_reranker_cell() {
+    # Cell preflight precedes Docker/model loading. Its cache must already
+    # contain the separately fetched, SHA-verified pinned archive and files.
+    if [ -n "$RERANKER_CELL" ]; then
+        if [ "$RUN_ABLATION" != "0" ]; then
+            echo "error: --reranker-cell requires --no-ablation" >&2
+            exit 1
+        fi
+        (cd "$REPO_ROOT" && uv run --extra benchmarks python -m \
+            benchmarks.reranker_matrix.cache check "$RERANKER_CELL")
+    fi
 }
 
 want_bench() {
@@ -262,6 +282,10 @@ run_bench() {
     local name="$1"; shift          # longmemeval-s | locomo | beam-100K
     local script="$1"; shift        # path to run_benchmark.py
     local out="$RESULTS_DIR/${name}.json"
+    local entry=("$script")
+    if [ -n "$RERANKER_CELL" ]; then
+        entry=(-m benchmarks.reranker_matrix.entry "$RERANKER_CELL" "$script")
+    fi
     echo
     echo "════════════════════════════════════════════════════════════════════"
     echo "  BENCHMARK: $name"
@@ -270,7 +294,7 @@ run_bench() {
     # (stock macOS /bin/bash); plain "${arr[@]}" aborts there. Fixed upstream
     # in bash 4.4, but strangers' Macs ship 3.2.
     DATABASE_URL="$BENCH_DB_URL" uv run --extra benchmarks python \
-        "$script" --results-out "$out" "$@" \
+        "${entry[@]}" --results-out "$out" "$@" \
         ${PASSTHROUGH[@]+"${PASSTHROUGH[@]}"}
 }
 
@@ -306,9 +330,13 @@ run_ablation_sweep() {
 }
 
 write_manifest() {
+    local entry=("$REPO_ROOT/benchmarks/lib/write_manifest.py")
+    if [ -n "$RERANKER_CELL" ]; then
+        entry=(-m benchmarks.reranker_matrix.entry "$RERANKER_CELL" "${entry[0]}")
+    fi
     local git_sha; git_sha="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
     DATABASE_URL="$BENCH_DB_URL" uv run --extra benchmarks python \
-        "$REPO_ROOT/benchmarks/lib/write_manifest.py" \
+        "${entry[@]}" \
         "$RESULTS_DIR" "$git_sha" "$DATASET_SHA256" "$PG_IMAGE" "$CONTAINER" "$PG_PORT" "$$"
 }
 
@@ -443,6 +471,8 @@ main() {
     # Only fetch datasets for benchmarks that will actually run.
     if [ "$RUN_BENCHMARKS" = "1" ] && want_bench longmemeval; then fetch_longmemeval; fi
     if [ "$RUN_ABLATION" = "1" ] && [ "$ABLATE_ON" = "longmemeval-s" ]; then fetch_longmemeval; fi
+
+    if [ "$NO_REGRESSION" = "1" ]; then preflight_regression_datasets; fi
 
     acquire_lock
     trap teardown EXIT
