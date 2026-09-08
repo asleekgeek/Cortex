@@ -15,7 +15,9 @@
 </p>
 
 <p align="center">
-  <strong>Cross-platform persistent memory for Codex, Gemini CLI, Claude Code, and other local MCP hosts — built on computational neuroscience, not just retrieval.</strong> 36 cited brain mechanisms consolidate what matters, keep it current as your project evolves, and reconstruct the right context at the right time. The MCP server is host-agnostic; Claude Code adds optional automatic lifecycle hooks.
+  <strong>Give your AI coding agent a memory that survives the session.</strong><br>
+  Decisions, fixes and project context are captured as you work, then surfaced again when they matter — automatically in Claude Code, on demand in Codex, Gemini CLI and any local MCP host.<br>
+  <strong>Runs entirely on your machine. One click to install. No account, no API key, no server.</strong>
 </p>
 
 <p align="center">
@@ -23,11 +25,7 @@
 </p>
 
 <p align="center">
-  <strong>Part of a four-piece stack</strong> — each runs standalone; together they cover what an agent forgets, can't see, and can't verify. <a href="#the-rest-of-the-stack">Full comparison ↓</a><br>
-  <a href="https://github.com/cdeust/ai-architect-mcp-codebase">ai-architect-mcp-codebase</a> — the repo as a queryable code graph (callers, blast radius, execution paths), so agents stop re-reading files; Cortex ingests it via <code>ingest_codebase</code> / <code>change_impact</code><br>
-  <a href="https://github.com/cdeust/ai-architect-mcp-spec">ai-architect-mcp-spec</a> — <em>verifies</em> a spec rather than only generating one; standalone, or a CI gate over spec-kit / Kiro / BMAD output<br>
-  <a href="https://github.com/cdeust/zetetic-team-subagents">zetetic-team-subagents</a> — 97 sourced reasoning patterns as specialist agents, each with its own scoped Cortex memory<br>
-  <a href="https://github.com/cdeust/cortex-viz">hypermnesia-mcp-viz</a> — read-only visualization MCP (galaxy graph, execution trace, wiki browser) over this same store · <a href="https://github.com/cdeust/cortex-know-when-to-stop-training-model">cortex-beam-abstain</a> — retrieval abstention model for RAG
+  <sub>One of three MCP servers that each run standalone and keep evolving — memory (this), <a href="https://github.com/cdeust/ai-architect-mcp-codebase">code graph</a>, <a href="https://github.com/cdeust/ai-architect-mcp-spec">spec verification</a> — plus visualization and reasoning-agent companions. <a href="#the-rest-of-the-stack">Compare them all ↓</a></sub>
 </p>
 
 <p align="center">
@@ -38,11 +36,23 @@
 
 Your coding agent forgets you every time you close the session. Every architecture decision you explained. Every debugging session where you traced a bug through four layers of abstraction. Every "remember, we decided to use event sourcing, not CRUD" correction. Gone. Next session, your agent is a stranger to its own tools.
 
-Cortex is a cross-platform persistent memory engine for AI coding agents, built on computational neuroscience. Codex, Gemini CLI, Claude Code, and any local stdio MCP host can use the same remember/recall, knowledge-graph, consolidation, and wiki tools. Claude Code's plugin adds automatic capture and injection hooks; other hosts use the same memory through explicit tool calls.
+**Cortex remembers for it.** It captures what you decide and what you fix, keeps the useful parts, lets the noise fade, and puts the right piece back in front of your agent when the moment comes. Ask it directly — *"what did we decide about auth?"* — or let it work in the background.
 
-It runs **entirely on your machine** — a local SQLite database by default (zero setup, no services to install), or PostgreSQL + pgvector when you want it. A 22 MB embedding model, no LLM in the retrieval loop, no data leaving localhost.
+### What you get
 
-> **36 neuroscience mechanisms · 52 memory tools · 9 lifecycle hooks · a self-curating, continuously-groomed per-project wiki — all local, all open-source.**
+- **Memory across sessions.** Decisions, fixes and constraints persist and come back when relevant.
+- **It forgets on purpose.** A consolidation cycle keeps what proves useful and lets the rest decay, so the store does not turn into a landfill you have to prune by hand.
+- **A wiki that writes itself.** Recurring topics become curated pages, kept current as the project moves.
+- **You can audit any answer.** Every injected memory leaves a receipt: `/why` shows exactly what was in context — evidence of presence, never a claim of causation.
+- **It works with your host.** Claude Code gets automatic capture and injection hooks. Codex, Gemini CLI and any local stdio MCP host use the same 52 tools explicitly.
+
+### Sovereign memory, eco-responsible by intent
+
+**Sovereign is what it is today.** Everything runs on your machine: a local SQLite file by default (zero setup, no service to install), or PostgreSQL + pgvector if you'd rather. A 22 MB embedding model, no LLM in the retrieval loop, nothing leaving localhost. Your project's memory is a file you own and can delete.
+
+**Eco-responsible is what we're aiming at.** The same design has a resource consequence: work that never reaches a datacenter is work nobody has to power, and an agent that finds the right context first time re-reads fewer files. We hold that intent to the [Green Software Foundation's SCI method](https://sci.greensoftware.foundation/) — and we publish **no CO₂ or energy figure**, because we have not measured one. [What we do and do not claim ↓](#green-software-engineering)
+
+> **36 neuroscience mechanisms · 52 memory tools · 9 lifecycle hooks · a self-curating per-project wiki — all local, all open-source, MIT.**
 
 ---
 
