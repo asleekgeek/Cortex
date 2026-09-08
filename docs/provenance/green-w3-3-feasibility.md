@@ -1,5 +1,9 @@
 # W3-3: raw-character cap cannot preserve tokenization universally
 
+The fixed-cap rejection below is the original audit. The subsequent
+[guarded-prefix correction](green-w3-3-guarded-prefix.md) shortens only individually
+verified prefixes and retains every counterexample in full.
+
 ## Symptôme
 
 W3-3 proposes a character cap before embedding tokenization, sized from the
