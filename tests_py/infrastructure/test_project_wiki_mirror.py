@@ -185,3 +185,40 @@ def test_duplicate_manifest_keys_cannot_hide_a_decision_entry(project):
     with pytest.raises(ValueError, match="duplicate manifest key"):
         generate_mirror(project)
     assert not (project / "docs").exists()
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "0795--clusterfuzzlite-Dockerfile.md",
+        "0057-.md",
+        "0057-_private.md",
+        "0057-.hidden.md",
+        "0057-space name.md",
+        "0057-page.txt",
+        "0057-page.MD",
+        "0057-page.md.md/child.md",
+        "0000-zero.md",
+        "057-short.md",
+        "10000-long.md",
+    ],
+)
+def test_registration_rejects_noncanonical_filename_without_mutation(project, filename):
+    page = project / "wiki/adr/cortex" / filename
+    page.parent.mkdir(parents=True, exist_ok=True)
+    page.write_text("decision")
+    manifest = project / "wiki/manifest.json"
+    before = manifest.read_bytes()
+    with pytest.raises(ValueError, match="canonical ADR page"):
+        register_project_page(project, "adr/cortex/" + filename)
+    assert manifest.read_bytes() == before
+
+
+@pytest.mark.parametrize("filename", ["0057-good.md", "0057-Upper_CASE.v1.md"])
+def test_registration_and_index_use_identical_filename_grammar(project, filename):
+    from mcp_server.infrastructure.wiki_decision_index import decision_index
+
+    page = project / "wiki/adr/cortex" / filename
+    page.write_text("decision")
+    identifier = register_project_page(project, "adr/cortex/" + filename)
+    assert decision_index(project / "wiki")[identifier] == "adr/cortex/" + filename

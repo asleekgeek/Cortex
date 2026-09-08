@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from mcp_server.shared.wiki_decision_ids import parse_decision_id
+from mcp_server.shared.wiki_decision_ids import decision_id, parse_decision_filename
 
 
 def contained_file(root: Path, relative: str) -> Path:
@@ -79,9 +79,10 @@ def register_project_page(
 ) -> str:
     manifest = load_manifest(project_root)
     source = contained_file(project_root / "wiki", rel_path)
-    identifier = "ADR-" + source.name.split("-", 1)[0]
-    if not source.is_file() or parse_decision_id(identifier) is None:
+    number = parse_decision_filename(source.name)
+    if not source.is_file() or number is None:
         raise ValueError("a canonical ADR page must exist before registration")
+    identifier = decision_id(number)
     if not rel_path.startswith("adr/"):
         raise ValueError("only ADR pages can be registered for mirroring")
     entry = {"path": rel_path, "mirror": mirror_name or "ADR-" + source.name}

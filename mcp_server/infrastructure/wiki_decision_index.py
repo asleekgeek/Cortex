@@ -14,9 +14,12 @@ import hashlib
 import stat
 from pathlib import Path
 
-from mcp_server.shared.wiki_decision_ids import decision_id, parse_decision_id
+from mcp_server.shared.wiki_decision_ids import (
+    decision_id,
+    parse_decision_id,
+    parse_decision_filename,
+)
 
-_FILENAME = re.compile(r"([0-9]{4})-([A-Za-z0-9][A-Za-z0-9_.-]*)\.md")
 _NUMERIC_PREFIX = re.compile(r"[0-9]+(?:-|\.)")
 
 
@@ -34,13 +37,6 @@ def _pages(root: Path) -> list[Path]:
     return sorted(directory.rglob("*.md")) if directory.exists() else []
 
 
-def _number(name: str) -> int | None:
-    match = _FILENAME.fullmatch(name)
-    if match is None or int(match.group(1)) == 0:
-        return None
-    return int(match.group(1))
-
-
 def decision_index(root: Path | str) -> dict[str, str]:
     """Return canonical ID -> root-relative path; reject ambiguous IDs/escapes."""
     base = Path(root).resolve()
@@ -48,7 +44,7 @@ def decision_index(root: Path | str) -> dict[str, str]:
     for path in _pages(base):
         relative = path.relative_to(base).as_posix()
         safe_join(base, relative)
-        number = _number(path.name)
+        number = parse_decision_filename(path.name)
         if number is None:
             continue
         token = decision_id(number)
@@ -67,7 +63,10 @@ def quarantine_plan(root: Path | str) -> dict[str, str]:
     for path in _pages(base):
         relative = path.relative_to(base).as_posix()
         safe_join(base, relative)
-        if _NUMERIC_PREFIX.match(path.name) and _number(path.name) is None:
+        if (
+            _NUMERIC_PREFIX.match(path.name)
+            and parse_decision_filename(path.name) is None
+        ):
             target = f".quarantine/{relative}"
             if safe_join(base, target).exists():
                 raise ValueError(f"quarantine target already exists: {target}")
@@ -193,7 +192,7 @@ def _read_index(base: Path) -> tuple[dict[str, str], dict]:
             not parts
             or parts[0] != "adr"
             or ".." in parts
-            or _number(parts[-1]) != number
+            or parse_decision_filename(parts[-1]) != number
         ):
             raise ValueError("invalid decision index source path")
     return persisted, state

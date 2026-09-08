@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 _TOKEN = re.compile(r"ADR-([0-9]{4})")
+_FILENAME = re.compile(r"([0-9]{4})-([A-Za-z0-9][A-Za-z0-9_.-]*)\.md")
 # source: issue #514 identity contract; four decimal digits, zero is invalid.
 MAX_DECISION_NUMBER = 9999
 # source: issue #514; preserve the published repository ADR identities.
@@ -27,3 +28,12 @@ def decision_id(number: int) -> str:
     if not 1 <= number <= MAX_DECISION_NUMBER:
         raise ValueError("decision number must be between 1 and 9999")
     return f"ADR-{number:04d}"
+
+
+def parse_decision_filename(filename: str) -> int | None:
+    """Parse a complete NNNN-slug.md filename with a nonzero canonical ID."""
+    match = _FILENAME.fullmatch(filename)
+    if match is None:
+        return None
+    number = int(match.group(1))
+    return number if number else None
