@@ -39,7 +39,7 @@ error/exception-keyword regex (``core.thermodynamics.is_error_content``)
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -47,7 +47,12 @@ from mcp_server.core import write_gate
 from mcp_server.handlers.remember import handler
 from mcp_server.handlers.remember_helpers import (
     _grade_content_best_effort,
-    _compute_gate_decision,
+    _observed_decision,
+)
+from mcp_server.handlers.remember_preflight import (
+    GateObservation,
+    GateOptions,
+    GateRequest,
 )
 
 
@@ -92,16 +97,20 @@ class TestDeliberateNeverNoveltyRejected:
         assert reason is None
 
     def test_low_novelty_score_still_stores_for_deliberate(self):
-        """End-to-end through _compute_gate_decision: a novelty score well
+        """Through the observed decision: a novelty score well
         below threshold must not produce a reject verdict when write_class
         resolves to deliberate."""
-        should_store, gate_reason, _threshold = _compute_gate_decision(
-            score=0.01,  # far below the default 0.4 threshold
-            force=False,
-            content="Low novelty deliberate content with nothing distinctive.",
-            tags=[],
-            domain="",
-            write_class="deliberate",
+        request = GateRequest(
+            "Low novelty deliberate content with nothing distinctive.",
+            [],
+            Mock(),
+            GateOptions(False, "", "deliberate", "unknown"),
+        )
+        observed = GateObservation({}, ({}, {}), (0.4, 0.4))
+        should_store, gate_reason = _observed_decision(
+            request,
+            0.01,
+            observed,  # far below the existing default 0.4 threshold
         )
         assert should_store is True
         assert gate_reason == "bypass_write_class_deliberate"
