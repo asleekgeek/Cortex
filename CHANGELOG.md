@@ -49,6 +49,42 @@ adheres to [Semantic Versioning](https://semver.org/).
   `FLOOR_*`, comparing HEAD against a baseline ref's own measured scores
   rather than a fixed number.
 
+- **`mcp_server/core/provenance.py`'s 43 surviving mutants, closed** (#389). A
+  scoped `scripts/mutation_check.sh` run left 43 genuine survivors out of 232
+  mutants (188 killed). That count was filed on 2026-08-08 and re-measured
+  unchanged on 2026-09-09. 29 of the 43 were real gaps, and
+  `tests_py/core/test_provenance.py` closes every one. `_build_reason` held 13
+  of them: no test asserted the wording it produces, because
+  `grade_provenance`'s empty-outcome path hardcodes its own reason string
+  rather than calling the helper. Its four branches are now pinned by direct
+  unit tests carrying the boundary inputs, notably the three-ref join cap.
+  One of the four, `grade == UNVERIFIABLE` with `dead` empty, is unreachable
+  through `grade_provenance`, since every path that appends an UNVERIFIABLE
+  outcome also appends to `dead`; the other three are reachable and are also
+  pinned end-to-end by `TestGradeReportFields`.
+  `grade_provenance` held 12: every field of the returned `ProvenanceReport`
+  other than `grade` (`memory_id`, `ref_counts`, `dead_refs`,
+  `uncheckable_refs`, `reason`) went unread by the existing tests, and the
+  documented least-favorable case, a ref absent from its verdicts dict, was
+  never exercised. Extraction held 3: the `continue` that skips a non-path
+  token could become a `break` unnoticed, the `rstrip` cut set could widen and
+  eat a real path character, and a repeated artifact path was never deduped.
+  `_ref_counts` held 1: the citation count was only ever asserted with a
+  citation present, so the zero arm was free. 12 further survivors are
+  **documented equivalents**, registered in `memory/mutation-equivalents.json`
+  (13 for this module in total, counting the one already on file), each pinned
+  to its exact removed/added pair as ADR-0771 requires. The last 2 had no
+  third disposition available: `dead_refs=[]` and `uncheckable_refs=[]` on the
+  empty-outcome `ProvenanceReport` restate the dataclass defaults verbatim,
+  and a pure-deletion mutant of a line like that carries no `added` text,
+  which the registry rejects, so both arguments are deleted with a comment at
+  the site saying why. Every constructed report stays field-for-field
+  identical, and both values stay pinned by `TestGradeReportFields`.
+  Re-running the reproduction after the fix: `scripts/mutation_check.sh`
+  reports 0 unregistered survivors, the full suite passes, and ruff, the
+  craftsmanship gate and pyright are clean. No absolute test total is stated
+  here, per #293/#294.
+
 ## [4.19.1] - 2026-09-03
 
 ### Fixed
