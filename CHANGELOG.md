@@ -8,6 +8,21 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The plugin installer could not install its dependencies (PR #539).**
+  `scripts/setup.sh` step 3/7 installs `requirements/setup.txt`, the hashed
+  graph exported from `uv.lock`, and it was the last consumer of a generated
+  constraint file that let pip re-derive that graph. `pyproject.toml`'s
+  `[tool.uv] override-dependencies` steers `mpmath` past the `mpmath<1.4`
+  bound `sympy` still declares in its metadata; uv's resolver honours the
+  override, the requirements.txt format cannot carry it, so pip saw only the
+  conflict and aborted with `ResolutionImpossible`. Every other consumer
+  already passed `--no-deps` after PR #332 recorded this same failure in
+  ADR-0800; this call site was missed, and now passes it too. The step still
+  cannot refresh a stale `deps/`, which is deliberate: `--upgrade` would hand
+  pip's delete-then-rewrite to a directory a live MCP server may be reading,
+  bypassing the atomic commit path of ADR-0749. That half of the problem is
+  tracked in #540. Both flags are decided in ADR-1059.
+
 - **Docker Smoke no longer times out on pull requests.** The job wrote its
   buildx layer cache with `cache-to: type=gha,mode=max` on every event. On
   run 34225008423 (PR #492) the image build finished at 70.8s and the job

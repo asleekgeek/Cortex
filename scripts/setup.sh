@@ -216,8 +216,9 @@ echo "Installing Python packages..."
 mkdir -p "$DEPS_DIR"
 
 # source: ADR-0783
+# source: ADR-1059
 if ! python3 -m pip install -q --target "$DEPS_DIR" \
-    --require-hashes -r "$PROJECT_DIR/requirements/setup.txt"; then
+    --no-deps --require-hashes -r "$PROJECT_DIR/requirements/setup.txt"; then
     fail "Dependency install failed (see pip output above)"
 fi
 
