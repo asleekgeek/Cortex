@@ -1,9 +1,6 @@
 """Condition D — Oracle. Gold-supporting turns from BEAM source_chat_ids.
 
-Protocol §2.D: for each question, retrieve the gold-supporting turns
-DIRECTLY from the BEAM ``source_chat_ids`` field. No ranking model in
-the loop. This bounds the best-case answer accuracy — anything above D
-is hallucination.
+source: ADR-0843
 
 precondition: the item's ``source_chat_ids`` are global turn IDs (post-
   flatten by ``extract_10m_chat`` — see ``data_loader.py``).

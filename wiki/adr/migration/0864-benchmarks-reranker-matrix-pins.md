@@ -1,0 +1,33 @@
+---
+title: "ADR-0864 — benchmarks/reranker_matrix/pins.py rationale"
+status: accepted
+source: benchmarks/reranker_matrix/pins.py
+---
+
+# ADR-0864 — benchmarks/reranker_matrix/pins.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 7 (comment)
+
+````text
+# source: HF model metadata API, verified 2026-09-06; see README.md provenance.
+````
+
+## module — original line 10 (comment)
+
+````text
+# source: uv.lock / scripts/launcher_pins.py; inspected installed Config.py/Ranker.py.
+````
+
+## module — original line 12 (comment)
+
+````text
+# source: W4-2 matrix in tasks/codex-green-remediation-plan.md.
+````
+
+## module — original line 27 (comment)
+
+````text
+# source: FlashRank 0.2.10 Config.py names/files, HF pinned revision LFS SHA256.
+````

@@ -1,0 +1,40 @@
+---
+title: "ADR-0104 — mcp_server/core/ast_extractors_scripting.py rationale"
+status: accepted
+source: mcp_server/core/ast_extractors_scripting.py
+---
+
+# ADR-0104 — mcp_server/core/ast_extractors_scripting.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Node-type names verified empirically against tree-sitter-language-pack
+grammars (ruby, php). Ruby imports are ``require``/``require_relative``
+call sites; PHP imports are ``namespace_use_clause`` nodes.
+````
+
+## module — original line 7 (docstring)
+
+````text
+Split from ast_extractors.py to stay under 300 lines.
+
+````
+
+## _walk_ruby — original line 54 (docstring)
+
+````text
+    Iterative (see `ast_extractors._walk_type`): one Python frame per AST level
+    raised an uncaught RecursionError on deeply nested sources. Descendants are
+    pushed reversed, so `defs` keeps its depth-first pre-order.
+    
+````
+
+## _walk_php — original line 112 (docstring)
+
+````text
+    Iterative for the same reason as `_walk_ruby`; traversal order preserved.
+    
+````

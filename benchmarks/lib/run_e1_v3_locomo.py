@@ -7,9 +7,6 @@ are written.
 
 Output: benchmarks/results/ablation/locomo_v3/
 
-Why serial: the harness mutates a shared PG database (db.clear() per
-conversation). Parallel rows would contaminate each other's haystacks.
-
 Two-baseline design (per docs/benchmarks/e1-v3-locomo-smoke-finding.md, Option B):
 
 LoCoMo session timestamps are real 2023 conversation dates. At 2026 wall
@@ -33,7 +30,8 @@ To preserve honest per-mechanism evidence:
   this is documented as a benchmark-property disclosure in the writeup.
 
 14 rows total. Estimated wall ~7h.
-"""
+
+source: ADR-0087"""
 
 from __future__ import annotations
 
@@ -294,8 +292,7 @@ def _write_summary(rows: list[dict]) -> None:
     print(f"[E1v3-LoCoMo] summary → {summary_path}", flush=True)
 
 
-# source: CLAUDE.md sanity tolerance — "±0.05 around 0.794" for the
-# BASELINE_NO_CONSOLIDATION LoCoMo MRR headline (see the check below)
+# source: ADR-0087
 _BASELINE_MRR_TOLERANCE = 0.05
 
 

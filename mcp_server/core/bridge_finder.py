@@ -12,8 +12,8 @@ from typing import Any
 
 from mcp_server.shared.project_ids import normalize_project_id
 
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0113
+# source: ADR-0113
 _MAX_EXAMPLES_PER_PAIR = 5  # cap example edges carried per domain pair
 
 _ANALOGY_RE = re.compile(
@@ -223,20 +223,7 @@ def _merge_analogical_bridges(
 def _index_memories(memories: dict | list | None) -> dict[str, dict]:
     """Coerce a memory collection into an id -> record map.
 
-    Two producers feed this function with different shapes:
-      - ``brain_index["memories"]`` is already an id-keyed ``dict``.
-      - ``scanner.discover_all_memories()`` returns a ``list`` of records
-        (``file``/``path``/``project``/``body``/... — see
-        ``scanner._parse_memory_file``). Passing that list straight into
-        ``dict.update`` raised ``ValueError: dictionary update sequence
-        element #0 has length 9; 2 is required`` whenever the live home held
-        real memory files (issue #174) — empty homes skipped the branch, so
-        the defect only surfaced against production data.
-
-    A ``dict`` is returned unchanged. A ``list`` is keyed by the record's
-    stable ``path`` (fallback ``file`` then ``name``); records that carry no
-    identifier are keyed by object identity so distinct records never collide.
-    """
+    source: ADR-0113"""
     if not memories:
         return {}
     if isinstance(memories, dict):

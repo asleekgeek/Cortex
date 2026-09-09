@@ -1,50 +1,50 @@
 #!/usr/bin/env bash
-# Trust-factor calibration sweep (issue #368).
+# source: ADR-0871
+# source: ADR-0871
 #
-# Pre-registration, decision rule and grid: docs/provenance/trust-factor-calibration.md
-# Read it before changing anything here — the grid is derived from a cheap
-# adversarial sweep, and the decision rule is fixed in advance on purpose.
 #
-#   benchmarks/trust_factor_sweep.sh              # run ONE pending cell, then exit
-#   benchmarks/trust_factor_sweep.sh --quick      # smoke the plumbing (NOT gated)
 #
-# 2026-08-10 architecture change: this script used to loop over the whole
-# grid in one process. Five campaigns died mid-grid over one session, each
-# attributed to a different cause after the fact (contention, a native
-# crash, a missing dataset, a session gap, a noisy neighbor) — five
-# explanations for one symptom, which was itself the signal: a long job
-# driven from a sub-agent's own foreground loop does not survive whatever
-# ends that sub-agent's turn, regardless of which resource happened to be
-# short at the time. The fix is not preventing the death (it cannot be, from
-# here) but making it cost one cell instead of the whole grid: this script
-# now resumes from `benchmarks/lib/sweep_progress.py`'s PROGRESS.json (which
-# W values already completed), runs exactly the next PENDING cell, records
-# its result — including machine-load/disk-space snapshots at cell start
-# AND end (`benchmarks/lib/machine_load_snapshot.py`,
-# `benchmarks/lib/disk_space_snapshot.py`) — and returns control. A kill or
-# crash mid-cell leaves that cell's PROGRESS.json entry absent, so the next
-# invocation retries exactly that cell, never the ones already recorded.
+# source: ADR-0871
 #
-# Still true, unchanged: one reproduce.sh invocation per cell, against its
-# own ephemeral container. No parallelism: a fan-out on this machine on
-# 2026-08-08 drove load to 37 and swapped 11.9 GB.
+#
+# source: ADR-0871
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+# source: ADR-0871
+#
+#
+#
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
-# source: docs/provenance/trust-factor-calibration.md §Grid — brackets the
-# 0.8 -> 0.7 transition found by the adversarial pre-sweep. 1.0 is the control.
+# source: ADR-0871
+#
 GRID=(1.0 0.8 0.7 0.6 0.5)
 
-# Empty-array expansion under `set -u` is an "unbound variable" error on the
-# bash 3.2 that ships with macOS, so the flag is carried as a plain string and
-# left unquoted at the call site (word-split on purpose: zero args when empty).
+# source: ADR-0871
+#
+#
 QUICK_FLAG=""
 [[ "${1:-}" == "--quick" ]] && QUICK_FLAG="--quick"
 
-# Fixed location, not a fresh timestamp per invocation: resume needs the
-# NEXT call to find the SAME PROGRESS.json the previous one wrote.
+# source: ADR-0871
+#
 OUT_ROOT="benchmarks/results/trust-factor-sweep/active"
 mkdir -p "$OUT_ROOT"
 LOG="${OUT_ROOT}/sweep.log"
@@ -83,8 +83,8 @@ echo "=== cell W=${W} — started $(date -u +%H:%M:%SZ) ===" | tee -a "$LOG"
 
 START_SNAPSHOT="$(snapshot_json)"
 
-# Exported, not inlined: reproduce.sh spawns the benchmark processes, and
-# retrieval_dispatch.py reads the value at import in each of them.
+# source: ADR-0871
+#
 CORTEX_UNTRUSTED_ORIGIN_FACTOR="$W" \
     benchmarks/reproduce.sh \
     --only longmemeval,locomo,beam \
@@ -103,9 +103,9 @@ else
     STATUS="failed"
 fi
 
-# reproduce.sh writes into benchmarks/results/repro/<its own stamp>/;
-# record which one belongs to this cell so the summary can be rebuilt
-# without guessing from timestamps.
+# source: ADR-0871
+#
+#
 latest_repro="$(ls -td benchmarks/results/repro/*/ 2>/dev/null | head -1)"
 echo "${latest_repro}" > "${CELL_DIR}/repro_dir.txt"
 echo "cell W=${W} results: ${latest_repro}" | tee -a "$LOG"

@@ -1,0 +1,120 @@
+---
+title: "ADR-0841 — benchmarks/llm_head_to_head/long_context_truncator.py rationale"
+status: accepted
+source: benchmarks/llm_head_to_head/long_context_truncator.py
+---
+
+# ADR-0841 — benchmarks/llm_head_to_head/long_context_truncator.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Protocol §2.A and §11.2 are load-bearing here:
+- Concatenate the conversation turns verbatim, in original order.
+- Truncate from the HEAD when the budget is exceeded — keep the LATEST
+  tokens, not the earliest. This matches the standard production pattern
+  for "just hand the conversation to the LLM" and is the anti-cheating
+  choice (keeping early tokens would discard the most informative recent
+  context for many BEAM abilities).
+````
+
+## module — original line 21 (docstring)
+
+````text
+Token counting: we use a simple word-count heuristic with a 0.75 word→
+token ratio for portability across vendors. The orchestrator can override
+``token_counter`` at run time to use the vendor's actual tokenizer
+(``anthropic.count_tokens``, ``tiktoken.encoding_for_model``,
+``google.genai.count_tokens``); the abstraction is the function-parameter
+DI from rules §5.1.
+
+````
+
+## _heuristic_token_count — original line 60 (docstring)
+
+````text
+Conservative word→token ratio = 0.75 (1 word ≈ 1.33 tokens).
+````
+
+## _heuristic_token_count — original line 65 (docstring)
+
+````text
+    source: GPT-2 BPE empirical word→token ratio across English ≈ 1.33
+      (Radford et al. 2019, *Language Models are Unsupervised Multitask
+      Learners*; cross-checked against tiktoken cl100k on en-Wikipedia).
+      Used only as a vendor-agnostic estimate for budget sizing; vendors
+      override with their actual tokenizer at run time.
+    
+````
+
+## build_naive_long_context — original line 100 (docstring)
+
+````text
+    pre:
+      - ``input_token_budget`` > 0 (caller computes window − headroom).
+      - ``item.turns`` is the global-numbered flat turn list.
+    post:
+      - returned ``text`` token count ≤ ``input_token_budget``.
+      - when truncated, ``text`` is a SUFFIX of the full concatenation
+        (head dropped, tail kept) — the load-bearing anti-cheating choice
+        from protocol §11.2.
+    invariant (loop):
+      - at each iteration the working buffer is a suffix of ``full_text``
+        and its token count ≤ budget.
+    termination:
+      - the budget loop iterates over ``len(turn_strings)`` and decreases
+        the candidate prefix index by 1 each step; bounded.
+    
+````
+
+## module — original line 37 (comment)
+
+````text
+# Per-model input budgets (window minus 4_000 output headroom). Protocol §7,
+# §2.A. Source: Anthropic / OpenAI / Google API documentation snapshotted at
+# protocol freeze (manifest's pricing_snapshot_sha covers windows too).
+````
+
+## module — original line 41 (comment)
+
+````text
+# source: anthropic api docs, claude-haiku-4-5-20251001 200k context
+````
+
+## module — original line 43 (comment)
+
+````text
+# source: openai api docs, gpt-4o-mini-2024-07-18 128k context
+````
+
+## module — original line 45 (comment)
+
+````text
+# source: google ai docs, gemini-2.0-flash 1M context
+````
+
+## module — original line 130 (comment)
+
+````text
+# Recency-truncate: walk from the END, accumulating turns until we
+# would exceed the budget. Then drop the earliest accepted turn(s)
+# if we crossed.
+#
+# invariant: ``kept_indices`` indexes a SUFFIX of turn_strings (some
+# k where kept = turn_strings[k:]). We grow the suffix by prepending
+# one turn at a time until the next prepend would exceed budget.
+````
+
+## module — original line 144 (comment)
+
+````text
+# +sep_tokens because joining adds a separator unless first.
+````
+
+## module — original line 155 (comment)
+
+````text
+# Re-count to be exact (heuristic + separator can drift).
+````

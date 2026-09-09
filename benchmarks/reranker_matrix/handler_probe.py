@@ -34,7 +34,7 @@ def source_function(relative: str, name: str, namespace: dict):
         module="__future__", names=[ast.alias(name="annotations")], level=0
     )
     module = ast.fix_missing_locations(ast.Module(body=[future, node], type_ignores=[]))
-    exec(compile(module, str(path), "exec"), namespace)  # noqa: S102 — exact checked-in function AST, no user code
+    exec(compile(module, str(path), "exec"), namespace)  # noqa: S102 — source: ADR-0862
     return namespace[name]
 
 
@@ -180,7 +180,7 @@ def probe(multiplier: int, max_results: int, include_low_signal: bool) -> dict:
 
 
 def main() -> None:
-    # source: W4-2 matrix and recall handler default max_results=10.
+    # source: ADR-0862
     print(
         json.dumps(
             [probe(m, 10, include) for m in (2, 3) for include in (False, True)],

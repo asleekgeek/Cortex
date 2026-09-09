@@ -1,29 +1,6 @@
-"""Three-way SQLite retrieval benchmark for the #169 zero-download fallback.
+"""Compare three SQLite retrieval configurations without downloads.
 
-The production ``run_benchmark.py`` harness drives the PostgreSQL + pgvector
-pipeline (``BenchmarkDB`` → ``PgMemoryStore``) and has no toggle for the
-SQLite fallback path or for the embedding mode. Issue #169 changes exactly that
-path, so this harness reuses the production harness's dataset loading and
-scoring functions verbatim (``session_to_memory_content``,
-``parse_longmemeval_date``, ``compute_heat_with_decay``, ``compute_mrr``,
-``recall_at_k_binary``) but drives a fresh in-memory ``SqliteMemoryStore`` in
-three embedding modes:
-
-  (a) no-vector    — memories stored with no embedding; recall uses FTS + heat
-      + recency only. The floor #169 must beat.
-  (b) fallback     — deterministic algorithmic embeddings (shared.algorithmic_
-      embedding), zero download.
-  (c) sentence-transformers — the neural encoder, when present.
-
-Adoption criterion (issue #169): the fallback (b) must beat the no-vector
-baseline (a) materially. This harness reports whatever the numbers say.
-
-Run:
-    python3 benchmarks/longmemeval/run_sqlite_fallback_bench.py --limit 30
-
-Bounded runs are the intended use (the neural path is untouched by #169, so
-full floors are not required — see the PR). ``--limit`` and the git sha / date
-are recorded in the emitted MANIFEST so the run is reproducible.
+source: ADR-0851
 """
 
 from __future__ import annotations
@@ -59,11 +36,7 @@ _MODES = ("no-vector", "fallback", "sentence-transformers")
 def _install_engine(mode: str) -> ee.EmbeddingEngine | None:
     """Install the process-wide engine matching ``mode`` (or None for no-vector).
 
-    For 'fallback' a zero-download engine is forced; for
-    'sentence-transformers' the real model is loaded (skipped by the caller if
-    absent). Returns the engine so the caller can encode queries with the SAME
-    encoder that produced the stored vectors.
-    """
+    source: ADR-0851"""
     ee.reset_embedding_engine()  # clears the factory singleton
     if mode == "no-vector":
         return None
@@ -73,9 +46,8 @@ def _install_engine(mode: str) -> ee.EmbeddingEngine | None:
     else:
         os.environ.pop("CORTEX_EMBEDDING_ZERO_DOWNLOAD", None)
         eng = ee.EmbeddingEngine(dim=384)
-    # Install as the process-wide singleton the store reads for provenance
-    # stamping / query-space filtering (issue #169 — the singleton lives in the
-    # factory since the #173 seam split).
+    # source: ADR-0851
+
     ef._singleton = eng
     return eng
 

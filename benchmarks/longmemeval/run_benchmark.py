@@ -1,19 +1,6 @@
 """LongMemEval benchmark for Cortex memory system.
 
-Runs the LongMemEval benchmark (Wu et al., ICLR 2025) against the
-production PostgreSQL + pgvector retrieval pipeline. 500 questions
-across 6 categories, each embedded in ~50 sessions (~115k tokens).
-
-Methodology:
-  1. For each question, load all haystack sessions into PostgreSQL
-     via BenchmarkDB (one memory per session, with full content).
-  2. Set timestamps to match the original session dates.
-  3. Run production recall_memories() PL/pgSQL + FlashRank reranking.
-  4. Check if retrieved results contain the answer session(s).
-  5. Compute MRR and Recall@K at session level.
-
-Run:
-    python3 benchmarks/longmemeval/run_benchmark.py [--limit N] [--variant oracle|s]
+source: ADR-0850
 """
 
 from __future__ import annotations
@@ -45,12 +32,15 @@ from benchmarks.lib.bench_db import BenchmarkDB
 
 
 def parse_longmemeval_date(date_str: str) -> str:
-    """Parse LongMemEval date format '2023/04/10 (Mon) 17:50' to ISO 8601."""
+    """Parse LongMemEval date format '2023/04/10 (Mon) 17:50' to ISO 8601.
+
+    source: ADR-0850
+    """
     try:
         cleaned = re.sub(r"\s*\(\w+\)\s*", " ", date_str).strip()
-        # noqa DTZ007: the format string has no %z because the source data
-        # never carries one; the very next line stamps tzinfo=UTC, so the
-        # value this function returns is always aware.
+        # source: ADR-0850
+        # source: ADR-0850
+
         dt = datetime.strptime(cleaned, "%Y/%m/%d %H:%M")  # noqa: DTZ007
         return dt.replace(tzinfo=timezone.utc).isoformat()
     except (ValueError, TypeError):
@@ -121,7 +111,7 @@ def recall_at_k_binary(
     return 0.0
 
 
-# ── Main Benchmark ───────────────────────────────────────────────────────────
+# source: ADR-0850
 
 
 def _run_consolidation_pass() -> float:
@@ -135,9 +125,9 @@ def _run_consolidation_pass() -> float:
     memify, cascade, homeostatic, emergence — exactly the consolidation-only
     mechanisms the Feynman audit identified as never-exercised on LME-S.
     """
-    # Imported lazily so callers that never pass --with-consolidation don't
-    # incur the import cost (and can't be broken by handler-side changes).
-    from mcp_server.handlers import consolidate as consolidate_handler  # noqa: PLC0415 — documented deferral: only --with-consolidation callers pay the handler-stack import cost
+    # source: ADR-0850
+
+    from mcp_server.handlers import consolidate as consolidate_handler  # noqa: PLC0415 — source: ADR-0850
 
     t0 = time.monotonic()
     asyncio.run(consolidate_handler.handler({}))
@@ -154,6 +144,8 @@ def run_benchmark(
     n_runs: int = 1,
 ) -> dict:
     """Run the full LongMemEval benchmark using production PG retrieval.
+
+    source: ADR-0850
 
     Precondition: PG schema initialized; if ``ablate_mechanism`` is given it
     must match a Mechanism enum NAME (e.g. "CASCADE");
@@ -196,7 +188,7 @@ def run_benchmark(
         print(f"  n_runs: {n_runs} (will report mean ± std and 95 % CI)")
     print()
 
-    # Capture reproducibility sidecar once at benchmark start.
+    # source: ADR-0850
     repro = build_repro_manifest()
 
     # Per-run accumulators (outer list is runs; inner logic unchanged per run).
@@ -247,7 +239,7 @@ def run_benchmark(
                 }
                 category = category_map.get(qtype, qtype)
 
-                # Clean up previous question's data, load new haystack
+                # source: ADR-0850
                 db.clear()
 
                 memories = []
@@ -273,13 +265,8 @@ def run_benchmark(
 
                 mem_ids, source_map = db.load_memories(memories, domain="longmemeval")
 
-                # Consolidation warmup pass (Feynman audit fix). Off by default to
-                # preserve historical run reproducibility. When ON, exercises the 9
-                # consolidation-only mechanisms (CASCADE, INTERFERENCE,
-                # HOMEOSTATIC_PLASTICITY, SYNAPTIC_PLASTICITY, MICROGLIAL_PRUNING,
-                # TWO_STAGE_MODEL, EMOTIONAL_DECAY, TRIPARTITE_SYNAPSE, SCHEMA_ENGINE)
-                # so per-mechanism ablation deltas become attributable on LME-S.
-                # Wall time tracked separately so per-question stats stay clean.
+                # source: ADR-0850
+
                 if with_consolidation:
                     consolidation_total_wall_s += _run_consolidation_pass()
                     consolidation_call_count += 1
@@ -501,10 +488,8 @@ if __name__ == "__main__":
     if args.n_runs < 1:
         parser.error("--n-runs must be >= 1")
 
-    # Export ablation env var BEFORE any handler/store import touches it. The
-    # consolidate handler imports its sub-modules at call time, but
-    # mcp_server.core.ablation.is_disabled reads os.environ on every call, so
-    # setting it here is sufficient as long as we do it before run_benchmark.
+    # source: ADR-0850
+
     ablate_mech: str | None = None
     if args.ablate:
         ablate_mech = args.ablate.strip().upper()

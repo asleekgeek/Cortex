@@ -1,0 +1,35 @@
+---
+title: "ADR-0103 — mcp_server/core/ast_extractors_jvm.py rationale"
+status: accepted
+source: mcp_server/core/ast_extractors_jvm.py
+---
+
+# ADR-0103 — mcp_server/core/ast_extractors_jvm.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Node-type names verified empirically against tree-sitter-language-pack
+grammars (java, kotlin). Split from ast_extractors.py to stay under 300
+lines.
+
+````
+
+## _walk_java — original line 49 (docstring)
+
+````text
+    Iterative (see `ast_extractors._walk_type`): the recursive form spent one
+    Python frame per AST level and raised an uncaught RecursionError on deeply
+    nested sources. Descendants are pushed reversed, so they pop before the
+    remaining siblings and `defs` keeps its depth-first pre-order.
+    
+````
+
+## _walk_kotlin — original line 103 (docstring)
+
+````text
+    Iterative for the same reason as `_walk_java`; traversal order preserved.
+    
+````

@@ -1,4 +1,7 @@
-"""Run only a reproduce.sh benchmark/manifest script in one explicit W4-2 cell."""
+"""Run a benchmark or manifest script under an explicit reranker matrix cell.
+
+source: ADR-0861
+"""
 
 from __future__ import annotations
 
@@ -10,7 +13,7 @@ import sys
 from benchmarks.reranker_matrix.pins import cell
 from benchmarks.reranker_matrix.runtime import selected_cell
 
-# source: benchmarks/reproduce.sh run_bench + write_manifest call targets.
+# source: ADR-0861
 SCRIPTS = {
     "benchmarks/longmemeval/run_benchmark.py",
     "benchmarks/locomo/run_benchmark.py",

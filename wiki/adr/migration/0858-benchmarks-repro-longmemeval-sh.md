@@ -1,0 +1,58 @@
+---
+title: "ADR-0858 — benchmarks/repro_longmemeval.sh rationale"
+status: accepted
+source: benchmarks/repro_longmemeval.sh
+---
+
+# ADR-0858 — benchmarks/repro_longmemeval.sh
+
+Source rationale preserved verbatim. Identifiers inside historical quotations are not current identities.
+
+## benchmarks/repro_longmemeval.sh — original line 1
+
+````text
+#!/usr/bin/env bash
+# LongMemEval-only shortcut. This is a THIN WRAPPER around the single source of
+# truth, benchmarks/reproduce.sh — it does not carry its own copy of the
+# container / dataset / recall logic. Kept for the historical `make longmemeval`
+# entry point; prefer `make reproduce` for the full pipeline.
+````
+
+## benchmarks/repro_longmemeval.sh — original line 9
+
+````text
+#
+# Metric scope: session-level retrieval Recall@10 / MRR (NOT end-to-end QA
+# accuracy). Comparable published baseline: LongMemEval paper (Wu et al.,
+# ICLR 2025) Recall@10 78.4%.
+````
+
+## benchmarks/repro_longmemeval.sh — original line 18
+
+````text
+# ── everything below is unreachable (exec above) and retained only so the
+# original standalone implementation stays in git history for reference. ──
+````
+
+## benchmarks/repro_longmemeval.sh — original line 25
+
+````text
+# Official dataset location, per the LongMemEval authors' HF repository.
+# source: https://huggingface.co/datasets/xiaowu0162/LongMemEval
+````
+
+## benchmarks/repro_longmemeval.sh — original line 28
+
+````text
+# source: measured 2026-07-03 against the HF copy (278,025,796 bytes),
+# byte-identical to the file behind every published Cortex result.
+````
+
+## benchmarks/repro_longmemeval.sh — original line 92
+
+````text
+# Real host connection, not pg_isready — same defect and same reasoning as
+# reproduce.sh::start_db(); see the comment there for the entrypoint evidence,
+# the measured optimism of both pg_isready variants, and the 2026-08-09 sweep
+# failures the socket probe caused.
+````

@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
 """Replay every committed fuzz corpus input through its harness.
 
-Why this exists
----------------
-The fuzzers themselves are CI-only: atheris publishes manylinux x86_64
-wheels for cpython 3.12-3.14 and nothing else, so a contributor on a Mac
-cannot run them at all. That would leave the harnesses' properties unchecked
-on every machine except one CI job — and a property nobody can run locally
-is one that rots.
-
 This replayer needs no atheris. It imports each harness's `consume` and
 feeds it the committed corpus, so:
 
-  * every crash the fuzzer ever found stays fixed (the corpus is the
+* every crash the fuzzer ever found stays fixed (the corpus is the
     regression suite — a reproducer is committed, not just described);
   * the harnesses stay importable and their assertions stay meaningful,
     rather than silently breaking against a renamed field and only failing
@@ -25,7 +17,8 @@ executed by the same `pytest` run as everything else.
 Usage:
     python3 fuzz/replay_corpus.py            # replay all corpora
     python3 fuzz/replay_corpus.py --list     # show harnesses and counts
-"""
+
+source: ADR-0881"""
 
 from __future__ import annotations
 

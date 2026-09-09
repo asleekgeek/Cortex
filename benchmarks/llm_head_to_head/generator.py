@@ -1,19 +1,6 @@
 """Generator wrappers — Anthropic + Google APIs with retry/backoff.
 
-Protocol §3 generator panel + §11.6 anti-cheating (one generation per
-item × condition × generator; temperature = 0 or vendor floor; no
-best-of-N).
-
-API keys are read from the environment ONLY:
-  - ANTHROPIC_API_KEY (Haiku 4.5, Opus 4.7)
-  - GOOGLE_API_KEY    (Gemini 2.0 Flash)
-  - OPENAI_API_KEY    (GPT-4o judge — not in current scope per v3 §3
-    table for generators, but kept here for the cross-vendor judge of
-    Haiku answers)
-
-Keys are NEVER logged, NEVER serialised into the manifest, NEVER printed.
-On missing key, ``call_generator`` raises with a clear message naming
-which env var is required for which model.
+source: ADR-0839
 
 precondition: the relevant API client library is installed (see
   ``pyproject.toml`` dev deps to be added at run time, NOT imported here
@@ -34,10 +21,9 @@ import time
 from dataclasses import dataclass, field
 
 
-# Verified pricing snapshotted at protocol freeze (protocol §7).
-# source: anthropic api docs (verified 2026-04-30)
-# source: openai api docs (verified 2026-04-30)
-# source: google ai docs paid Tier 1 (verified 2026-04-30)
+# source: ADR-0839
+
+
 PRICING_USD_PER_M_TOKEN: dict[str, dict[str, float]] = {
     "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
     "claude-opus-4-7-20260301": {"input": 5.00, "output": 25.00},
@@ -148,22 +134,10 @@ def call_generator(
 ) -> GeneratorResponse:
     """Issue one generation request to the named model.
 
-    pre:
-      - ``model_id`` is a known pin (entry in ``VENDOR_BY_MODEL``).
-      - ``prompt`` is the rendered Appendix-A template (already filled).
-      - ``max_output_tokens`` ≤ vendor maximum (caller responsibility).
-      - ``temperature`` = 0.0 by default (protocol §11.6 forbids best-of-N).
-    post:
-      - on dry_run: returns a stub with no network access and dry_run=True.
-      - on success: returns ``GeneratorResponse`` with token counts from
-        the vendor (or a heuristic estimate if vendor doesn't provide them).
-      - on failure after MAX_RETRIES: raises ``GeneratorError`` whose
-        message lists the retry log (never includes API keys).
-    invariant: API keys never appear in the response, retries, or error
-      messages.
+    source: ADR-0839
     """
     if dry_run:
-        # Stub: no API call, no key required. Token counts heuristic.
+        # source: ADR-0839
         return GeneratorResponse(
             model_id=model_id,
             text=f"[DRY RUN — would call {model_id}]",
@@ -227,11 +201,7 @@ class _RetryableError(RuntimeError):
 def _heuristic_word_tokens(text: str) -> int:
     """1.33 words→tokens fallback for vendors that don't report usage.
 
-    pre: ``text`` is a Python str (possibly empty).
-    post: returns int ≥ 0; 0 only when text is empty.
-    source: GPT-2 BPE empirical word→token ratio ≈ 1.33 (Radford 2019),
-      cross-checked against tiktoken cl100k. See protocol §7.
-    """
+    source: ADR-0839"""
     if not text:
         return 0
     return int(len(text.split()) * 1.33) + 1
@@ -245,7 +215,7 @@ def _call_anthropic(
     retries: list[RetryAttempt],
 ) -> GeneratorResponse:
     try:
-        import anthropic  # type: ignore[import-not-found]  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+        import anthropic  # type: ignore[import-not-found] # noqa: PLC0415 — source: ADR-0839
     except ImportError as e:
         raise GeneratorError(
             "anthropic SDK not installed. `uv pip install anthropic` before "
@@ -283,7 +253,7 @@ def _call_google(
     retries: list[RetryAttempt],
 ) -> GeneratorResponse:
     try:
-        from google import genai  # type: ignore[import-not-found]  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+        from google import genai  # type: ignore[import-not-found] # noqa: PLC0415 — source: ADR-0839
     except ImportError as e:
         raise GeneratorError(
             "google-genai SDK not installed. `uv pip install google-genai` "
@@ -307,9 +277,8 @@ def _call_google(
 
     text = (resp.text or "") if hasattr(resp, "text") else ""
     usage = getattr(resp, "usage_metadata", None)
-    # Google sometimes omits usage on streaming/short responses; fall back
-    # to the protocol §7 word→token heuristic so cost-tracking is never
-    # silently zero. The fallback is ALWAYS conservative (overcounts).
+    # source: ADR-0839
+
     in_tok = getattr(usage, "prompt_token_count", 0) or 0
     out_tok = getattr(usage, "candidates_token_count", 0) or 0
     if not in_tok:
@@ -333,7 +302,7 @@ def _call_openai(
     retries: list[RetryAttempt],
 ) -> GeneratorResponse:
     try:
-        from openai import OpenAI  # type: ignore[import-not-found]  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+        from openai import OpenAI  # type: ignore[import-not-found] # noqa: PLC0415 — source: ADR-0839
     except ImportError as e:
         raise GeneratorError(
             "openai SDK not installed. `uv pip install openai` before running "

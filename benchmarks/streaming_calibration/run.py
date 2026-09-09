@@ -1,20 +1,6 @@
-"""Streaming-ingest calibration sweep (sharded-popping-harbor, Phase B).
+"""Calibrate streaming ingestion batch and concurrency settings.
 
-Measures the staging-sink write-latency / throughput curve across batch sizes
-so the streaming constants are MEASURED, not invented (zetetic §4). Derives:
-
-  - row_bytes  — in-Python size of one row (for the RAM invariant Q_cap).
-  - B_max      — largest batch whose p99 write latency stays <= W_target.
-  - B_min      — smallest batch before per-row fixed overhead collapses rows/s.
-  - W_target   — the p99 latency of the proven 1000-row chunk (the SLO anchor).
-
-It also answers the design question: is adaptive (AIMD) batch sizing justified,
-or is a fixed chunk near-optimal across the swept range? If throughput is flat
-past some knee, fixed wins (YAGNI) and the AdaptiveBatchController is not needed.
-
-Run:  python benchmarks/streaming_calibration/run.py [--url postgresql://localhost:5432/cortex_calib]
-
-Writes results to benchmarks/streaming_calibration/results.json.
+source: ADR-0866
 """
 
 from __future__ import annotations
@@ -63,8 +49,8 @@ def _entity_rows(n: int, base: int) -> list[tuple]:
 
 
 def _edge_rows(n: int, base: int) -> list[tuple]:
-    # Every endpoint references an entity created in the entity sweep, so the
-    # JOIN resolves (measures the resolve cost, not dangling-drop).
+    # source: ADR-0866
+
     return [
         (f"e_{(base + i) % 50000}", f"e_{(base + i + 1) % 50000}", "calls", 1.0)
         for i in range(n)
@@ -109,7 +95,7 @@ def _sweep_entities(pool, url) -> list[dict]:
 def _sweep_edges(pool, url) -> list[dict]:
     out = []
     with psycopg.connect(url, autocommit=True) as conn:
-        # Pre-create 50k entities so edges resolve via JOIN.
+        # source: ADR-0866
         _truncate(conn)
         esink = build_entity_sink(pool.connection)
         for b in range(0, 50000, 5000):
@@ -154,8 +140,8 @@ def _derive(rows: list[dict], w_target_anchor: int = 1000) -> dict:
     under = [r["batch_size"] for r in rows if r["p99_ms"] <= w_target * 1.5]
     b_max = max(under) if under else w_target_anchor
     best_tput = max(rows, key=lambda r: r["rows_per_s"])
-    # B_min: smallest size whose throughput is >= 50% of the best (below it,
-    # per-row fixed overhead dominates).
+    # source: ADR-0866
+
     knee = [
         r["batch_size"]
         for r in rows

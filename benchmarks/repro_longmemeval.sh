@@ -1,32 +1,32 @@
 #!/usr/bin/env bash
-# LongMemEval-only shortcut. This is a THIN WRAPPER around the single source of
-# truth, benchmarks/reproduce.sh — it does not carry its own copy of the
-# container / dataset / recall logic. Kept for the historical `make longmemeval`
-# entry point; prefer `make reproduce` for the full pipeline.
+# source: ADR-0858
+#
+#
+#
 #
 # Delegates to: reproduce.sh --only longmemeval --no-ablation
 # Extra args (e.g. --limit 10) pass through to the LongMemEval harness.
+# source: ADR-0858
 #
-# Metric scope: session-level retrieval Recall@10 / MRR (NOT end-to-end QA
-# accuracy). Comparable published baseline: LongMemEval paper (Wu et al.,
-# ICLR 2025) Recall@10 78.4%.
+#
+#
 
 set -euo pipefail
 _HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 exec bash "$_HERE/reproduce.sh" --only longmemeval --no-ablation "$@"
 
-# ── everything below is unreachable (exec above) and retained only so the
-# original standalone implementation stays in git history for reference. ──
+# source: ADR-0858
+#
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DATASET_PATH="$REPO_ROOT/benchmarks/longmemeval/longmemeval_s.json"
 
-# Official dataset location, per the LongMemEval authors' HF repository.
-# source: https://huggingface.co/datasets/xiaowu0162/LongMemEval
+# source: ADR-0858
+#
 DATASET_URL="https://huggingface.co/datasets/xiaowu0162/LongMemEval/resolve/main/longmemeval_s"
-# source: measured 2026-07-03 against the HF copy (278,025,796 bytes),
-# byte-identical to the file behind every published Cortex result.
+# source: ADR-0858
+#
 DATASET_SHA256="08d8dad4be43ee2049a22ff5674eb86725d0ce5ff434cde2627e5e8e7e117894"
 
 # pgvector's official image; any PostgreSQL >= 15 with the vector
@@ -89,10 +89,10 @@ start_db() {
         "$PG_IMAGE" >/dev/null
     started_container=1
     echo "==> Waiting for PostgreSQL to accept a real connection from the host..."
-    # Real host connection, not pg_isready — same defect and same reasoning as
-    # reproduce.sh::start_db(); see the comment there for the entrypoint evidence,
-    # the measured optimism of both pg_isready variants, and the 2026-08-09 sweep
-    # failures the socket probe caused.
+    # source: ADR-0858
+    #
+    #
+    #
     until DATABASE_URL="$BENCH_DB_URL" uv run --extra benchmarks python -c "
 import os, sys, psycopg
 try:

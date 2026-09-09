@@ -1,18 +1,6 @@
 """Harry Potter spell alteration benchmark — 1.5M token haystack.
 
-Two tests of increasing difficulty:
-
-TEST A (Easy): Ingest the full story with 2 fake spells injected among
-the real ones. The system must identify which spells are fake by
-recalling them from 3000+ memories.
-
-TEST B (Hard): Ingest the ORIGINAL story first (all real spells). Then
-ingest the ALTERED version (2 spells replaced). The system must compare
-both versions from memory and identify which originals were replaced
-and by which fakes.
-
-Run:
-    python3 benchmarks/spell_alteration/run_benchmark.py --pdf /tmp/harrypotter.pdf
+source: ADR-0865
 """
 
 from __future__ import annotations
@@ -35,17 +23,17 @@ from benchmarks.lib.bench_db import BenchmarkDB
 
 CHUNK_SIZE = 2000
 
-# source: benchmark design fixed in the module docstring — "2 fake spells
-# injected" (TEST A) / "2 spells replaced" (TEST B)
+# source: ADR-0865
+
 N_REPLACED_SPELLS = 2
 
-# source: adjacent comment — "Keep only meaningful context words (3+ chars)"
+# source: ADR-0865
 _MIN_CONTEXT_WORD_CHARS = 3
 
-# Minimum occurrences of a spell in the source text for it to be eligible for
-# replacement (so the altered corpus carries enough evidence).
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0865
+
+
+# source: ADR-0865
 _MIN_SPELL_OCCURRENCES = 10
 DOMAIN_ORIGINAL = "hp-original"
 DOMAIN_ALTERED = "hp-altered"
@@ -83,7 +71,7 @@ FAKE_NAMES = ["Veritanox", "Crepusculum"]
 
 def extract_text(pdf_path: str) -> str:
     """Extract full text from PDF."""
-    import pymupdf  # noqa: PLC0415 — optional dependency ([benchmarks] extra); imported where used so environments without it keep working
+    import pymupdf  # noqa: PLC0415 — source: ADR-0865
 
     doc = pymupdf.open(pdf_path)
     return "".join(page.get_text() for page in doc)
@@ -113,10 +101,13 @@ def replace_spells(
     targets: list[str],
     fakes: list[str],
 ) -> tuple[str, dict[str, str]]:
-    """Replace target spell names with fakes. Returns (text, map)."""
+    """Replace target spell names with fakes.
+
+    source: ADR-0865
+    """
     mapping: dict[str, str] = {}
-    # strict=True: the only caller passes targets=rng.sample(eligible, 2)
-    # and fakes=FAKE_NAMES (a fixed 2-element list) — always equal length.
+    # source: ADR-0865
+
     for orig, fake in zip(targets, fakes, strict=True):
         mapping[orig] = fake
         text = re.sub(re.escape(orig), fake, text, flags=re.IGNORECASE)
@@ -335,7 +326,7 @@ def run_benchmark(pdf_path: str, seed: int = 42) -> dict:
     full_text = extract_text(pdf_path)
     print(f"  {len(full_text):,} chars ({len(full_text) // 4:,} est. tokens)")
 
-    # Pick 2 spells to replace
+    # source: ADR-0865
     rng = random.Random(seed)
     eligible = [
         s

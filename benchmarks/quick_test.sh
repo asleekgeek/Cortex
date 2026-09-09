@@ -1,8 +1,8 @@
 #!/bin/bash
-# Quick benchmark suite — scoped for fast iteration
-# Runs ~2-3 minutes total instead of ~30 minutes for full suite
+# source: ADR-0857
 #
-# Usage: bash benchmarks/quick_test.sh
+# source: ADR-0857
+#
 
 set -e
 echo "=== JARVIS Quick Benchmark Suite ==="

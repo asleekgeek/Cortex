@@ -1,9 +1,6 @@
 """Reproducibility manifest emitter — protocol §10 schema.
 
-Every scored run emits a ``manifest.json`` in
-``benchmarks/llm_head_to_head/results/<runid>/`` containing every field
-listed in §10. Missing fields → run downgraded to *exploratory* per
-``docs/provenance/verification-protocol.md`` global invariants.
+source: ADR-0842
 
 precondition: caller has computed run-time fields (started_at, hostname,
   uname, package lockfile sha, db snapshot sha) BEFORE calling
@@ -37,7 +34,7 @@ from typing import Any
 SCHEMA_VERSION = "beam-10m-llm-h2h-manifest-v1"
 
 
-# Values that should NEVER appear in a manifest (defence in depth).
+# source: ADR-0842
 FORBIDDEN_KEY_PREFIXES = ("sk-", "sk_live_", "AIza", "ANTHROPIC_API_KEY=")
 
 
@@ -144,10 +141,7 @@ def git_head_sha(repo_root: Path) -> str:
 def git_tree_dirty(repo_root: Path) -> tuple[bool, list[str]]:
     """Detect dirty tree per protocol freeze requirement.
 
-    pre: ``repo_root`` is a git checkout (or returns clean if not).
-    post: returns (is_dirty, list of changed files); the file list is
-      capped at 200 entries to keep the manifest readable.
-    """
+    source: ADR-0842"""
     try:
         out = subprocess.run(
             [
@@ -269,12 +263,7 @@ def _serialisable(m: Manifest) -> dict[str, Any]:
 def write_manifest(manifest: Manifest, results_dir: Path) -> Path:
     """Write the manifest to ``<results_dir>/manifest.json``.
 
-    pre: results_dir parent exists.
-    post:
-      - returns the path to the written file.
-      - raises RuntimeError if the secret-audit finds suspected keys
-        (defence in depth — keys must NEVER reach disk).
-    """
+    source: ADR-0842"""
     results_dir.mkdir(parents=True, exist_ok=True)
     blob = _serialisable(manifest)
 

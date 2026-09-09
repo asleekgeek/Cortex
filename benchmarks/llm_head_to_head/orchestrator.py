@@ -1,9 +1,6 @@
 """Orchestrator — wires conditions × generators × judges over 196 items.
 
-This is the composition root for the harness (per coding-standards §2.3).
-It is the ONLY layer that imports from all four condition builders, the
-generator, the judge, and the manifest. Each piece below has a single
-responsibility; this module is the only place they're stitched together.
+source: ADR-0844
 
 precondition:
   - The orchestrator is invoked from the project repo root so relative
@@ -85,7 +82,7 @@ def build_context(
     condition: str,
     item: BeamItem,
     generator_model_id: str,
-    db_for_rag,  # BenchmarkDB-like; only used by condition B
+    db_for_rag,  # source: ADR-0844
 ) -> ConditionContext:
     """Dispatch to the right condition builder.
 
@@ -309,18 +306,7 @@ def _generate_one_cell(
 ) -> LiveCellResult:
     """Build the condition's context, render the prompt, fire one generator call.
 
-    pre:
-      - ``condition`` ∈ ALL_CONDITIONS.
-      - ``answer_template`` is the contents of ``prompts/answer.md``.
-      - For B: ``db_for_rag`` is a BenchmarkDB-like with the BEAM memories
-        already loaded under ``domain='beam'``.
-      - For C: the production memory store has been seeded with the same
-        memories under ``domain='beam'``.
-    post:
-      - returns one ``LiveCellResult``; raises ``GeneratorError`` if the
-        vendor call exhausted retries (so the caller can decide whether
-        to skip the cell or abort the run).
-    """
+    source: ADR-0844"""
     ctx = build_context(condition, item, generator_model, db_for_rag)
     prompt = render_answer_prompt(answer_template, ctx.text, item.question)
 
@@ -375,22 +361,7 @@ def run_live(
 ) -> dict[str, Any]:
     """End-to-end live run. Builds contexts, generates answers, judges, writes manifest.
 
-    pre:
-      - ``items`` is non-empty.
-      - ``conditions`` ⊆ ALL_CONDITIONS.
-      - ``generator_model`` is in ``VENDOR_BY_MODEL`` and has a configured judge.
-      - ``results_dir`` already contains a manifest.json (caller wrote it
-        before calling this function); we only append items.jsonl + patch
-        cost_tracking.
-      - ``cost_ceiling_usd`` is a hard limit; we abort and return early
-        with ``{'aborted': True, ...}`` if the running total exceeds it
-        (defence-in-depth on Stage 0 budget cap).
-    post:
-      - returns a summary dict with totals, per-cell results, and judge
-        verdicts.
-      - one items.jsonl line per (item × condition) is appended.
-      - manifest.json's cost_tracking is incremented.
-    """
+    source: ADR-0844"""
     manifest_path = results_dir / "manifest.json"
     summary: dict[str, Any] = {
         "items": len(items),
@@ -406,8 +377,8 @@ def run_live(
         "aborted": False,
     }
 
-    # Track running total to enforce ``cost_ceiling_usd``. The estimate
-    # is conservative (sum of generator + judge cells already completed).
+    # source: ADR-0844
+
     total_usd = 0.0
     total_input = 0
     total_output = 0
@@ -482,8 +453,8 @@ def run_live(
                 f"[orchestrator] judge failed for {item.question_id}: {e}",
                 file=sys.stderr,
             )
-            # Cells still produced answers — record with judge_label="error"
-            # rather than dropping them silently.
+            # source: ADR-0844
+
             for cell in cell_results:
                 _emit_item_line(
                     results_dir,
@@ -525,11 +496,7 @@ def run_live(
 def _emit_item_line(results_dir: Path, cell: LiveCellResult, judge_label: str) -> None:
     """Write one items.jsonl row for a completed (or judge-failed) cell.
 
-    pre: ``judge_label`` is one of the protocol verdicts OR the literal
-      ``'error'`` (judge call failed; the cell answer is preserved for audit).
-    post: appends one JSONL line; never raises (failures here would mask
-      cost-tracking already incremented).
-    """
+    source: ADR-0844"""
     append_item_result(
         results_dir,
         ItemResultLine(

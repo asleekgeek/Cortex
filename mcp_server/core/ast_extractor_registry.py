@@ -1,8 +1,6 @@
 """Registry for the extra-language tree-sitter extractors.
 
-Builds the (imports, definitions) extractor callables for the JVM,
-C-family, and scripting language groups and merges them into one dict for
-ast_parser._EXTRACTORS. Split out so ast_parser.py stays under 300 lines.
+source: ADR-0099
 
 Pure business logic — no I/O.
 """
@@ -47,16 +45,8 @@ def _make_extractor(
 
     Precondition: `imports_fn`/`defs_fn` are pure (no I/O), taking the same
     `(root, source)` pair.
-    Postcondition: returns a callable producing `(imports, definitions)` —
-    the flat per-file call list this used to also return was computed via
-    `extract_calls_generic(root, source)` and then discarded by every
-    caller (`parse_file_ast` only reads the `calls_per_function` map,
-    populated separately via `extract_calls_per_function`); the tuple
-    element was removed as dead code (issue #249 boy-scout pass). With
-    this the only production call site gone, `extract_calls_generic` had
-    no caller left but its own direct unit test — deleted from
-    `ast_extractors.py` rather than kept for a hypothetical future one.
-    """
+    Postcondition: returns a callable producing `(imports, definitions)`.
+    source: ADR-0099"""
 
     def _extract(root: Node, source: bytes) -> tuple[list[ImportInfo], list[SymbolDef]]:
         return imports_fn(root, source), defs_fn(root, source)
@@ -67,10 +57,7 @@ def _make_extractor(
 def build_extra_extractors() -> dict[SupportedLanguage, Extractor]:
     """Build the JVM + C-family + scripting extractor dispatch table.
 
-    Keyed by the language pack's `SupportedLanguage` literal so the type
-    checker verifies each grammar name against the pack the environment
-    resolved — see the table in `ast_parser._EXTRACTORS` this merges into.
-    """
+    source: ADR-0099"""
 
     return {
         "java": _make_extractor(extract_java_imports, extract_java_definitions),

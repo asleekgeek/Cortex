@@ -1,27 +1,7 @@
-"""REGRESSION GUARD (read-only): the committed supersede gate forms ZERO edges
-on LME-S knowledge-update questions at SESSION granularity.
+"""REGRESSION GUARD (read-only): the committed supersede gate forms ZERO edges on LME-S
+knowledge-update questions at SESSION granularity.
 
-Promoted from /tmp probe 2026-06-13 (investigation session fba48610). The
-KU-via-supersession thread is CLOSED, proven no-op at the metric level; this
-guard locks the first falsification layer so a future change to the supersede
-gate (remember_helpers.py:344-360) or its thresholds cannot silently start
-forming session-level edges without a maintainer noticing.
-
-Replicates the EXACT production supersede condition — for each KU question,
-over its haystack sessions:
-
-    candidate is a top-k vector neighbor
-    AND cosine sim >= 0.85 (curation.MERGE_THRESHOLD)
-    AND jaccard word-overlap > 0.5 (remember_helpers.py:349)
-    AND curation.detect_contradictions(new, [cand]) is non-empty
-
-Computes the UNORDERED pairwise UPPER BOUND on edges (sequential insertion can
-only form a subset). No DB writes, no recall change.
-
-PASS criterion (proven 2026-06-13, finding 4197865): full_gate == 0.
-Exit 0 on PASS, 1 on regression (any edge forms).
-
-Run: Cortex/.venv/bin/python3 benchmarks/supersession_gate/guard_session_granularity.py
+source: ADR-0869
 """
 
 from __future__ import annotations
@@ -42,9 +22,9 @@ DATA = REPO / "benchmarks/longmemeval/longmemeval_s.json"
 MERGE_THRESHOLD = curation.MERGE_THRESHOLD  # 0.85
 OVERLAP_MIN = 0.5  # remember_helpers.py:349 — compute_textual_overlap(...) > 0.5
 
-# Cap on the worked examples printed for a regression.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0869
+
+# source: ADR-0869
 _MAX_EXAMPLES = 5
 
 
@@ -62,7 +42,7 @@ def main() -> int:
     tot_pairs = 0
     sim_pass = 0  # sim >= 0.85
     sim_overlap_pass = 0  # + jaccard > 0.5
-    full_gate = 0  # + contradiction  == would-supersede
+    full_gate = 0  # source: ADR-0869
     edges_touch_answer = 0
     per_q_edges: list[int] = []
     max_sim_seen = 0.0
@@ -140,7 +120,7 @@ def main() -> int:
         for e in examples:
             print("  " + e)
 
-    # Regression gate: proven finding is full_gate == 0.
+    # source: ADR-0869
     expected = 0
     ok = full_gate == expected
     print("-" * 64)

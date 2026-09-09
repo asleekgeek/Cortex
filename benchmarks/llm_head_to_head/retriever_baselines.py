@@ -1,18 +1,6 @@
-"""Condition B — standard top-20 cosine RAG (Lewis et al. 2020).
+"""Condition B — standard top-20 cosine RAG.
 
-Protocol §2.B and §11.1 anti-cheating clauses:
-- Embed the question with ``sentence-transformers/all-MiniLM-L6-v2``
-  (the SAME model Cortex uses, so the comparison isolates the retrieval
-  *stack*, not the embedding choice).
-- Direct cosine top-k against the same ``embedding`` column via the HNSW
-  index. NO ``recall_memories()`` PL/pgSQL fusion. NO heat. NO recency.
-  NO trigram. NO FlashRank rerank. NO co-activation. NO strategic
-  ordering. NO production enrichments. This is canonical Lewis-2020.
-
-The implementation deliberately uses a SEPARATE code path from
-``mcp_server/handlers/recall.py``. The unit test
-``tests_py/benchmarks/test_beam_standard_rag.py`` asserts this module
-does NOT import from ``mcp_server.handlers.recall``.
+source: ADR-0846
 
 precondition: items are loaded into a per-conversation ephemeral PG store
   via ``benchmarks.lib.bench_db.BenchmarkDB``; the ``embedding`` column
@@ -30,17 +18,9 @@ from typing import Any
 
 import numpy as np
 
-# We deliberately import ONLY:
-#   1. the embedding engine (same model Cortex uses; isolates retrieval-
-#      stack effects from embedding-choice effects).
-#   2. the BenchmarkDB ephemeral store (data plumbing).
-# We deliberately do NOT import:
-#   - mcp_server.handlers.recall  (protocol §11.1 anti-cheating)
-#   - mcp_server.core.pg_recall   (PL/pgSQL fusion is the Cortex stack)
-#   - mcp_server.core.reranker    (FlashRank is the Cortex stack)
-#
-# The test ``test_beam_standard_rag.py`` enforces this invariant by
-# parsing the source of this module.
+# source: ADR-0846
+
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from mcp_server.infrastructure.embedding_engine import get_embedding_engine  # noqa: E402
@@ -58,7 +38,7 @@ class RagPassage:
 
 def standard_rag(
     question: str,
-    db: Any,  # BenchmarkDB-like; duck-typed to avoid heavy import at module load
+    db: Any,  # source: ADR-0846
     top_k: int = STANDARD_RAG_TOP_K,
 ) -> list[RagPassage]:
     """Vanilla top-k cosine retrieval over the BEAM-loaded memories.
@@ -79,29 +59,20 @@ def standard_rag(
         no full-text predicates, no time decay. This is the contract
         that makes B distinguishable from C.
 
-    source: Lewis, P. et al. (2020), *Retrieval-Augmented Generation for
-      Knowledge-Intensive NLP Tasks*, NeurIPS. Reference architecture.
-    """
+    source: ADR-0846"""
     if not question or not question.strip():
         return []
 
-    # Encode question. The production embedding engine returns a float32
-    # byte blob (see ``EmbeddingEngine.encode``); we convert to a numpy
-    # array so the pgvector psycopg adapter (registered on the connection)
-    # can bind it as a ``vector`` parameter — same convention as
-    # ``mcp_server.infrastructure.pg_store.search_vectors``.
+    # source: ADR-0846
+
     emb = get_embedding_engine()
     qbytes = emb.encode(question)
     if qbytes is None:
         return []
     qvec = np.frombuffer(qbytes, dtype=np.float32)
 
-    # pgvector cosine distance: a <=> b ∈ [0, 2]; cosine_sim = 1 - dist.
-    # We pull memory_id, content, and the distance ordered ASC (closest
-    # first). No filters by domain, heat, or anything else — vanilla
-    # Lewis-2020 RAG. The ``register_vector`` adapter on ``db.conn``
-    # (PgMemoryStore.__init__) handles the numpy → ``vector`` binding,
-    # so we do NOT need an explicit ``::vector`` cast in the SQL.
+    # source: ADR-0846
+
     sql = (
         "SELECT id, content, embedding <=> %s AS cdist "
         "FROM memories "
@@ -127,11 +98,7 @@ def standard_rag(
 def _resolve_conn(db: Any) -> Any:
     """Pull the psycopg connection out of a BenchmarkDB-like object.
 
-    pre: ``db`` exposes either a ``.conn`` attribute or a ``._store._conn``
-      attribute (BenchmarkDB wraps a ``PgMemoryStore`` with the conn under
-      ``_store._conn``).
-    post: returns a psycopg connection object with ``register_vector`` already
-      registered (production __init__ does this on construction).
+    source: ADR-0846
     """
     if hasattr(db, "conn"):
         return db.conn

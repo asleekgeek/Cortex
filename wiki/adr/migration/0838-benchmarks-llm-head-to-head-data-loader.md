@@ -1,0 +1,42 @@
+---
+title: "ADR-0838 — benchmarks/llm_head_to_head/data_loader.py rationale"
+status: accepted
+source: benchmarks/llm_head_to_head/data_loader.py
+---
+
+# ADR-0838 — benchmarks/llm_head_to_head/data_loader.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Reuses ``benchmarks.beam.data`` (the existing 196-item discovery + chat-id
+flattening). This module is the SINGLE source of truth for "what items are
+in the protocol universe" — every condition builder receives items from
+``load_items()`` so they all see the same questions in the same order.
+````
+
+## BeamItem — original line 52 (docstring)
+
+````text
+    Equality is on ``question_id`` only so the same item from two loads
+    is deduplicated correctly.
+    
+````
+
+## load_items — original line 149 (docstring)
+
+````text
+    pre: ``strict=True`` enforces the 196-item invariant from protocol §5.
+    post: returns ``EXPECTED_ITEM_COUNT`` items in dataset-iteration order
+      when ``strict=True`` and split=="10M". Mismatch → ValueError. When
+      ``strict=False`` (smoke / dry-run), accepts any count and warns.
+    
+````
+
+## module — original line 39 (comment)
+
+````text
+# Pre-registered universe size from protocol §5 (Tavakoli et al. 2026, Table 2).
+````

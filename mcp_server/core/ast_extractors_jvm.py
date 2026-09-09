@@ -1,9 +1,6 @@
 """Tree-sitter extractors for JVM languages: Java and Kotlin.
 
-Node-type names verified empirically against tree-sitter-language-pack
-grammars (java, kotlin). Split from ast_extractors.py to stay under 300
-lines.
-"""
+source: ADR-0103"""
 
 from __future__ import annotations
 
@@ -46,11 +43,7 @@ def extract_java_definitions(root: Node, source: bytes) -> list[SymbolDef]:
 def _walk_java(node: Node, source: bytes, defs: list[SymbolDef], parent: str) -> None:
     """Extract Java definitions, qualifying methods by class.
 
-    Iterative (see `ast_extractors._walk_type`): the recursive form spent one
-    Python frame per AST level and raised an uncaught RecursionError on deeply
-    nested sources. Descendants are pushed reversed, so they pop before the
-    remaining siblings and `defs` keeps its depth-first pre-order.
-    """
+    source: ADR-0103"""
     stack: list[tuple[Node, str]] = [(node, parent)]
     while stack:
         current, scope = stack.pop()
@@ -100,8 +93,7 @@ def extract_kotlin_definitions(root: Node, source: bytes) -> list[SymbolDef]:
 def _walk_kotlin(node: Node, source: bytes, defs: list[SymbolDef], parent: str) -> None:
     """Extract Kotlin definitions, qualifying members by type.
 
-    Iterative for the same reason as `_walk_java`; traversal order preserved.
-    """
+    source: ADR-0103"""
     stack: list[tuple[Node, str]] = [(node, parent)]
     while stack:
         current, scope = stack.pop()

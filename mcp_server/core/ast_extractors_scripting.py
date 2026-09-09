@@ -1,11 +1,6 @@
 """Tree-sitter extractors for scripting languages: Ruby and PHP.
 
-Node-type names verified empirically against tree-sitter-language-pack
-grammars (ruby, php). Ruby imports are ``require``/``require_relative``
-call sites; PHP imports are ``namespace_use_clause`` nodes.
-
-Split from ast_extractors.py to stay under 300 lines.
-"""
+source: ADR-0104"""
 
 from __future__ import annotations
 
@@ -51,10 +46,7 @@ def extract_ruby_definitions(root: Node, source: bytes) -> list[SymbolDef]:
 def _walk_ruby(node: Node, source: bytes, defs: list[SymbolDef], parent: str) -> None:
     """Extract Ruby definitions, qualifying methods by class.
 
-    Iterative (see `ast_extractors._walk_type`): one Python frame per AST level
-    raised an uncaught RecursionError on deeply nested sources. Descendants are
-    pushed reversed, so `defs` keeps its depth-first pre-order.
-    """
+    source: ADR-0104"""
     stack: list[tuple[Node, str]] = [(node, parent)]
     while stack:
         current, scope = stack.pop()
@@ -109,8 +101,7 @@ def extract_php_definitions(root: Node, source: bytes) -> list[SymbolDef]:
 def _walk_php(node: Node, source: bytes, defs: list[SymbolDef], parent: str) -> None:
     """Extract PHP definitions, qualifying methods by type.
 
-    Iterative for the same reason as `_walk_ruby`; traversal order preserved.
-    """
+    source: ADR-0104"""
     stack: list[tuple[Node, str]] = [(node, parent)]
     while stack:
         current, scope = stack.pop()

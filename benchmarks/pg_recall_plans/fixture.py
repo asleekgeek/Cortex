@@ -1,14 +1,12 @@
 """Deterministic SQL-only fixtures; never instantiate an embedding model.
 
-The row grammar is documented in README.md. Its numbers are test inputs,
-not tuned retrieval parameters or a model of the production distribution.
-"""
+source: ADR-0855"""
 
 from __future__ import annotations
 
-# source: W4-1 acceptance corpus minimum, tasks/codex-green-remediation-plan.md.
+# source: ADR-0855
 MIN_ROWS = 30_000
-# source: pg_schema.MEMORIES_DDL embedding vector(384).
+# source: ADR-0855
 DIMENSIONS = 384
 
 
@@ -21,7 +19,10 @@ def vector_sql(first: str = "1", second: str = "0") -> str:
 
 
 def load_sql(rows: int) -> str:
-    """Populate a dedicated empty database after BenchmarkDB-style cleanup."""
+    """Populate a dedicated empty database after BenchmarkDB-style cleanup.
+
+    source: ADR-0855
+    """
     if type(rows) is not int or rows < MIN_ROWS:
         raise ValueError("fixture row count must be an integer >= W4-1 minimum")
     embedding = vector_sql("i::real", f"{rows}::real")
@@ -42,11 +43,14 @@ SELECT CASE WHEN i % 100 = 0 THEN 'needle target ' ELSE '' END || md5(i::text),
 FROM generate_series(1, {rows}) AS i;
 ANALYZE memories;
 ANALYZE homeostatic_state;
-"""  # noqa: S608 — validated integer rows; embedding is a fixed fixture expression
+"""  # noqa: S608 — source: ADR-0855
 
 
 def recall_sql(name: str, scoped: bool = False, exact_witness: bool = False) -> str:
-    """Fixed query grammar; caller supplies only a validated function name."""
+    """Fixed query grammar; caller supplies only a validated function name.
+
+    source: ADR-0855
+    """
     if name not in {"recall_memories", "recall_memories_reference"}:
         raise ValueError("unexpected recall function")
     domain = "'plans'" if scoped else "NULL"
@@ -58,4 +62,4 @@ def recall_sql(name: str, scoped: bool = False, exact_witness: bool = False) -> 
         {query}, {vector_sql()}, p_domain => {domain},
         p_directory => {directory}, p_agent_topic => 'fixture-agent',
         p_trusted_origins => ARRAY['user_explicit'], p_untrusted_factor => 0.0
-    )"""  # noqa: S608 — function allowlist, fixed scope literals and vector expression
+    )"""  # noqa: S608 — source: ADR-0855

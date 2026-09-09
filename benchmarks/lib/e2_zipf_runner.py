@@ -6,17 +6,10 @@ through the production read path (heat-update on access is exercised by
 the same code that handles real recalls — never a direct heat assignment),
 then evaluates queries biased toward high-access topics.
 
-Sources:
-  - Zipf, G. K. (1949). *Human Behavior and the Principle of Least Effort.*
-    Addison-Wesley. — Word-frequency power law.
-  - Mandelbrot, B. (1953). "An informational theory of the statistical
-    structure of language." — Generalises Zipf; exponent alpha ~ 1.0–1.7
-    calibrated for natural-language corpora; alpha=1.5 is the
-    "natural-language" empirical default.
-
 CLI: python -m benchmarks.lib.e2_zipf_runner --n N [N ...] --queries Q
      --access-events K --zipf-alpha 1.5 --seed 42 --db-url ... [--quick]
-"""
+
+source: ADR-0076"""
 
 from __future__ import annotations
 
@@ -56,7 +49,7 @@ DEFAULT_DB_URL = "postgresql://localhost:5432/cortex_e2_zipf"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384
 
-# source: Mandelbrot 1953 — alpha~1.5 is the natural-language empirical default.
+# source: ADR-0076
 N_TOPICS = 50  # Topic count chosen so per-topic memory pool is non-trivial at N>=100.
 
 
@@ -144,11 +137,7 @@ def simulate_access(
 ) -> None:
     """Drive K Zipfian accesses through the production read path.
 
-    Each access calls db.recall() with the target item's content; this
-    exercises the production write-back-on-access (heat update) without
-    any direct heat assignment. Source: ADR-013 thermodynamic model —
-    recall is the heat-update hook.
-    """
+    source: ADR-0076"""
     indices = _zipf_indices(len(items), access_events, alpha, seed)
     key_to_id = {v: k for k, v in source_map.items()}
     miss = 0
@@ -231,9 +220,7 @@ def _execute_trial(
     os.environ["DATABASE_URL"] = db_url
     tracemalloc.start()
     try:
-        # require_reranker=True: this extends the claim-bearing E2
-        # falsifiability protocol past N=1M (module docstring) -- same
-        # rigor requirement as e2_subsample_runner (INC7.2 audit).
+        # source: ADR-0076
         with BenchmarkDB(database_url=db_url, require_reranker=True) as db:
             heat = heat_for(condition)
             payload = [{**it.memory, "heat": heat} for it in items]

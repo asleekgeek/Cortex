@@ -1,16 +1,6 @@
 """Tree-sitter AST parser — structured code analysis with cross-file resolution.
 
-Replaces regex-based extraction with proper AST parsing. Extracts:
-- Imports with resolved target files
-- Function/method definitions with scope
-- Class definitions with inheritance
-- Function call sites for call graph edges
-- Class-method containment
-
-Falls back to regex parser if tree-sitter is not installed.
-
-Pure business logic — no I/O. Callers pass file content as bytes.
-"""
+source: ADR-0105"""
 
 from __future__ import annotations
 
@@ -54,7 +44,7 @@ logger = logging.getLogger(__name__)
 def is_available() -> bool:
     """Check if tree-sitter is installed."""
     try:
-        from tree_sitter_language_pack import get_parser  # noqa: PLC0415, F401 — optional-feature probe: ImportError here is a handled degraded mode
+        from tree_sitter_language_pack import get_parser  # noqa: PLC0415, F401 — source: ADR-0105
 
         return True
     except ImportError:
@@ -64,10 +54,7 @@ def is_available() -> bool:
 def _is_ast_language(language: str) -> TypeGuard[SupportedLanguage]:
     """Narrow a detected language name to the language pack's literal type.
 
-    Sound by construction: `AST_SUPPORTED` is declared
-    `frozenset[SupportedLanguage]`, so a name the pack does not ship fails
-    the type check at its definition rather than silently widening here.
-    """
+    source: ADR-0105"""
     return language in AST_SUPPORTED
 
 
@@ -88,7 +75,7 @@ def _get_extractor_and_tree(language: str, content: bytes) -> tuple | None:
     if not _is_ast_language(language):
         return None
     try:
-        from tree_sitter_language_pack import (  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+        from tree_sitter_language_pack import (  # noqa: PLC0415 — source: ADR-0105
             DownloadError,
             get_parser,
         )
@@ -98,11 +85,8 @@ def _get_extractor_and_tree(language: str, content: bytes) -> tuple | None:
     try:
         tree = get_parser(language).parse(content)
     except DownloadError as exc:
-        # Same degraded mode as ImportError above, reached differently: the
-        # pack imported fine but could not fetch/verify this grammar right
-        # now. Logged every call, not just the first — this runs once per
-        # file, not once per process like a singleton model load, so
-        # suppressing repeats would hide a mid-run outage.
+        # source: ADR-0105
+
         logger.warning(
             "tree-sitter grammar for %r could not be obtained (%s); "
             "falling back to the regex parser for this file.",
@@ -134,11 +118,7 @@ def parse_file_ast(path: str, content: bytes) -> FileAnalysis:
     extractor, tree = result
     imports, definitions = extractor(tree.root_node, content)
     docstring = _extract_module_doc(tree.root_node, language, content)
-    # Caller-qualified call map — works across every language the
-    # extractor covers because it targets tree-sitter node types shared
-    # across grammars (function_definition, function_declaration,
-    # method_definition, call, call_expression). Empty on regex fallback
-    # or when a grammar doesn't expose those names.
+    # source: ADR-0105
 
     calls_per_function = extract_calls_per_function(tree.root_node, content)
 
@@ -237,14 +217,9 @@ def _extract_rust(
     return extract_rust_imports(root, source), extract_rust_definitions(root, source)
 
 
-# Keyed by the language pack's own `SupportedLanguage` literal, not by `str`:
-# that makes the type checker verify every key below against the grammars the
-# pack actually ships, and it is what lets `_get_extractor_and_tree` hand
-# `get_parser` a value of the type its signature asks for. The pack types that
-# parameter `SupportedLanguage` up to 1.6.x and `str` from 1.9 on, so a plain
-# `str` type-checks under one resolution of the dependency pin and fails under
-# another — the divergence issue #253 was filed for. See the pin's own comment
-# in pyproject.toml for the measured per-release type surface.
+# source: ADR-0105
+
+
 _EXTRACTORS: dict[SupportedLanguage, Extractor] = {
     "python": _extract_python,
     "javascript": _extract_js,
@@ -255,8 +230,7 @@ _EXTRACTORS: dict[SupportedLanguage, Extractor] = {
     **build_extra_extractors(),
 }
 
-# The extractor table IS the definition of "AST-supported": a language is
-# supported exactly when queries exist for it. Derived rather than restated,
-# so `_EXTRACTORS[language]` is total once `_is_ast_language` has narrowed —
-# there is no second list that can drift out of step with this one.
+# source: ADR-0105
+
+
 AST_SUPPORTED: frozenset[SupportedLanguage] = frozenset(_EXTRACTORS)

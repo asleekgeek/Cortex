@@ -1,27 +1,7 @@
-"""REGRESSION GUARD A1 (read-only): the committed supersede gate forms ZERO
-edges on LME-S KU *after structure-aware decomposition* into chunks.
+"""REGRESSION GUARD A1 (read-only): the committed supersede gate forms ZERO edges on
+LME-S KU *after structure-aware decomposition* into chunks.
 
-Promoted from /tmp probe 2026-06-13 (investigation session fba48610). Locks the
-second falsification layer of the CLOSED KU-via-supersession thread.
-
-Candidate A premise (Mem0 arxiv 2504.19413 / Supermemory): the jaccard>0.5 gate
-is calibrated for atomic facts, not whole 50-turn sessions. The session-level
-guard proved 0 edges; this re-runs the EXACT same gate over the production
-decomposer's chunks (memory_decomposer.decompose_memory, turn-pair chunks)
-instead of whole sessions, to rule out that decomposition alone unlocks edges.
-
-Gate (identical to remember_helpers.py:344-360):
-    cosine sim >= 0.85 (curation.MERGE_THRESHOLD)
-    AND jaccard word-overlap > 0.5
-    AND curation.detect_contradictions(new, [cand]) non-empty
-
-Cross-session pairs only (KU supersession updates a fact across sessions).
-No DB writes, no recall change.
-
-PASS criterion (proven 2026-06-13, finding 4197880): full_gate == 0.
-Exit 0 on PASS, 1 on regression (any edge forms).
-
-Run: Cortex/.venv/bin/python3 benchmarks/supersession_gate/guard_chunk_granularity.py
+source: ADR-0868
 """
 
 from __future__ import annotations
@@ -39,12 +19,12 @@ from mcp_server.core import curation  # noqa: E402
 from mcp_server.core.memory_decomposer import decompose_memory  # noqa: E402
 from mcp_server.infrastructure.embedding_engine import EmbeddingEngine  # noqa: E402
 
-# source: structural — an edge needs a pair of chunks to compare
+# source: ADR-0868
 _MIN_CHUNKS_FOR_PAIR = 2
 
-# Cap on the worked examples printed for a regression.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0868
+
+
 _MAX_EXAMPLES = 8
 
 DATA = REPO / "benchmarks/longmemeval/longmemeval_s.json"
@@ -167,7 +147,7 @@ def main() -> int:
         for e in examples:
             print("  " + e)
 
-    # Regression gate: proven finding is full_gate == 0.
+    # source: ADR-0868
     expected = 0
     ok = full_gate == expected
     print("-" * 64)

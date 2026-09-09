@@ -1,0 +1,16 @@
+# ADR-0077: benchmarks/lib/fusion.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `benchmarks/lib/fusion.py`; original SHA-256 `a97660b54387d76713bace9d9bf94e42c1e404dc2db01de39d6c9772941760a8`.
+
+## Original comment, lines 18–21
+
+````text
+# Upper chunk count of each quality zone.
+# source: quality zones from ai-architect RAGCriticalMassMonitor (Liu et al.
+# 2024), as banded in the QualityZone comments above (5-10 / 11-15 / 16-20 /
+# 21-25 / >25 chunks)
+````
+

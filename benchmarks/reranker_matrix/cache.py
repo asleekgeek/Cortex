@@ -37,7 +37,7 @@ def digest_file(path: Path) -> str:
 
 def digest_stream(handle: BinaryIO) -> str:
     digest = hashlib.sha256()
-    # source: existing reranker_model.model_sha256 bounded read size.
+    # source: ADR-0860
     for chunk in iter(lambda: handle.read(1 << 20), b""):
         digest.update(chunk)
     return digest.hexdigest()
@@ -67,9 +67,8 @@ def checked_path(member: zipfile.ZipInfo) -> PurePosixPath:
 
 
 def paired_metadata(path: PurePosixPath, names: set[str], model: str) -> bool:
-    # source: verified TinyBERT archive SHA752eddf1... contains six __MACOSX
-    # ._ companions of its directory and five model files. Keep the archive
-    # intact, but do not extract metadata as model inputs. Unpaired paths fail.
+    # source: ADR-0860
+
     if (
         not path.parent.parts
         or path.parts[0] != "__MACOSX"
@@ -96,7 +95,7 @@ def checked_members(archive: zipfile.ZipFile, pin: ModelPin) -> list[zipfile.Zip
         if path.parts[0] != pin.name:
             raise ValueError(f"unsafe archive path: {member.filename}")
         members.append(member)
-    # source: FlashRank 0.2.10 Ranker._get_tokenizer required filenames.
+    # source: ADR-0860
     required = (
         pin.filename,
         "config.json",

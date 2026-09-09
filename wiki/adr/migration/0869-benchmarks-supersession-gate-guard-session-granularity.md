@@ -1,0 +1,83 @@
+---
+title: "ADR-0869 — benchmarks/supersession_gate/guard_session_granularity.py rationale"
+status: accepted
+source: benchmarks/supersession_gate/guard_session_granularity.py
+---
+
+# ADR-0869 — benchmarks/supersession_gate/guard_session_granularity.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+REGRESSION GUARD (read-only): the committed supersede gate forms ZERO edges
+on LME-S knowledge-update questions at SESSION granularity.
+````
+
+## module — original line 4 (docstring)
+
+````text
+Promoted from /tmp probe 2026-06-13 (investigation session fba48610). The
+KU-via-supersession thread is CLOSED, proven no-op at the metric level; this
+guard locks the first falsification layer so a future change to the supersede
+gate (remember_helpers.py:344-360) or its thresholds cannot silently start
+forming session-level edges without a maintainer noticing.
+````
+
+## module — original line 10 (docstring)
+
+````text
+Replicates the EXACT production supersede condition — for each KU question,
+over its haystack sessions:
+````
+
+## module — original line 13 (docstring)
+
+````text
+    candidate is a top-k vector neighbor
+    AND cosine sim >= 0.85 (curation.MERGE_THRESHOLD)
+    AND jaccard word-overlap > 0.5 (remember_helpers.py:349)
+    AND curation.detect_contradictions(new, [cand]) is non-empty
+````
+
+## module — original line 18 (docstring)
+
+````text
+Computes the UNORDERED pairwise UPPER BOUND on edges (sequential insertion can
+only form a subset). No DB writes, no recall change.
+````
+
+## module — original line 21 (docstring)
+
+````text
+PASS criterion (proven 2026-06-13, finding 4197865): full_gate == 0.
+Exit 0 on PASS, 1 on regression (any edge forms).
+````
+
+## module — original line 24 (docstring)
+
+````text
+Run: Cortex/.venv/bin/python3 benchmarks/supersession_gate/guard_session_granularity.py
+
+````
+
+## module — original line 45 (comment)
+
+````text
+# Cap on the worked examples printed for a regression.
+# source: pre-existing tuned value, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````
+
+## inline — original line 65 (comment)
+
+````text
+# + contradiction  == would-supersede
+````
+
+## module — original line 143 (comment)
+
+````text
+# Regression gate: proven finding is full_gate == 0.
+````

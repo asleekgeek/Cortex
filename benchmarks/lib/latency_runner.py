@@ -1,16 +1,5 @@
 """Latency benchmark — synthetic-corpus per-query wall time across N.
 
-LATENCY-ONLY benchmark. Retrieval metrics on the synthetic corpus
-produced by this harness (R@1, R@10, MRR) were observed to be
-**identical** for cortex_full vs cortex_flat at N >= 10k because the
-synthetic corpus has no thermodynamic structure for heat to discriminate
-(see ``benchmarks/results/n_scan/20260430T201246Z_pre_wire/`` and
-``benchmarks/results/n_scan/20260430T204157Z/`` for the identical-metric
-finding). This module is therefore retained ONLY as a measurement of
-per-query latency and RSS scaling; retrieval scores it emits are not
-claim-bearing for the E2 retrieval claim. The claim-bearing E2 retrieval
-runners are:
-
   - ``benchmarks.lib.e2_subsample_runner`` (real-benchmark subsample)
   - ``benchmarks.lib.e2_zipf_runner``      (Zipf access pattern synthetic)
 
@@ -20,7 +9,8 @@ forced to the per-condition heat so the condition is observable even
 when no consumer reads those vars yet. Uses DB cortex_n_scan (operator
 must createdb it once) so production data is never touched. Outputs JSON
 per (N, cond) + summary.csv under ``benchmarks/results/latency_benchmark/``.
-"""
+
+source: ADR-0078"""
 
 from __future__ import annotations
 
@@ -55,7 +45,7 @@ TEMPLATES_PATH = Path(__file__).parent / "n_scan_templates.txt"
 RESULTS_DIR = _ROOT / "benchmarks" / "results" / "latency_benchmark"
 DEFAULT_DB_URL = "postgresql://localhost:5432/cortex_n_scan"
 
-# source: arbitrary fixed vocabularies for reproducible seeded runs.
+# source: ADR-0078
 ENTITIES = [f"Entity{i:03d}" for i in range(50)]
 TOOLS = ["psql", "ruff", "mypy", "pytest", "uv", "git", "docker", "make"]
 FILES = [f"src/module_{i:02d}.py" for i in range(20)]
@@ -80,8 +70,8 @@ ACTIONS = [
 COMPONENTS = ["core", "infra", "handlers", "shared", "server", "hooks"]
 VALUES = ["10", "25", "50", "100", "1.5", "2x", "0.95", "5"]
 
-DISTRACTOR_FRACTION = 0.05  # source: spec.
-MIN_QUERIES = 5  # source: spec.
+DISTRACTOR_FRACTION = 0.05  # source: ADR-0078
+MIN_QUERIES = 5  # source: ADR-0078
 
 
 def _emit_banner() -> None:
@@ -284,11 +274,7 @@ def run_trial(
     tracemalloc.start()
     t0 = time.monotonic()
     try:
-        # require_reranker=True: this module's claim-bearing output is
-        # per-query WALL TIME (module docstring), and production latency
-        # includes the cross-encoder reranking pass -- a silently-skipped
-        # reranker would understate production latency, not just corrupt
-        # the (already non-claim-bearing) retrieval scores (INC7.2 audit).
+        # source: ADR-0078
         with BenchmarkDB(database_url=db_url, require_reranker=True) as db:
             memories = _build_memories(corpus, heat_for(condition))
             print(f"  [n={n} cond={condition}] inserting {len(memories)} memories ...")

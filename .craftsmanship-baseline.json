@@ -370,11 +370,6 @@
     {
       "file": "benchmarks/llm_head_to_head/data_loader.py",
       "kind": "unsourced-constant",
-      "detail": "EXPECTED_ITEM_COUNT"
-    },
-    {
-      "file": "benchmarks/llm_head_to_head/data_loader.py",
-      "kind": "unsourced-constant",
       "detail": "JUDGE_SHUFFLE_BASE"
     },
     {
@@ -436,11 +431,6 @@
       "file": "benchmarks/llm_head_to_head/orchestrator.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "benchmarks/llm_head_to_head/orchestrator.py",
-      "kind": "method-size",
-      "detail": "_generate_one_cell"
     },
     {
       "file": "benchmarks/llm_head_to_head/orchestrator.py",
@@ -689,11 +679,6 @@
     },
     {
       "file": "mcp_server/core/active_forgetting.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/active_forgetting.py",
       "kind": "unsourced-constant",
       "detail": "ACUTE_RECENCY_WINDOW_HOURS"
     },
@@ -706,11 +691,6 @@
       "file": "mcp_server/core/ast_extractors.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/ast_extractors.py",
-      "kind": "method-size",
-      "detail": "_extract_js_node"
     },
     {
       "file": "mcp_server/core/ast_extractors.py",
@@ -801,11 +781,6 @@
       "file": "mcp_server/core/auto_curator.py",
       "kind": "unsourced-constant",
       "detail": "_MIN_SNAKE_ENTITY_LEN"
-    },
-    {
-      "file": "mcp_server/core/auto_task_record.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "mcp_server/core/auto_task_record.py",

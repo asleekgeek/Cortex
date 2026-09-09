@@ -111,10 +111,10 @@ def _global_exploration_ratio(all_conversations: list[dict]) -> float:
 # Detection functions
 # ---------------------------------------------------------------------------
 
-# source: rarity bar documented in the module docstring ("<5% of sessions")
+# source: ADR-0111
 _RARE_SESSION_RATIO = 0.05
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0111
+# source: ADR-0111
 _HIGH_SEVERITY_RATIO = 0.01  # below this share of sessions, severity is high
 _HIGH_SEVERITY_OVERLAP = 2  # >= this many relevant categories, severity is high
 

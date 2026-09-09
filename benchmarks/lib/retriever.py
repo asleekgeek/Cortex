@@ -86,14 +86,7 @@ class BenchmarkRetriever:
     def _ensure_reranker(self):
         """Lazy-load FlashRank, sharing the durable cache_dir with production.
 
-        Aligned with mcp_server.core.reranker (fix 2026-07-11): FlashRank's
-        own default cache_dir is ``/tmp``, which macOS purges — that caused
-        a silent, unlogged reranker skip in production. This standalone
-        retriever (used by benchmarks that don't go through the production
-        recall path — episodic, evermembench, memoryagentbench,
-        llm_head_to_head) had the identical latent bug; same fix applied
-        here for consistency, plus a non-silent failure log.
-        """
+        source: ADR-0085"""
         if self._flashrank is not None:
             return
         try:

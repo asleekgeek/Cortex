@@ -1,40 +1,6 @@
 """Auto-curator — turn PG memory clusters into curated wiki pages.
 
-This module is the systemic answer to "ALL ACTIONS SHOULD BE DOCUMENTED
-BY OPUS 4.7" (user directive 2026-05-17). Manual authoring doesn't
-scale; periodic mechanical extraction produces empty templates. The
-auto-curator sits in between:
-
-  1. Cluster recent PG memories into topic groups (entity co-occurrence +
-     heat + domain).
-  2. For each cluster that earns a wiki page (≥ N memories, ≥ heat
-     threshold, no existing fresh page), construct a structured
-     **authoring prompt** that encodes the wiki-page conventions
-     (frontmatter, lead, sections with diagrams, "why this not the
-     alternatives", "what can go wrong", "see also", primary sources).
-  3. Return the prompts as "curation jobs". A downstream LLM (the
-     conversational Opus 4.7 via the ``curate_wiki`` MCP tool, or a
-     direct Anthropic API call when ``ANTHROPIC_API_KEY`` is set)
-     authors the page and writes it via ``wiki_write``.
-
-Pure business logic — no I/O. The handler composes this with the memory
-store and the wiki writer. Wiki-page freshness/content checks needed by
-``is_path_recently_authored`` and ``build_reauthor_jobs`` are declared
-here as the ``WikiPagePort`` protocol (reverse DI, Martin 2017 Ch.11 —
-core declares what it needs, infrastructure implements it, the handler
-composition root wires it); the concrete os/pathlib-backed adapter lives
-in ``infrastructure/wiki_page_fs.py``. This module imports no ``os`` or
-``pathlib`` (issue #314).
-
-References (the user-quoted directives this module exists to satisfy):
-  * "ALL ACTIONS SHOULD DOCUMENTED BY OPUS 4.7, IT'S NOT POSSIBLE THE
-    LLM IS NOT ABLE TO PRODUCE A DOCUMENTATION FROM AN ACCESS."
-  * "If I open the wiki I should be able to parse the documentation and
-    understand in a clear way how the whole codebase work, what it does,
-    and how it was built."
-  * "The documentation you created now, should be auto created and auto
-    curated."
-"""
+source: ADR-0108"""
 
 from __future__ import annotations
 
@@ -46,16 +12,16 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Protocol
 
-# 2026-05-17: thresholds tuned to mirror the cluster-quality bar of the
-# hand-authored pages from this session. Below these, a cluster doesn't
-# carry enough signal to author a useful page.
+# source: ADR-0108
+
+
 MIN_MEMORIES_PER_CLUSTER = 4
 MIN_AVG_HEAT_FOR_PAGE = 0.3
 MIN_ENTITY_FREQ_FOR_TOPIC = 3
 MAX_MEMORIES_PER_PROMPT = 25  # cap prompt size; cross-encoder picks the best
 
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0108
+
 _MIN_ENTITY_LEN = 4  # shorter identifiers are too generic to name a topic
 _MIN_SNAKE_ENTITY_LEN = 6  # snake_case identifiers below this are noise
 _MEMORY_HEAD_CHARS = 1200  # per-memory excerpt cap in authoring prompts
@@ -90,27 +56,16 @@ class CurationJob:
     related_pages: list[str] = field(default_factory=list)  # paths for [[wiki-links]]
 
 
-# 2026-05-17: how recent counts as "already authored" — skip re-curating a
-# cluster whose suggested path was written within this window. 30 days
-# is the heuristic floor; clusters with substantial new content after
-# that window get re-curated to update the page.
+# source: ADR-0108
+
+
 SKIP_IF_AUTHORED_WITHIN_DAYS = 30
 
 
 class WikiPagePort(Protocol):
     """Wiki-page filesystem access this module needs but must not perform.
 
-    Reverse DI (coding-standards.md §5.1): core declares the shape of the
-    dependency; the concrete os/pathlib-backed adapter lives in
-    ``infrastructure.wiki_page_fs.FsWikiPagePort`` and is constructed by
-    the handler-level composition root (``build_wiki_page_port``). This
-    module never imports that adapter (or ``os``/``pathlib`` itself) —
-    Python Protocols are structurally typed (PEP 544), so the adapter
-    doesn't need to import this Protocol either; that also keeps
-    ``infrastructure/wiki_page_fs.py`` compliant with
-    docs/module-inventory.md's rule that infrastructure/ must not import
-    core/.
-    """
+    source: ADR-0108"""
 
     def is_recently_modified(self, rel_path: str, within_days: int) -> bool:
         """True if the page at ``rel_path`` (relative to the bound wiki
@@ -131,11 +86,7 @@ def is_path_recently_authored(
     within the last ``within_days``. Used to skip clusters whose page
     already exists and is fresh.
 
-    Delegates the filesystem-mtime check to the injected port (issue
-    #314) — this module performs zero I/O itself. If a user edits a page
-    by hand, the mtime updates and the cluster stays skipped (their edits
-    aren't clobbered); the adapter preserves this exact semantics.
-    """
+    source: ADR-0108"""
     return wiki_page_port.is_recently_modified(suggested_path, within_days)
 
 
@@ -212,22 +163,7 @@ _SNAKE_RE = re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
 def extract_entities_from_content(content: str) -> list[str]:
     """Crude entity extraction — proper nouns, file paths, function names.
 
-    Canonicalisation:
-      - File paths drop the extension (``foo/bar.py`` → ``bar``) so the
-        same module mentioned with and without extension counts as the
-        same entity.
-      - File paths drop the directory prefix to keep cluster topics
-        readable. The full path is still in the source memory.
-
-    Mirrors mcp_server/core/knowledge_graph.py's heuristic NER but kept
-    local to avoid coupling auto-curator to the knowledge-graph subsystem.
-
-    Public (promoted from ``_extract_entities_from_content``, INC7.8/M-D8,
-    2026-07-11): reused as-is by ``core/distillation.py`` for
-    error->success dossier pairing — a second cross-module call site for
-    the same lexical-entity heuristic, same rationale as this docstring's
-    original one (avoid a heavier coupling to knowledge_graph.py).
-    """
+    source: ADR-0108"""
     entities: list[str] = []
     # File-path-like tokens — canonicalise to the basename without extension
     for m in _FILE_EXT_RE.finditer(content):
@@ -277,8 +213,7 @@ def build_clusters(
       4. Filter: clusters below ``min_memories`` or below
          ``min_avg_heat`` are dropped — they don't earn a page yet.
 
-    Returns clusters sorted by combined size × avg_heat descending so
-    high-value clusters are curated first.
+    source: ADR-0108
 
     No LLM call here — this is pure logic. The LLM gets called downstream
     by the handler with the prompts ``build_authoring_prompt`` produces.
@@ -339,12 +274,8 @@ def build_clusters(
             )
         )
 
-    # 2026-05-17: skip clusters whose suggested page already exists and
-    # was authored within ``SKIP_IF_AUTHORED_WITHIN_DAYS``. Without this
-    # filter the curator keeps re-suggesting the same topics on every
-    # call, even after a page was just authored. Caller passes the
-    # injected ``WikiPagePort``; when omitted we don't filter (useful
-    # for tests).
+    # source: ADR-0108
+
     if skip_recently_authored and wiki_page_port is not None:
         clusters = [
             c
@@ -365,13 +296,7 @@ def count_pending_clusters(
 ) -> int:
     """Count how many clusters would yield a fresh authoring job.
 
-    Thin wrapper over the streaming counter (one chunk) so the list and
-    streaming paths can't diverge. ``wiki_root`` carries the injected
-    ``WikiPagePort`` (issue #314), not a path string — the parameter name
-    is kept as-is to preserve the existing call-site/test contract
-    (``tests_py/hooks/test_session_start.py`` monkeypatches this function
-    and asserts against a `wiki_root=` keyword call); it is forwarded to
-    ``count_pending_clusters_streamed`` as ``wiki_page_port``.
+    source: ADR-0108
     """
     return count_pending_clusters_streamed(
         [memories], domain=domain, wiki_page_port=wiki_root
@@ -389,13 +314,7 @@ def count_pending_clusters_streamed(
 ) -> int:
     """Count pending cluster jobs in ONE streaming pass — no resident corpus.
 
-    ``build_clusters`` buckets each memory by its dominant entity (a per-memory
-    key, not pairwise clustering), so the *count* needs only per-entity
-    aggregates: a count, a heat sum, a tag counter (for the kind→path the
-    recently-authored filter needs), and the first-seen domain. Peak RAM is
-    O(num_entities), not O(N). Mirrors ``build_clusters``'s gates exactly; the
-    full memory-bearing clusters are still built on demand by ``curate_wiki``.
-    """
+    source: ADR-0108"""
     buckets: dict[str, dict] = {}
     for chunk in memory_chunks:
         for mem in chunk:
@@ -448,8 +367,7 @@ def _infer_kind(memories: list[dict]) -> str:
 def _infer_kind_from_tags(tag_counter: Counter[str]) -> str:
     """Kind decision from an already-accumulated lower-cased tag counter.
 
-    Shared by ``_infer_kind`` (list path) and the streaming cluster counter,
-    which folds tags per bucket online instead of holding the memory list.
+    source: ADR-0108
     """
     if tag_counter.get("decision", 0) > 0 or tag_counter.get("adr", 0) > 0:
         return "adr"
@@ -697,11 +615,7 @@ def _memories_block(
 ) -> str:
     """Format a list of memory contents as labelled markdown sub-sections.
 
-    Each memory is capped at 1200 chars to keep the prompt within budget
-    while preserving enough context for the LLM to synthesise. The cap
-    is generous — a curated cluster of 20 memories at full size would
-    blow the context window of even Opus 4.7.
-    """
+    source: ADR-0108"""
     capped = contents[:cap]
     mem_blocks: list[str] = []
     for idx, content in enumerate(capped, 1):
@@ -739,12 +653,7 @@ def build_authoring_prompt(
 ) -> str:
     """Construct the structured prompt for an LLM to author the cluster's page.
 
-    The prompt encodes the same conventions the hand-authored 2026-05-17
-    pages followed. Returning the prompt as a string (vs. calling an LLM
-    here) keeps this module pure and lets the caller pick the LLM
-    integration: ``curate_wiki`` returns the prompts for the in-session
-    LLM, or a future ``llm_client.author_page(prompt)`` adapter sends
-    them directly to the Anthropic API.
+    source: ADR-0108
 
     ADR clusters get the task-record section block (Entry / Mandatory /
     How / Result / Serves) — this is how every completed task becomes a
@@ -780,12 +689,7 @@ def build_coverage_prompt(
 ) -> str:
     """Prompt for a coverage-driven job (missing structural scope).
 
-    Coverage-driven jobs ask the LLM to author the architecture /
-    services / api / data-flow / operations page that *should* exist
-    for a project but doesn't. Unlike cluster-driven jobs, the memory
-    set is small or empty — the LLM is expected to consult the source
-    tree to ground the page.
-    """
+    source: ADR-0108"""
     today = today or "2026-05-18"
     return WIKI_COVERAGE_PROMPT.format(
         redaction_conventions=REDACTION_CONVENTIONS,
@@ -884,10 +788,7 @@ Re-author the page now. Output only the Markdown body, frontmatter first.
 class ReauthorJob:
     """One re-authoring task for an existing wiki page.
 
-    Produced by ``build_reauthor_jobs`` from drift records. Shares the
-    wire shape of CurationJob / CoverageJob so the handler serialises
-    all three with one helper.
-    """
+    source: ADR-0108"""
 
     wiki_path: str
     domain: str
@@ -949,15 +850,7 @@ def build_reauthor_jobs(
 ) -> list[ReauthorJob]:
     """Build authoring jobs for every drifted page.
 
-    ``source_root_resolver`` is a callable ``domain -> str | None``
-    (matches ``wiki_coverage._project_source_root``). Returns jobs in
-    input order — callers can sort by reason severity if desired.
-
-    Reads each drifted page's current text via the injected
-    ``wiki_page_port`` (issue #314) — this module performs zero I/O
-    itself. A page that can't be read (missing file, permission error)
-    is silently skipped, matching the pre-refactor behaviour.
-    """
+    source: ADR-0108"""
 
     jobs: list[ReauthorJob] = []
     for d in drifts:
@@ -989,11 +882,7 @@ class CoverageJob:
     data-flow / operations / decisions). The downstream LLM authors the
     missing page from the source tree and any supporting memories.
 
-    Coverage jobs share the wire shape of ``CurationJob`` so the handler
-    serialises them uniformly. They differ in semantics: a coverage job
-    is *structural* (something every project needs) while a curation
-    job is *empirical* (this is what the user has been working on).
-    """
+    source: ADR-0108"""
 
     domain: str
     scope_name: str
@@ -1023,11 +912,7 @@ def build_coverage_jobs(
         jobs work even with no memories (the LLM consults source);
         memories are a lift when available.
 
-    Returns coverage jobs sorted so the most structurally primary
-    scopes (architecture first, decisions last) are authored ahead of
-    derived ones — a reader benefits most from architecture being
-    written before services, which must be written before api, etc.
-    """
+    source: ADR-0108"""
     existing_pages_by_topic = existing_pages_by_topic or {}
     supporting_memories_by_domain = supporting_memories_by_domain or {}
     jobs: list[CoverageJob] = []
@@ -1069,9 +954,9 @@ def build_coverage_jobs(
     return jobs
 
 
-# Order of structural primacy — architecture first so a reader can
-# anchor every other scope against it. ``decisions`` last because it
-# accumulates organically from task-records.
+# source: ADR-0108
+
+
 _SCOPE_PRIMACY: dict[str, int] = {
     "architecture": 0,
     "services": 1,
@@ -1083,8 +968,9 @@ _SCOPE_PRIMACY: dict[str, int] = {
 
 
 def sort_coverage_jobs(jobs: list[CoverageJob]) -> list[CoverageJob]:
-    """Return ``jobs`` sorted by (scope primacy, domain) so the most
-    foundational scopes are authored first.
+    """Return ``jobs`` sorted by (scope primacy, domain).
+
+    source: ADR-0108
     """
     return sorted(
         jobs,
@@ -1099,9 +985,7 @@ def _find_related_pages_for_scope(
 ) -> list[str]:
     """Find existing wiki pages that mention the domain or the scope name.
 
-    Coverage pages benefit from cross-linking to the project's existing
-    pages so the new page integrates rather than floating alone.
-    """
+    source: ADR-0108"""
     keys = {domain.lower(), scope_name.lower()}
     related: list[str] = []
     seen: set[str] = set()

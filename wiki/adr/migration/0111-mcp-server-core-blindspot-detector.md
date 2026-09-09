@@ -1,0 +1,22 @@
+---
+title: "ADR-0111 — mcp_server/core/blindspot_detector.py rationale"
+status: accepted
+source: mcp_server/core/blindspot_detector.py
+---
+
+# ADR-0111 — mcp_server/core/blindspot_detector.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 114 (comment)
+
+````text
+# source: rarity bar documented in the module docstring ("<5% of sessions")
+````
+
+## module — original line 116 (comment)
+
+````text
+# source: pre-existing tuned values, extracted unchanged (#197 family 3);
+# provenance not recorded at introduction
+````

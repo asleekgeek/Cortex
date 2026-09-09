@@ -7,13 +7,7 @@ aggregate `summary.csv` and `manifest.json` are written.
 
 Output: benchmarks/results/ablation/longmemeval-s_v3/
 
-Why serial: the harness mutates a shared PG database (db.clear() per question).
-Parallel rows would contaminate each other's haystacks.
-
-Source / scope: task #54 — paper §6.3 read-path ablation evidence.
-n=500 (full LME-S). Estimated wall ~11h. No --with-consolidation
-(consolidation-only mechanisms are routed to LME-LoCoMo, task #55).
-"""
+source: ADR-0086"""
 
 from __future__ import annotations
 

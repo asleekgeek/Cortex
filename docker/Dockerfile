@@ -18,31 +18,31 @@
 
 # ── Builder ───────────────────────────────────────────────────────────────
 
-# Base image pinned by digest so a rebuild cannot silently pick up a
-# different python:3.14-slim-bookworm. Digest resolved from the multi-arch manifest
-# list, so it stays correct on both amd64 and arm64.
-#   source: registry-1.docker.io/v2/library/python/manifests/3.14-slim-bookworm,
-#           docker-content-digest header, fetched 2026-08-10.
-# Refresh: Dependabot's `docker` ecosystem (.github/dependabot.yml) opens a
-# PR when the tag moves; do not hand-edit without re-fetching the header.
+# source: ADR-0872
+
+
+
+
+
+
 FROM python:3.14-slim-bookworm@sha256:9ab8d9c8514b44f90cf0029dd42fdd7e9e211e639c8b995304cc04568dee900f AS builder
 
 # Node.js 22 LTS.
 #
-# This used to be `curl -fsSL https://deb.nodesource.com/setup_22.x | bash -`,
-# which executes an unreviewed remote script as root at build time — whatever
-# that URL serves, whenever it is fetched. It is the single largest piece of
-# trust this image extended to a third party, and it cannot be pinned: there
-# is no hash to check a pipe against. (OpenSSF Scorecard reports it as
-# `downloadThenRun not pinned by hash`.)
+# source: ADR-0872
+
+
+
+
+
 #
 # Replaced by what the script itself does, spelled out: fetch the signing
 # key, register the signed apt source, install the signed package. curl now
 # feeds `gpg --dearmor`, which is not an interpreter — nothing is executed.
 # apt then verifies the package signature against that key.
 #
-# source: https://github.com/nodesource/distributions#installation-instructions
-#         (the manual instructions the setup script automates)
+# source: ADR-0872
+
 ARG NODE_MAJOR=22
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl gnupg \
@@ -55,18 +55,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Claude Code CLI, installed with `npm ci` against a committed lockfile
-# instead of `npm install -g @anthropic-ai/claude-code`.
+# source: ADR-0872
+
 #
-# The old form was unversioned, so the image tracked whatever the registry
-# served that minute — no way to reproduce a build, and no integrity check.
-# `npm ci` is also the only install form Scorecard accepts as pinned (the
-# other being a git URL at a commit SHA); an exact version on the command
-# line is NOT enough. The lockfile additionally records a sha512 integrity
-# hash for every transitive package, which npm verifies on extract.
+# source: ADR-0872
+
+
+
+
+
 #
-# Bumping the CLI is `npm install --package-lock-only` in that directory,
-# which is a reviewable diff rather than a silent change of image contents.
+# source: ADR-0872
+
 COPY docker/claude-code/package.json docker/claude-code/package-lock.json /opt/claude-code/
 RUN cd /opt/claude-code && npm ci --omit=dev --ignore-scripts
 
@@ -77,37 +77,37 @@ RUN cd /opt/claude-code && npm ci --omit=dev --ignore-scripts
 # lockfile described. `--require-hashes` makes pip refuse anything whose
 # bytes do not match.
 #
-# Installed into a virtualenv at a version-free path so the runtime stage
-# copies one directory and no COPY names the Python version. See the root
-# Dockerfile for the incident that rule comes from: a literal
-# .../python3.13/site-packages path broke on every base-image bump.
-# --no-deps: the file is the complete, uv-resolved dependency graph — pip
-# must install it as-is rather than re-deriving it from metadata, which
-# breaks the moment pyproject.toml's [tool.uv] override-dependencies
-# steers a package past a bound another package's metadata still declares
-# (issue: PR #332, mpmath 1.4.1 vs sympy's `mpmath<1.4`).
+# source: ADR-0872
+
+
+
+
+
+
+
+
 COPY requirements/docker-runtime.txt /tmp/requirements.txt
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir --no-deps --require-hashes -r /tmp/requirements.txt
 
-# Cortex itself: --no-deps because every dependency was just installed from
-# the hashed file above, and re-resolving here would reintroduce unpinned
-# installs. An editable install of a local path with --no-deps is the form
-# Scorecard recognises as pinned.
+# source: ADR-0872
+
+
+
 COPY . /opt/cortex
 RUN pip install --no-cache-dir --no-deps -e /opt/cortex
 
-# Pre-cache embedding model. Retry-with-backoff, fail-loudly: same shape and
-# same attempt/backoff constants as ci.yml's "Pre-download embedding model"
-# step, for the same reason — a transient huggingface.co blip must not decide
-# whether the image builds. The bare single-shot form failed this build on PR
-# #337 (CI run 30749502167, 2026-08-02) with "We couldn't connect to
-# 'https://huggingface.co'" after 73s, on a commit touching neither this file
-# nor anything it depends on; the same job had passed on its parent commit.
-# No BuildKit cache mount here on purpose: the runtime stage COPYs this cache
-# out of the builder layer, and a cache mount is not part of the layer.
-# source: .github/workflows/ci.yml:131-139 (5 attempts, attempt*10s backoff)
+# source: ADR-0872
+
+
+
+
+
+
+
+
+
 RUN for attempt in 1 2 3 4 5; do \
         python3 -c "from sentence_transformers import SentenceTransformer; \
             SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')" && exit 0; \
@@ -152,13 +152,13 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Copy Python packages + cached models from builder.
 #
-# This was `COPY --from=builder /usr/local/lib/python3.12/site-packages ...`
-# against a python:3.14 base — a path that has not existed in either stage
-# since the base image moved off 3.12, so this image could not build at all.
-# It went unnoticed because nothing in CI builds this Dockerfile; the job
-# added in .github/workflows/ci.yml alongside this change is what makes the
-# next such breakage visible. The venv path carries no version, so a future
-# base bump cannot reintroduce the same class of failure.
+# source: ADR-0872
+
+
+
+
+
+
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 COPY --from=builder /root/.cache/huggingface /home/cortex/.cache/huggingface
@@ -183,7 +183,7 @@ USER root
 # Copy Cortex source
 COPY --chown=cortex:cortex . /opt/cortex
 
-# Fix ownership of cached models
+# source: ADR-0872
 RUN chown -R cortex:cortex /home/cortex/.cache 2>/dev/null || true
 
 # Entrypoint

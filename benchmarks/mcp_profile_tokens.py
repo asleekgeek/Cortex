@@ -1,17 +1,7 @@
-"""Measure the per-session token cost of the initialize + tools/list exchange,
-per tool profile (issue #177 criterion 6).
+"""Measure the per-session token cost of the initialize + tools/list exchange, per tool
+profile.
 
-This is the fixed cost a client pays before the user types anything: the
-`initialize.instructions` string plus every advertised tool's schema in
-`tools/list`. The profile filter reduces the tool set; this benchmark quantifies
-the reduction so the claim "reduces bytes per session" is measured, not asserted.
-
-Token estimate: characters / 4. source: OpenAI tokenizer rule of thumb for
-English text (~4 chars/token), https://platform.openai.com/tokenizer — used
-only as an order-of-magnitude estimate; the exact serialized byte count (also
-reported) is unambiguous and tokenizer-independent.
-
-Run: `python -m benchmarks.mcp_profile_tokens` (from repo root, in the venv).
+source: ADR-0852
 """
 
 from __future__ import annotations
@@ -26,7 +16,7 @@ from mcp_server.__main__ import merged_schemas, register_all
 from mcp_server.tool_profile_middleware import ToolProfileMiddleware
 from mcp_server.tool_profiles import ToolProfile
 
-_CHARS_PER_TOKEN = 4  # source: OpenAI tokenizer rule of thumb (see module docstring)
+_CHARS_PER_TOKEN = 4  # source: ADR-0852
 
 
 def _build(profile: ToolProfile) -> FastMCP:
