@@ -1,0 +1,62 @@
+---
+title: "ADR-0233 — mcp_server/core/query_intent.py rationale"
+status: accepted
+source: mcp_server/core/query_intent.py
+---
+
+# ADR-0233 — mcp_server/core/query_intent.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 61 (comment)
+
+````text
+# Event ordering: queries about chronological sequence of events.
+# Distinct from general TEMPORAL (which asks "when did X happen").
+# Event ordering asks "what happened first/in what order".
+# ChronoRAG (Chen et al., 2025): chronological assembly improves ordering.
+````
+
+## module — original line 74 (comment)
+
+````text
+# Summarization: queries needing broad coverage across multiple memories.
+# MMR diversity reranking (Carbonell & Goldstein, SIGIR 1998).
+````
+
+## module — original line 83 (comment)
+
+````text
+# Preference queries: asking about user likes, choices, style preferences.
+# ENGRAM (arxiv 2511.12960): typed retrieval for preference memories.
+````
+
+## module — original line 93 (comment)
+
+````text
+# source: structural — "multi-entity" means at least two named entities
+````
+
+## module — original line 276 (comment)
+
+````text
+# Event ordering: temporal + vector for finding events, recency
+# to anchor time. ChronoRAG (Chen et al., 2025) validates
+# chronological reranking is applied post-retrieval.
+````
+
+## module — original line 287 (comment)
+
+````text
+# Summarization: broad retrieval, diversity matters more than
+# precision. MMR reranking (Carbonell & Goldstein, SIGIR 1998)
+# applied post-retrieval.
+````
+
+## module — original line 297 (comment)
+
+````text
+# Preference: FTS boosted (preference keywords are distinctive),
+# heat boosted (preferences tend to be important). ENGRAM (arxiv
+# 2511.12960) shows typed retrieval improves preference recall.
+````

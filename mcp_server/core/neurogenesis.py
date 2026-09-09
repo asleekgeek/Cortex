@@ -1,26 +1,6 @@
 """Temporal-context dimension weighting and separation metrics.
 
-This module implements a temporal-context encoding heuristic: a rotating
-hash-selected subset of fixed embedding dimensions is boosted by a magnitude
-that decays with memory age, so recent memories cluster on shared dimensions.
-It does NOT implement dentate-gyrus pattern separation. The "neurogenesis"
-framing is a loose biological MOTIVATION, not a faithful model — the cited
-papers below inspire the concept (young, broadly-tuned units carry temporal/
-contextual signal that fades as they mature) but prescribe no weight, decay,
-or threshold formula. All numeric constants here are engineering defaults
-(see per-constant comments), not paper-derived values.
-
-Motivating references (concept only, NOT a source for any constant):
-    Aimone JB, Deng W, Gage FH (2011) Resolving new memories: a critical look
-        at the dentate gyrus, adult neurogenesis, and pattern separation.
-        Neuron 70:589-596. A review proposing the "memory resolution"
-        hypothesis; it gives no computational weight/threshold formula.
-    Cognitive Neurodynamics (2025) Dynamic impact of adult neurogenesis on
-        pattern separation in the DG neural network. (network simulation;
-        not a prescription for embedding-dimension weights)
-
-Pure business logic — no I/O.
-"""
+source: ADR-0208"""
 
 from __future__ import annotations
 
@@ -34,23 +14,19 @@ from mcp_server.shared.linear_algebra import (
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
-# Numerical floor below which a vector norm is treated as zero.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0208
+
+# source: ADR-0208
 _NORM_EPSILON = 1e-10
 
-# Extra weight applied to the "young" (recently-boosted) dimension subset at
-# zero age. No paper prescribes this magnitude — Aimone 2011 is a review with
-# no formula.
-# source: engineering default; calibration pending
+# source: ADR-0208
+
+# source: ADR-0208
 _NEUROGENESIS_BOOST = 0.3
 
-# Cosine-similarity threshold above which a neighbor counts as interference
-# pressure. Mirrors the same 0.75 in separation_core.py, which is likewise an
-# empirically-tuned engineering choice for 384-dim dense embeddings (the DG
-# sourced value there is _SPARSITY_TARGET=0.04 sparsity from Leutgeb 2007 —
-# a sparsity fraction, NOT a cosine threshold, so there is nothing to defer to).
-# source: engineering default; calibration pending
+# source: ADR-0208
+
+# source: ADR-0208
 _SEPARATION_THRESHOLD = 0.75
 
 
@@ -75,13 +51,8 @@ def _apply_dimension_boosts(
 ) -> None:
     """Apply time-varying dimension boosts to weight vector (in-place)."""
     embedding_dim = len(weights)
-    # 6.0 = hours per temporal bucket (memories within the same 6h window share
-    #   the same boosted dimension subset); 7 = stride that rotates the boosted
-    #   window across buckets (coprime-ish with typical dims to spread coverage);
-    #   0.1 = fraction of dimensions boosted per bucket (~10%). None of these are
-    #   paper-derived; they are hand-picked knobs controlling temporal-cluster
-    #   granularity, and have not been calibrated against retrieval benchmarks.
-    # source: engineering default; calibration pending
+    # source: ADR-0208
+
     _hours_per_bucket = 6.0
     _bucket_stride = 7
     _boosted_fraction = 0.1
@@ -99,20 +70,12 @@ def compute_temporal_separation_weights(
     embedding_dim: int,
     *,
     boost: float = _NEUROGENESIS_BOOST,
-    # Exponential time-constant (hours) over which the boost decays via
-    # 1 - exp(-t/maturation_hours). 48h is a hand-chosen "recent memory" window
-    # at this system's hours/days timescale; Aimone 2011 discusses a weeks-long
-    # biological maturation window but gives no time-constant to port here.
-    # source: engineering default; calibration pending
+    # source: ADR-0208
     maturation_hours: float = 48.0,
 ) -> list[float]:
     """Compute dimension-specific weights for temporal-context encoding.
 
-    A rotating hash-selected subset of dimensions is boosted by a magnitude
-    that decays with memory age, so recent memories cluster on shared
-    dimensions. This is a temporal-context heuristic inspired by — not an
-    implementation of — Aimone's pattern-separation hypothesis (see module
-    docstring); all constants are engineering defaults.
+    source: ADR-0208
 
     Args:
         hours_since_creation: Age of the memory in hours.
@@ -147,10 +110,8 @@ def apply_temporal_weights(
     if len(embedding) != len(weights):
         return list(embedding)
 
-    # strict=True is safe here — the explicit length check above guarantees
-    # equality. Defensive: if a future edit removes the guard, strict will
-    # surface the regression as an exception instead of silently weighting
-    # only the shorter prefix.
+    # source: ADR-0208
+
     weighted = [e * w for e, w in zip(embedding, weights, strict=True)]
     weighted_norm = norm(weighted)
     if weighted_norm > _NORM_EPSILON:

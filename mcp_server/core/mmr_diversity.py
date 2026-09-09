@@ -1,19 +1,6 @@
 """MMR diversity reranking for summarization queries.
 
-Maximal Marginal Relevance (Carbonell & Goldstein, SIGIR 1998):
-iteratively selects documents maximizing relevance to query while
-minimizing redundancy with already-selected documents.
-
-Activated only for SUMMARIZATION intent to improve nugget coverage
-in BEAM benchmark evaluation.
-
-Pure business logic — no I/O.
-
-Citation:
-    Carbonell, J. & Goldstein, J. (1998). "The Use of MMR,
-    Diversity-Based Reranking for Reordering Documents and
-    Producing Summaries." SIGIR 1998, pp. 335-336.
-"""
+source: ADR-0206"""
 
 from __future__ import annotations
 

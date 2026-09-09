@@ -1,17 +1,6 @@
 """Memory decomposition: structure-aware chunking with entity enrichment.
 
-Inspired by the ai-architect artifact chunking strategy: split at natural
-structural boundaries (speaker turns for conversations, headings for
-markdown), not arbitrary character limits. Each chunk carries extracted
-entities for graph-based retrieval.
-
-Chunking strategies:
-  1. Conversation content: group by speaker turn pairs (2-3 exchanges)
-  2. Markdown content: split at ## heading boundaries
-  3. Short content (< threshold): pass through unchanged
-
-Pure business logic — no I/O.
-"""
+source: ADR-0197"""
 
 from __future__ import annotations
 
@@ -43,9 +32,9 @@ _DECISION_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Directive language markers (Searle 1969 speech act theory: directives).
-# Tight patterns: only match explicit user directives, not general conversation.
-# "always use X", "never do Y", "make sure to Z" — not "I should go".
+# source: ADR-0197
+
+
 _INSTRUCTION_RE = re.compile(
     r"(?:^|\.\s+)(?:always|never|make sure|from now on|every time|each time|"
     r"whenever you|don't ever|do not ever|stick to|use only|format as)\b|"
@@ -140,9 +129,9 @@ _SPEAKER_LINE_RE = re.compile(r"^\[([^\]]+)\]:\s*", re.MULTILINE)
 _HEADING_RE = re.compile(r"^##\s+", re.MULTILINE)
 _DATE_PREFIX_RE = re.compile(r"^(\[Date:[^\]]*\])\s*\n?")
 
-# Person-name candidates of length <= 2 are ignored as noise.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0197
+
+
 _MAX_IGNORED_NAME_LEN = 2
 
 

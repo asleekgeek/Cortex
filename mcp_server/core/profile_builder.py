@@ -20,19 +20,19 @@ _BURST_THRESHOLD_MS = 600_000
 _EXPLORATION_THRESHOLD_TURNS = 20
 _EMA_ALPHA = 0.1
 
-# Ratio above which one session mode dominates.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0228
+
+# source: ADR-0228
 _DOMINANT_MODE_RATIO = 0.6
 
-# Session duration (ms) above which behavior reads as reflective (30 min).
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0228
+
+# source: ADR-0228
 _REFLECTIVE_THRESHOLD_MS = 1_800_000
 
-# Fraction of the tool mix above which one tool family dominates.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0228
+
+# source: ADR-0228
 _TOOL_MIX_DOMINANCE = 0.4
 
 

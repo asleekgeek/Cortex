@@ -1,0 +1,262 @@
+---
+title: "ADR-0191 — mcp_server/core/homeostatic_plasticity.py rationale"
+status: accepted
+source: mcp_server/core/homeostatic_plasticity.py
+---
+
+# ADR-0191 — mcp_server/core/homeostatic_plasticity.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Without homeostasis, Hebbian learning is unstable: strong memories get stronger
+(runaway potentiation), weak memories get weaker (catastrophic depression), and
+the system collapses to either all-hot or all-cold. Biology prevents this via
+homeostatic mechanisms that maintain target activity levels.
+````
+
+## module — original line 8 (docstring)
+
+````text
+This module implements three homeostatic mechanisms:
+````
+
+## module — original line 10 (docstring)
+
+````text
+1. **Synaptic Scaling (Turrigiano 2008; Tetzlaff et al. 2011)**
+   Multiplicative scaling: delta_w = alpha * w * (r_target - r_actual).
+   All weights scale proportionally, preserving relative ordering —
+   Turrigiano's key experimental finding. The update is proportional to
+   the weight itself (multiplicative, not additive).
+````
+
+## module — original line 16 (docstring)
+
+````text
+   Equation from: Tetzlaff C, Kolbe C, Dasgupta S, Bhatt DK (2011)
+   "Time scales of memory, learning, and plasticity."
+   Frontiers in Computational Neuroscience 5:47, Eq. 3.
+````
+
+## module — original line 20 (docstring)
+
+````text
+   Also: Houweling AR, Bazhenov M, Timofeev I, Steriade M, Bhatt DK (2005)
+   "Homeostatic synaptic plasticity can explain post-traumatic epileptogenesis."
+   Cerebral Cortex 15:834-845:  delta_G = epsilon * (f_target - f_actual) * G
+````
+
+## module — original line 24 (docstring)
+
+````text
+2. **Metaplasticity / BCM Threshold (Abraham & Bear 1996)**
+   Sliding modification threshold: theta_M = E[c^2].
+   BCM phi function: phi(c, theta_m) = c * (c - theta_m).
+   Bienenstock, Cooper & Munro (1982), J Neuroscience 2:32-48.
+````
+
+## module — original line 29 (docstring)
+
+````text
+3. **Intrinsic Excitability Regulation**
+   Engineering heuristic (no paper source). Adjusts global excitability
+   toward a target active fraction. Hand-tuned gain of 0.1.
+````
+
+## module — original line 33 (docstring)
+
+````text
+References:
+    Turrigiano GG (2008) The self-tuning neuron. Cell 135:422-435
+    Tetzlaff C et al. (2011) Time scales of memory, learning, and plasticity.
+        Frontiers in Computational Neuroscience 5:47
+    Houweling AR et al. (2005) Cerebral Cortex 15:834-845
+    Abraham WC, Bear MF (1996) Metaplasticity. Trends Neurosci 19:126-130
+    Bienenstock EL, Cooper LN, Munro PW (1982) Theory for the development
+        of neuron selectivity. J Neuroscience 2:32-48
+````
+
+## module — original line 42 (docstring)
+
+````text
+Pure business logic — no I/O.
+
+````
+
+## compute_scaling_factor — original line 77 (docstring)
+
+````text
+Compute multiplicative scaling factor from Turrigiano synaptic scaling.
+````
+
+## compute_scaling_factor — original line 79 (docstring)
+
+````text
+    Implements: delta_w = alpha * w * (r_target - r_actual)
+    (Tetzlaff et al. 2011, Frontiers in Computational Neuroscience 5:47, Eq. 3)
+````
+
+## compute_scaling_factor — original line 85 (docstring)
+
+````text
+    So the multiplicative factor applied to every weight is:
+        factor = 1 + alpha * (r_target - r_actual)
+````
+
+## compute_scaling_factor — original line 88 (docstring)
+
+````text
+    This is continuous (no dead zone) — Turrigiano scaling is always active,
+    and naturally produces no change when r_actual == r_target.
+````
+
+## apply_synaptic_scaling — original line 112 (docstring)
+
+````text
+    Preserves relative ordering (Turrigiano's key finding) and clamps to [0, 1].
+    
+````
+
+## compute_bcm_threshold — original line 127 (docstring)
+
+````text
+    BCM theory (Bienenstock, Cooper & Munro 1982):
+        theta_M = E[c^2]
+````
+
+## compute_bcm_threshold — original line 130 (docstring)
+
+````text
+    Updated via EMA: theta_new = decay * theta_old + (1 - decay) * E[c^2].
+    High activity -> high threshold -> LTP harder (prevents saturation).
+    Low activity -> low threshold -> LTP easier (prevents collapse).
+````
+
+## compute_ltp_ltd_modulation — original line 157 (docstring)
+
+````text
+    BCM phi (Bienenstock, Cooper & Munro 1982, Eq. 3):
+        phi(c, theta_m) = c * (c - theta_m)
+````
+
+## compute_excitability_adjustment — original line 194 (docstring)
+
+````text
+    Engineering heuristic (no paper source). If too many slots are highly
+    excitable, global excitability is dampened. If too few, boost it.
+    The gain of 0.1 is hand-tuned for gentle convergence.
+````
+
+## apply_excitability_bounds — original line 216 (docstring)
+
+````text
+    Bounds [0.1, 0.9] are hand-tuned to prevent complete silencing or
+    runaway excitation.
+    
+````
+
+## detect_hot_cohort — original line 271 (docstring)
+
+````text
+    Source: Wilcox (2012) sigma rule for non-Gaussian outlier identification.
+    
+````
+
+## apply_cohort_correction — original line 293 (docstring)
+
+````text
+    Unlike multiplicative scaling, this is NOT order-preserving across the
+    full set — that is the point: collapsing the upper mode toward the
+    target merges it with the lower mode over repeated cycles.
+````
+
+## apply_cohort_correction — original line 297 (docstring)
+
+````text
+    Source: Hinton & Salakhutdinov (2006); general pattern for breaking
+    mode collapse in self-supervised representation learning.
+    
+````
+
+## module — original line 50 (comment)
+
+````text
+# Target mean heat for synaptic scaling.  Hand-tuned for Cortex memory system.
+````
+
+## module — original line 53 (comment)
+
+````text
+# Scaling rate alpha in delta_w = alpha * w * (r_target - r_actual).
+# Hand-tuned: 0.05 gives gentle convergence (~20 cycles to halve a deviation).
+````
+
+## module — original line 57 (comment)
+
+````text
+# BCM threshold EMA decay.  Hand-tuned: 0.95 gives ~20-step memory.
+````
+
+## module — original line 60 (comment)
+
+````text
+# Excitability bounds.  Hand-tuned engineering heuristic.
+````
+
+## module — original line 64 (comment)
+
+````text
+# Target fraction of engram slots that should be "active" (excitability >= 0.5).
+# Hand-tuned engineering heuristic.
+````
+
+## module — original line 69 (comment)
+
+````text
+# ── Synaptic Scaling (Turrigiano 2008; Tetzlaff et al. 2011) ─────────────
+````
+
+## module — original line 225 (comment)
+
+````text
+# ── Cohort Correction (bimodal distributions, Fix 2: issue #14 P1) ───────
+#
+# Turrigiano multiplicative scaling is order-preserving (Tetzlaff 2011
+# Eq. 3 — factor applied equally to all weights). Order preservation
+# implies it CANNOT merge two modes into one: both peaks shift together.
+# For bimodal heat distributions (typical after a batch backfill at
+# baseline heat=1.0), we need a mode-breaking primitive. Subtractive
+# cohort correction is the simplest one that preserves order WITHIN each
+# mode while collapsing the gap BETWEEN modes.
+#
+# source: Wilcox, R. R. (2012). "Modern Statistics for the Behavioral
+#         Sciences", ch. 4 — sigma-rule outlier detection for non-Gaussian
+#         distributions.
+# source: Hinton & Salakhutdinov (2006). "Reducing the Dimensionality of
+#         Data with Neural Networks." Science 313:504-507 — subtractive
+#         renormalization to break mode collapse is a general pattern in
+#         self-supervised / contrastive learning.
+````
+
+## module — original line 243 (comment)
+
+````text
+# Sigma multiplier for hot-cohort detection. At sigma=0.5, roughly the top
+# ~30% of a unimodal distribution falls past the threshold; for a SYMMETRIC
+# bimodal distribution the midpoint sits at mean, so a full sigma=1.0
+# threshold lands exactly between the peaks and the hot peak is missed.
+# 0.5 comfortably separates the upper peak even when the two peaks have
+# equal mass and symmetric spread.
+````
+
+## module — original line 251 (comment)
+
+````text
+# Fraction of the (heat - target_mean) gap removed per cycle. 0.3 gives
+# gentle convergence: a heat=0.95 memory with target=0.4 drops to 0.785
+# after one cycle, 0.666 after two, 0.574 after three. Chosen to halve
+# the gap in ~2 cycles of consolidate (typical run cadence: daily).
+````

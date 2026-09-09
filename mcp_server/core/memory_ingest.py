@@ -1,14 +1,6 @@
 """Memory ingestion: decompose, extract entities, store.
 
-Handles the write path for memories that may need decomposition.
-Uses structure-aware chunking (speaker turns for conversations,
-headings for markdown) following the ai-architect artifact chunking
-strategy. Each chunk gets entity-enriched embeddings.
-
-Used by both production handlers and benchmarks.
-
-Pure business logic — takes a store + embeddings, handles decomposition.
-"""
+source: ADR-0200"""
 
 from __future__ import annotations
 
@@ -84,41 +76,16 @@ def ingest_memory(
         if entities.get("has_activity"):
             tags.append("activity")
 
-        # ── Decision auto-protection ────────────────────────────────
-        # Decisions carry resolved prediction error (dopamine burst),
-        # warranting stronger consolidation and protection from decay.
-        #
-        # Paper backing (WHY decisions deserve protection):
-        #   McGaugh 2004: emotionally significant → ~2x retention
-        #   Adcock et al. 2006: reward-motivated → better recall (direction only;
-        #     paper reports a significant 24h advantage but prescribes no ratio)
-        #   Schultz 1997: decision = resolved prediction error = DA burst
-        #
-        # Detection: regex in memory_decomposer.py (engineering heuristic,
-        # NOT paper-prescribed — labels as such).
-        #
-        # Protection: is_protected=True survives decay (Frey & Morris 1997
-        # synaptic tagging — strong events promote weak traces).
+        # source: ADR-0200
+
         is_decision = entities.get("has_decision", False)
         auto_protect = is_decision and not is_benchmark
-        # source: engineering default; calibration pending. Adcock et al. 2006
-        # (Neuron 50:507) motivates reward->memory boost (high-value scenes
-        # significantly better recalled at 24h) but reports NO multiplier — the
-        # 1.5 is not the paper's value. Transposing a recognition-memory effect
-        # to a heat/decay importance weight is an analogy. Needs ablation.
+        # source: ADR-0200
+
         importance_boost = 1.5 if is_decision else 1.0
 
-        # ── Team memory propagation (TMS) ──────────────────────────
-        # Wegner 1987 Transactive Memory Systems: team knowledge requires
-        # coordination — important discoveries should be visible across
-        # agent boundaries. Protected/decision memories auto-propagate
-        # to team scope via is_global flag.
-        #
-        # Zhang et al. ACL 2024: specialized agents with shared directory
-        # outperform shared-everything by 10-15%.
-        #
-        # Implementation: agent-scoped by default (specialization), but
-        # decisions and protected items become global (coordination).
+        # source: ADR-0200
+
         agent_ctx = memory.get("agent_context", "")
         is_global = memory.get("is_global", False)
         if auto_protect and agent_ctx and not is_benchmark:
@@ -141,34 +108,19 @@ def ingest_memory(
                 "is_protected": auto_protect,
                 "agent_context": agent_ctx,
                 "is_global": is_global,
-                # issue #368 gated-arm fix: pass the caller's capture_origin
-                # through like every other metadata field above (source,
-                # tags, heat, ...) instead of dropping it silently. Without
-                # this, every ingest_memory caller — including the LME/
-                # LoCoMo/BEAM benchmark harnesses — fell through to
-                # insert_memory's "unknown" default regardless of what the
-                # caller set, which is why the trust-factor calibration's
-                # gated arm could not discriminate W (docs/provenance/
-                # trust-factor-calibration.md §"What this measurement does
-                # and does not establish"). Default unchanged: a caller that
-                # omits the field still gets "unknown", identical to before.
+                # source: ADR-0200
                 "capture_origin": memory.get("capture_origin", "unknown"),
             }
         )
         ids.append(mid)
-        # Entity extraction for the knowledge graph. The production
-        # `remember` handler calls write_post_store.persist_entities
-        # after insertion; benchmark ingestion historically bypassed
-        # this which left the entity/relationship tables empty and
-        # broke Phase 2 of the structured context assembler. Running
-        # it inline here makes benchmark and production paths consistent.
+        # source: ADR-0200
+
         try:
             extracted = knowledge_graph.extract_entities(chunk_content)
             write_post_store.persist_entities(extracted, domain, chunk_content, store)
-        except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("memory_ingest.entity_extraction")
-            # Entity extraction failures must not block ingest -- but a
-            # failure that repeats on every chunk (e.g. a persist_entities
-            # regression) must still be observable, not just non-fatal.
+        except Exception as exc:  # noqa: BLE001 — source: ADR-0200
+            # source: ADR-0200
+
             silent_failure.note("memory_ingest.entity_extraction", exc)
 
     return ids

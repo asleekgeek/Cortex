@@ -1,21 +1,6 @@
 """Query routing and decomposition for multi-signal retrieval.
 
-Routes classified queries to retrieval strategies and decomposes complex
-queries into sub-queries via regex entity extraction.
-
-NOTE: Previously cited IRCoT (ACL 2023) and HippoRAG (NeurIPS 2024).
-IRCoT decomposes queries via iterative LLM chain-of-thought reasoning.
-HippoRAG uses personalized PageRank over a knowledge graph. This module
-does neither — it uses regex to extract CamelCase identifiers, file
-paths, backtick-quoted terms, and multi-word proper nouns. Citations
-removed per zetetic standard.
-
-The intent-based routing (route_query) is useful engineering but not from
-any specific paper. Entity extraction and sub-query generation are regex
-heuristics. Stop word list and sub-query limit of 6 are hand-tuned.
-
-Pure business logic — no I/O.
-"""
+source: ADR-0232"""
 
 from __future__ import annotations
 
@@ -148,14 +133,14 @@ _TIME_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Keywords of length <= 2 are ignored as noise.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0232
+
+
 _MAX_IGNORED_KEYWORD_LEN = 2
 
-# Number of leading keywords combined into a fallback sub-query.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0232
+
+# source: ADR-0232
 _COMBO_KEYWORDS = 3
 
 
@@ -196,10 +181,7 @@ def generate_sub_queries(
 ) -> list[str]:
     """Generate sub-queries via regex entity/phrase extraction.
 
-    For multi-entity queries, creates per-entity sub-queries.
-    For complex queries, extracts quoted phrases and keyword combinations.
-    This is regex heuristic extraction, not LLM-based decomposition.
-    """
+    source: ADR-0232"""
     sub_queries: list[str] = []
 
     # Per-entity sub-queries

@@ -1,19 +1,6 @@
 """Prospective memory — future-oriented triggers that fire on matching context.
 
-"Remember to do X when Y happens" — the ability to remember intentions.
-
-Trigger types:
-  - directory_match: fires when working in a specific directory
-  - keyword_match: fires when content contains specific keywords
-  - entity_match: fires when specific entities appear
-  - time_based: fires at specific times (HH:MM or weekday:N)
-
-Auto-extraction detects prospective intent from natural language:
-  - "TODO: ...", "FIXME: ...", "remember to ...", "next time ..."
-  - "don't forget ...", "when we ...", "later ...", "should also ..."
-
-Pure business logic — no I/O.
-"""
+source: ADR-0230"""
 
 from __future__ import annotations
 
@@ -48,7 +35,7 @@ _PROSPECTIVE_PATTERNS = [
         ),
         "keyword_match",
     ),
-    # Preference constraints: "Prefer X over Y", "Use X instead of Y"
+    # source: ADR-0230
     (
         re.compile(
             r"(?:always|prefer)\s+(?:use|prefer)\s+(.+?)(?:\.|$)", re.IGNORECASE
@@ -63,14 +50,14 @@ _TIME_WEEKDAY_RE = re.compile(r"^weekday:(\d)$")
 
 _STOP_WORDS = frozenset({"the", "and", "for", "with", "that", "this", "from"})
 
-# Actionable phrases shorter than this are noise.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0230
+
+# source: ADR-0230
 _MIN_ACTIONABLE_CHARS = 5
 
-# Keywords of length <= 2 are ignored as noise.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0230
+
+
 _MAX_IGNORED_KEYWORD_LEN = 2
 
 
@@ -121,11 +108,8 @@ def check_trigger(
         return target != "" and target in directory
 
     if trigger_type == "keyword_match":
-        # Word-boundary match, not substring containment: the pre-2026-06-10
-        # `kw in content_lower` fired "ask" on "task" — with 317 harvested
-        # triggers active, nearly every recall query matched something.
-        # Correctness fix, not tuning.
-        # See docs/provenance/bounded-io-phase2-design.md M1.
+        # source: ADR-0230
+
         keywords = condition.lower().split()
         content_lower = content.lower()
         return any(re.search(rf"\b{re.escape(kw)}\b", content_lower) for kw in keywords)

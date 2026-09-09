@@ -1,0 +1,19 @@
+---
+title: "ADR-0227 — mcp_server/core/profile_assembler.py rationale"
+status: accepted
+source: mcp_server/core/profile_assembler.py
+---
+
+# ADR-0227 — mcp_server/core/profile_assembler.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 126 (comment)
+
+````text
+# When a canonical (git-derived) domain_id grouped multiple projects,
+# the label should reflect that canonical name, not a random member's
+# stripped path tail. Bare lower-case domain_ids (e.g. "ai-architect")
+# title-case to a clean human label; otherwise fall back to the legacy
+# per-project derivation for un-resolved single-project domains.
+````

@@ -1,19 +1,6 @@
 """Predictive coding gate -- precision management, neuromodulation, gate decisions.
 
-Manages precision-weighted prediction errors (Feldman & Friston 2010),
-neuromodulatory gain control (NE/ACh), calibration tracking, and
-gate decisions for both flat and hierarchical pipelines.
-
-References:
-    Feldman H, Friston K (2010) Attention, uncertainty, and free-energy.
-        Front Hum Neurosci 4:215
-    Yu AJ, Dayan P (2005) Uncertainty, neuromodulation, and attention.
-        Neuron 46:681-692
-    Kanai R et al. (2015) Cerebral hierarchies: predictive processing,
-        precision, and the pulvinar. Phil Trans R Soc B 370:20140169
-
-Pure business logic -- no I/O.
-"""
+source: ADR-0224"""
 
 from __future__ import annotations
 
@@ -33,8 +20,7 @@ from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 class PrecisionState:
     """Domain-level precision tracking for prediction error weighting.
 
-    Precision = inverse variance of past prediction errors. High precision means
-    we're confident in our predictions, so violations are more surprising.
+    source: ADR-0224
 
     NE modulates precision gain: high arousal amplifies all precision weights.
     ACh modulates the ratio between bottom-up (L0/L1) and top-down (L2) precision.
@@ -107,11 +93,8 @@ def update_precision_state(
     alpha = state.precision_ema_alpha
     new_precisions = []
 
-    # strict=True: one error per level — hierarchical predictive coding
-    # (Friston 2010) requires exactly one error per precision level. If the
-    # lists drift, zip would silently update fewer levels than expected,
-    # leaving stale precisions on the unupdated levels. That's a silent
-    # corruption of the write-gate invariant the paper claims to enforce.
+    # source: ADR-0224
+
     for current_prec, error_fe in zip(
         state.level_precisions, level_errors, strict=True
     ):
@@ -141,7 +124,7 @@ def precision_to_confidence(level_precisions: list[float]) -> float:
     return 1.0 / (1.0 + math.exp(-1.5 * (avg_prec - 1.5)))
 
 
-# -- Calibration tracking -----------------------------------------------------
+# source: ADR-0224
 
 
 def check_calibration(
@@ -150,7 +133,10 @@ def check_calibration(
     was_useful: bool,
     threshold: float = 0.6,
 ) -> PrecisionState:
-    """Track metamemory calibration: are confident predictions actually useful?"""
+    """Track metamemory calibration: are confident predictions actually useful?
+
+    source: ADR-0224
+    """
     new_total = state.calibration_total + 1
     new_hits = state.calibration_hits
 
@@ -167,14 +153,17 @@ def check_calibration(
     )
 
 
-# Minimum recorded outcomes before the calibration score is trusted.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0224
+
+# source: ADR-0224
 _MIN_CALIBRATION_SAMPLES = 5
 
 
 def calibration_score(state: PrecisionState) -> float:
-    """Compute calibration accuracy. Returns 0.5 if insufficient data."""
+    """Compute calibration accuracy.
+
+    source: ADR-0224
+    """
     if state.calibration_total < _MIN_CALIBRATION_SAMPLES:
         return 0.5
     return state.calibration_hits / state.calibration_total
@@ -191,10 +180,13 @@ def gate_decision(
     *,
     bypass: bool = False,
 ) -> tuple[bool, str]:
-    """Backward-compatible flat gate decision."""
+    """Backward-compatible flat gate decision.
+
+    source: ADR-0224
+    """
 
     if is_mechanism_disabled(Mechanism.PREDICTIVE_CODING):
-        # No-op: always-write decision (gate=True, no novelty filter).
+        # source: ADR-0224
         return True, "ablated_predictive_coding"
     if bypass:
         return True, "bypass"
@@ -212,7 +204,10 @@ def hierarchical_gate_decision(
     *,
     bypass: bool = False,
 ) -> tuple[bool, str]:
-    """Gate decision using hierarchical free energy."""
+    """Gate decision using hierarchical free energy.
+
+    source: ADR-0224
+    """
 
     if is_mechanism_disabled(Mechanism.PREDICTIVE_CODING):
         return True, "ablated_predictive_coding"

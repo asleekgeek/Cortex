@@ -58,10 +58,9 @@ _INSTRUCTION_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Event ordering: queries about chronological sequence of events.
-# Distinct from general TEMPORAL (which asks "when did X happen").
-# Event ordering asks "what happened first/in what order".
-# ChronoRAG (Chen et al., 2025): chronological assembly improves ordering.
+# source: ADR-0233
+
+
 _EVENT_ORDER_RE = re.compile(
     r"\b(what happened first|in what order|sequence of|"
     r"chronological|what came before|what came after|"
@@ -71,8 +70,8 @@ _EVENT_ORDER_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Summarization: queries needing broad coverage across multiple memories.
-# MMR diversity reranking (Carbonell & Goldstein, SIGIR 1998).
+# source: ADR-0233
+
 _SUMMARIZATION_RE = re.compile(
     r"\b(summarize|summary|overview|recap|give me a rundown|"
     r"tell me about all|everything about|what do you know about|"
@@ -80,8 +79,8 @@ _SUMMARIZATION_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Preference queries: asking about user likes, choices, style preferences.
-# ENGRAM (arxiv 2511.12960): typed retrieval for preference memories.
+# source: ADR-0233
+
 _PREFERENCE_QUERY_RE = re.compile(
     r"\b(prefer|preference|favorite|like|dislike|taste|"
     r"style|choice|habit|want|wish|rather)\b|"
@@ -90,7 +89,7 @@ _PREFERENCE_QUERY_RE = re.compile(
     re.IGNORECASE,
 )
 
-# source: structural — "multi-entity" means at least two named entities
+# source: ADR-0233
 _MIN_ENTITIES_FOR_MULTI_HOP = 2
 
 # Question words that boost certain intents
@@ -273,9 +272,7 @@ _INTENT_WEIGHT_OVERRIDES: dict[str, dict[str, float]] = {
         "entity": 0.3,
         "spreading": 0.3,
     },
-    # Event ordering: temporal + vector for finding events, recency
-    # to anchor time. ChronoRAG (Chen et al., 2025) validates
-    # chronological reranking is applied post-retrieval.
+    # source: ADR-0233
     QueryIntent.EVENT_ORDER: {
         "temporal": 1.0,
         "vector": 0.8,
@@ -284,9 +281,7 @@ _INTENT_WEIGHT_OVERRIDES: dict[str, dict[str, float]] = {
         "entity": 0.5,
         "spreading": 0.3,
     },
-    # Summarization: broad retrieval, diversity matters more than
-    # precision. MMR reranking (Carbonell & Goldstein, SIGIR 1998)
-    # applied post-retrieval.
+    # source: ADR-0233
     QueryIntent.SUMMARIZATION: {
         "vector": 1.0,
         "fts": 0.8,
@@ -294,9 +289,7 @@ _INTENT_WEIGHT_OVERRIDES: dict[str, dict[str, float]] = {
         "entity": 0.6,
         "spreading": 0.5,
     },
-    # Preference: FTS boosted (preference keywords are distinctive),
-    # heat boosted (preferences tend to be important). ENGRAM (arxiv
-    # 2511.12960) shows typed retrieval improves preference recall.
+    # source: ADR-0233
     QueryIntent.PREFERENCE: {
         "fts": 0.8,
         "heat": 0.5,

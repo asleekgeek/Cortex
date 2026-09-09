@@ -1,29 +1,6 @@
 """Prose redaction — native inventory of AI-writing tells for generated prose.
 
-Cortex manufactures reader-facing prose (curated wiki pages, narratives,
-briefings). This module owns the pattern inventory used to (a) instruct the
-authoring LLM at prompt time and (b) measure authored pages at write time.
-Findings are advisory: the write path never blocks on them (generated prose
-only gets measured; user-authored content is out of scope — issue #166).
-
-Distinct from secret/PII redaction (``core/redaction*``): this is prose
-style, not data protection.
-
-Sources (zetetic standard — inventory informed by, implementation ours):
-  - Wikipedia, "Signs of AI writing" (WikiProject AI Cleanup) — the
-    maintained public catalog; section names cited per pattern below.
-  - Method prior art: blader/humanizer v2.9.1, petergyang/no-ai-slop
-    (both MIT) — pattern-inventory editing and quoted-evidence detection.
-  - House rules (ai-architect.tools redaction practice, 2026): zero em
-    dashes in published copy; unsourced attribution is a violation of the
-    project's own evidence discipline (CLAUDE.md zetetic standard).
-
-Only patterns with near-zero false-positive rates on technical prose are
-detected mechanically; judgment-level tells (synonym cycling, rule of
-three, robotic rhythm) are handled at prompt time via
-``REDACTION_CONVENTIONS``. FP guards live in the test suite: an inventory
-extension that fires on ordinary technical prose is a regression.
-"""
+source: ADR-0229"""
 
 from __future__ import annotations
 
@@ -49,9 +26,9 @@ CATEGORY_DRAMATIC_FRAGMENT = "dramatic_fragment"
 
 # (category, pattern) — one compiled regex per class, source-annotated.
 _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    # source: house rule (ai-architect.tools) — zero em dashes in generated copy.
+    # source: ADR-0229
     (CATEGORY_EM_DASH, re.compile("—")),
-    # source: Wikipedia "Signs of AI writing" § Overused vocabulary.
+    # source: ADR-0229
     (
         CATEGORY_BANNED_WORD,
         re.compile(
@@ -63,8 +40,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: Wikipedia § Vague attributions / weasel wording; escalated by
-    # the project's zetetic standard (name the source or cut the claim).
+    # source: ADR-0229
     (
         CATEGORY_WEASEL,
         re.compile(
@@ -73,7 +49,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: Wikipedia § Filler phrases; no-ai-slop "often-empty phrases".
+    # source: ADR-0229
     (
         CATEGORY_FILLER,
         re.compile(
@@ -84,8 +60,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: Wikipedia § Superficial analyses — trailing present-participle
-    # clause faking depth. Narrow verb set keeps FP near zero.
+    # source: ADR-0229
     (
         CATEGORY_ING_TACKON,
         re.compile(
@@ -95,8 +70,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: no-ai-slop "binary contrasts"; humanizer § Negative
-    # parallelisms. Both the two-sentence and the not-just-X-but-Y forms.
+    # source: ADR-0229
     (
         CATEGORY_BINARY_CONTRAST,
         re.compile(
@@ -107,12 +81,12 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             r"[^.]{2,40}[.,]\s*(?:it|It)(?:'s| is)\b)",
         ),
     ),
-    # source: no-ai-slop "negative listing" ("Not a X. Not a Y. A Z.").
+    # source: ADR-0229
     (
         CATEGORY_NEGATIVE_LISTING,
         re.compile(r"\bNot (?:a|an|the) [^.]{1,40}\.\s*Not (?:a|an|the)\b"),
     ),
-    # source: no-ai-slop "throat-clearing openers".
+    # source: ADR-0229
     (
         CATEGORY_THROAT_CLEARING,
         re.compile(
@@ -122,7 +96,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: no-ai-slop "faux-insight setups".
+    # source: ADR-0229
     (
         CATEGORY_FAUX_INSIGHT,
         re.compile(
@@ -131,7 +105,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: Wikipedia § Undue emphasis on significance/legacy.
+    # source: ADR-0229
     (
         CATEGORY_PUFFERY,
         re.compile(
@@ -142,7 +116,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: Wikipedia § Promotional and advertisement-like language.
+    # source: ADR-0229
     (
         CATEGORY_PROMOTIONAL,
         re.compile(
@@ -151,7 +125,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: humanizer § Copula avoidance; no-ai-slop "fake-strong verbs".
+    # source: ADR-0229
     (
         CATEGORY_FAKE_VERB,
         re.compile(
@@ -160,8 +134,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: humanizer § Collaborative communication artifacts,
-    # knowledge-cutoff disclaimers, sycophancy.
+    # source: ADR-0229
     (
         CATEGORY_AI_ARTIFACT,
         re.compile(
@@ -171,8 +144,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: humanizer § Signposting and announcements; § Generic
-    # positive/summary conclusions.
+    # source: ADR-0229
     (
         CATEGORY_SIGNPOST,
         re.compile(
@@ -181,7 +153,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: no-ai-slop "rhetorical setups" and "colon reveals" (stock forms).
+    # source: ADR-0229
     (
         CATEGORY_RHETORICAL,
         re.compile(
@@ -190,7 +162,7 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # source: no-ai-slop "dramatic fragmentation".
+    # source: ADR-0229
     (
         CATEGORY_DRAMATIC_FRAGMENT,
         re.compile(r"That'?s it\.\s*That'?s\b", re.IGNORECASE),
@@ -199,8 +171,8 @@ _CHECKS: tuple[tuple[str, re.Pattern[str]], ...] = (
 
 _FENCE = re.compile(r"^\s*(```|~~~)")
 
-# source: keeps a finding to one terminal line; excerpt is a locator, not
-# the evidence itself
+# source: ADR-0229
+# source: ADR-0229
 _EXCERPT_MAX = 80
 
 
@@ -267,9 +239,9 @@ def _count_by_category(findings: list[ProseFinding]) -> dict[str, int]:
     return counts
 
 
-# Injected into every wiki-authoring prompt (auto_curator prompts) so the
-# tells are avoided at generation time; scan_prose measures what slipped
-# through at write time. Judgment-level rules live here only.
+# source: ADR-0229
+
+
 REDACTION_CONVENTIONS = """\
 - Redaction pass (write like a person, not a press release):
   * No em dashes anywhere in the page. Use commas, periods, or parentheses.

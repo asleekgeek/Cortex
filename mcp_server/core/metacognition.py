@@ -1,18 +1,6 @@
 """Metacognition — coverage assessment, gap detection, and cognitive load management.
 
-Implements:
-  - Coverage assessment: 4-signal weighted analysis (density, entity,
-    recency, confidence)
-  - Gap detection: 5 gap types (isolated, stale, low-confidence, missing
-    links, unresolved)
-  - Cognitive load management: Cowan's 4+/-1 chunk limit with
-    primacy-recency positioning
-
-Coverage, chunking, and context management live in metacognition_analysis.py.
-This module provides gap detection.
-
-Pure business logic — no I/O. Receives pre-fetched data, returns analyses.
-"""
+source: ADR-0203"""
 
 from __future__ import annotations
 

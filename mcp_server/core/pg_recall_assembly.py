@@ -1,15 +1,6 @@
-"""Structured 3-phase context assembly (issue #368 split).
+"""Structured 3-phase context assembly.
 
-Extracted verbatim from ``core/pg_recall.py``, which had grown to 833 lines
-against the 500-line limit in coding-standards.md §4.1. The seam is the one
-the file already documented with its own section banner: recall ORCHESTRATION
-(intent, weights, WRRF, reranking) on one side, and the budgeted slot-filled
-CONTEXT ASSEMBLY that consumes recall's output on the other. They change for
-different reasons — the first when ranking changes, the second when the
-prompt budget or stage model changes — so §1.1 puts them in different files.
-
-``pg_recall`` re-exports ``assemble_context`` so no caller had to move; that
-facade holds no implementation (same pattern as ``synaptic_plasticity.py``).
+source: ADR-0217
 """
 
 from __future__ import annotations
@@ -23,9 +14,9 @@ from mcp_server.core.context_assembly.stage_assembler import (
 )
 from mcp_server.core.context_assembly.stage_detector import ExplicitStageDetector
 
-# Entity names shorter than this are too generic to match against content.
-# source: pre-existing tuned value, moved unchanged with its only consumer in
-# the #368 split (was #197 family 3); provenance not recorded at introduction.
+# source: ADR-0217
+
+# source: ADR-0217
 _MIN_ENTITY_NAME_LEN = 3
 
 
@@ -48,37 +39,20 @@ def assemble_context(
 ) -> dict[str, Any]:
     """Structured 3-phase context assembly for a single query.
 
-    Returns a `dict` with:
-      - 'assembled_context' (str): the full prompt-ready text
-      - 'own_stage_context' (str), 'adjacent_stage_context' (str),
-        'stage_summaries' (str): the three phases separately
-      - 'metadata' (dict): bookkeeping (token counts, stages covered)
-      - 'selected_memories' (list[dict]): the memory dicts chosen in
-        Phase 1 + Phase 2, with their 'memory_id' preserved so the
-        caller can score retrieval hits against gold.
-
-    This is the new retrieval primitive that replaces flat top-k for
-    long-context scenarios. See `mcp_server/core/context_assembly/` for
-    the full design and paper citations.
+    source: ADR-0217
 
     Args:
-        query: raw user query text.
-        store: PgMemoryStore (for entity graph + memory fetch).
-        embeddings: EmbeddingEngine (for query encoding in Phase 1).
-        current_stage: the stage ID the query is "about" (e.g. the
-            conversation ID for BEAM, or the current agent_topic for
-            production).
-        token_budget: target total tokens for the assembled context.
-            Default 6000 matches Swift Stage5PRD.
-        domain: optional domain filter for Phase 1 retrieval.
-        stage_field: memory field used to determine stage. Default
-            "plan_id" for BEAM; use "agent_topic" or similar in prod.
-        budget_split: (own, adjacent, summaries) proportions summing
-            to 1.0. Default (0.6, 0.3, 0.1) matches Swift.
-        max_chunks_per_phase: hard cap on chunks selected per phase.
-        diversity_lambda: MMR diversity weight for Phase 1 submodular
-            selection. Default 0.5.
-    """
+        query: Raw query text.
+        store: PgMemoryStore supplying the entity graph and memories.
+        embeddings: Engine encoding the query.
+        current_stage: Stage identifier, such as conversation or agent topic.
+        token_budget: Assembled context token cap (default 6000).
+        domain: Optional retrieval domain.
+        stage_field: Memory stage field (default plan_id).
+        budget_split: Own/adjacent/summary proportions (default 0.6/0.3/0.1).
+        max_chunks_per_phase: Per-phase chunk cap.
+        diversity_lambda: MMR diversity weight (default 0.5).
+    source: ADR-0217"""
 
     split = BudgetSplit(
         own_stage=budget_split[0],
@@ -91,8 +65,8 @@ def assemble_context(
     else:
         detector = ExplicitStageDetector(field=stage_field)
 
-    # Cache entity graph + entity-id→name lookup once per assemble call
-    # so we don't re-query on every phase.
+    # source: ADR-0217
+
     _graph_cache: dict[str, Any] = {}
 
     def _ensure_graph() -> dict[str, Any]:
@@ -116,24 +90,12 @@ def assemble_context(
         }
         return _graph_cache
 
-    # ── Retrieval callback for Phase 1 (own-stage) ────────────────────
-    # Runs intent-adaptive recall, filters to current stage, and tags
-    # each candidate with its entity IDs. Entity lookup uses substring
-    # matching of known entity names against memory content — NOT a
-    # fresh extraction pass. The reason: knowledge_graph.extract_entities
-    # is regex-based for code patterns (imports, def, class) and misses
-    # all entities from prose content. But the graph WAS populated at
-    # ingest time from the union of all memory contents, so every entity
-    # appearing in any memory is present in the graph. Substring
-    # matching from the graph down to each memory gives complete
-    # memory→entity linkage for both code and prose.
+    # source: ADR-0217
+
     def _retrieve_fn(q: str, stage_id: str, max_results: int) -> list[dict[str, Any]]:
-        # Deferred: assembly consumes recall's output, and pg_recall re-exports
-        # assemble_context, so a module-level import here would close the cycle.
-        # The dependency is genuinely one-directional at RUNTIME — assembly
-        # calls recall, never the reverse — so the deferral expresses the real
-        # shape rather than hiding a design problem.
-        from mcp_server.core.pg_recall import recall  # noqa: PLC0415 — breaks the facade import cycle; see comment above
+        # source: ADR-0217
+
+        from mcp_server.core.pg_recall import recall  # noqa: PLC0415 — source: ADR-0217
 
         candidates = recall(
             query=q,
@@ -178,14 +140,8 @@ def assemble_context(
         graph = _ensure_graph()
         return graph["entities"], graph["relationships"]
 
-    # ── Memories-by-entity callback for Phase 2 aggregation ───────────
-    # Cortex's store looks up memories by entity NAME via FTS on content
-    # (there is no junction table). We translate PPR top-k entity IDs
-    # back to names and run a content search per name. Each returned
-    # memory is annotated with its full entity_ids list (derived via
-    # substring match against the graph) so score_memories_by_ppr can
-    # compute PPR mass correctly — without this, mass is always 0 and
-    # Phase 2 returns nothing.
+    # source: ADR-0217
+
     def _memories_by_entity_fn(
         entity_ids: list[str],
     ) -> list[dict[str, Any]]:
@@ -235,9 +191,8 @@ def assemble_context(
     # first ~300 chars of the first memory in the stage as a proxy.
     # Production Cortex will wire this to dual_store_cls.py / schema_engine.
     def _stage_summary_fn(stage_id: str) -> str:
-        # Minimal implementation: walk memories and return truncated
-        # content of the first non-current-stage hit. Good enough for
-        # the benchmark until we add real summarization.
+        # source: ADR-0217
+
         return ""
 
     assembler = StageAwareContextAssembler(
@@ -257,15 +212,8 @@ def assemble_context(
         diversity_lambda=diversity_lambda,
     )
 
-    # Truncation-awareness pass: each phase above enforces its own
-    # sub-budget independently (per-phase submodular selection caps),
-    # so their sum can still exceed the caller's total token_budget —
-    # estimate_tokens is a heuristic and per-phase caps do not
-    # renegotiate against each other. condense_assembled_context is a
-    # no-op (returns the identical header+concatenation) whenever the
-    # three phases already fit; only priority-condenses when they don't.
-    # Skipped when token_budget is None (stage_assembler's own
-    # "no token truncation" mode — nothing to condense against).
+    # source: ADR-0217
+
     assembled_context = result.assembled_context
     if token_budget is not None:
         assembled_context = condense_assembled_context(

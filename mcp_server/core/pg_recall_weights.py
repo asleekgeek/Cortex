@@ -1,14 +1,6 @@
-"""Intent-adaptive WRRF weight profiles for the PG recall path (#368 split).
+"""Intent-adaptive WRRF weight profiles for the PG recall path.
 
-Moved verbatim out of ``core/pg_recall.py`` (833 lines against the 500-line
-§4.1 limit). Second seam, same rule as the first: WEIGHT POLICY — which
-signal matters for which query intent — changes when retrieval is
-recalibrated, while the orchestration that consumes it changes when the
-pipeline's stages change. Separate reasons to change, separate modules
-(§1.1).
-
-Every value here is carried over unchanged; this split re-homed code, it did
-not retune anything.
+source: ADR-0221
 """
 
 from __future__ import annotations
@@ -18,20 +10,12 @@ import os as _os
 from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
 from mcp_server.core.query_intent import QueryIntent
 
-# ── PG weight profiles ──────────────────────────────────────────────────
-# NOTE: These weights are engineering defaults, NOT paper-prescribed values.
-# The TMM normalization framework (Bruch et al., ACM TOIS 2023) defines the
-# fusion formula but does NOT prescribe per-signal weights — those are
-# corpus-specific. See benchmarks/beam/ablation_results.json for empirical
-# justification from the BEAM ablation study.
+# source: ADR-0221
 
-# Ablation data (benchmarks/beam/ablation_results.json):
-#   BEAM-optimal: fts=0.0, heat=0.7, ngram=0.0 → MRR 0.554
-#   But fts=0.0 regresses LongMemEval -9.2pp R@10, LoCoMo -15.5pp R@10
-# These defaults are balanced across all three benchmarks. Per-signal
-# BEAM ablation data is recorded but not applied as defaults due to
-# cross-benchmark regression. Dynamic corpus adaptation remains an open
-# research problem — see Bruch et al. 2023 §5 on collection-dependent weights.
+
+# source: ADR-0221
+
+
 _BASE_PG_WEIGHTS: dict[str, float] = {
     "vector": 1.0,  # Primary signal — always full strength
     "fts": 0.5,  # Keyword matching: essential for factual/technical queries
@@ -73,24 +57,7 @@ def compute_pg_weights(
     Derives base weights from core_weights (from query_intent) when available,
     then applies intent-specific PG overrides.
 
-    Verification ablation hooks (Popper C2 — operator-disablable mechanism):
-    - ``CORTEX_DECAY_DISABLED=1``: forces heat weight to 0.0 so the
-      thermodynamic decay signal cannot enter the WRRF fusion. Disabling
-      heat is equivalent to "flat heat" for ranking purposes — Cortex
-      degenerates to vector + FTS + ngram, the flat-importance baseline.
-    - ``CORTEX_HEAT_CONSTANT=<float>``: same effect on the weight (heat
-      cannot discriminate when constant), kept as a separate var so the
-      n_scan harness can force a specific constant heat at write time and
-      confirm the ranker reproduces flat baseline at read time.
-    - ``CORTEX_ABLATE_ADAPTIVE_DECAY=1`` (Mechanism.ADAPTIVE_DECAY):
-      handler-level read-path guard. Forces heat weight to 0.0 in the
-      WRRF fusion so the thermodynamic adaptive-decay signal cannot
-      influence ranking. This is the cleaner approach than trying to
-      inject ablation into PL/pgSQL — same observable effect at the
-      composition root. Source: docs/provenance/verification-protocol.md E1.
-    Source: docs/provenance/verification-protocol.md E2 (N-scan); env vars defined
-    by benchmarks/lib/n_scan_runner.py:_apply_condition.
-    """
+    source: ADR-0221"""
 
     cw = core_weights or {}
     # Vector is always 1.0 in the PG path — it's the primary discovery signal.

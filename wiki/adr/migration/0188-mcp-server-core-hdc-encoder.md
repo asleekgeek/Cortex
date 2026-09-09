@@ -1,0 +1,69 @@
+---
+title: "ADR-0188 — mcp_server/core/hdc_encoder.py rationale"
+status: accepted
+source: mcp_server/core/hdc_encoder.py
+---
+
+# ADR-0188 — mcp_server/core/hdc_encoder.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Implements the bind/bundle/permute algebra over dense bipolar vectors (+1/-1).
+Used as retrieval signal 5 in the WRRF fusion pipeline.
+````
+
+## module — original line 6 (docstring)
+
+````text
+Key operations:
+  - bind  (⊗) : element-wise multiply — encodes associations  (A AND B)
+  - bundle(⊕) : element-wise sum + sign  — encodes superposition (A OR B)
+  - permute(ρ) : circular left-shift by n  — encodes sequence/order
+````
+
+## module — original line 11 (docstring)
+
+````text
+Usage in recall:
+  1. Encode query as HDC vector by bundling word-hash vectors
+  2. Encode each memory's content the same way (on-the-fly)
+  3. HDC similarity = dot(query_hdc, memory_hdc) / dim  (ranges -1 to +1)
+  4. Use as an additional retrieval signal alongside vector/FTS/heat/Hopfield
+````
+
+## module — original line 17 (docstring)
+
+````text
+No I/O — pure numpy operations.
+
+````
+
+## _word_to_hdc — original line 43 (docstring)
+
+````text
+    Uses double-hashing to fill the vector uniformly. This is a
+    fixed (not trained) mapping — reproducible across processes.
+````
+
+## bundle — original line 75 (docstring)
+
+````text
+    Ties (sum == 0) broken by a fixed tiebreak vector seeded from dim.
+    
+````
+
+## module — original line 27 (comment)
+
+````text
+# Default HDC dimensionality — large dim reduces false positives
+````
+
+## module — original line 33 (comment)
+
+````text
+# source: structural — a bigram is a pair of adjacent words, so at least
+# two words are required
+````

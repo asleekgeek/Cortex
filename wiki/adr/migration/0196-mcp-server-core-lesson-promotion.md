@@ -1,0 +1,55 @@
+---
+title: "ADR-0196 — mcp_server/core/lesson_promotion.py rationale"
+status: accepted
+source: mcp_server/core/lesson_promotion.py
+---
+
+# ADR-0196 — mcp_server/core/lesson_promotion.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+The lesson (a memory tagged ``lesson`` or ``lesson-candidate``) is the
+canonical form; ``memory_rules``, ``prospective_memories``, and wiki pages
+are *projections* of it (design doc §M-D6). This module classifies a
+lesson's likely projection and builds the job payload the in-session LLM
+consumes to actually perform (or skip) the promotion — no I/O, mirrors the
+role ``core.auto_curator`` plays for ``curate_wiki``'s jobs.
+````
+
+## module — original line 10 (docstring)
+
+````text
+No auto-promotion happens here or anywhere server-side: a rule changes
+recall behavior for every future query (high stakes), so the decision
+stays with the LLM/user reading the job, exactly like ``curate_wiki``
+never calls ``wiki_write`` itself.
+
+````
+
+## build_promotion_jobs — original line 110 (mixed-contract-rationale)
+
+````text
+    Precondition: ``candidates`` is a list of rows shaped as documented in
+    ``build_promotion_job``.
+    Postcondition: ``len(result) <= len(candidates)`` — only candidates
+    whose ``tags`` do NOT already carry a ``promoted:*`` marker are
+    included (defense-in-depth alongside the SQL-side exclusion in
+    ``list_lesson_promotion_candidates``; kept here too because this
+    function is the pure, directly-testable boundary).
+    
+````
+
+## module — original line 20 (comment)
+
+````text
+# Keyword triage — SUGGESTS a promotion kind, never decides one. A lesson
+# whose text talks about recall/ranking mechanics is more likely to want a
+# memory_rules row; one phrased as a future-conditional ("next time X,
+# do Y") is more likely to want a prospective trigger; anything else
+# defaults to the documentary catch-all (wiki page). Wrong suggestions
+# cost nothing — see ``promotion_instructions`` below: the reviewing LLM
+# reads ``content`` itself and may pick any of the three, or none.
+````

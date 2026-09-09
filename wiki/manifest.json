@@ -576,6 +576,202 @@
       "mirror": "ADR-0183-mcp-server-core-gist-extraction.md",
       "path": "adr/migration/0183-mcp-server-core-gist-extraction.md"
     },
+    "ADR-0184": {
+      "mirror": "ADR-0184-mcp-server-core-global-detector.md",
+      "path": "adr/migration/0184-mcp-server-core-global-detector.md"
+    },
+    "ADR-0185": {
+      "mirror": "ADR-0185-mcp-server-core-goal-maintenance.md",
+      "path": "adr/migration/0185-mcp-server-core-goal-maintenance.md"
+    },
+    "ADR-0186": {
+      "mirror": "ADR-0186-mcp-server-core-grooming-health.md",
+      "path": "adr/migration/0186-mcp-server-core-grooming-health.md"
+    },
+    "ADR-0187": {
+      "mirror": "ADR-0187-mcp-server-core-habituation.md",
+      "path": "adr/migration/0187-mcp-server-core-habituation.md"
+    },
+    "ADR-0188": {
+      "mirror": "ADR-0188-mcp-server-core-hdc-encoder.md",
+      "path": "adr/migration/0188-mcp-server-core-hdc-encoder.md"
+    },
+    "ADR-0189": {
+      "mirror": "ADR-0189-mcp-server-core-hierarchical-predictive-coding.md",
+      "path": "adr/migration/0189-mcp-server-core-hierarchical-predictive-coding.md"
+    },
+    "ADR-0190": {
+      "mirror": "ADR-0190-mcp-server-core-homeostatic-health.md",
+      "path": "adr/migration/0190-mcp-server-core-homeostatic-health.md"
+    },
+    "ADR-0191": {
+      "mirror": "ADR-0191-mcp-server-core-homeostatic-plasticity.md",
+      "path": "adr/migration/0191-mcp-server-core-homeostatic-plasticity.md"
+    },
+    "ADR-0192": {
+      "mirror": "ADR-0192-mcp-server-core-hopfield.md",
+      "path": "adr/migration/0192-mcp-server-core-hopfield.md"
+    },
+    "ADR-0193": {
+      "mirror": "ADR-0193-mcp-server-core-interference.md",
+      "path": "adr/migration/0193-mcp-server-core-interference.md"
+    },
+    "ADR-0194": {
+      "mirror": "ADR-0194-mcp-server-core-interference-detection.md",
+      "path": "adr/migration/0194-mcp-server-core-interference-detection.md"
+    },
+    "ADR-0195": {
+      "mirror": "ADR-0195-mcp-server-core-knowledge-graph.md",
+      "path": "adr/migration/0195-mcp-server-core-knowledge-graph.md"
+    },
+    "ADR-0196": {
+      "mirror": "ADR-0196-mcp-server-core-lesson-promotion.md",
+      "path": "adr/migration/0196-mcp-server-core-lesson-promotion.md"
+    },
+    "ADR-0197": {
+      "mirror": "ADR-0197-mcp-server-core-memory-decomposer.md",
+      "path": "adr/migration/0197-mcp-server-core-memory-decomposer.md"
+    },
+    "ADR-0198": {
+      "mirror": "ADR-0198-mcp-server-core-memory-dedup-exact.md",
+      "path": "adr/migration/0198-mcp-server-core-memory-dedup-exact.md"
+    },
+    "ADR-0199": {
+      "mirror": "ADR-0199-mcp-server-core-memory-domain-backfill.md",
+      "path": "adr/migration/0199-mcp-server-core-memory-domain-backfill.md"
+    },
+    "ADR-0200": {
+      "mirror": "ADR-0200-mcp-server-core-memory-ingest.md",
+      "path": "adr/migration/0200-mcp-server-core-memory-ingest.md"
+    },
+    "ADR-0201": {
+      "mirror": "ADR-0201-mcp-server-core-memory-reheat.md",
+      "path": "adr/migration/0201-mcp-server-core-memory-reheat.md"
+    },
+    "ADR-0202": {
+      "mirror": "ADR-0202-mcp-server-core-memory-rules.md",
+      "path": "adr/migration/0202-mcp-server-core-memory-rules.md"
+    },
+    "ADR-0203": {
+      "mirror": "ADR-0203-mcp-server-core-metacognition.md",
+      "path": "adr/migration/0203-mcp-server-core-metacognition.md"
+    },
+    "ADR-0204": {
+      "mirror": "ADR-0204-mcp-server-core-metacognition-analysis.md",
+      "path": "adr/migration/0204-mcp-server-core-metacognition-analysis.md"
+    },
+    "ADR-0205": {
+      "mirror": "ADR-0205-mcp-server-core-microglial-pruning.md",
+      "path": "adr/migration/0205-mcp-server-core-microglial-pruning.md"
+    },
+    "ADR-0206": {
+      "mirror": "ADR-0206-mcp-server-core-mmr-diversity.md",
+      "path": "adr/migration/0206-mcp-server-core-mmr-diversity.md"
+    },
+    "ADR-0207": {
+      "mirror": "ADR-0207-mcp-server-core-narrative.md",
+      "path": "adr/migration/0207-mcp-server-core-narrative.md"
+    },
+    "ADR-0208": {
+      "mirror": "ADR-0208-mcp-server-core-neurogenesis.md",
+      "path": "adr/migration/0208-mcp-server-core-neurogenesis.md"
+    },
+    "ADR-0209": {
+      "mirror": "ADR-0209-mcp-server-core-neuromodulation-channels.md",
+      "path": "adr/migration/0209-mcp-server-core-neuromodulation-channels.md"
+    },
+    "ADR-0210": {
+      "mirror": "ADR-0210-mcp-server-core-novelty-modulation.md",
+      "path": "adr/migration/0210-mcp-server-core-novelty-modulation.md"
+    },
+    "ADR-0212": {
+      "mirror": "ADR-0212-mcp-server-core-oscillatory-phases.md",
+      "path": "adr/migration/0212-mcp-server-core-oscillatory-phases.md"
+    },
+    "ADR-0213": {
+      "mirror": "ADR-0213-mcp-server-core-pattern-extractor.md",
+      "path": "adr/migration/0213-mcp-server-core-pattern-extractor.md"
+    },
+    "ADR-0214": {
+      "mirror": "ADR-0214-mcp-server-core-pattern-separation.md",
+      "path": "adr/migration/0214-mcp-server-core-pattern-separation.md"
+    },
+    "ADR-0216": {
+      "mirror": "ADR-0216-mcp-server-core-pg-recall.md",
+      "path": "adr/migration/0216-mcp-server-core-pg-recall.md"
+    },
+    "ADR-0217": {
+      "mirror": "ADR-0217-mcp-server-core-pg-recall-assembly.md",
+      "path": "adr/migration/0217-mcp-server-core-pg-recall-assembly.md"
+    },
+    "ADR-0218": {
+      "mirror": "ADR-0218-mcp-server-core-pg-recall-context.md",
+      "path": "adr/migration/0218-mcp-server-core-pg-recall-context.md"
+    },
+    "ADR-0219": {
+      "mirror": "ADR-0219-mcp-server-core-pg-recall-signals.md",
+      "path": "adr/migration/0219-mcp-server-core-pg-recall-signals.md"
+    },
+    "ADR-0220": {
+      "mirror": "ADR-0220-mcp-server-core-pg-recall-stages.md",
+      "path": "adr/migration/0220-mcp-server-core-pg-recall-stages.md"
+    },
+    "ADR-0221": {
+      "mirror": "ADR-0221-mcp-server-core-pg-recall-weights.md",
+      "path": "adr/migration/0221-mcp-server-core-pg-recall-weights.md"
+    },
+    "ADR-0222": {
+      "mirror": "ADR-0222-mcp-server-core-platt-calibration.md",
+      "path": "adr/migration/0222-mcp-server-core-platt-calibration.md"
+    },
+    "ADR-0223": {
+      "mirror": "ADR-0223-mcp-server-core-predictive-coding-flat.md",
+      "path": "adr/migration/0223-mcp-server-core-predictive-coding-flat.md"
+    },
+    "ADR-0224": {
+      "mirror": "ADR-0224-mcp-server-core-predictive-coding-gate.md",
+      "path": "adr/migration/0224-mcp-server-core-predictive-coding-gate.md"
+    },
+    "ADR-0225": {
+      "mirror": "ADR-0225-mcp-server-core-predictive-coding-signals.md",
+      "path": "adr/migration/0225-mcp-server-core-predictive-coding-signals.md"
+    },
+    "ADR-0226": {
+      "mirror": "ADR-0226-mcp-server-core-procedural-memory.md",
+      "path": "adr/migration/0226-mcp-server-core-procedural-memory.md"
+    },
+    "ADR-0227": {
+      "mirror": "ADR-0227-mcp-server-core-profile-assembler.md",
+      "path": "adr/migration/0227-mcp-server-core-profile-assembler.md"
+    },
+    "ADR-0228": {
+      "mirror": "ADR-0228-mcp-server-core-profile-builder.md",
+      "path": "adr/migration/0228-mcp-server-core-profile-builder.md"
+    },
+    "ADR-0229": {
+      "mirror": "ADR-0229-mcp-server-core-prose-redaction.md",
+      "path": "adr/migration/0229-mcp-server-core-prose-redaction.md"
+    },
+    "ADR-0230": {
+      "mirror": "ADR-0230-mcp-server-core-prospective.md",
+      "path": "adr/migration/0230-mcp-server-core-prospective.md"
+    },
+    "ADR-0231": {
+      "mirror": "ADR-0231-mcp-server-core-provenance.md",
+      "path": "adr/migration/0231-mcp-server-core-provenance.md"
+    },
+    "ADR-0232": {
+      "mirror": "ADR-0232-mcp-server-core-query-decomposition.md",
+      "path": "adr/migration/0232-mcp-server-core-query-decomposition.md"
+    },
+    "ADR-0233": {
+      "mirror": "ADR-0233-mcp-server-core-query-intent.md",
+      "path": "adr/migration/0233-mcp-server-core-query-intent.md"
+    },
+    "ADR-0234": {
+      "mirror": "ADR-0234-mcp-server-core-query-router.md",
+      "path": "adr/migration/0234-mcp-server-core-query-router.md"
+    },
     "ADR-0795": {
       "mirror": "ADR-0795-clusterfuzzlite-Dockerfile.md",
       "path": "adr/migration/0795-clusterfuzzlite-Dockerfile.md"

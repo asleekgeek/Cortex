@@ -1,19 +1,6 @@
 """Request-scoped context + WRRF fetch/triage for ``pg_recall.recall()``.
 
-Split from pg_recall.py (continuing the two documented seams cut at #368 —
-pg_recall_weights.py / pg_recall_assembly.py — with two more: this file and
-pg_recall_stages.py) to bring pg_recall.py under this repo's local
-300-line file cap and 40-line method cap (docs/agent-guidance.md § Code Style; a
-tightening of coding-standards.md §4.1/§4.2). Every value moved
-unchanged — this re-homes code, it retunes nothing.
-
-``RecallContext`` bundles the invariants of a single ``recall()`` call
-(everything that does not change while ``candidates`` is threaded through
-the pipeline in pg_recall_stages.py) so each stage function takes exactly
-two parameters — ``(candidates, ctx)`` — instead of the 8-13 positional
-parameters the inline call sites needed, per coding-standards.md §4.4
-(Introduce Parameter Object over a growing parameter list).
-"""
+source: ADR-0218"""
 
 from __future__ import annotations
 
@@ -33,32 +20,7 @@ from mcp_server.shared.memory_embeddings import MemoryEmbeddings
 class RecallContext:
     """Invariants of one ``recall()`` call, threaded through every stage.
 
-    Field-level rationale for the tuning knobs (mirrors the prior
-    ``recall()`` docstring so no citation was lost in the split):
-
-    - ``rerank_alpha``: blend weight for cross-encoder scores (0.70 from
-      BEAM ablation).
-    - ``cross_domain``: ADR-0054 opt-out for the SPREADING_ACTIVATION stage
-      only (the WRRF stage stays scoped to ``domain`` regardless). Same
-      "explicit opt-in, safe default" shape as ``include_globals``.
-      Defaults to False: measured 52.8% cross-domain injection rate when
-      this stage runs unscoped (scratchpad/spread-activation-scoping-
-      design.md §2.3).
-    - ``sa_mode``: ADR-0054 addendum (2026-07-11, garde x3 bench incident).
-      One of ``"tail"`` (default), ``"augment"``, ``"off"``. ``"tail"``
-      calls ``spreading_activation_tail_fill`` LAST, after every reranking
-      stage — it only appends SA-reachable memories when the pipeline
-      returned fewer than ``top_k`` candidates, never reordering or
-      rescoring an existing one. ``"augment"`` runs the PRE-fusion
-      ``spreading_activation_expand`` between HDC and DENDRITIC_CLUSTERS —
-      the garde x3 bench's first live measurement showed it moves
-      already-correct top-ranked documents even with domain scoping
-      applied (LongMemEval MRR 0.9166->0.9009, floor 0.914 breach, against
-      +0.002 R@10). Kept available for a future dedicated tuning campaign,
-      never the default. ``"off"`` disables the channel entirely.
-    - ``familiarity_shortcut``: C2 dual-process opt-in (Yonelinas 2002) —
-      see ``fetch_and_triage`` below.
-    """
+    source: ADR-0218"""
 
     query: str
     store: Any
@@ -86,13 +48,7 @@ class RecallContext:
 def fetch_and_triage(ctx: RecallContext) -> tuple[list[dict], RecallContext, bool]:
     """Steps 1-4·C2: intent -> weights -> encode -> WRRF fetch -> triage.
 
-    Returns ``(candidates, ctx', early_return)``: ``ctx'`` carries the
-    resolved ``intent``/``q_emb`` for every later stage; ``early_return``
-    is True when the caller must return ``candidates`` unchanged — an empty
-    WRRF result, or FAMILIARITY_TRIAGE (Yonelinas 2002; Diana, Yonelinas &
-    Ranganath 2007) choosing its opt-in shortcut on an overwhelmingly
-    familiar query (ablation-guarded, non-fatal).
-    """
+    source: ADR-0218"""
     intent_info = classify_query_intent(ctx.query)
     intent = intent_info["intent"]
     weights = compute_pg_weights(intent, intent_info.get("weights", {}))
@@ -120,10 +76,7 @@ def _observe_candidate_embeddings(
 ) -> RecallContext:
     """Familiarity and Hopfield are consecutive and perform no writes.
 
-    source: the native W4-3 trace reads the same twenty IDs twice; the
-    recollection stage starts with Hopfield, before reconsolidation writes.
-    Leave the existing non-bulk store path and ablation guards unchanged.
-    """
+    source: ADR-0218"""
     if ctx.q_emb is None or not hasattr(ctx.store, "get_embeddings_for_memories"):
         return ctx
     if all(
@@ -150,8 +103,7 @@ def _wrrf_fetch(ctx: RecallContext, weights: dict) -> list[dict]:
         wrrf_k=ctx.wrrf_k,
         weights=weights,
         include_globals=ctx.include_globals,
-        # issue #368 — trust policy read in core, handed to the store:
-        # infrastructure may not import core.
+        # source: ADR-0218
         trusted_origins=trusted_origins_at_read(),
         untrusted_factor=UNTRUSTED_ORIGIN_FACTOR,
     )

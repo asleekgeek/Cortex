@@ -1,13 +1,6 @@
 """Knowledge graph entity extraction — typed entity/relationship detection from content.
 
-Extracts entities (functions, dependencies, errors, decisions, technologies)
-and typed relationships (imports, calls, resolved_by, decided_to_use, co_occurrence)
-from memory content using regex-based heuristics. No LLM needed.
-
-Pure business logic — no I/O. Storage is handled by the caller.
-
-Clean architecture split: core = extraction logic, infrastructure = persistence.
-"""
+source: ADR-0195"""
 
 from __future__ import annotations
 
@@ -73,18 +66,18 @@ _DECIDED_RE = re.compile(
 _FILE_PATH_RE = re.compile(r"(?:\.{0,2}/)?(?:[\w@.-]+/)+[\w@.-]+\.\w+")
 _CAMELCASE_RE = re.compile(r"\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b")
 
-# Private function names shorter than this are noise (e.g. "_x").
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0195
+
+# source: ADR-0195
 _MIN_PRIVATE_NAME_LEN = 3
 
-# CamelCase tokens of length <= 2 are ignored as noise.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0195
+
+
 _MAX_IGNORED_CAMEL_LEN = 2
 
-# source: structural — a decided_to_use edge links the first two decisions,
-# so at least two are required
+# source: ADR-0195
+
 _MIN_DECISIONS_FOR_EDGE = 2
 
 
@@ -128,7 +121,10 @@ def _extract_definition_entities(
 def _extract_pattern_entities(
     content: str, defined_funcs: set[str]
 ) -> list[tuple[str, str, str]]:
-    """Extract error-fix, decision, file path, and CamelCase entities."""
+    """Extract error-fix, decision, file path, and CamelCase entities.
+
+    source: ADR-0195
+    """
     results: list[tuple[str, str, str]] = []
 
     for m in _ERROR_FIX_RE.finditer(content):

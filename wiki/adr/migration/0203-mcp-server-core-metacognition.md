@@ -1,0 +1,35 @@
+---
+title: "ADR-0203 — mcp_server/core/metacognition.py rationale"
+status: accepted
+source: mcp_server/core/metacognition.py
+---
+
+# ADR-0203 — mcp_server/core/metacognition.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Implements:
+  - Coverage assessment: 4-signal weighted analysis (density, entity,
+    recency, confidence)
+  - Gap detection: 5 gap types (isolated, stale, low-confidence, missing
+    links, unresolved)
+  - Cognitive load management: Cowan's 4+/-1 chunk limit with
+    primacy-recency positioning
+````
+
+## module — original line 11 (docstring)
+
+````text
+Coverage, chunking, and context management live in metacognition_analysis.py.
+This module provides gap detection.
+````
+
+## module — original line 14 (docstring)
+
+````text
+Pure business logic — no I/O. Receives pre-fetched data, returns analyses.
+
+````

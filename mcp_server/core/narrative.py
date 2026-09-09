@@ -1,13 +1,6 @@
 """Narrative engine — project story generation from memory.
 
-Generates prose summaries of project activity from memory records:
-  - Decision extraction: keyword + tag matching
-  - Event extraction: high-importance memories + event keywords
-  - Entity aggregation: top entities by frequency
-  - Topic discovery: high-heat focus areas
-
-Pure business logic — no I/O. Receives memory data, returns narratives.
-"""
+source: ADR-0207"""
 
 from __future__ import annotations
 
@@ -59,9 +52,9 @@ _EVENT_RE = re.compile(
 )
 
 
-# Snippet truncation cap (chars) for decision/event summaries.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0207
+
+# source: ADR-0207
 _SNIPPET_MAX_CHARS = 150
 
 
@@ -97,9 +90,7 @@ def _clean_auto_captured(content: str) -> str:
 def extract_decisions(memories: list[dict[str, Any]]) -> list[str]:
     """Extract decision statements from memories.
 
-    A memory is a decision if:
-      - Content matches decision keywords, OR
-      - Tags include "decision"
+    source: ADR-0207
     """
     decisions: list[str] = []
     for mem in memories:
@@ -140,11 +131,8 @@ def extract_events(
         if is_event:
             cleaned = _clean_auto_captured(content)
             text = cleaned[:_SNIPPET_MAX_CHARS].strip()
-            # Gate the ellipsis on the CLEANED length — what was truncated —
-            # not the raw content: a stripped tool header used to trigger a
-            # spurious "..." with nothing cut (latent bug surfaced by the
-            # #197 family-3 constant extraction; extract_decisions was
-            # already correct).
+            # source: ADR-0207
+
             if len(cleaned) > _SNIPPET_MAX_CHARS:
                 text += "..."
             events.append(text)
@@ -158,8 +146,7 @@ def extract_top_entities(
 ) -> list[str]:
     """Extract most frequently mentioned entities across memories.
 
-    Uses simple word-frequency heuristic on CamelCase and file paths.
-    """
+    source: ADR-0207"""
     entity_counts: dict[str, int] = {}
 
     camel_re = re.compile(r"\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b")

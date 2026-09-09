@@ -1,24 +1,13 @@
 """Detect whether a memory should be marked as global (cross-project).
 
-Global memories are visible to all projects during recall. They represent
-knowledge that transcends any single codebase: architecture rules, coding
-conventions, infrastructure facts, security policies, team agreements,
-and reusable patterns.
-
-Classification uses weighted keyword/phrase signals across 6 categories.
-A memory is global when its score exceeds a threshold AND it doesn't
-contain project-specific anchors (file paths, branch names, PR numbers).
-
-Pure business logic -- no I/O.
-"""
+source: ADR-0184"""
 
 from __future__ import annotations
 
 import re
 
-# ── Signal categories ───────────────────────────────────────────────────
-# Each category contributes to the global score. Phrases (multi-word)
-# score higher than single keywords to reduce false positives.
+# source: ADR-0184
+
 
 GLOBAL_SIGNALS: dict[str, list[tuple[str, float]]] = {
     "architecture": [
@@ -136,7 +125,7 @@ _PROJECT_ANCHORS = re.compile(
     r"(?:"
     r"(?:\.{0,2}/)?(?:[\w@.-]+/){2,}[\w@.-]+\.\w+"  # file paths
     r"|PR\s*#\d+"  # pull request refs
-    r"|issue\s*#\d+"  # issue refs
+    r"|issue\s*#\d+"  # source: ADR-0184
     r"|branch\s+[\w/-]+"  # branch names
     r"|commit\s+[0-9a-f]{7,}"  # commit hashes
     r"|\bv\d+\.\d+\.\d+"  # version numbers
@@ -144,10 +133,9 @@ _PROJECT_ANCHORS = re.compile(
     re.IGNORECASE,
 )
 
-# Number of project-specific anchors at which content is treated as
-# strongly project-bound.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0184
+
+# source: ADR-0184
 _HEAVY_ANCHOR_COUNT = 3
 
 # Tool log prefix — auto-captured tool output is never global

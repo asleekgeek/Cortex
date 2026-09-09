@@ -1,0 +1,118 @@
+---
+title: "ADR-0200 — mcp_server/core/memory_ingest.py rationale"
+status: accepted
+source: mcp_server/core/memory_ingest.py
+---
+
+# ADR-0200 — mcp_server/core/memory_ingest.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Handles the write path for memories that may need decomposition.
+Uses structure-aware chunking (speaker turns for conversations,
+headings for markdown) following the ai-architect artifact chunking
+strategy. Each chunk gets entity-enriched embeddings.
+````
+
+## module — original line 8 (docstring)
+
+````text
+Used by both production handlers and benchmarks.
+````
+
+## module — original line 10 (docstring)
+
+````text
+Pure business logic — takes a store + embeddings, handles decomposition.
+
+````
+
+## module — original line 87 (comment)
+
+````text
+# ── Decision auto-protection ────────────────────────────────
+# Decisions carry resolved prediction error (dopamine burst),
+# warranting stronger consolidation and protection from decay.
+#
+# Paper backing (WHY decisions deserve protection):
+#   McGaugh 2004: emotionally significant → ~2x retention
+#   Adcock et al. 2006: reward-motivated → better recall (direction only;
+#     paper reports a significant 24h advantage but prescribes no ratio)
+#   Schultz 1997: decision = resolved prediction error = DA burst
+#
+# Detection: regex in memory_decomposer.py (engineering heuristic,
+# NOT paper-prescribed — labels as such).
+#
+# Protection: is_protected=True survives decay (Frey & Morris 1997
+# synaptic tagging — strong events promote weak traces).
+````
+
+## module — original line 104 (comment)
+
+````text
+# source: engineering default; calibration pending. Adcock et al. 2006
+# (Neuron 50:507) motivates reward->memory boost (high-value scenes
+# significantly better recalled at 24h) but reports NO multiplier — the
+# 1.5 is not the paper's value. Transposing a recognition-memory effect
+# to a heat/decay importance weight is an analogy. Needs ablation.
+````
+
+## module — original line 111 (comment)
+
+````text
+# ── Team memory propagation (TMS) ──────────────────────────
+# Wegner 1987 Transactive Memory Systems: team knowledge requires
+# coordination — important discoveries should be visible across
+# agent boundaries. Protected/decision memories auto-propagate
+# to team scope via is_global flag.
+#
+# Zhang et al. ACL 2024: specialized agents with shared directory
+# outperform shared-everything by 10-15%.
+#
+# Implementation: agent-scoped by default (specialization), but
+# decisions and protected items become global (coordination).
+````
+
+## module — original line 144 (comment)
+
+````text
+# issue #368 gated-arm fix: pass the caller's capture_origin
+# through like every other metadata field above (source,
+# tags, heat, ...) instead of dropping it silently. Without
+# this, every ingest_memory caller — including the LME/
+# LoCoMo/BEAM benchmark harnesses — fell through to
+# insert_memory's "unknown" default regardless of what the
+# caller set, which is why the trust-factor calibration's
+# gated arm could not discriminate W (docs/provenance/
+# trust-factor-calibration.md §"What this measurement does
+# and does not establish"). Default unchanged: a caller that
+# omits the field still gets "unknown", identical to before.
+````
+
+## module — original line 159 (comment)
+
+````text
+# Entity extraction for the knowledge graph. The production
+# `remember` handler calls write_post_store.persist_entities
+# after insertion; benchmark ingestion historically bypassed
+# this which left the entity/relationship tables empty and
+# broke Phase 2 of the structured context assembler. Running
+# it inline here makes benchmark and production paths consistent.
+````
+
+## inline — original line 168 (directive-rationale)
+
+````text
+# noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("memory_ingest.entity_extraction")
+````
+
+## module — original line 169 (comment)
+
+````text
+# Entity extraction failures must not block ingest -- but a
+# failure that repeats on every chunk (e.g. a persist_entities
+# regression) must still be observable, not just non-fatal.
+````
