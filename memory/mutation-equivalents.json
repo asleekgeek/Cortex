@@ -138,14 +138,6 @@
       "issue": "#369"
     },
     {
-      "mutant": "mcp_server.core.ast_extractors.x__walk_for_calls__mutmut_16",
-      "removed": "body = child.child_by_field_name(\"body\") or child",
-      "added": "body = child.child_by_field_name(\"body\") and child",
-      "kind": "equivalent-by-construction",
-      "rationale": "The body node is itself a child of the class node, so descending child.children reaches it via the catch-all arm and finds the same definitions in the same order. The `or child` fallback stays for grammars whose class node exposes no body field.",
-      "issue": "#369"
-    },
-    {
       "mutant": "mcp_server.core.ast_extractors.x__walk_for_calls__mutmut_18",
       "removed": "body = child.child_by_field_name(\"body\") or child",
       "added": "body = child.child_by_field_name(\"XXbodyXX\") or child",
@@ -162,23 +154,7 @@
       "issue": "#369"
     },
     {
-      "mutant": "mcp_server.core.ast_extractors.x__walk_for_calls__mutmut_25",
-      "removed": "elif ntype == \"decorated_definition\":",
-      "added": "elif ntype == \"XXdecorated_definitionXX\":",
-      "kind": "seam-pending-implementation",
-      "rationale": "The decorated_definition arm is byte-identical to the else that follows it, so mutating its node-type string is undetectable. Kept, not deleted: it mirrors _extract_python_children's dispatch (where the same branch IS load-bearing) and is the seam for decorator-call attribution, which produces no graph edge today. See #372.",
-      "issue": "#369"
-    },
-    {
-      "mutant": "mcp_server.core.ast_extractors.x__walk_for_calls__mutmut_26",
-      "removed": "elif ntype == \"decorated_definition\":",
-      "added": "elif ntype == \"DECORATED_DEFINITION\":",
-      "kind": "seam-pending-implementation",
-      "rationale": "The decorated_definition arm is byte-identical to the else that follows it, so mutating its node-type string is undetectable. Kept, not deleted: it mirrors _extract_python_children's dispatch (where the same branch IS load-bearing) and is the seam for decorator-call attribution, which produces no graph edge today. See #372.",
-      "issue": "#369"
-    },
-    {
-      "mutant": "mcp_server.core.ast_extractors.x__walk_for_calls__mutmut_39",
+      "mutant": "mcp_server.core.ast_extractors.x__walk_for_calls__mutmut_57",
       "removed": "fn_name = _text(name_node, source) if name_node else \"\"",
       "added": "fn_name = _text(name_node, source) if name_node else \"XXXX\"",
       "kind": "unreachable-branch",
