@@ -35,6 +35,7 @@ from mcp_server.core.wiki_redirect import (
 )
 from mcp_server.handlers._tool_meta import IDEMPOTENT_WRITE
 from mcp_server.infrastructure.config import WIKI_ROOT
+from mcp_server.handlers import project_wiki_read
 from mcp_server.infrastructure.memory_config import get_memory_settings
 from mcp_server.infrastructure.memory_store import MemoryStore, get_shared_store
 from mcp_server.infrastructure.pg_store_wiki import (
@@ -75,6 +76,12 @@ schema = {
         "type": "object",
         "required": ["path"],
         "properties": {
+            "project_root": {
+                "type": "string",
+                "description": (
+                    "Repository with wiki/manifest.json; filesystem-only project mode."
+                ),
+            },
             "path": {
                 "type": "string",
                 "description": (
@@ -212,6 +219,16 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     rel_path = str(args.get("path") or "").strip()
     if not rel_path:
         return {"error": "path is required"}
+    if args.get("project_root") is not None:
+        try:
+            response = project_wiki_read.read(args)
+            return (
+                _bounded(response, max(0, int(args.get("offset") or 0)))
+                if "content" in response
+                else response
+            )
+        except (ValueError, OSError) as exc:
+            return {"error": f"project wiki read failed: {exc}"}
     follow = bool(args.get("follow_redirects", True))
     offset = max(0, int(args.get("offset") or 0))
 
@@ -222,7 +239,6 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     if content is None:
         return {"error": f"page not found: {rel_path}"}
 
-    # Fast path: caller wants the stub itself, or the page isn't a stub.
     if not follow:
         _cite_page(rel_path)
         return _bounded(
@@ -248,7 +264,6 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
             offset,
         )
 
-    # Stub — walk the chain to the terminal page.
     resolved = resolve_chain(rel_path, _frontmatter_reader)
     if resolved is None:
         return {

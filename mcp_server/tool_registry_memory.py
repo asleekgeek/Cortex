@@ -145,6 +145,8 @@ def _register_recall(mcp: MCPServer) -> None:
             format: str = "json",
             memory_id: int | None = None,
             content_offset: int = 0,
+            project_root: str | None = None,
+            exact_id: bool = False,
         ) -> dict[str, Any]:
             """Retrieve memories using multi-signal fusion."""
             return await safe_handler(
@@ -159,6 +161,8 @@ def _register_recall(mcp: MCPServer) -> None:
                     "format": format,
                     "memory_id": memory_id,
                     "content_offset": content_offset,
+                    "project_root": project_root,
+                    "exact_id": exact_id,
                 },
                 tool_name="recall",
             )
@@ -180,6 +184,8 @@ def _register_recall(mcp: MCPServer) -> None:
         format: str = "json",
         memory_id: int | None = None,
         content_offset: int = 0,
+        project_root: str | None = None,
+        exact_id: bool = False,
     ) -> dict[str, Any]:
         """Retrieve memories using multi-signal fusion."""
         return await safe_handler(
@@ -195,6 +201,8 @@ def _register_recall(mcp: MCPServer) -> None:
                 "format": format,
                 "memory_id": memory_id,
                 "content_offset": content_offset,
+                "project_root": project_root,
+                "exact_id": exact_id,
             },
             tool_name="recall",
         )
@@ -357,6 +365,8 @@ def _register_unified_search(mcp: MCPServer) -> None:
         domain: str | None = None,
         max_results: int = 10,
         k: int = 60,
+        project_root: str | None = None,
+        exact_id: bool = False,
     ) -> dict[str, Any]:
         """RRF-fuse Cortex memory recall with AP code search (ADR-0046 P3)."""
         return await safe_handler(
@@ -366,6 +376,8 @@ def _register_unified_search(mcp: MCPServer) -> None:
                 "domain": domain,
                 "max_results": max_results,
                 "k": k,
+                "project_root": project_root,
+                "exact_id": exact_id,
             },
             tool_name="unified_search",
         )

@@ -33,6 +33,7 @@
 #   --reranker-cell <id>  W4-2 experiment (l2-2x|l2-3x|l12-2x|l12-3x);
 #                         requires --no-ablation and pre-provisioned pinned cache.
 #   --results-dir <path>  Explicit cell output directory (default remains timestamped).
+#   --only decision-ids   Exact wiki ID known-item coverage (no model calls).
 #   --no-regression       Blocking gate: also run --baseline-ref's benchmarks
 #                          in the same container and fail only if HEAD is
 #                          worse than ITS OWN baseline by more than
@@ -493,6 +494,10 @@ main() {
             ${lo_args[@]+"${lo_args[@]}"}
         want_bench beam && run_bench "beam-100K" \
             "benchmarks/beam/run_benchmark.py" "${be_args[@]}"
+        if want_bench decision-ids; then
+            uv run --extra benchmarks python -m benchmarks.decision_ids.run_bench \
+                --output "$RESULTS_DIR/decision-ids.json"
+        fi
     fi
 
     if [ "$RUN_ABLATION" = "1" ]; then

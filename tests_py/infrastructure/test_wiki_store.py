@@ -92,13 +92,13 @@ def test_list_pages_skips_generated(tmp_path: Path) -> None:
 
 
 def test_next_adr_number_empty(tmp_path: Path) -> None:
-    assert next_adr_number(tmp_path) == 1
+    assert next_adr_number(tmp_path) == 56
 
 
 def test_next_adr_number_increments(tmp_path: Path) -> None:
     write_page(tmp_path, "adr/0001-foo.md", "a")
     write_page(tmp_path, "adr/0005-bar.md", "b")
-    assert next_adr_number(tmp_path) == 6
+    assert next_adr_number(tmp_path) == 56
 
 
 def test_path_escape_rejected(tmp_path: Path) -> None:

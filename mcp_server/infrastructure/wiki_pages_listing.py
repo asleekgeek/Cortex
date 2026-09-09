@@ -13,6 +13,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from mcp_server.infrastructure.wiki_decision_index import decision_index
+from mcp_server.shared.wiki_decision_ids import (
+    MAX_DECISION_NUMBER,
+    RESERVED_DECISION_NUMBER,
+    parse_decision_id,
+)
+
+
 from mcp_server.shared.wiki_layout import PAGE_KINDS
 from mcp_server.infrastructure.file_io import ensure_dir
 
@@ -84,17 +92,10 @@ def list_pages(root: Path | str, *, kind: str | None = None) -> list[str]:
 
 
 def next_adr_number(root: Path | str) -> int:
-    """Return the next free ADR sequence number (1-based)."""
-    pages = list_pages(root, kind="adr")
-    max_seen = 0
-    for rel in pages:
-        name = rel.rsplit("/", 1)[-1]
-        # NNNN-slug.md
-        head = name.split("-", 1)[0]
-        try:
-            num = int(head)
-        except ValueError:
-            continue
-        if num > max_seen:
-            max_seen = num
-    return max_seen + 1
+    """Allocate above canonical IDs and published ADRs 0001–0055 (issue #514)."""
+
+    numbers = [parse_decision_id(token) for token in decision_index(root)]
+    highest = max([RESERVED_DECISION_NUMBER, *[n for n in numbers if n is not None]])
+    if highest >= MAX_DECISION_NUMBER:
+        raise ValueError("canonical ADR sequence exhausted at ADR-9999")
+    return highest + 1

@@ -8,10 +8,16 @@ file. Registers the usual protected PG pointer memory.
 from __future__ import annotations
 
 from typing import Any
+from pathlib import Path
+
+from mcp_server.shared.log_file_lock import log_file_lock
+from mcp_server.shared.wiki_decision_ids import decision_id, parse_decision_id
 
 from mcp_server.shared.wiki_layout import adr_filename, page_path, slugify
 from mcp_server.shared.wiki_pages import ADR_STATUSES, build_adr
 from mcp_server.infrastructure.config import WIKI_ROOT
+from mcp_server.infrastructure.wiki_decision_index import write_decision_index
+from mcp_server.handlers import project_wiki
 from mcp_server.infrastructure.wiki_pages_listing import next_adr_number
 from mcp_server.infrastructure.wiki_store import (
     WikiExistsError,
@@ -43,6 +49,12 @@ schema = {
         "type": "object",
         "required": ["title", "context", "decision", "consequences"],
         "properties": {
+            "project_root": {
+                "type": "string",
+                "description": (
+                    "Repository with wiki/manifest.json; filesystem-only project mode."
+                ),
+            },
             "title": {
                 "type": "string",
                 "description": (
@@ -111,9 +123,12 @@ schema = {
 
 async def _store_pointer_memory(rel_path: str, content: str, tags: list[str]) -> None:
     try:
+        prefix = Path(rel_path).name.split("-", 1)[0]
+        number = parse_decision_id(f"ADR-{prefix}")
+        token = decision_id(number) if number is not None else "ADR"
         await remember.handler(
             {
-                "content": content[:500],
+                "content": f"{token}\n{content}"[:500],
                 "tags": list({"wiki", "adr", *tags}),
                 "source": f"wiki://{rel_path}",
                 # M-D2 (7.4): structural indexing bookkeeping (a protected
@@ -141,31 +156,42 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     if status not in ADR_STATUSES:
         return {"error": f"unknown status: {status}"}
 
-    try:
-        number = next_adr_number(WIKI_ROOT)
-    except (ValueError, OSError) as exc:
-        return {"error": f"cannot determine next ADR number: {exc}"}
+    if args.get("project_root") is not None:
+        try:
+            return project_wiki.adr(args)
+        except (ValueError, OSError) as exc:
+            return {"error": f"project ADR publication failed: {exc}"}
 
-    slug = slugify(title)
-    filename = adr_filename(number, slug)
-    rel_path = str(page_path("adr", filename))
+    # source: issue #514 — allocate and publish under one cooperating-writer lock.
+    root = Path(WIKI_ROOT)
+    root.mkdir(parents=True, exist_ok=True)
+    with log_file_lock(root / ".adr-allocation"):
+        try:
+            number = next_adr_number(WIKI_ROOT)
+        except (ValueError, OSError) as exc:
+            return {"error": f"cannot determine next ADR number: {exc}"}
 
-    content = build_adr(
-        number=number,
-        title=title,
-        context=context,
-        decision=decision,
-        consequences=consequences,
-        status=status,
-        tags=tags,
-    )
+        slug = slugify(title)
+        filename = adr_filename(number, slug)
+        rel_path = str(page_path("adr", filename))
 
-    try:
-        result = write_page(WIKI_ROOT, rel_path, content, mode="create")
-    except WikiExistsError:
-        return {"error": f"ADR already exists: {rel_path}"}
-    except (ValueError, OSError) as exc:
-        return {"error": f"write failed: {exc}"}
+        content = build_adr(
+            number=number,
+            title=title,
+            context=context,
+            decision=decision,
+            consequences=consequences,
+            status=status,
+            tags=tags,
+        )
+
+        try:
+            result = write_page(WIKI_ROOT, rel_path, content, mode="create")
+            write_decision_index(root)
+        except WikiExistsError:
+            return {"error": f"ADR already exists: {rel_path}"}
+        except (ValueError, OSError) as exc:
+            return {"error": f"write failed: {exc}"}
 
     await _store_pointer_memory(rel_path, content, tags)
 

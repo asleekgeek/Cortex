@@ -40,6 +40,7 @@ if _SCRIPTS_DIR not in sys.path:
 import craftsmanship_rules as rules  # noqa: E402
 import craftsmanship_baseline as baseline_mod  # noqa: E402
 import craftsmanship_git  # noqa: E402
+import craftsmanship_decisions  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BASELINE = REPO_ROOT / ".craftsmanship-baseline.json"
@@ -130,6 +131,15 @@ def _added_and_falsified(
 def _run_gate(
     target_files: list[str], baseline_path: Path, base_ref: str | None
 ) -> int:
+    # Wiki deletion/renaming can invalidate a pointer in an unchanged file.
+    sources = craftsmanship_git.all_tracked_python_files(REPO_ROOT)
+    decision_errors = craftsmanship_decisions.check_decisions(
+        REPO_ROOT, sorted(set(sources + target_files))
+    )
+    if decision_errors:
+        for error in decision_errors:
+            print(f"Craftsmanship gate: [decision-integrity] {error}", file=sys.stderr)
+        return 1
     current = scan_files(target_files)
     working_baseline = baseline_mod.load_baseline(baseline_path)
     base_baseline = craftsmanship_git.load_baseline_from_ref(

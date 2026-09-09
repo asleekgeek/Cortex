@@ -43,6 +43,9 @@ _CALL_RE = re.compile(r"(?<![A-Za-z0-9_])write_page\(")
 _EXPECTED_CALL_COUNTS = {
     "handlers/ingest_prd.py": 1,  # generated PRD spec page, no citations
     "handlers/ingest_findings_writers.py": 1,  # generated finding page
+    # ADR-0056: unmerged project files must not publish global PG metadata.
+    "handlers/project_wiki.py": 1,
+    "handlers/wiki_reindex.py": 1,  # Generated INDEX uses contained atomic storage.
     "handlers/wiki_adr.py": 1,  # ADR creation (own pointer-memory path)
     "handlers/wiki_rename.py": 2,  # destination copy + redirect stub
     "handlers/ingest_codebase_pages.py": 1,  # generated process reference page

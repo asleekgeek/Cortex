@@ -42,6 +42,21 @@ upstream MCP server is configured (55 total with both present).
 | `get_telemetry` | Retrieval and memory-system telemetry metrics | <50ms |
 | `check_setup` | Verify local install, backend-aware (SQLite: store open + FS; PostgreSQL: PG driver, DATABASE_URL, connection, extensions, FS) — facade over `mcp_server.doctor` | <500ms |
 
+### Project decision retrieval
+
+Pass an absolute `project_root` to select that checkout's `wiki/manifest.json`.
+`recall` and `unified_search` resolve a canonical `ADR-NNNN` query directly;
+`exact_id: true` explicitly requires this form. Missing or stale IDs return an
+error instead of unrelated semantic results. Run `wiki_reindex` with the same
+project root after checking out or editing decision pages.
+
+Project-scoped `unified_search` also searches wiki text for ordinary queries.
+`wiki_read`, `wiki_write` and `wiki_adr` accept the same project root. Project
+writes affect checkout files only. Edit canonical `wiki/` pages, then regenerate
+the read-only `docs/adr/` mirrors with `wiki_reindex` or
+`python scripts/check_project_wiki.py --write`. CI rejects mirror drift.
+Omitting `project_root` retains the global wiki scope.
+
 ## Tier 2 — Navigation & Exploration (7 tools)
 
 | Tool | Purpose | Target Latency |
@@ -80,7 +95,7 @@ upstream MCP server is configured (55 total with both present).
 | `wiki_adr` | Create an Architecture Decision Record | <100ms |
 | `wiki_rename` | Rename a wiki page and update backlinks | <100ms |
 | `wiki_verify` | Verify wiki page integrity and links | <100ms |
-| `wiki_reindex` | Reindex wiki pages into memory pointers | varies |
+| `wiki_reindex` | Rebuild wiki contents and exact-ID indexes; explicit project mode also regenerates ADR mirrors | varies |
 | `wiki_purge` | Permanently delete a wiki page | <50ms |
 | `wiki_migrate` | Reconcile wiki.pages against FS (backfill + ghost purge) | varies |
 

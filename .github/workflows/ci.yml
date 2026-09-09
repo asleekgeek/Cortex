@@ -726,7 +726,7 @@ jobs:
   # in .craftsmanship-baseline.json) does not retroactively block.
   craftsmanship:
     needs: [changes, lint]
-    if: github.event_name != 'schedule' && (github.event_name != 'pull_request' || needs.changes.outputs.code == 'true' || needs.changes.outputs.deps == 'true' || needs.changes.outputs.workflows == 'true')
+    if: github.event_name != 'schedule'
     name: Craftsmanship Gate
     runs-on: ubuntu-latest
     # source: run 33951959734 (2026-09-05), max 9s; ceil(2 * 9 / 60).
@@ -750,6 +750,9 @@ jobs:
       # below, which are static for the same reason.
       - name: Run the craftsmanship gate on this PR's changed files
         run: python scripts/check_craftsmanship.py
+
+      - name: Verify generated decision mirrors
+        run: python scripts/check_project_wiki.py
 
   typecheck:
     needs: [changes, lint]

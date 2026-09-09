@@ -69,6 +69,7 @@ def _register_wiki_write(mcp: MCPServer) -> None:
         mode: str = "create",
         tags: list[str] | None = None,
         memory_ids: list[int] | None = None,
+        project_root: str | None = None,
     ) -> dict[str, Any]:
         """Author a wiki page (create/append/replace) with the provided markdown."""
         return await safe_handler(
@@ -79,6 +80,7 @@ def _register_wiki_write(mcp: MCPServer) -> None:
                 "mode": mode,
                 "tags": tags or [],
                 "memory_ids": memory_ids or [],
+                "project_root": project_root,
             },
             tool_name="wiki_write",
         )
@@ -87,7 +89,10 @@ def _register_wiki_write(mcp: MCPServer) -> None:
 def _register_wiki_read(mcp: MCPServer) -> None:
     @mcp.tool(name="wiki_read", **tool_kwargs(wiki_read.schema))
     async def tool_wiki_read(
-        path: str, follow_redirects: bool = True
+        path: str,
+        follow_redirects: bool = True,
+        offset: int = 0,
+        project_root: str | None = None,
     ) -> dict[str, Any]:
         """Read the raw markdown of a wiki page by relative path.
 
@@ -96,7 +101,12 @@ def _register_wiki_read(mcp: MCPServer) -> None:
         """
         return await safe_handler(
             wiki_read.handler,
-            {"path": path, "follow_redirects": follow_redirects},
+            {
+                "path": path,
+                "follow_redirects": follow_redirects,
+                "offset": offset,
+                "project_root": project_root,
+            },
             tool_name="wiki_read",
         )
 
@@ -148,6 +158,7 @@ def _register_wiki_adr(mcp: MCPServer) -> None:
         consequences: str,
         status: str = "accepted",
         tags: list[str] | None = None,
+        project_root: str | None = None,
     ) -> dict[str, Any]:
         """Create a numbered ADR with auto-incremented sequence."""
         return await safe_handler(
@@ -159,6 +170,7 @@ def _register_wiki_adr(mcp: MCPServer) -> None:
                 "consequences": consequences,
                 "status": status,
                 "tags": tags or [],
+                "project_root": project_root,
             },
             tool_name="wiki_adr",
         )
@@ -166,9 +178,13 @@ def _register_wiki_adr(mcp: MCPServer) -> None:
 
 def _register_wiki_reindex(mcp: MCPServer) -> None:
     @mcp.tool(name="wiki_reindex", **tool_kwargs(wiki_reindex.schema))
-    async def tool_wiki_reindex() -> dict[str, Any]:
+    async def tool_wiki_reindex(project_root: str | None = None) -> dict[str, Any]:
         """Regenerate the wiki table of contents at .generated/INDEX.md."""
-        return await safe_handler(wiki_reindex.handler, {}, tool_name="wiki_reindex")
+        return await safe_handler(
+            wiki_reindex.handler,
+            {"project_root": project_root},
+            tool_name="wiki_reindex",
+        )
 
 
 def _register_wiki_purge(mcp: MCPServer) -> None:

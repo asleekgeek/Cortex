@@ -4443,11 +4443,6 @@
       "detail": "_update_claude_md"
     },
     {
-      "file": "mcp_server/handlers/unified_search.py",
-      "kind": "method-size",
-      "detail": "handler"
-    },
-    {
       "file": "mcp_server/handlers/validate_memory.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
@@ -4606,11 +4601,6 @@
       "file": "mcp_server/handlers/wiki_reindex.py",
       "kind": "method-size",
       "detail": "_render_index"
-    },
-    {
-      "file": "mcp_server/handlers/wiki_reindex.py",
-      "kind": "method-size",
-      "detail": "handler"
     },
     {
       "file": "mcp_server/handlers/wiki_rename.py",
