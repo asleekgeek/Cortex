@@ -44,7 +44,7 @@ repository conftest guards remained enabled.
 | Full test collection | 8,236 collected; no collection errors |
 | Collected-count documentation and badge floor checks | Passed; no badge change needed |
 | Scoped mutation runner, `ast_extractors.py` | 511 mutants: 488 killed; 23 registered equivalent/unreachable survivors; zero unregistered, timeout or unreached |
-| Ruff 0.16.6 `check .` / `format --check .` | Passed; 3,256 Python files formatted correctly |
+| Ruff 0.16.6 `check .` / `format --check .` | Passed; 3,256 files formatted correctly |
 | Pyright 1.1.411, changed production module | Zero errors, warnings or information messages |
 | actionlint 1.7.12 | Passed |
 | uv 0.11.3 lock check and generated requirements check | Passed; 13 requirements files checked |
