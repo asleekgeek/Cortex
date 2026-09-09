@@ -68,3 +68,13 @@ Source: `scripts/docker_smoke.sh`; original SHA-256 `8e5092da61ae402ad035c84e5c1
 
 ````
 
+
+## Final non-Python residual audit
+
+### scripts/docker_smoke.sh — pre-cleanup line 30
+
+````text
+# `exec` replaces this shell with the Python driver: the driver's exit code
+# becomes this script's exit code, and there is no shell-level stdio piping
+# left for a race to hide in.
+````

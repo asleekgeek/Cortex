@@ -800,3 +800,46 @@ Source rationale preserved verbatim. Identifiers inside historical quotations ar
 # scoping a run at mcp_server/core/ast_parser.py; not specific to that
 # file, since every run shares this same conftest.
 ````
+
+## Final non-Python residual audit
+
+### pyproject.toml — pre-cleanup line 129
+
+````text
+# CPU-only graph viz path: precomputed igraph layout + Datashader tile
+# rendering + Apache Arrow streaming for client-side hit-test. Enables
+# the /api/tile + /api/quadtree + /api/recompute_layout endpoints. No
+# GPU dependency. Install size ≈ 200 MB (numba + llvmlite dominate).
+````
+
+### pyproject.toml — pre-cleanup line 228
+
+````text
+# ── mpmath — real, named upstream incompatibility with a known ceiling ───
+#
+# sympy 1.14.0 (latest, no newer release exists) declares
+# `mpmath<1.4,>=1.1.0`. Dependabot's mpmath 1.3.0 -> 1.4.1 bump therefore
+# fails uv's default resolution: sympy pins the lock back to 1.3.0.
+````
+
+### pyproject.toml — pre-cleanup line 287
+
+````text
+# Declaring the index here makes uv.lock record the CPU wheels and their
+# hashes, which is what scripts/generate_pip_constraints.py then exports.
+# `explicit = true` means this index is used ONLY for packages that name it
+# below — it never becomes a general fallback that could shadow PyPI.
+````
+
+### pyproject.toml — pre-cleanup line 639
+
+````text
+#   1. A version is not a hash. Scorecard's Pinned-Dependencies check treats
+#      any pip install without --require-hashes as unpinned, and it is right
+#      to: an exact version still resolves to whatever artifact the index
+#      serves for it today. Only a hash pins the bytes. Putting these in the
+#      lock is what lets scripts/generate_pip_constraints.py emit a hashed
+#      requirements file for them.
+#   2. The pins were duplicated across workflow files with no mechanism
+#      keeping them equal. One lock entry per tool removes the drift.
+````

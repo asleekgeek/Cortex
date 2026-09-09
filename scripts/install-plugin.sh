@@ -20,9 +20,8 @@ set -euo pipefail
 #      (env URL, prior marker, or a reachable local cortex database) and
 #      kept — an upgrade never silently downgrades a Postgres install
 #      to SQLite.
-#   2. Remove stale OTHER versions of Cortex installed elsewhere on the
-#      machine, so the freshly-installed plugin is the single source of
-#      truth.
+#   2. Remove stale other Cortex installations.
+# source: ADR-0740
 #
 # Stale targets removed:
 #   - uv tool install:  hypermnesia-mcp  (current PyPI distribution name)
@@ -67,15 +66,8 @@ fi
 PY=$(command -v python3 || command -v python || true)
 [ -n "$PY" ] || fail "python3 not found in PATH"
 
-# CURRENT_VERSION is read via an env var, NOT by interpolating $PLUGIN_JSON
-# into the -c source string. Splicing an arbitrary path into a Python
-# single-quoted string literal re-parses any backslash-letter sequence it
-# contains as a Python string escape — e.g. the "\a" in a GitHub Actions
-# Windows workspace path (D:\a\Cortex\Cortex) becomes ASCII BEL (0x07),
-# corrupting the path to D:\x07\Cortex\Cortex and failing to open it
-# (CI run 29360566538). Environment variables are passed as raw bytes with
-# no escape reinterpretation, so this is safe for any path content
-# (backslashes, spaces, quotes) on every OS, not just Windows.
+# Read CURRENT_VERSION through an environment variable.
+# source: ADR-0740
 CURRENT_VERSION=$(CORTEX_PLUGIN_JSON_PATH="$PLUGIN_JSON" "$PY" -c "
 import json, os
 print(json.load(open(os.environ['CORTEX_PLUGIN_JSON_PATH']))['version'])
@@ -155,12 +147,8 @@ else
     esac
 fi
 
-# Persist the provisioned backend for scripts/launcher.py (marker is the
-# backend NAME only — never a URL, so no credentials touch disk here).
-# The path is computed with Path.home() INSIDE python, not interpolated
-# from $HOME: on Windows Git Bash $HOME is a POSIX-style path (/c/Users/x)
-# that native python.exe would misresolve, while Path.home() matches
-# exactly how backend_marker.py resolves the marker at read time.
+# Persist only the backend name; resolve the marker path with Path.home() inside Python.
+# source: ADR-0740
 MARKER_WRITTEN=$(CORTEX_BACKEND_MARKER_VALUE="$BACKEND" \
 CORTEX_BACKEND_MARKER_VERSION="$CURRENT_VERSION" "$PY" -c "
 import json, os, pathlib

@@ -27,9 +27,8 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
   docker build -t "$IMAGE" -f "${REPO_ROOT}/Dockerfile" "$REPO_ROOT"
 fi
 
-# `exec` replaces this shell with the Python driver: the driver's exit code
-# becomes this script's exit code, and there is no shell-level stdio piping
-# left for a race to hide in.
+# Replace this shell with the Python driver and propagate its exit status.
+# source: ADR-0732
 exec python3 "${REPO_ROOT}/scripts/docker_smoke_client.py" \
   --image "$IMAGE" \
   --min-tools "$MIN_TOOL_COUNT" \

@@ -5514,11 +5514,6 @@
     },
     {
       "file": "tests_py/infrastructure/test_embedding_live_contract.py",
-      "kind": "method-size",
-      "detail": "test_live_encode_batch_agrees_with_single_encode"
-    },
-    {
-      "file": "tests_py/infrastructure/test_embedding_live_contract.py",
       "kind": "unsourced-constant",
       "detail": "EXPECTED_DIM"
     },
@@ -5606,11 +5601,6 @@
       "file": "tests_py/infrastructure/test_pg_recall_scoring_debias.py",
       "kind": "unsourced-constant",
       "detail": "_DIM"
-    },
-    {
-      "file": "tests_py/infrastructure/test_pg_store_near_dup.py",
-      "kind": "method-size",
-      "detail": "TestFetchMemberStats.test_returns_effective_heat_and_created_at"
     },
     {
       "file": "tests_py/infrastructure/test_pg_store_near_dup.py",
@@ -5741,11 +5731,6 @@
       "file": "tests_py/integration/test_recall_trust_ranking.py",
       "kind": "unsourced-constant",
       "detail": "_TEST_UNTRUSTED_FACTOR"
-    },
-    {
-      "file": "tests_py/integration/test_spread_activation_candidate_contract.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "tests_py/integration/test_spread_activation_candidate_contract.py",
