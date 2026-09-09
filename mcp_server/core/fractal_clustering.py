@@ -1,7 +1,6 @@
 """Fractal clustering primitives — Union-Find, agglomerative clustering, centroids.
 
-Extracted from fractal.py to keep each module under 300 lines.
-Used by fractal.py for hierarchy construction.
+source: ADR-0182
 
 Pure business logic — no I/O.
 """

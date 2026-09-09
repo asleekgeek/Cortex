@@ -1,4 +1,6 @@
-"""Phase 3 — Concept emergence (Strauss grounded-theory mechanics).
+"""Discover emergent concepts from grounded claims.
+
+source: ADR-0132
 
 Inputs:
     claim_events with entity_ids and claim_type
@@ -11,26 +13,7 @@ Outputs:
       - saturation_streak / status transitions
       - merge / split / promote candidates
 
-Algorithm (deterministic, server-side, no LLM):
-
-  1. Group claims by entity_id → per-entity claim sets
-  2. For each entity with ≥ MIN_CLAIMS_PER_CONCEPT claims, form a
-     candidate concept with that entity as its center
-  3. Merge candidates whose claim_id sets overlap > MERGE_JACCARD
-  4. For each (existing or new) concept, compute:
-     - axial_slots: distribute claim texts by claim_type into
-       Strauss's four buckets (conditions, context, strategies,
-       consequences)
-     - new_properties_this_pass: claim types/phrases not seen before
-     - saturation_rate: rolling rate of new_properties / new_memories
-     - saturation_streak: consecutive memories that added nothing
-  5. Promote a concept to 'saturating' when saturation_streak ≥ 3
-  6. Promote to 'promoted' (ready for synthesis) when:
-     - len(grounding_memory_ids) ≥ MIN_GROUNDING_MEMORIES
-     - axial_slots: ≥ 3 of 4 non-empty
-     - saturation_streak ≥ 5
-
-Pure logic, no I/O. The handler wires this against pg_store_wiki.
+source: ADR-0132
 """
 
 from __future__ import annotations
@@ -41,13 +24,8 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 
-# ── Tunable thresholds ────────────────────────────────────────────────
-#
-# Two regimes: steady-state (default) and cold-start (small corpus).
-# Cold start relaxes promotion rules so new installs show a populated
-# wiki inside the first session rather than accumulating for weeks
-# before the first page appears. Regime is picked by the handler based
-# on total resolved-claim count.
+# source: ADR-0132
+
 
 MIN_CLAIMS_PER_CONCEPT = 3
 MERGE_JACCARD = 0.5
@@ -57,9 +35,9 @@ MIN_GROUNDING_MEMORIES = 3
 MIN_AXIAL_SLOTS_FILLED = 3
 ABANDON_AFTER_DAYS = 60  # candidates that never grow
 
-# Cold-start relaxation — smaller thresholds so first-session users
-# see concepts emerge and promote immediately. Once the corpus grows
-# past COLD_START_MEMORY_THRESHOLD, the steady-state values kick in.
+# source: ADR-0132
+
+
 COLD_START_MEMORY_THRESHOLD = 50
 COLD_START_MIN_CLAIMS_PER_CONCEPT = 1
 COLD_START_SATURATION_STREAK = 1
@@ -72,17 +50,8 @@ ConceptStatus = Literal[
 ]
 
 
-# ── Axial coding ──────────────────────────────────────────────────────
-#
-# Strauss & Corbin's coding paradigm — distribute claims into four
-# slots that together describe the concept structurally:
-#
-#   conditions   — what gives rise to the phenomenon
-#   context      — the conditions in which strategies are taken
-#   strategies   — actions/methods used
-#   consequences — what results
-#
-# Mapped from claim_type because the extractor already typed each claim.
+# source: ADR-0132
+
 
 _AXIAL_FROM_CLAIM_TYPE: dict[str, str] = {
     "observation": "conditions",
@@ -129,8 +98,8 @@ class EmergenceStats:
 # ── Helpers ───────────────────────────────────────────────────────────
 
 
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0132
+# source: ADR-0132
 _MIN_TERM_CHARS = 3  # shorter tokens are too generic to label a concept
 _MAX_TERM_CHARS = 40  # longer tokens are pasted blobs, not terms
 
@@ -138,10 +107,7 @@ _MAX_TERM_CHARS = 40  # longer tokens are pasted blobs, not terms
 def _entity_label(claim_texts: list[str], entity_id: int) -> str:
     """Pick a stable label for the candidate concept.
 
-    Heuristic: take the most-common 2-3 word noun-phrase fragment that
-    appears across the claim texts. Falls back to a generic
-    'concept-<entity_id>' if no good label.
-    """
+    source: ADR-0132"""
     if not claim_texts:
         return f"concept-{entity_id}"
     # Extract candidate terms: capitalised tokens or snake_case identifiers
@@ -347,17 +313,14 @@ def emerge(
     """Run a single emergence pass.
 
     Inputs:
-      claims: list of claim dicts (id, memory_id, text, claim_type,
-              entity_ids). Should be the resolved set (entity_ids
-              populated by Phase 2.2).
-      existing_concepts_by_entities: dict mapping a frozenset of
-              entity_ids → existing concept row (id, properties,
-              grounding_memory_ids, saturation_streak, status, label).
-              Used to do incremental update rather than re-cluster
-              from scratch every call.
-      thresholds: optional override bundle for promotion rules. Use
-              ``cold_start_thresholds()`` for small corpora (<50
-              memories); omit for steady state.
+      claims: Resolved claim dictionaries with id, memory_id, text,
+        claim_type, and entity_ids populated.
+      existing_concepts_by_entities: frozenset(entity_ids) to existing
+        concept rows containing id, properties, grounding_memory_ids,
+        saturation_streak, status, and label.
+      thresholds: Optional promotion overrides; cold_start_thresholds()
+        supports corpora below 50 memories; omit for steady state.
+    source: ADR-0132
 
     Returns (plans, stats). Each ConceptPlan is either:
       - a new candidate (concept_id=None) → handler INSERTs

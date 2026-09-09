@@ -1,21 +1,6 @@
 """Episodic/semantic memory classification via regex heuristics.
 
-Classifies memories as "episodic" (specific events with line numbers, paths,
-timestamps) or "semantic" (general knowledge with decision/architecture/
-convention keywords). Used to weight retrieval results.
-
-NOTE: Previously cited McClelland et al. (1995) CLS theory and Go-CLS (Sun
-et al., 2023). Those papers describe dual learning systems (fast hippocampal
-binding vs slow cortical gradient descent) and gated encoding architectures.
-This module implements neither — it is a keyword-based text classifier.
-Citations removed per zetetic standard.
-
-The episodic/semantic distinction is conceptually aligned with CLS theory's
-two-store model, but the implementation mechanism (regex) bears no
-relationship to the paper's computational model (neural network learning).
-
-Pure business logic — no I/O.
-"""
+source: ADR-0169"""
 
 from __future__ import annotations
 
@@ -66,12 +51,7 @@ def classify_memory(
 ) -> str:
     """Classify content as 'episodic' or 'semantic' via regex heuristics.
 
-    Resolution order:
-      1. Tag-based: semantic tags -> "semantic"
-      2. Specificity override: line numbers, paths, tracebacks -> "episodic"
-      3. Content keywords: decision/architecture words -> "semantic"
-      4. Default: "episodic"
-    """
+    source: ADR-0169"""
     tag_set = {t.lower() for t in (tags or [])}
 
     if tag_set & _SEMANTIC_TAGS:

@@ -1,0 +1,38 @@
+---
+title: "ADR-0128 — mcp_server/core/codebase_parser.py rationale"
+status: accepted
+source: mcp_server/core/codebase_parser.py
+---
+
+# ADR-0128 — mcp_server/core/codebase_parser.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Extracts imports, type definitions, function definitions, and module
+structure from source files. No AST parsing — pure regex heuristics
+that work across Python, TypeScript, Go, Rust, Swift, and more.
+````
+
+## module — original line 7 (docstring)
+
+````text
+Pure business logic — no I/O. Callers pass file content as strings.
+Language-specific extractors live in codebase_extractors.py.
+
+````
+
+## build_memory_content — original line 126 (docstring)
+
+````text
+    Format designed for good embeddings — includes file path, language,
+    imports, definitions, and purpose in a human-readable format.
+````
+
+## inline — original line 99 (directive-rationale)
+
+````text
+# noqa: PLC0415 — import cycle with mcp_server.core.codebase_extractors; a top-level import fails at boot
+````

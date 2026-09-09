@@ -1,14 +1,6 @@
 """Consolidation engine — episodic-to-semantic distillation orchestration.
 
-Orchestrates the full consolidation cycle:
-  1. Pattern detection in episodic memories (Go-CLS clustering)
-  2. Consistency checking (contradiction detection)
-  3. Schema abstraction (generalized knowledge extraction)
-  4. Duplicate detection (avoid redundant semantics)
-
-Pure business logic — receives data, returns actions to take.
-The caller (handler/infrastructure) executes the I/O.
-"""
+source: ADR-0136"""
 
 from __future__ import annotations
 
@@ -62,27 +54,13 @@ def _collect_common_tags(cluster_mems: list[dict[str, Any]]) -> list[str]:
 def stress_scaled_min_occurrences(base_min_occurrences: int, stress: float) -> int:
     """Scale the pattern-recurrence threshold by the D1 session-stress gain.
 
-    Stress-hormone modulation (D1) scales how strongly/broadly the offline pass
-    consolidates along an inverted-U (Roozendaal & McGaugh 2011; McGaugh 2000):
-    moderate session stress ENHANCES consolidation, extreme stress IMPAIRS it.
-    Here "consolidation scope" is the recurrence bar a pattern must clear to be
-    abstracted into a semantic memory: dividing it by the gain means
-
-      - moderate stress (gain > 1) => LOWER effective threshold => more patterns
-        qualify => broader/stronger consolidation (the enhancement lobe);
-      - extreme stress (gain < 1) => HIGHER effective threshold => fewer patterns
-        qualify => weaker consolidation (the impairment lobe);
-      - neutral stress OR ablated (gain == 1.0) => threshold UNCHANGED — exact
-        identity, so existing callers that pass no stress are unaffected.
+    source: ADR-0136
 
     The gain's own ablation guard (CORTEX_ABLATE_STRESS_MODULATION=1 forces gain
     1.0) therefore flows through to a no-op here. The result is floored at 1 (a
     pattern always needs at least one occurrence).
 
-    This is a DESIGN INFERENCE — a deterministic one-parameter modulation of the
-    consolidation scope, not a validated glucocorticoid model; see
-    stress_modulation.py's honesty note.
-    """
+    source: ADR-0136"""
 
     gain = consolidation_gain(stress)
     if gain == 1.0:
@@ -111,15 +89,7 @@ def plan_cls_consolidation(
       - consolidation_gain: the D1 stress gain applied (1.0 = unmodulated)
       - effective_min_occurrences: the recurrence bar actually used
 
-    D1 stress-hormone modulation. ``session_stress`` (a scalar in [0, 1] from
-    ``stress_modulation.compute_session_stress`` / ``assess_session_stress``)
-    scales the consolidation SCOPE along the inverted-U: it modulates the
-    effective ``min_occurrences`` via ``stress_scaled_min_occurrences``. The
-    default ``session_stress=0.0`` yields gain 1.0 and leaves ``min_occurrences``
-    unchanged — behavior-preserving identity for every existing caller. When
-    Mechanism.STRESS_MODULATION is ablated the gain is forced to 1.0, so this is
-    likewise a no-op.
-    """
+    source: ADR-0136"""
 
     gain = consolidation_gain(session_stress)
     effective_min_occurrences = stress_scaled_min_occurrences(
@@ -151,20 +121,7 @@ def _try_abstract_pattern(
 ) -> dict | None:
     """Try to abstract a single pattern into a semantic entry. Returns None if skipped.
 
-    C1 read-side enforcement (source/reality monitoring). Before returning the
-    abstraction, the confabulation gate
-    (``source_monitoring.promotion_confabulation_risk``) checks whether the
-    cluster being crystallized into a semantic FACT is internally generated
-    (INFERRED) with zero perceptual grounding — Johnson & Raye's (1981)
-    reality-monitoring failure, a confabulation being promoted to knowledge. The
-    result carries a ``confabulation_risk`` boolean so the caller (and the
-    downstream semantic-memory writer) can flag it. This is NON-FATAL and
-    behavior-preserving: a flagged cluster is STILL abstracted and STILL
-    eligible for promotion; the gate annotates, it does not drop. When
-    ``Mechanism.CONFABULATION_GATE`` is ablated
-    (``CORTEX_ABLATE_CONFABULATION_GATE=1``) the check is skipped and the flag is
-    left False — identical set of returned abstractions either way.
-    """
+    source: ADR-0136"""
     cluster_mems = pattern["memories"]
     schema = abstract_to_schema(cluster_mems)
     if not schema:
@@ -194,11 +151,7 @@ def _process_patterns(
 ) -> dict[str, Any]:
     """Process filtered patterns into semantic consolidation actions.
 
-    ``confabulation_risk_promotions`` counts the abstractions the C1 gate flagged
-    as a confabulation being crystallized as a semantic fact (INFERRED cluster,
-    zero perceptual grounding). These are STILL promoted (non-fatal flag), so the
-    count is an audit signal, not a drop count; it is 0 when the gate is ablated.
-    """
+    source: ADR-0136"""
     new_semantics: list[dict] = []
     skipped_inconsistent = 0
     skipped_duplicate = 0
@@ -268,10 +221,7 @@ def find_near_duplicates(
     Tie-break policy — prefer the MORE RECENT memory (higher created_at),
     falling back to higher heat only when timestamps are equal or both absent.
 
-    Rationale: a fresh correction of a stale fact has low heat (just stored)
-    but a newer created_at.  The old stale duplicate has high heat from
-    prior accesses.  Keeping by heat would discard the correction.
-    Keeping by recency ensures the supersession is respected.
+    source: ADR-0136
 
     Precondition: each element of `memories` has an 'id' key.
     Postcondition: (keep_id, remove_id) — keep_id is the more-recent memory.
@@ -318,8 +268,8 @@ def find_near_duplicates(
 # ── Action Log Summarization ─────────────────────────────────────────────
 
 
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0136
+# source: ADR-0136
 _MAX_FILES_IN_SUMMARY = 5  # summary lists this many files, then a count
 
 
@@ -361,9 +311,9 @@ def summarize_action_group(
 # ── Entity Classification Enhancement ────────────────────────────────────
 
 
-# source: graduation conditions documented in the should_reclassify
-# docstring ("Accessed >= 5 times", ">= 3 related semantic memories");  # noqa: ERA001
-# tuning provenance not recorded
+# source: ADR-0136
+
+# source: ADR-0136
 _MIN_ACCESSES_FOR_SEMANTIC = 5
 _MIN_RELATED_SEMANTICS = 3
 

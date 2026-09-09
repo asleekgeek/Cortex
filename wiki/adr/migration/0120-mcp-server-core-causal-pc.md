@@ -1,0 +1,50 @@
+---
+title: "ADR-0120 — mcp_server/core/causal_pc.py rationale"
+status: accepted
+source: mcp_server/core/causal_pc.py
+---
+
+# ADR-0120 — mcp_server/core/causal_pc.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Implements the skeleton + v-structure phases of the PC algorithm
+(Spirtes & Glymour 1991; Spirtes, Glymour & Scheines 2000, *Causation,
+Prediction, and Search*, 2nd ed., §5.4.2) for discrete (here binary)
+variables, using the G² (likelihood-ratio) conditional-independence test.
+````
+
+## module — original line 8 (docstring)
+
+````text
+Each observation is one memory; each variable is the binary presence of an
+entity. This is exactly the setting of a chi-square / G² PC test
+(cf. causal-learn's ``chisq``/``gsq`` independence tests).
+````
+
+## module — original line 12 (docstring)
+
+````text
+The chi-square survival function is computed in pure Python via the
+regularised upper incomplete gamma function Q(a, x) (Numerical Recipes in C,
+2nd ed., §6.2, ``gammq``) — no SciPy dependency.
+````
+
+## module — original line 16 (docstring)
+
+````text
+Pure business logic — no I/O.
+
+````
+
+## pc_skeleton — original line 148 (docstring)
+
+````text
+    Starts from the complete graph and removes edge X–Y whenever some subset
+    S of X's (or Y's) current neighbours renders them conditionally
+    independent, recording S as the separating set. Conditioning-set size
+    grows 0, 1, … up to ``max_cond_size`` (a standard tractability cap).
+````

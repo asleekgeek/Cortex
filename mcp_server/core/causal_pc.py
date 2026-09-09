@@ -1,20 +1,6 @@
 """Faithful PC constraint-based causal discovery over binary variables.
 
-Implements the skeleton + v-structure phases of the PC algorithm
-(Spirtes & Glymour 1991; Spirtes, Glymour & Scheines 2000, *Causation,
-Prediction, and Search*, 2nd ed., §5.4.2) for discrete (here binary)
-variables, using the G² (likelihood-ratio) conditional-independence test.
-
-Each observation is one memory; each variable is the binary presence of an
-entity. This is exactly the setting of a chi-square / G² PC test
-(cf. causal-learn's ``chisq``/``gsq`` independence tests).
-
-The chi-square survival function is computed in pure Python via the
-regularised upper incomplete gamma function Q(a, x) (Numerical Recipes in C,
-2nd ed., §6.2, ``gammq``) — no SciPy dependency.
-
-Pure business logic — no I/O.
-"""
+source: ADR-0120"""
 
 from __future__ import annotations
 
@@ -145,10 +131,7 @@ def pc_skeleton(
     complete-graph initialisation. ``discover_causal_edges``
     (causal_graph.py) enforces this at the pipeline boundary.
 
-    Starts from the complete graph and removes edge X–Y whenever some subset
-    S of X's (or Y's) current neighbours renders them conditionally
-    independent, recording S as the separating set. Conditioning-set size
-    grows 0, 1, … up to ``max_cond_size`` (a standard tractability cap).
+    source: ADR-0120
 
     Returns (edges, sepsets) where edges is a set of 2-element frozensets.
     """

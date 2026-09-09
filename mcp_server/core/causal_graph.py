@@ -1,20 +1,6 @@
 """Causal graph -- PC-algorithm causal edge discovery.
 
-Structure is learned by the faithful PC algorithm (Spirtes & Glymour 1991;
-Spirtes, Glymour & Scheines 2000) in ``causal_pc``: a G² conditional-
-independence test over binary entity-presence data drives skeleton learning
-with growing conditioning sets, followed by v-structure (collider)
-orientation. Remaining undirected edges are oriented from temporal
-precedence used as PC background knowledge (a standard tiered/temporal-prior
-extension; Spirtes et al. 2000 §6.6) — never overriding a v-structure.
-
-PC determines the *graph structure* (which edges exist and their direction).
-Each surviving edge is additionally annotated with a pointwise-mutual-
-information *effect size* purely for downstream ranking — PMI is not part of
-the structure-learning decision.
-
-Adjacency representation, no networkx. Pure business logic -- no I/O.
-"""
+source: ADR-0119"""
 
 from __future__ import annotations
 
@@ -44,9 +30,7 @@ def build_presence(
 def _pmi_effect_size(pair_count: int, a_count: int, b_count: int, total: int) -> float:
     """Pointwise mutual information log₂(p_ab / p_a·p_b) — edge effect size.
 
-    Used only to annotate the *strength* of an edge that PC has already
-    decided to keep; it plays no role in the structure-learning test.
-    """
+    source: ADR-0119"""
     if total == 0 or a_count == 0 or b_count == 0 or pair_count == 0:
         return 0.0
     p_ab = pair_count / total
@@ -130,23 +114,15 @@ def discover_causal_edges(
     presence: list[frozenset[str]],
     *,
     entity_first_seen: dict[str, str] | None = None,
-    # PC test significance level (Spirtes et al. 2000 use α as the CI-test
-    # level; 0.05 is the conventional default) and the conditioning-set size
-    # cap (standard PC tractability bound, e.g. causal-learn's default).
+    # source: ADR-0119
     alpha: float = 0.05,
     max_cond_size: int = 3,
-    # Sparse-noise floor: drop edges with fewer than this many co-occurrences
-    # (engineering guard; PC's G² test already suppresses low-count pairs).
+    # source: ADR-0119
     min_observations: int = 3,
 ) -> list[dict[str, Any]]:
     """Discover causal edges with the PC algorithm (see module docstring).
 
-    Algorithm (Spirtes & Glymour 1991):
-      1. PC skeleton — G² conditional-independence tests with growing
-         conditioning sets remove edges between independent entities.
-      2. v-structure orientation — unshielded colliders X→Z←Y.
-      3. Temporal precedence orients any edge left undirected (background
-         knowledge), never overriding a v-structure.
+    source: ADR-0119
 
     Returns list of edges: {source, target, strength, is_directed, evidence},
     where ``strength`` is a PMI effect size (annotation only) and ``evidence``
@@ -155,16 +131,8 @@ def discover_causal_edges(
     if not entity_names or not presence:
         return []
 
-    # entities.name carries no UNIQUE constraint (pg_schema.py /
-    # sqlite_schema.py — the same name may legitimately recur across
-    # type/domain rows), so callers flattening store rows to names can
-    # pass duplicates. PC treats every list element as a distinct
-    # variable: a duplicated name turns the complete-graph
-    # initialisation's frozenset((a, a)) into a degenerate 1-element
-    # edge that crashes the 2-tuple unpack below, and hands
-    # orient_v_structures fake unshielded triples (X, X, Z). Establish
-    # the distinct-variables precondition once, at this boundary,
-    # order-preservingly (observed on a 23k-entity store, 2026-07-22).
+    # source: ADR-0119
+
     entity_names = list(dict.fromkeys(entity_names))
 
     counts, pairs = _entity_and_pair_counts(presence, entity_names)
@@ -234,7 +202,7 @@ def find_causal_chain(
 
         extended = False
         for neighbor in neighbors:
-            if neighbor not in path:  # Avoid cycles
+            if neighbor not in path:  # source: ADR-0119
                 stack.append((neighbor, path + [neighbor]))
                 extended = True
 

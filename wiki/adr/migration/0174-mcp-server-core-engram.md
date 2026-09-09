@@ -1,0 +1,82 @@
+---
+title: "ADR-0174 — mcp_server/core/engram.py rationale"
+status: accepted
+source: mcp_server/core/engram.py
+---
+
+# ADR-0174 — mcp_server/core/engram.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Implements the Josselyn & Frankland (2007) / Rashid et al. (2016) model:
+neurons (slots) compete via CREB-like excitability. High-excitability slots
+win the competition and memories stored nearby in time share the same slot,
+creating automatic temporal linking with zero explicit logic.
+````
+
+## module — original line 8 (docstring)
+
+````text
+The 6-hour half-life for excitability decay is derived from Rashid et al. (2016)
+experimental data: CREB levels were elevated at 1.5h, 3h, and 6h post-training,
+returning to baseline by 18h. A 6h half-life fits this decay envelope.
+````
+
+## module — original line 12 (docstring)
+
+````text
+Constants without published values (hand-tuned):
+    boost_amount=0.5 — No published CREB boost magnitude exists; tuned for
+        reasonable overlap between temporally proximate memories.
+    inhibition_factor=0.25 — Biological lateral inhibition is PV+ interneuron-
+        mediated winner-take-all competition, not distance-based. The radius
+        model with fixed inhibition factor is an engineering approximation that
+        captures the competitive allocation effect.
+````
+
+## module — original line 20 (docstring)
+
+````text
+References:
+    Josselyn SA, Frankland PW (2007) Memory allocation: mechanisms and function.
+    Rashid AJ et al. (2016) Competition between engrams influences fear memory
+        formation and recall. Science 353:383-387
+    Josselyn SA, Tonegawa S (2020) Memory engrams: Recalling the past and
+        imagining the future. Science 367:eaaw4325
+````
+
+## module — original line 27 (docstring)
+
+````text
+Pure business logic — no I/O. Receives slot data and returns allocation decisions.
+Storage operations are handled by the caller.
+
+````
+
+## compute_decayed_excitability — original line 46 (docstring)
+
+````text
+    Default half_life=6.0h from Rashid et al. (2016): CREB elevated at 1.5h,
+    3h, 6h; baseline by 18h. Returns 0.0 if no activation time or zero
+    excitability.
+    
+````
+
+## compute_boost — original line 104 (docstring)
+
+````text
+    boost_amount is hand-tuned (no published CREB boost magnitude).
+    
+````
+
+## compute_lateral_inhibition — original line 118 (docstring)
+
+````text
+    NOTE: Biological lateral inhibition is PV+ interneuron-mediated
+    winner-take-all, not distance-based with a fixed radius. This radius
+    model is an engineering approximation. Both inhibition_factor and
+    inhibition_radius are hand-tuned.
+````

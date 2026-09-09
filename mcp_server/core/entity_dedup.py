@@ -1,29 +1,6 @@
 """Fuzzy entity-graph deduplication — 3-pass exact / MinHash-LSH / Jaro-Winkler.
 
-Collapses near-duplicate *concept* entities that the case-canonical insert
-policy (``shared.entity_canonical``) and exact-name DB upsert miss — whitespace
-and punctuation variants ("Embedding Engine" vs "EmbeddingEngine"), and typos
-("Postgres" vs "Postgers") — so the co-access / knowledge graph isn't fragmented
-across spelling variants of one concept.
-
-Ported from graphify's batch graph deduplicator (graphify/dedup.py) and adapted
-to Cortex:
-    - Identity is the entity name (Cortex entities are name-keyed and already
-      case-deduped on insert), so the "same label, different file → keep apart"
-      guards graphify needs are unnecessary; instead we require a **same type**
-      for any merge.
-    - Code symbols (functions, classes, …) are exempt from label-fuzzy merging:
-      their identity is structural, and two ``render`` functions in different
-      modules are distinct, not duplicates (graphify #1205).
-    - Match strength is a float Jaro-Winkler score with a textual reason — no
-      EXTRACTED/INFERRED enum is imported.
-
-This is a *batch* operation (a maintenance/consolidation step), not the
-synchronous write-gate path. It returns an alias→canonical remap; the caller
-rewires ``memory_entities`` / ``relationships`` to survivors and merges heat.
-
-Pure business logic — no I/O.
-"""
+source: ADR-0176"""
 
 from __future__ import annotations
 
@@ -48,18 +25,21 @@ from mcp_server.core.entity_dedup_filters import (
 from mcp_server.shared.minhash import MinHash, MinHashLSH
 from mcp_server.shared.string_distance import jaro_winkler_similarity
 
-# Concept-ish types where spelling/spacing variants of one real-world entity
-# legitimately arise. Structural code symbols and file paths are exempt — their
-# identity is the symbol/path, not a fuzzy label (graphify #1205).
+# source: ADR-0176
+
+
 FUZZY_ELIGIBLE_TYPES = frozenset({"technology", "decision", "error", "dependency"})
 
-# source: structural — a merge pair needs at least two candidates
+# source: ADR-0176
 _MIN_CANDIDATES_FOR_PAIRING = 2
 
 
 @dataclass(frozen=True)
 class EntityMerge:
-    """One matched pair and why it matched (audit trail)."""
+    """One matched pair and why it matched (audit trail).
+
+    source: ADR-0176
+    """
 
     key_a: str
     key_b: str
@@ -71,10 +51,7 @@ class EntityMerge:
 class DedupResult:
     """Outcome of a dedup pass.
 
-    remap: alias entity key -> surviving canonical entity key.
-    merges: every matched pair with its score and reason.
-    survivors: entities that remain after collapsing aliases.
-    """
+    source: ADR-0176"""
 
     remap: dict[str, str] = field(default_factory=dict)
     merges: list[EntityMerge] = field(default_factory=list)
@@ -118,10 +95,7 @@ def _merge_key(entity: dict) -> str:
 def _pick_winner(group: list[dict]) -> dict:
     """Canonical survivor: most-mentioned, then hottest, then shortest name.
 
-    Cortex adaptation — graphify ranks by id length only because it has no heat;
-    Cortex prefers the most-established entity (mention_count, then heat) so the
-    survivor is the one the rest of the graph already points at.
-    """
+    source: ADR-0176"""
 
     def rank(e: dict) -> tuple:
         name = str(e.get("name", ""))
@@ -158,9 +132,8 @@ def deduplicate_entities(
 
     by_type: dict[str, list[dict]] = defaultdict(list)
     for e in entities:
-        # Only text-extracted concepts are fuzzy-eligible; AST-extracted code
-        # symbols (origin='ast_symbol') are exempt (graphify #1205). Entities
-        # without an origin (e.g. legacy/test inputs) default to eligible.
+        # source: ADR-0176
+
         if e.get("origin", "text_concept") == "ast_symbol":
             continue
         if e.get("type") in eligible_types and normalize_label(e.get("name", "")):
@@ -199,8 +172,8 @@ def _gather_candidates(group: list[dict]) -> tuple[list[dict], dict[str, str]]:
     norm_cache: dict[str, str] = {}
     seen_norm: set[str] = set()
     for e in group:
-        # Dotted module paths / file paths are code identifiers, not fuzzy
-        # concepts — exempt from fuzzy candidacy (graphify #1205 analog).
+        # source: ADR-0176
+
         if is_structural_identifier(str(e.get("name", ""))):
             continue
         norm = normalize_label(e["name"])

@@ -1,8 +1,6 @@
 """Emergence tracker — forgetting curve fitting and aggregate report.
 
-Split from emergence_tracker.py to keep files under 300 lines.
-Contains the forgetting curve analysis (log-linear regression) and the
-aggregate emergence report generator.
+source: ADR-0171
 
 Pure business logic — no I/O.
 """
@@ -12,41 +10,40 @@ from __future__ import annotations
 import math
 from datetime import datetime, timezone
 
-# Numerical guard against division by a near-zero denominator.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0171
+
+# source: ADR-0171
 _OLS_EPSILON = 1e-10
 
-# source: thresholds documented in _fit_quality_for docstring
-# (darval's v3.13.2 P3)
+# source: ADR-0171
+# source: ADR-0171
 _FIT_R2_POOR = 0.10
 _FIT_R2_WEAK = 0.50
 
-# Minimum raw points / bins entering the log-linear fit.
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0171
+
+# source: ADR-0171
 _MIN_FIT_POINTS = 5
 _MIN_FIT_BINS = 3
 
-# Heat below this floor is treated as negligible (log-domain floor and
-# age-binning cutoff).
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0171
+
+# source: ADR-0171
 _HEAT_FLOOR = 0.01
 
-# Schema-match cohort thresholds for the streaming report.
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0171
+
+# source: ADR-0171
 _SCHEMA_MATCH_HIGH = 0.5
 _SCHEMA_MATCH_LOW = 0.3
 
-# source: structural — normalized theta phase lies in [0, 1); the first
-# half-cycle is the encoding phase
+# source: ADR-0171
+# source: ADR-0171
 _THETA_PHASE_SPLIT = 0.5
 
-# Minimum heat for a memory to count as "alive" in phase cohorts.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0171
+
+# source: ADR-0171
 _ALIVE_HEAT = 0.1
 
 # ── Forgetting Curve ─────────────────────────────────────────────────────
@@ -102,6 +99,8 @@ def _fit_log_linear(
 ) -> dict[str, float | str]:
     """Fit log-linear regression: log(heat) = log(a) - b * age via OLS.
 
+    source: ADR-0171
+
     Returns dict with curve_type, r_squared, half_life_hours,
     retention_at_24h, decay_rate, initial_retention, and a
     ``fit_quality`` flag (darval's v3.13.2 P3 — signal when r²
@@ -140,17 +139,7 @@ def _fit_log_linear(
 def _fit_quality_for(r_squared: float) -> str:
     """Bucket the fit r² into a consumer-friendly quality label.
 
-    Source: darval's v3.13.2 P3 — "should emergence.forgetting_curve
-    gate its derived metrics on a minimum r²?" Answer: emit a label,
-    let consumers decide whether to display/ignore.
-
-    Thresholds chosen to be conservative:
-      r² < 0.10 → "poor"     — the model explains < 10% of variance;
-                               half_life_hours is not meaningful.
-      r² < 0.50 → "weak"     — some signal, but a single exponential
-                               is an oversimplification.
-      else     → "good"      — explains ≥ 50% of variance.
-    """
+    source: ADR-0171"""
     if r_squared < _FIT_R2_POOR:
         return "poor"
     if r_squared < _FIT_R2_WEAK:
@@ -172,14 +161,7 @@ def compute_forgetting_curve(
 ) -> dict[str, float | str]:
     """Fit a forgetting curve to memory age vs heat data.
 
-    Fits a single EXPONENTIAL R(t) = a · exp(-b · t) by OLS of ln(heat) on
-    linear age (see ``_fit_log_linear``); the returned ``curve_type`` is
-    ``"exponential"``. NOTE: this is the exponential null, not a power law —
-    the biological power-law form R(t) = a · t^(-b) (Wixted & Ebbesen 1991;
-    Anderson & Schooler 1991) requires regressing ln(heat) on ln(age), which
-    this does NOT do. For the genuine power-law fit and the falsifiable
-    power-vs-exponential model comparison, see
-    ``benchmarks/forgetting_curve/curve_fit.py``.
+    source: ADR-0171
 
     Args:
         memories_by_age: List of (age_hours, heat) tuples.
@@ -199,10 +181,7 @@ def _forgetting_from_bin_means(
 ) -> dict[str, float | str]:
     """Fit the curve from already-binned (center, mean_heat) data.
 
-    Shared by ``compute_forgetting_curve`` (list path) and the streaming
-    emergence report, which accumulates the bins online and so never holds the
-    raw point set.
-    """
+    source: ADR-0171"""
     if n_points < _MIN_FIT_POINTS:
         return dict(_INSUFFICIENT)
     if len(bin_means) < _MIN_FIT_BINS:
@@ -247,18 +226,14 @@ def generate_emergence_report(
 ) -> dict:
     """Generate a full emergence report from an in-memory list.
 
-    Thin wrapper over ``generate_emergence_report_streamed`` (one chunk) so the
-    list path and the streaming path can never diverge.
-    """
+    source: ADR-0171"""
     return generate_emergence_report_streamed([memories], events=events)
 
 
 def _schema_acceleration_from_agg(cons: dict, incons: dict) -> dict:
     """schema-acceleration metric from streamed cohort aggregates.
 
-    Mirrors emergence_tracker.compute_schema_acceleration_metric exactly, but
-    from ``{count, consolidated, time_sum}`` per cohort instead of two lists.
-    """
+    source: ADR-0171"""
     c_count, i_count = cons["count"], incons["count"]
     c_time = (
         cons["time_sum"] / cons["consolidated"]
@@ -324,10 +299,7 @@ def generate_emergence_report_streamed(
 ) -> dict:
     """Constant-memory emergence report: one streaming pass of bounded reducers.
 
-    Every metric in the legacy report is an aggregate (binned forgetting curve,
-    schema/phase cohort sums, stage counts, interference mean), so the whole
-    report needs only O(num_bins + num_stages) RAM regardless of corpus size.
-    """
+    source: ADR-0171"""
     bins: dict[int, list] = {}  # bin_idx -> [heat_sum, count]
     n_age = 0
     cons = {"count": 0, "consolidated": 0, "time_sum": 0.0}

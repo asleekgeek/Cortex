@@ -1,12 +1,6 @@
 """Codebase parser — regex-based source file analysis.
 
-Extracts imports, type definitions, function definitions, and module
-structure from source files. No AST parsing — pure regex heuristics
-that work across Python, TypeScript, Go, Rust, Swift, and more.
-
-Pure business logic — no I/O. Callers pass file content as strings.
-Language-specific extractors live in codebase_extractors.py.
-"""
+source: ADR-0128"""
 
 from __future__ import annotations
 
@@ -96,7 +90,7 @@ def parse_file(path: str, content: str) -> FileAnalysis:
     Returns:
         FileAnalysis with imports, definitions, docstring, and content hash.
     """
-    from mcp_server.core.codebase_extractors import (  # noqa: PLC0415 — import cycle with mcp_server.core.codebase_extractors; a top-level import fails at boot
+    from mcp_server.core.codebase_extractors import (  # noqa: PLC0415 — source: ADR-0128
         IMPORT_EXTRACTORS,
         SYMBOL_EXTRACTORS,
         extract_docstring,
@@ -123,8 +117,7 @@ def parse_file(path: str, content: str) -> FileAnalysis:
 def build_memory_content(analysis: FileAnalysis) -> str:
     """Build structured memory content from a file analysis.
 
-    Format designed for good embeddings — includes file path, language,
-    imports, definitions, and purpose in a human-readable format.
+    source: ADR-0128
 
     Args:
         analysis: Parsed file analysis.

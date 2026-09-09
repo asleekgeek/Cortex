@@ -83,8 +83,7 @@ def build_type_index(
 ) -> dict[str, str]:
     """Map exported type names to their defining file.
 
-    Only includes class/struct/protocol/enum/interface/trait — not
-    functions or methods, which would produce too much noise.
+    source: ADR-0129
 
     Returns:
         Dict mapping type_name to defining file path.

@@ -1,18 +1,6 @@
 """Rate-distortion memory compression — progressive fidelity degradation.
 
-Memories degrade from full content -> gist -> tags as they age,
-following information-theoretic optimal forgetting:
-  Level 0 (recent): Full fidelity — complete content preserved
-  Level 1 (medium): Gist — key sentences + code snippets + entities
-  Level 2 (old):    Tag  — one-line summary + semantic tags
-
-High importance/surprise memories resist compression (get more bits).
-Protected and semantic-store memories are never compressed.
-
-Pure business logic — no I/O. Storage/embedding operations handled by caller.
-
-Based on Toth et al. (PLoS Comp Bio, 2020), MemFly (2025), Tishby (1999).
-"""
+source: ADR-0131"""
 
 from __future__ import annotations
 
@@ -35,19 +23,7 @@ _CAMELCASE_RE = re.compile(r"\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b")
 def _parse_ingested_at(memory: dict) -> datetime | None:
     """Parse ingest timestamp for cadence reasoning.
 
-    Compression cadence asks "has this memory had time to be revisited
-    in MY system" — that is elapsed time since ingest, NOT elapsed time
-    since the original event. Backfilled / imported memories carry a
-    backdated created_at (e.g. a 2023 conversation imported in 2026);
-    using created_at would compress them on the first consolidation
-    pass, before retrieval ever runs (see
-    docs/benchmarks/e1-v3-locomo-smoke-finding.md).
-
-    Falls back to created_at for legacy rows that predate the
-    ingested_at column (the schema migration in pg_schema.py backfills
-    ingested_at = created_at in that case anyway, so the fallback only
-    matters for in-memory dicts that never round-tripped through PG).
-    """
+    source: ADR-0131"""
     raw = memory.get("ingested_at") or memory.get("created_at", "")
     if not raw:
         return None
@@ -63,8 +39,8 @@ def _parse_ingested_at(memory: dict) -> datetime | None:
     return dt
 
 
-# source: thresholds documented per-multiplier in the _compute_resistance
-# docstring (engineering choices; calibration pending — see ablation)
+# source: ADR-0131
+# source: ADR-0131
 _HIGH_IMPORTANCE = 0.7
 _HIGH_SURPRISE = 0.6
 _HIGH_CONFIDENCE = 0.8
@@ -74,36 +50,16 @@ _HIGH_ACCESS_COUNT = 10
 def _compute_resistance(memory: dict) -> float:
     """Compute compression resistance multiplier from memory attributes.
 
-    Each multiplier is an engineering choice — no paper provides exact
-    values for these thresholds in a conversational memory system.
-    The qualitative direction (important / surprising / frequently accessed
-    memories resist compression longer) is grounded in the rate-distortion
-    and memory-importance literature (Tishby 1999; Toth et al. 2020) but
-    the specific numbers are hand-tuned and need ablation calibration.
-
-    Sources for individual multipliers:
-      2.0 (importance > 0.7): engineering choice — high-importance memories
-          warrant 2x longer retention before compression; calibration pending
-          — see ablation.
-      1.5 (surprise_score > 0.6): engineering choice — high-surprise memories
-          resist forgetting (von Restorff 1933 qualitative finding); exact
-          factor is hand-tuned; calibration pending — see ablation.
-      1.3 (confidence > 0.8): engineering choice — high-confidence memories
-          are less likely to be stale; factor is hand-tuned; calibration
-          pending — see ablation.
-      1.5 (access_count > 10): engineering choice — frequently accessed
-          memories should remain at full fidelity longer; calibration
-          pending — see ablation.
-    """
+    source: ADR-0131"""
     resistance = 1.0
     if memory.get("importance", 0.5) > _HIGH_IMPORTANCE:
-        resistance *= 2.0  # source: engineering choice — see docstring
+        resistance *= 2.0  # source: ADR-0131
     if memory.get("surprise_score", 0.0) > _HIGH_SURPRISE:
-        resistance *= 1.5  # source: engineering choice — see docstring
+        resistance *= 1.5  # source: ADR-0131
     if memory.get("confidence", 1.0) > _HIGH_CONFIDENCE:
-        resistance *= 1.3  # source: engineering choice — see docstring
+        resistance *= 1.3  # source: ADR-0131
     if memory.get("access_count", 0) > _HIGH_ACCESS_COUNT:
-        resistance *= 1.5  # source: engineering choice — see docstring
+        resistance *= 1.5  # source: ADR-0131
     return resistance
 
 
@@ -114,20 +70,7 @@ def get_compression_schedule(
 ) -> int:
     """Calculate target compression level based on age and importance.
 
-    Ablation: when CORTEX_ABLATE_COMPRESSION=1 the compression pass is
-    skipped for all memories — returns 0 (full fidelity) unconditionally.
-    This mirrors the spreading_activation ablation pattern (inline import
-    to avoid a circular-import risk at module-load time).
-
-    Age thresholds:
-        gist_age_hours=168.0  (7 days)  — engineering choice; calibration
-            pending ablation study. Source: engineering choice —
-            balances retrieval fidelity vs storage cost at typical session
-            cadence; calibration pending — see ablation.
-        tag_age_hours=720.0   (30 days) — engineering choice; calibration
-            pending ablation study. Source: engineering choice —
-            chosen as ~1 month, beyond which gist-level detail is unlikely
-            to be recalled verbatim; calibration pending — see ablation.
+    source: ADR-0131
 
     Returns:
         0 = full fidelity, 1 = gist, 2 = tag
@@ -146,8 +89,8 @@ def get_compression_schedule(
     if ingested_at is None:
         return 0
 
-    # Cadence is measured from ingest, not from the original event.
-    # Source: docs/benchmarks/e1-v3-locomo-smoke-finding.md.
+    # source: ADR-0131
+
     hours_elapsed = (datetime.now(timezone.utc) - ingested_at).total_seconds() / 3600.0
     resistance = _compute_resistance(memory)
 
@@ -186,8 +129,8 @@ def _select_gist_sentences(
     return [sentences[i] for i in sorted(selected)]
 
 
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0131
+# source: ADR-0131
 _MAX_SENTENCES_KEPT_VERBATIM = 3  # at or below this, gisting keeps everything
 
 
@@ -247,12 +190,12 @@ def _format_created_date(memory: dict) -> str:
         return created[:10]
 
 
-# source: cap documented in the _truncate_tag_repr docstring ("truncate tag
-# representation to 200 chars"); tuning provenance not recorded
+# source: ADR-0131
+# source: ADR-0131
 _MAX_TAG_REPR_CHARS = 200
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
-_MIN_SUMMARY_CHARS = 10  # below this, fall back to a fixed-width summary
+# source: ADR-0131
+
+_MIN_SUMMARY_CHARS = 10  # source: ADR-0131
 
 
 def _truncate_tag_repr(

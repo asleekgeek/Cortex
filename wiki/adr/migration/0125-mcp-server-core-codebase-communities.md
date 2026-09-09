@@ -1,0 +1,128 @@
+---
+title: "ADR-0125 — mcp_server/core/codebase_communities.py rationale"
+status: accepted
+source: mcp_server/core/codebase_communities.py
+---
+
+# ADR-0125 — mcp_server/core/codebase_communities.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Split from codebase_graph.py to stay under the 300-line limit and to give
+community/centrality analysis a single cohesive home (SRP).
+````
+
+## module — original line 6 (docstring)
+
+````text
+Community detection uses the Leiden algorithm when leidenalg+igraph are
+installed, falling back to Louvain (networkx) otherwise. Leiden is a strict
+improvement over Louvain: it guarantees well-connected communities, which
+Louvain does not.
+````
+
+## module — original line 11 (docstring)
+
+````text
+Sources:
+- Traag, V.A., Waltman, L., van Eck, N.J. (2019). "From Louvain to Leiden:
+  guaranteeing well-connected communities." Scientific Reports 9:5233.
+- Blondel et al. (2008). "Fast unfolding of communities in large networks."
+  J. Stat. Mech. P10008. (Louvain fallback.)
+- Freeman, L.C. (1977). "A set of measures of centrality based on
+  betweenness." Sociometry 40(1):35-41.
+- Page, L. et al. (1999). "The PageRank Citation Ranking." Stanford InfoLab.
+- Riel, A.J. (1996). Object-Oriented Design Heuristics, Ch. 3 — the
+  "god class" anti-pattern (a single node coordinating disproportionately
+  many others).
+
+````
+
+## _leiden_partition — original line 59 (docstring)
+
+````text
+    Implements Traag et al. (2019) via the authors' reference library
+    (leidenalg) over an igraph copy of g. Modularity objective for parity
+    with the Louvain fallback. seed=42 for determinism.
+    
+````
+
+## detect_communities — original line 89 (docstring)
+
+````text
+    Prefers Leiden (Traag et al. 2019); falls back to Louvain (Blondel
+    et al. 2008) when leidenalg+igraph are not installed.
+````
+
+## compute_centrality — original line 126 (docstring)
+
+````text
+    Sources: Freeman (1977) betweenness; Page et al. (1999) PageRank;
+    Freeman (1979) degree centrality.
+    
+````
+
+## detect_god_nodes — original line 157 (docstring)
+
+````text
+    A node is a god node when its degree centrality exceeds
+    mean + sigma*std across all nodes — an architectural coordinator that
+    couples to disproportionately many others (Riel 1996, god-class
+    heuristic). The threshold is measured from the graph itself, not a
+    hardcoded coupling count.
+````
+
+## detect_god_nodes — original line 163 (docstring)
+
+````text
+    sigma defaults to 2.0 — the two-sigma convention for outlier detection
+    (~97.7th percentile under a normal distribution; the empirical/"three
+    sigma" rule, Pukelsheim 1994, "The Three Sigma Rule," The American
+    Statistician 48(2):88-91).
+````
+
+## module — original line 31 (comment)
+
+````text
+# source: structural — a graph needs at least two nodes before community
+# partitioning or centrality ranking is meaningful
+````
+
+## module — original line 34 (comment)
+
+````text
+# source: structural — standard deviation needs at least two samples
+````
+
+## inline — original line 43 (directive-rationale)
+
+````text
+# noqa: PLC0415 — optional dependency ([codebase] extra); imported where used so environments without it keep working
+````
+
+## inline — original line 64 (directive-rationale)
+
+````text
+# noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+````
+
+## inline — original line 65 (directive-rationale)
+
+````text
+# noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+````
+
+## inline — original line 96 (directive-rationale)
+
+````text
+# noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+````
+
+## inline — original line 130 (directive-rationale)
+
+````text
+# noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+````

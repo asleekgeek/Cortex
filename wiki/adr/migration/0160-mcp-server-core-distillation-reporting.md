@@ -1,0 +1,51 @@
+---
+title: "ADR-0160 — mcp_server/core/distillation_reporting.py rationale"
+status: accepted
+source: mcp_server/core/distillation_reporting.py
+---
+
+# ADR-0160 — mcp_server/core/distillation_reporting.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Split out of ``core/distillation.py`` (INC7.8/M-D8) purely to respect the
+300-line file cap (§4.1): dossier ASSEMBLY (clustering, pairing, the
+idempotence marker) lives in ``distillation.py``; TEXT GENERATION for the
+LLM prompt and the read-only usage snapshot for ``memify_derive`` live
+here. Both are pure business logic — no I/O.
+
+````
+
+## build_distill_prompt — original line 20 (mixed-contract-rationale)
+
+````text
+    Precondition: ``memory_previews`` is ``[{"id", "content", "tags"}]``
+    for exactly ``dossier.memory_ids`` (content truncated by the caller,
+    same 200-char convention as ``navigate_memory._enrich_neighbors``).
+    Postcondition: the returned text explicitly names the required
+    ``remember`` call shape (``write_class='deliberate'``, tags
+    ``lesson`` + ``derived-src:<id>`` per source + the dossier's own
+    ``marker`` for idempotence) so the LLM cannot silently drop
+    provenance — mirrors ``curate_wiki``'s prompt convention of
+    embedding the exact required tool call.
+    
+````
+
+## summarize_derived_usage — original line 68 (mixed-contract-rationale)
+
+````text
+    Precondition: ``derived_memories`` is every active memory carrying the
+    ``derived`` tag (``store.get_memories_by_tag("derived", ...)``, the
+    same tag ``memify_derive.py`` writes) — NOT the LLM-authored
+    ``distilled`` lessons from this module, which carry ``lesson`` +
+    ``write_class='deliberate'`` instead.
+    Postcondition: returns aggregate ``useful_count``/``access_count``
+    stats plus the raw count — a snapshot, not a verdict. The
+    keep/retire decision requires re-running this at J+30 and comparing;
+    this function only computes one snapshot, it does not persist
+    anything or decide.
+    
+````

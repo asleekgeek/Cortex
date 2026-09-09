@@ -1,23 +1,6 @@
 """Submodular coverage selection for Phase 1 own-stage retrieval.
 
-Replaces "top-k by score" with greedy submodular coverage: each new
-chunk is picked to maximize marginal information gain given what has
-already been selected. Directly addresses the "near-duplicate top-k"
-failure mode observed at BEAM-10M scale, where the 5 highest-scored
-chunks are often substrings of each other.
-
-**Paper backing**:
-  Krause & Guestrin, "Near-Optimal Sensor Placements in Gaussian
-  Processes", JMLR 9:235-284 (2008). Proves that for a monotone
-  submodular set function f, the greedy algorithm returns S_k with
-  f(S_k) >= (1 - 1/e) * f(S*_k) ≈ 0.63 * optimal. Also introduces
-  the lazy greedy acceleration (Minoux 1978) that makes selection
-  nearly O(n log n) instead of O(n^2).
-
-**Applied here**: marginal relevance = score - λ * max_similarity(c, S)
-where similarity is cosine over embeddings. This is the Carbonell &
-Goldstein MMR (1998) objective, which is submodular when λ < 1.
-"""
+source: ADR-0146"""
 
 from __future__ import annotations
 
@@ -38,17 +21,7 @@ def submodular_select(
 ) -> list[dict]:
     """Greedy submodular selection, optionally within a token budget.
 
-    Selection is driven by `max_chunks` first. `token_budget` is an
-    OPTIONAL soft upper bound — when None, the function always picks
-    `max_chunks` items regardless of total tokens. This matters because
-    the same primitive is used in two very different contexts:
-
-      1. **Retrieval ranking evaluation**: we want exactly max_chunks
-         items so retrieval hit ranks are well-defined. The text size
-         is irrelevant here.
-      2. **Prompt assembly for an LLM reader**: we want the tightest
-         set of items that fits the reader's context window. Here
-         token_budget matters and max_chunks is a hint.
+    source: ADR-0146
 
     When both max_chunks and token_budget are set, the function stops
     at whichever is reached first. When token_budget is None, only

@@ -1,8 +1,6 @@
 """Schema abstraction, clustering, and consistency checking for CLS.
 
-Extracted from dual_store_cls.py: greedy embedding clustering,
-recurring pattern filtering, contradiction detection, and
-keyword-frequency schema abstraction.
+source: ADR-0170
 
 Pure business logic -- no I/O.
 """
@@ -126,17 +124,15 @@ _NEGATION_RE = re.compile(
     re.IGNORECASE,
 )
 
-# source: structural — a contradiction requires at least two memories to
-# compare
+# source: ADR-0170
+
 _MIN_MEMORIES_FOR_CONTRADICTION = 2
 
 
 def check_consistency(memories: list[dict[str, Any]]) -> dict[str, Any]:
     """Check a cluster of memories for contradictions.
 
-    Simple heuristic: if one memory has negation words and another doesn't,
-    flag as potential contradiction.
-    """
+    source: ADR-0170"""
     if len(memories) < _MIN_MEMORIES_FOR_CONTRADICTION:
         return {"consistent": True, "contradictions": []}
 

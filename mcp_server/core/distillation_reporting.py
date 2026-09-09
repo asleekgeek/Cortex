@@ -1,11 +1,6 @@
 """Distillation reporting — authoring prompts + memify_derive usage stats.
 
-Split out of ``core/distillation.py`` (INC7.8/M-D8) purely to respect the
-300-line file cap (§4.1): dossier ASSEMBLY (clustering, pairing, the
-idempotence marker) lives in ``distillation.py``; TEXT GENERATION for the
-LLM prompt and the read-only usage snapshot for ``memify_derive`` live
-here. Both are pure business logic — no I/O.
-"""
+source: ADR-0160"""
 
 from __future__ import annotations
 
@@ -19,16 +14,11 @@ def build_distill_prompt(
 ) -> str:
     """Structured authoring prompt for the in-session LLM (M-D8 point 2).
 
-    Precondition: ``memory_previews`` is ``[{"id", "content", "tags"}]``
-    for exactly ``dossier.memory_ids`` (content truncated by the caller,
-    same 200-char convention as ``navigate_memory._enrich_neighbors``).
-    Postcondition: the returned text explicitly names the required
-    ``remember`` call shape (``write_class='deliberate'``, tags
-    ``lesson`` + ``derived-src:<id>`` per source + the dossier's own
-    ``marker`` for idempotence) so the LLM cannot silently drop
-    provenance — mirrors ``curate_wiki``'s prompt convention of
-    embedding the exact required tool call.
-    """
+    Precondition: memory_previews contains id, content, and tags for
+    exactly dossier.memory_ids, with caller-truncated content.
+    Postcondition: text names the required remember call with deliberate
+    write_class, lesson and derived-src:<id> tags, and the dossier marker.
+    source: ADR-0160"""
     lines = [
         f"Distillation dossier ({dossier.kind}) — "
         f"topic: {dossier.topic or '(untitled)'}",
@@ -69,17 +59,11 @@ def summarize_derived_usage(derived_memories: list[dict[str, Any]]) -> dict[str,
     facts (M-D8 point 3: "conditionner son maintien à la mesure d'usage à
     30 jours").
 
-    Precondition: ``derived_memories`` is every active memory carrying the
-    ``derived`` tag (``store.get_memories_by_tag("derived", ...)``, the
-    same tag ``memify_derive.py`` writes) — NOT the LLM-authored
-    ``distilled`` lessons from this module, which carry ``lesson`` +
-    ``write_class='deliberate'`` instead.
-    Postcondition: returns aggregate ``useful_count``/``access_count``
-    stats plus the raw count — a snapshot, not a verdict. The
-    keep/retire decision requires re-running this at J+30 and comparing;
-    this function only computes one snapshot, it does not persist
-    anything or decide.
-    """
+    Precondition: ``derived_memories`` contains every active row carrying
+    the ``derived`` tag, excluding LLM-authored ``distilled`` lessons.
+    Postcondition: returns aggregate useful/access counts and raw count;
+    computes one snapshot without persistence or a keep/retire verdict.
+    source: ADR-0160"""
     n = len(derived_memories)
     if n == 0:
         return {

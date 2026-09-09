@@ -1,24 +1,6 @@
 """Pluggable stage detection for structured context assembly.
 
-A "stage" is a **distinct subject with its own context** — the unit of
-topical locality that the StageAwareContextAssembler operates on. In
-the original Swift PRD pipeline (Clément Deust), stages are explicit:
-Impact, Integration, PRD, Implementation. Each is a different task with
-its own vocabulary and its own relevance.
-
-For Cortex, free-form conversations don't come with explicit stage
-labels. This module provides pluggable detectors so stage boundary
-strategies can be A/B tested empirically rather than hard-coded.
-
-Ships two detectors in v1:
-  - `ExplicitStageDetector` — stage = an explicit field on the memory
-    (e.g. "plan_id" for BEAM, "agent_topic" for production)
-  - `TemporalStageDetector` — stage = contiguous block of memories with
-    inter-memory time gaps below a threshold
-
-Future (A/B candidates): semantic clustering, LLM topic-shift detection,
-hybrid explicit+temporal fallback.
-"""
+source: ADR-0150"""
 
 from __future__ import annotations
 
@@ -27,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Any
 import calendar
 
-# source: structural — "Month-DD-YYYY" splits on two "-" into three fields
+# source: ADR-0150
 _MONTH_DAY_YEAR_PARTS = 3
 
 
@@ -53,10 +35,7 @@ class StageDetector(ABC):
 class ExplicitStageDetector(StageDetector):
     """Stage = value of an explicit field on the memory.
 
-    Examples:
-      - BEAM benchmark: field="plan_id" (the BEAM-10M dataset has a
-        plan index per turn, tagged at ingest).
-      - Production Cortex: field="agent_topic" or "directory_context".
+    source: ADR-0150
 
     When the field is missing from a memory, the fallback value is
     used — defaults to "default".
@@ -93,11 +72,9 @@ class TemporalStageDetector(StageDetector):
     timestamps. A gap larger than the threshold starts a new stage.
 
     Args:
-        gap_hours: inter-memory gap above which a new stage begins.
-            Default 4h matches a typical work-session boundary.
-        time_field: name of the timestamp field. Accepts ISO strings
-            or datetime objects.
-    """
+        gap_hours: Inter-memory gap starting a new stage (default 4h).
+        time_field: Timestamp field name, accepting ISO strings or datetimes.
+    source: ADR-0150"""
 
     def __init__(
         self,
@@ -152,12 +129,12 @@ class TemporalStageDetector(StageDetector):
         if isinstance(value, datetime):
             return value
         if isinstance(value, str):
-            # Try ISO format first (2024-03-15, 2024-03-15T10:00:00Z)
+            # source: ADR-0150
             try:
                 return datetime.fromisoformat(value.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
                 pass
-            # Try BEAM's "Month-DD-YYYY" format (March-15-2024)
+            # source: ADR-0150
 
             try:
                 parts = value.split("-")
@@ -170,14 +147,8 @@ class TemporalStageDetector(StageDetector):
                     }
                     month_num = month_abbrs.get(month_name.lower())
                     if month_num:
-                        # naive by design: matches the sibling ISO branch
-                        # above, which is naive too whenever `value` lacks
-                        # an explicit offset (date-only ISO strings).
-                        # Making only this fallback aware would introduce a
-                        # new naive/aware mismatch across the two parsing
-                        # paths — a behavior change out of scope for a lint
-                        # refactor; unifying tz-awareness belongs in a
-                        # dedicated fix.
+                        # source: ADR-0150
+
                         return datetime(year, month_num, day)  # noqa: DTZ001
             except (ValueError, IndexError):
                 pass

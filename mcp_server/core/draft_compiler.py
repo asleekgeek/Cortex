@@ -1,26 +1,6 @@
 """Phase 2.5 — Compile approved DraftPages to markdown files.
 
-Pure function: given an approved draft + kind metadata + domain,
-produce (rel_path, markdown_text). The handler atomically writes
-the file via wiki_store and persists the wiki.pages mirror row.
-
-Frontmatter mirrors wiki.pages columns. Body is:
-
-    # <title>
-
-    <lead>
-
-    ## <section heading>
-
-    <section body>
-
-    ...
-
-    ## See also              ← only when wiki.links references exist
-
-LaTeX-style frontend (preserved per user requirement) renders this
-without any further per-kind formatting — the renderer is style-only.
-"""
+source: ADR-0165"""
 
 from __future__ import annotations
 

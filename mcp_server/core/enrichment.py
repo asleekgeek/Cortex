@@ -1,16 +1,6 @@
 """Memory & query enrichment pipeline.
 
-Two enrichment strategies (no external APIs):
-  1. Doc2Query  -- generate synthetic search queries at index time.
-  2. Concept expansion -- expand a query with related terms at retrieval time.
-
-Heuristics:
-  - ConceptNet-style synonym/hypernym mappings (concept_vocabulary.py)
-  - COMET-style pattern templates ("X is used for ...", "X causes ...")
-  - Doc2Query: extract question-answerable nouns, generate wh-questions
-
-Pure business logic -- no I/O.
-"""
+source: ADR-0175"""
 
 from __future__ import annotations
 
@@ -52,10 +42,9 @@ _STOP = {
 }
 
 
-# Candidate-length floors: code tokens of length <= 2 and plain words of
-# length <= 4 are ignored as noise.
-# source: pre-existing tuned values, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0175
+
+
 _MAX_IGNORED_TOKEN_LEN = 2
 _MAX_IGNORED_WORD_LEN = 4
 

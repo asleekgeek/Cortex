@@ -1,25 +1,6 @@
 """Pure Confluence storage-format (XHTML) parser — string in, typed model out.
 
-Zero I/O: handed the storage-format XHTML string (export ingestion reads it
-off disk in infrastructure; the live REST connector — enterprise-backlog#28,
-OUT of scope here — will fetch the identical string over REST and call THIS
-function), it produces a :class:`ParsedDocument` — the same shape the docx
-adapter produces, so both feed one normalization seam.
-
-Storage format shape parsed (source: Atlassian "Confluence Storage Format"
-reference — confluence.atlassian.com/doc/confluence-storage-format-790796544.html):
-  - Headings are ``<h1>``..``<h6>``; body text is ``<p>``.
-  - Tables are ``<table>`` with ``<tr>`` rows and ``<th>``/``<td>`` cells.
-  - Images are the ``<ac:image>`` macro or plain ``<img>`` — counted, never
-    extracted (issue #192 non-goal).
-
-Storage format is well-formed XML but uses the Confluence ``ac:``/``ri:``
-namespace prefixes (undeclared in the fragment) and named HTML entities
-(``&nbsp;`` etc.) that bare XML does not define. Both are pre-resolved here
-(entities via the stdlib ``html.entities.html5`` table; namespaces via a
-declaring wrapper) so a genuine structural defect — an unclosed tag — still
-raises loudly rather than being masked.
-"""
+source: ADR-0135"""
 
 from __future__ import annotations
 
@@ -37,17 +18,19 @@ from mcp_server.core.document_model import (
 _XML_BUILTIN_ENTITIES = {"amp", "lt", "gt", "quot", "apos"}
 _ENTITY_RE = re.compile(r"&([a-zA-Z][a-zA-Z0-9]*);")
 _HEADING_RE = re.compile(r"^h([1-6])$")
-# Wrapper declaring the storage-format namespaces so ElementTree accepts the
-# ac:/ri: prefixes. source: Atlassian storage-format reference (ac = macro
-# namespace, ri = resource-identifier namespace).
+# source: ADR-0135
+
+
 _WRAP_OPEN = '<_root xmlns:ac="urn:ac" xmlns:ri="urn:ri">'
 _WRAP_CLOSE = "</_root>"
 
 
 def _resolve_entities(xhtml: str) -> str:
-    """Replace named HTML entities with their unicode char, leaving the five
-    XML built-ins and numeric refs (``&#..;``) for the XML parser. An unknown
-    name is left intact so the parser fails loudly on genuinely broken input."""
+    """Replace named HTML entities with their unicode char, leaving the five XML
+    built-ins and numeric refs (``&#..;``) for the XML parser.
+
+    source: ADR-0135
+    """
 
     def _sub(match: re.Match[str]) -> str:
         name = match.group(1)
@@ -60,9 +43,8 @@ def _resolve_entities(xhtml: str) -> str:
 
 
 def _local(tag: str) -> str:
-    # §12 note: split-vs-rsplit / maxsplit / index mutants are EQUIVALENT here
-    # — an ElementTree tag is always the single-'}' form ``{uri}local``, so all
-    # those variants return the same local name (see docx_parser._local).
+    # source: ADR-0135
+
     return tag.rsplit("}", 1)[-1]
 
 

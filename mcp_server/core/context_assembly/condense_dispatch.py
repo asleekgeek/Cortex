@@ -1,9 +1,6 @@
-"""Generic memory condenser: dispatch by content shape (issue #228 split
-4/4).
+"""Generic memory condenser: dispatch by content shape.
 
-Extracted from ``condensers.py`` (§4.1 — the original file was 391 lines,
-over this repo's 300-line cap) with zero behaviour change. See
-``condensers.py`` for the shared module docstring and re-export facade.
+source: ADR-0141
 """
 
 from __future__ import annotations
@@ -38,9 +35,8 @@ def condense_memory_content(
         tags: optional tag hints (e.g. ["code", "decision"]) to bias
             dispatch. When provided, takes precedence over heuristic.
     """
-    # EQUIVALENT MUTANT (#228): `<=` → `<`. Every route below opens with
-    # this same guard on this exact (content, token_budget) pair and
-    # returns content verbatim, so the boundary case agrees either way.
+    # source: ADR-0141
+
     if estimate_tokens(content) <= token_budget:
         return content
 
@@ -51,7 +47,10 @@ def condense_memory_content(
 
 
 def _dispatch_by_tag(content: str, token_budget: int, tags: list[str]) -> str | None:
-    """Explicit tag hints, checked before any content-shape heuristic."""
+    """Explicit tag hints, checked before any content-shape heuristic.
+
+    source: ADR-0141
+    """
     if "code" in tags or "file" in tags:
         return condense_code_block(content, token_budget)
     if "timeline" in tags or "event" in tags:
@@ -60,7 +59,10 @@ def _dispatch_by_tag(content: str, token_budget: int, tags: list[str]) -> str | 
 
 
 def _dispatch_by_shape(content: str, token_budget: int) -> str:
-    """Heuristic dispatch by content shape when no tag hint matched."""
+    """Heuristic dispatch by content shape when no tag hint matched.
+
+    source: ADR-0141
+    """
     if _has_code_blocks(content):
         return condense_assistant_message(content, token_budget)
     if content.count("→") + content.count("->") >= _MIN_ARROWS_FOR_TRIPLES:

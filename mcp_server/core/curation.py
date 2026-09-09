@@ -1,12 +1,6 @@
 """Active memory curation — merge/link/create decisions and self-improvement.
 
-Implements:
-  - Ingestion decisions: merge near-duplicates, link related, create new
-  - Contradiction detection: negation + action divergence
-  - Memify self-improvement: prune, strengthen, reweight, derive
-
-Pure business logic — no I/O. Receives data, returns decisions/actions.
-"""
+source: ADR-0155"""
 
 from __future__ import annotations
 
@@ -63,7 +57,10 @@ def compute_textual_overlap(content_a: str, content_b: str) -> float:
 
 
 def merge_contents(existing_content: str, new_content: str) -> str:
-    """Merge two memory contents, avoiding pure duplication."""
+    """Merge two memory contents, avoiding pure duplication.
+
+    source: ADR-0155
+    """
     if new_content.strip() in existing_content:
         return existing_content
     if existing_content.strip() in new_content:
