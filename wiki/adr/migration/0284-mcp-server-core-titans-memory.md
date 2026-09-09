@@ -1,0 +1,133 @@
+---
+title: "ADR-0284 — mcp_server/core/titans_memory.py rationale"
+status: accepted
+source: mcp_server/core/titans_memory.py
+---
+
+# ADR-0284 — mcp_server/core/titans_memory.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+Titans test-time learning memory (Behrouz et al., NeurIPS 2025).
+````
+
+## module — original line 3 (docstring)
+
+````text
+Faithful implementation of the neural long-term memory module from
+"Titans: Learning to Memorize at Test Time" (arXiv:2501.00663).
+````
+
+## module — original line 6 (docstring)
+
+````text
+Key equations from the paper:
+  M_t = M_{t-1} - S_t                              (memory update)
+  S_t = eta * S_{t-1} - theta * grad_l(M_{t-1}; x) (surprise momentum)
+  l(M; x) = ||M * k_x - v_x||^2                    (associative memory loss)
+````
+
+## module — original line 11 (docstring)
+
+````text
+Where:
+  M = weight matrix (associative memory, maps keys to values)
+  k_x = key projection of input x (query embedding)
+  v_x = value projection (target memory embedding)
+  S = surprise momentum (accumulated gradient signal)
+  eta = momentum coefficient (past surprise decay)
+  theta = learning rate (current gradient weight)
+````
+
+## module — original line 19 (docstring)
+
+````text
+Surprise = ||grad_l|| (gradient magnitude). Large gradients mean the
+input was unexpected — the memory module couldn't predict it.
+````
+
+## module — original line 22 (docstring)
+
+````text
+The memory module M learns at test time via gradient descent. After
+each retrieval, M is updated to better predict the retrieved content,
+so future similar queries are less surprising.
+````
+
+## module — original line 26 (docstring)
+
+````text
+Requires PyTorch (already available via sentence-transformers).
+````
+
+## module — original line 28 (docstring)
+
+````text
+Pure business logic — stateful (maintains M and S across calls).
+
+````
+
+## TitansMemory — original line 59 (mixed-contract-rationale)
+
+````text
+    Args:
+        dim: Embedding dimension (384 for MiniLM-L6-v2).
+        eta: Momentum coefficient — decay of past surprise.
+            IMPORTANT: In the paper, η_t is data-dependent (learned as a
+            function of x_t), not a fixed constant. Using a fixed 0.9 is a
+            simplification — standard SGD momentum default (Sutskever et al.,
+            ICML 2013). This loses the adaptive property of the paper.
+        theta: Learning rate — weight of current gradient.
+            IMPORTANT: In the paper, θ_t is data-dependent, controlling how
+            much momentary surprise to incorporate. Using a fixed 0.01 is a
+            simplification. The paper's outer-loop optimizer uses lr=4e-4
+            (AdamW), but the inner-loop memory lr is learned, not fixed.
+    
+````
+
+## inline — original line 49 (directive-rationale)
+
+````text
+# noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+````
+
+## inline — original line 133 (directive-rationale)
+
+````text
+# noqa: N806 -- Titans paper notation
+````
+
+## module — original line 144 (comment)
+
+````text
+# Normalize: empirically, grad norms for 384-dim are ~0.01-1.0
+# Use tanh for smooth [0,1] mapping without invented thresholds
+````
+
+## inline — original line 150 (directive-rationale)
+
+````text
+# noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
+````
+
+## module — original line 169 (comment)
+
+````text
+# No-op: no momentum update; returns 0 so downstream uses
+# detect "no surprise signal".
+````
+
+## inline — original line 193 (directive-rationale)
+
+````text
+# noqa: N806 -- Titans paper notation
+````
+
+## inline — original line 214 (directive-rationale)
+
+````text
+# noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
+````

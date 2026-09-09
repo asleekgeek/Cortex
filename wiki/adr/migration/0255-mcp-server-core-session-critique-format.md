@@ -1,0 +1,60 @@
+---
+title: "ADR-0255 — mcp_server/core/session_critique_format.py rationale"
+status: accepted
+source: mcp_server/core/session_critique_format.py
+---
+
+# ADR-0255 — mcp_server/core/session_critique_format.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+Session critique formatting, scoring, and decision analysis helpers.
+````
+
+## module — original line 3 (docstring)
+
+````text
+Companion module to session_critique.py — handles composite score
+computation, markdown text formatting, and decision quality analysis.
+````
+
+## _is_decision_memory — original line 40 (docstring)
+
+````text
+Check if a memory represents a decision.
+````
+
+## _decision_suggestions — original line 53 (docstring)
+
+````text
+Generate suggestions from decision analysis metrics.
+````
+
+## analyze_decisions — original line 74 (docstring)
+
+````text
+Analyze decision quality from session memories.
+````
+
+## module — original line 14 (comment)
+
+````text
+# ── Decision Analysis ─────────────────────────────────────────────────────
+````
+
+## module — original line 27 (comment)
+
+````text
+# ── Heuristic thresholds ──────────────────────────────────────────────────
+# source (all constants in this block): pre-existing tuned values, extracted
+# unchanged (#197 family 3); provenance not recorded at introduction.
+````
+
+## module — original line 35 (comment)
+
+````text
+# Missing-decision suggestion fires only above this many session memories.
+````

@@ -1935,22 +1935,12 @@
     {
       "file": "mcp_server/core/recall_pipeline.py",
       "kind": "method-size",
-      "detail": "emotional_retrieval_rerank"
-    },
-    {
-      "file": "mcp_server/core/recall_pipeline.py",
-      "kind": "method-size",
       "detail": "familiarity_triage"
     },
     {
       "file": "mcp_server/core/recall_pipeline.py",
       "kind": "method-size",
       "detail": "hopfield_complete"
-    },
-    {
-      "file": "mcp_server/core/recall_pipeline.py",
-      "kind": "method-size",
-      "detail": "mood_congruent_rerank"
     },
     {
       "file": "mcp_server/core/recall_pipeline.py",
@@ -2060,17 +2050,7 @@
     {
       "file": "mcp_server/core/reranker.py",
       "kind": "method-size",
-      "detail": "_ensure_reranker"
-    },
-    {
-      "file": "mcp_server/core/reranker.py",
-      "kind": "method-size",
       "detail": "rerank_results"
-    },
-    {
-      "file": "mcp_server/core/reranker_calibration.py",
-      "kind": "unsourced-constant",
-      "detail": "MAX_SAMPLES"
     },
     {
       "file": "mcp_server/core/reranker_calibration.py",
@@ -2086,16 +2066,6 @@
       "file": "mcp_server/core/reranker_model.py",
       "kind": "layer-violation",
       "detail": "pathlib"
-    },
-    {
-      "file": "mcp_server/core/reranker_scoring.py",
-      "kind": "method-size",
-      "detail": "_blend_scores"
-    },
-    {
-      "file": "mcp_server/core/reranker_scoring.py",
-      "kind": "method-size",
-      "detail": "_compute_adaptive_alpha"
     },
     {
       "file": "mcp_server/core/retrieval_dispatch.py",
@@ -2248,11 +2218,6 @@
       "detail": "_LOW_CONFIDENCE_THRESHOLD"
     },
     {
-      "file": "mcp_server/core/session_critique_format.py",
-      "kind": "unsourced-constant",
-      "detail": "_MIN_MEMORIES_FOR_DECISION_CHECK"
-    },
-    {
       "file": "mcp_server/core/session_extractor.py",
       "kind": "unsourced-constant",
       "detail": "_MAX_CONTENT_LEN"
@@ -2279,11 +2244,6 @@
     },
     {
       "file": "mcp_server/core/sleep_phases.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/sleep_phases.py",
       "kind": "method-size",
       "detail": "run_rem_phase"
     },
@@ -2291,11 +2251,6 @@
       "file": "mcp_server/core/sleep_phases.py",
       "kind": "method-size",
       "detail": "run_two_phase_consolidation"
-    },
-    {
-      "file": "mcp_server/core/source_monitoring.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "mcp_server/core/source_monitoring.py",
@@ -2326,16 +2281,6 @@
       "file": "mcp_server/core/spreading_activation.py",
       "kind": "unsourced-constant",
       "detail": "_DEFAULT_THRESHOLD"
-    },
-    {
-      "file": "mcp_server/core/staleness.py",
-      "kind": "method-size",
-      "detail": "assess_staleness"
-    },
-    {
-      "file": "mcp_server/core/streaming/adaptive_writer.py",
-      "kind": "method-size",
-      "detail": "adaptive_drain"
     },
     {
       "file": "mcp_server/core/streaming/calibrated.py",
@@ -2539,11 +2484,6 @@
     },
     {
       "file": "mcp_server/core/synaptic_tagging.py",
-      "kind": "method-size",
-      "detail": "find_tagging_candidates"
-    },
-    {
-      "file": "mcp_server/core/synaptic_tagging.py",
       "kind": "unsourced-constant",
       "detail": "_BISTABLE_THRESHOLD"
     },
@@ -2634,11 +2574,6 @@
     },
     {
       "file": "mcp_server/core/tripartite_calcium.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/tripartite_calcium.py",
       "kind": "unsourced-constant",
       "detail": "A_2"
     },
@@ -2661,11 +2596,6 @@
       "file": "mcp_server/core/tripartite_calcium.py",
       "kind": "unsourced-constant",
       "detail": "C_1"
-    },
-    {
-      "file": "mcp_server/core/tripartite_calcium.py",
-      "kind": "unsourced-constant",
-      "detail": "DSERINE_LTP_BOOST"
     },
     {
       "file": "mcp_server/core/tripartite_calcium.py",
@@ -2726,16 +2656,6 @@
       "file": "mcp_server/core/tripartite_calcium.py",
       "kind": "unsourced-constant",
       "detail": "V_ER"
-    },
-    {
-      "file": "mcp_server/core/two_stage_model.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/core/two_stage_transfer.py",
-      "kind": "method-size",
-      "detail": "compute_transfer_delta"
     },
     {
       "file": "mcp_server/core/two_stage_transfer.py",

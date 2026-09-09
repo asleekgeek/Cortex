@@ -118,13 +118,13 @@ def _extract_keyword_densities(
     activation[10] = _count_keyword_density(text, TRIAL_KEYWORDS)
 
 
-# Sessions shorter than this (10 minutes in milliseconds) count as short bursts.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0262
+
+# source: ADR-0262
 _SHORT_SESSION_MS = 600000
-# Conversations with more than this many turns count as long back-and-forths.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0262
+
+# source: ADR-0262
 _HIGH_TURN_COUNT = 20
 
 

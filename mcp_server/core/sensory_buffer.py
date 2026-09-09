@@ -1,17 +1,6 @@
 """Sensory buffer — working memory for immediate context (pre-consolidation).
 
-Implements a bounded ring buffer for transient content that arrives too fast
-to individually gate through the write gate. Content accumulates here during
-a session, then is drained to long-term memory on:
-  - Explicit drain() call (e.g., at session end)
-  - Buffer fill (oldest items displaced)
-  - Importance threshold crossing (item is too important to delay)
-
-Analogous to the hippocampal fast-binding system in neuroscience —
-it holds recent experiences before they're consolidated into cortex.
-
-Pure business logic — no I/O. All state is in-process (not persisted).
-"""
+source: ADR-0252"""
 
 from __future__ import annotations
 
@@ -37,13 +26,7 @@ if TYPE_CHECKING:
 class BufferItem:
     """A single item in the sensory buffer.
 
-    Data only — deliberately no methods. mutmut's mutation generator
-    categorically excludes the body of any `@dataclass`-decorated class
-    (`mutmut/mutation/file_mutation.py:236`), so logic placed on methods
-    here would carry zero mutation coverage no matter how the test loader
-    names the module (issue #262 3rd pass; issue #282). ``buffer_item_to_dict``
-    below carries the same logic as a free function instead.
-    """
+    source: ADR-0252"""
 
     content: str
     tags: list[str]
@@ -165,12 +148,7 @@ class SensoryBuffer:
     ) -> "AttentionAllocation":
         """Direct the attentional spotlight (A1) over the buffered items.
 
-        Runs a top-down attention-allocation pass (central executive — Baddeley
-        2003) over the current working set: each buffered item is scored for
-        relevance to ``query`` plus bottom-up salience (importance, |valence|),
-        softmax-weighted, and the top few within the Cowan 4±1 ceiling are
-        returned as the in-focus set. Non-destructive — like ``peek``, items
-        stay in the buffer.
+        source: ADR-0252
 
         Returns an ``AttentionAllocation`` whose ``focus`` items are dicts (the
         BufferItem payload plus an ``attention_weight``). An empty buffer yields

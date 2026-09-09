@@ -772,6 +772,222 @@
       "mirror": "ADR-0234-mcp-server-core-query-router.md",
       "path": "adr/migration/0234-mcp-server-core-query-router.md"
     },
+    "ADR-0235": {
+      "mirror": "ADR-0235-mcp-server-core-recall-pipeline.md",
+      "path": "adr/migration/0235-mcp-server-core-recall-pipeline.md"
+    },
+    "ADR-0236": {
+      "mirror": "ADR-0236-mcp-server-core-reconsolidation.md",
+      "path": "adr/migration/0236-mcp-server-core-reconsolidation.md"
+    },
+    "ADR-0237": {
+      "mirror": "ADR-0237-mcp-server-core-replay.md",
+      "path": "adr/migration/0237-mcp-server-core-replay.md"
+    },
+    "ADR-0238": {
+      "mirror": "ADR-0238-mcp-server-core-replay-execution.md",
+      "path": "adr/migration/0238-mcp-server-core-replay-execution.md"
+    },
+    "ADR-0239": {
+      "mirror": "ADR-0239-mcp-server-core-replay-formatting.md",
+      "path": "adr/migration/0239-mcp-server-core-replay-formatting.md"
+    },
+    "ADR-0240": {
+      "mirror": "ADR-0240-mcp-server-core-replay-selection.md",
+      "path": "adr/migration/0240-mcp-server-core-replay-selection.md"
+    },
+    "ADR-0242": {
+      "mirror": "ADR-0242-mcp-server-core-reranker.md",
+      "path": "adr/migration/0242-mcp-server-core-reranker.md"
+    },
+    "ADR-0243": {
+      "mirror": "ADR-0243-mcp-server-core-reranker-calibration.md",
+      "path": "adr/migration/0243-mcp-server-core-reranker-calibration.md"
+    },
+    "ADR-0244": {
+      "mirror": "ADR-0244-mcp-server-core-reranker-model.md",
+      "path": "adr/migration/0244-mcp-server-core-reranker-model.md"
+    },
+    "ADR-0245": {
+      "mirror": "ADR-0245-mcp-server-core-reranker-scoring.md",
+      "path": "adr/migration/0245-mcp-server-core-reranker-scoring.md"
+    },
+    "ADR-0246": {
+      "mirror": "ADR-0246-mcp-server-core-response-budget.md",
+      "path": "adr/migration/0246-mcp-server-core-response-budget.md"
+    },
+    "ADR-0247": {
+      "mirror": "ADR-0247-mcp-server-core-retrieval-dispatch.md",
+      "path": "adr/migration/0247-mcp-server-core-retrieval-dispatch.md"
+    },
+    "ADR-0248": {
+      "mirror": "ADR-0248-mcp-server-core-retrieval-signals.md",
+      "path": "adr/migration/0248-mcp-server-core-retrieval-signals.md"
+    },
+    "ADR-0249": {
+      "mirror": "ADR-0249-mcp-server-core-schema-engine.md",
+      "path": "adr/migration/0249-mcp-server-core-schema-engine.md"
+    },
+    "ADR-0250": {
+      "mirror": "ADR-0250-mcp-server-core-schema-extraction.md",
+      "path": "adr/migration/0250-mcp-server-core-schema-extraction.md"
+    },
+    "ADR-0251": {
+      "mirror": "ADR-0251-mcp-server-core-scoring.md",
+      "path": "adr/migration/0251-mcp-server-core-scoring.md"
+    },
+    "ADR-0252": {
+      "mirror": "ADR-0252-mcp-server-core-sensory-buffer.md",
+      "path": "adr/migration/0252-mcp-server-core-sensory-buffer.md"
+    },
+    "ADR-0253": {
+      "mirror": "ADR-0253-mcp-server-core-separation-core.md",
+      "path": "adr/migration/0253-mcp-server-core-separation-core.md"
+    },
+    "ADR-0254": {
+      "mirror": "ADR-0254-mcp-server-core-session-critique.md",
+      "path": "adr/migration/0254-mcp-server-core-session-critique.md"
+    },
+    "ADR-0255": {
+      "mirror": "ADR-0255-mcp-server-core-session-critique-format.md",
+      "path": "adr/migration/0255-mcp-server-core-session-critique-format.md"
+    },
+    "ADR-0256": {
+      "mirror": "ADR-0256-mcp-server-core-session-extractor.md",
+      "path": "adr/migration/0256-mcp-server-core-session-extractor.md"
+    },
+    "ADR-0257": {
+      "mirror": "ADR-0257-mcp-server-core-session-shape.md",
+      "path": "adr/migration/0257-mcp-server-core-session-shape.md"
+    },
+    "ADR-0258": {
+      "mirror": "ADR-0258-mcp-server-core-sleep-compute.md",
+      "path": "adr/migration/0258-mcp-server-core-sleep-compute.md"
+    },
+    "ADR-0259": {
+      "mirror": "ADR-0259-mcp-server-core-sleep-phases.md",
+      "path": "adr/migration/0259-mcp-server-core-sleep-phases.md"
+    },
+    "ADR-0260": {
+      "mirror": "ADR-0260-mcp-server-core-source-monitoring.md",
+      "path": "adr/migration/0260-mcp-server-core-source-monitoring.md"
+    },
+    "ADR-0261": {
+      "mirror": "ADR-0261-mcp-server-core-sparse-dictionary.md",
+      "path": "adr/migration/0261-mcp-server-core-sparse-dictionary.md"
+    },
+    "ADR-0262": {
+      "mirror": "ADR-0262-mcp-server-core-sparse-dictionary-activation.md",
+      "path": "adr/migration/0262-mcp-server-core-sparse-dictionary-activation.md"
+    },
+    "ADR-0263": {
+      "mirror": "ADR-0263-mcp-server-core-sparse-dictionary-learning.md",
+      "path": "adr/migration/0263-mcp-server-core-sparse-dictionary-learning.md"
+    },
+    "ADR-0264": {
+      "mirror": "ADR-0264-mcp-server-core-spreading-activation.md",
+      "path": "adr/migration/0264-mcp-server-core-spreading-activation.md"
+    },
+    "ADR-0265": {
+      "mirror": "ADR-0265-mcp-server-core-staleness.md",
+      "path": "adr/migration/0265-mcp-server-core-staleness.md"
+    },
+    "ADR-0266": {
+      "mirror": "ADR-0266-mcp-server-core-streaming---init--.md",
+      "path": "adr/migration/0266-mcp-server-core-streaming---init--.md"
+    },
+    "ADR-0267": {
+      "mirror": "ADR-0267-mcp-server-core-streaming-adaptive-controller.md",
+      "path": "adr/migration/0267-mcp-server-core-streaming-adaptive-controller.md"
+    },
+    "ADR-0268": {
+      "mirror": "ADR-0268-mcp-server-core-streaming-adaptive-writer.md",
+      "path": "adr/migration/0268-mcp-server-core-streaming-adaptive-writer.md"
+    },
+    "ADR-0269": {
+      "mirror": "ADR-0269-mcp-server-core-streaming-backpressure-pipeline.md",
+      "path": "adr/migration/0269-mcp-server-core-streaming-backpressure-pipeline.md"
+    },
+    "ADR-0270": {
+      "mirror": "ADR-0270-mcp-server-core-streaming-calibrated.md",
+      "path": "adr/migration/0270-mcp-server-core-streaming-calibrated.md"
+    },
+    "ADR-0271": {
+      "mirror": "ADR-0271-mcp-server-core-streaming-ports.md",
+      "path": "adr/migration/0271-mcp-server-core-streaming-ports.md"
+    },
+    "ADR-0272": {
+      "mirror": "ADR-0272-mcp-server-core-stress-modulation.md",
+      "path": "adr/migration/0272-mcp-server-core-stress-modulation.md"
+    },
+    "ADR-0273": {
+      "mirror": "ADR-0273-mcp-server-core-style-classifier.md",
+      "path": "adr/migration/0273-mcp-server-core-style-classifier.md"
+    },
+    "ADR-0274": {
+      "mirror": "ADR-0274-mcp-server-core-style-classifier-ema.md",
+      "path": "adr/migration/0274-mcp-server-core-style-classifier-ema.md"
+    },
+    "ADR-0275": {
+      "mirror": "ADR-0275-mcp-server-core-synaptic-plasticity.md",
+      "path": "adr/migration/0275-mcp-server-core-synaptic-plasticity.md"
+    },
+    "ADR-0276": {
+      "mirror": "ADR-0276-mcp-server-core-synaptic-plasticity-hebbian.md",
+      "path": "adr/migration/0276-mcp-server-core-synaptic-plasticity-hebbian.md"
+    },
+    "ADR-0277": {
+      "mirror": "ADR-0277-mcp-server-core-synaptic-plasticity-stochastic.md",
+      "path": "adr/migration/0277-mcp-server-core-synaptic-plasticity-stochastic.md"
+    },
+    "ADR-0278": {
+      "mirror": "ADR-0278-mcp-server-core-synaptic-plasticity-stp.md",
+      "path": "adr/migration/0278-mcp-server-core-synaptic-plasticity-stp.md"
+    },
+    "ADR-0279": {
+      "mirror": "ADR-0279-mcp-server-core-synaptic-tagging.md",
+      "path": "adr/migration/0279-mcp-server-core-synaptic-tagging.md"
+    },
+    "ADR-0280": {
+      "mirror": "ADR-0280-mcp-server-core-tabular-encoding.md",
+      "path": "adr/migration/0280-mcp-server-core-tabular-encoding.md"
+    },
+    "ADR-0281": {
+      "mirror": "ADR-0281-mcp-server-core-targeted-reactivation.md",
+      "path": "adr/migration/0281-mcp-server-core-targeted-reactivation.md"
+    },
+    "ADR-0282": {
+      "mirror": "ADR-0282-mcp-server-core-telemetry.md",
+      "path": "adr/migration/0282-mcp-server-core-telemetry.md"
+    },
+    "ADR-0283": {
+      "mirror": "ADR-0283-mcp-server-core-thermodynamics.md",
+      "path": "adr/migration/0283-mcp-server-core-thermodynamics.md"
+    },
+    "ADR-0284": {
+      "mirror": "ADR-0284-mcp-server-core-titans-memory.md",
+      "path": "adr/migration/0284-mcp-server-core-titans-memory.md"
+    },
+    "ADR-0285": {
+      "mirror": "ADR-0285-mcp-server-core-tripartite-calcium.md",
+      "path": "adr/migration/0285-mcp-server-core-tripartite-calcium.md"
+    },
+    "ADR-0286": {
+      "mirror": "ADR-0286-mcp-server-core-tripartite-synapse.md",
+      "path": "adr/migration/0286-mcp-server-core-tripartite-synapse.md"
+    },
+    "ADR-0287": {
+      "mirror": "ADR-0287-mcp-server-core-two-stage-model.md",
+      "path": "adr/migration/0287-mcp-server-core-two-stage-model.md"
+    },
+    "ADR-0288": {
+      "mirror": "ADR-0288-mcp-server-core-two-stage-transfer.md",
+      "path": "adr/migration/0288-mcp-server-core-two-stage-transfer.md"
+    },
+    "ADR-0289": {
+      "mirror": "ADR-0289-mcp-server-core-unified-search-fusion.md",
+      "path": "adr/migration/0289-mcp-server-core-unified-search-fusion.md"
+    },
     "ADR-0795": {
       "mirror": "ADR-0795-clusterfuzzlite-Dockerfile.md",
       "path": "adr/migration/0795-clusterfuzzlite-Dockerfile.md"

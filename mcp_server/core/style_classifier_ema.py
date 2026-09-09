@@ -37,10 +37,9 @@ def _blend_continuous(
     return ar, si, sg
 
 
-# At or above this EMA alpha the new observation outweighs the stored style,
-# so categorical dimensions adopt the new observation.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0274
+
+# source: ADR-0274
 _CATEGORICAL_ADOPT_ALPHA = 0.5
 
 

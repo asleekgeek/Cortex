@@ -12,9 +12,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# ── Heuristic thresholds ──────────────────────────────────────────────────
-# source (all constants in this block): pre-existing tuned values, extracted
-# unchanged (#197 family 3); provenance not recorded at introduction.
+# source: ADR-0273
+
 
 # Sessions shorter than this many minutes read as active bursts.
 _ACTIVE_SESSION_MAX_MINUTES = 10

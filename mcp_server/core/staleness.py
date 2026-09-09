@@ -1,16 +1,6 @@
 """Memory staleness detection — pure business logic.
 
-Determines whether a stored memory is stale by examining the file references
-it contains. Caller is responsible for resolving paths and checking existence;
-this module only provides the logic to extract refs and score staleness.
-
-A memory is considered stale when:
-  - It references files that no longer exist (hard stale)
-  - It references files whose content has drifted significantly (soft stale)
-  - Its content describes a state that contradicts current filesystem state
-
-No I/O performed here. Callers pass pre-resolved existence/change data.
-"""
+source: ADR-0265"""
 
 from __future__ import annotations
 
@@ -29,10 +19,9 @@ _PATH_RE = re.compile(
     re.MULTILINE,
 )
 
-# Matches backslash-separated paths — Windows relative (``src\core\x.py``)
-# and drive-absolute (``C:\Users\me\x.py``). Without this, refs stored with
-# backslashes are invisible to staleness detection on Windows.
-# source: RAPPORT_INSTALLATION_CORTEX_WINDOWS.md §5.6
+# source: ADR-0265
+
+
 _WIN_PATH_RE = re.compile(
     r"(?:^|[\s\"'`(,])("
     r"(?:[A-Za-z]:\\?)?"  # optional drive letter, consuming its backslash
@@ -55,10 +44,9 @@ _EXCLUDE_RE = re.compile(
 )
 
 
-# Candidate paths at or above this length are rejected as non-filesystem
-# strings.
-# source: pre-existing tuned bound, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0265
+
+
 _MAX_PATH_CHARS = 256
 
 
@@ -78,9 +66,8 @@ def extract_file_references(content: str) -> list[str]:
         if path and not _EXCLUDE_RE.search(path) and len(path) < _MAX_PATH_CHARS:
             refs.add(path)
 
-    # Backslash paths are normalized to '/' so a single ref is stored
-    # regardless of the separator the author used; resolution works with
-    # forward slashes on every OS.
+    # source: ADR-0265
+
     for m in _WIN_PATH_RE.finditer(content):
         path = m.group(1).strip().replace("\\", "/")
         if path and not _EXCLUDE_RE.search(path) and len(path) < _MAX_PATH_CHARS:
@@ -140,7 +127,10 @@ def _build_staleness_reason(
     missing: list[str],
     changed: list[str],
 ) -> str:
-    """Build a human-readable staleness reason string."""
+    """Build a human-readable staleness reason string.
+
+    source: ADR-0265
+    """
     if missing:
         return f"missing_files: {', '.join(missing[:3])}"
     if changed:
@@ -176,16 +166,8 @@ def assess_staleness(
     ]
     score = compute_staleness_score(len(refs), len(missing), len(changed))
 
-    # Bug fix (I6-D6, found while wiring de-stale rehabilitation): a memory
-    # with ZERO missing/changed refs must never be stale, regardless of how
-    # strict `threshold` is set. The naive `score >= threshold` boundary
-    # broke at threshold=0.0 (the documented "flag anything with one
-    # missing reference" setting): score=0.0 >= threshold=0.0 was True for
-    # a memory whose refs ALL resolved, permanently blocking
-    # de-stale rehabilitation at that threshold. `score > 0` gates out the
-    # no-problem case without changing behavior for any threshold > 0
-    # (there, score=0 already implied score < threshold under the old
-    # formula too).
+    # source: ADR-0265
+
     is_stale = score > 0 and score >= threshold
 
     return StalenessReport(

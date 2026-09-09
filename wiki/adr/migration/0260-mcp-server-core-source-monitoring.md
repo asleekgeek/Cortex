@@ -1,0 +1,207 @@
+---
+title: "ADR-0260 — mcp_server/core/source_monitoring.py rationale"
+status: accepted
+source: mcp_server/core/source_monitoring.py
+---
+
+# ADR-0260 — mcp_server/core/source_monitoring.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Remembering *where* a memory came from — did I perceive it, was I told it, or
+did I infer it? — is a distinct, decision-based attribution process, separate
+from remembering the content itself. Its failure is the mechanism of
+confabulation: an internally-generated (inferred) memory misattributed to an
+external source is a hallucinated fact presented as observed truth. Cortex has
+no such check today: the `source` column records the ingestion *pathway*
+(session / import / post_tool_capture), not the epistemic *origin*, so an
+inferred claim and a file-grounded observation are indistinguishable downstream.
+````
+
+## module — original line 12 (docstring)
+
+````text
+Neuroscience basis (DOIs verified against Crossref):
+  - Johnson & Raye (1981), "Reality monitoring," Psychological Review 88:67-85
+    (doi:10.1037/0033-295X.88.1.67). Perceived vs. self-generated memories are
+    told apart by their characteristic features: externally-derived memories
+    carry more perceptual/contextual detail; internally-generated ones carry
+    traces of the cognitive operations that produced them.
+  - Johnson, Hashtroudi & Lindsay (1993), "Source monitoring," Psychological
+    Bulletin 114:3-28 (doi:10.1037/0033-2909.114.1.3). Source attribution is a
+    decision process over those features — heuristic (fast, feature-weighted)
+    or systematic — and its threshold trades false-observed against
+    false-inferred errors.
+````
+
+## module — original line 24 (docstring)
+
+````text
+Design (pure business logic — no I/O). A memory's text + metadata are scored on
+two competing feature families and mapped to a source attribution:
+````
+
+## module — original line 27 (docstring)
+
+````text
+  PERCEIVED  — grounded in verifiable external references (file paths, URLs,
+               commit SHAs, citations/DOIs, tool-output markers). Johnson's
+               "perceptual detail" proxy: these are the traces an external
+               source leaves.
+  TOLD       — explicitly attributed to the user / a stated instruction
+               ("you said", "the user wants", "per your", "as requested").
+  INFERRED   — dominated by cognitive-operation markers ("I think",
+               "probably", "presumably", "this suggests", "seems to") with no
+               external grounding. Johnson's "cognitive operations" trace.
+````
+
+## module — original line 37 (docstring)
+
+````text
+The output is an attribution + a confidence, plus a GATE
+(``violates_source_claim``) that fires when a memory asserts an observed source
+but shows no perceptual grounding — the confabulation guard the feasibility
+analysis called the highest-leverage cheap win.
+````
+
+## module — original line 42 (docstring)
+
+````text
+Honesty note (zetetic standard, matching value_learning.py / procedural_memory.py):
+this is a transparent, feature-weighted heuristic classifier — the "heuristic
+judgement" branch of Johnson 1993, not the systematic/deliberative one, and not
+a trained model. It scores lexical + reference features the store already has;
+it does not verify that a cited file or URL actually exists (that is
+validate_memory's job) — it checks only whether the memory *claims* external
+grounding consistent with its asserted source. The three-way scheme
+(perceived/told/inferred) maps Johnson's perceived-vs-self-generated axis onto
+the evidence tags Cortex already reasons about (observed/stated/inferred).
+
+````
+
+## source_judgement_as_dict — original line 133 (docstring)
+
+````text
+A free function, not a method: mutmut categorically excludes the
+    body of any `@dataclass`-decorated class (`mutmut/mutation/
+    file_mutation.py:236`), so logic placed on `SourceJudgement` methods
+    would carry zero mutation coverage no matter how the test loader names
+    the module (issue #262 3rd pass; issue #282).
+    
+````
+
+## extract_grounding — original line 159 (docstring)
+
+````text
+Return the verifiable external references in ``content`` (Johnson's
+    perceptual-detail proxy): URLs, DOIs, file paths, commit SHAs.
+````
+
+## classify_source — original line 185 (docstring)
+
+````text
+Attribute a memory's epistemic origin from its text (+ optional ingestion
+    ``source`` field). Feature-weighted heuristic judgement (Johnson 1993).
+````
+
+## violates_source_claim — original line 245 (docstring)
+
+````text
+True iff a memory ASSERTS an observed/perceived origin but shows no
+    perceptual grounding — the reality-monitoring failure that produces
+    confabulation (Johnson & Raye 1981).
+````
+
+## promotion_confabulation_risk — original line 275 (docstring)
+
+````text
+True iff promoting ``cluster_memories`` to a semantic fact would
+    crystallize a confabulation — the combined cluster content classifies as
+    INFERRED with zero perceptual grounding (Johnson & Raye 1981).
+````
+
+## promotion_confabulation_risk — original line 279 (docstring)
+
+````text
+    A semantic promotion is an implicit *observed/known-fact* claim (the cluster
+    is being asserted as general knowledge), so the check is exactly
+    ``violates_source_claim(combined_content, "observed")`` over the cluster's
+    combined text. Returns False for an empty cluster (nothing to promote) and
+    for any cluster whose combined evidence shows perceptual grounding or a
+    told/perceived lean — those are legitimately promotable.
+````
+
+## recall_confabulation_risk — original line 305 (docstring)
+
+````text
+    Used to annotate each recall hit with a ``confabulation_risk`` flag so a
+    consumer of recall sees provenance risk per result. The stored
+    ``source_attribution`` (set at write time from ``classify_source``) is the
+    memory's asserted origin; the gate re-checks the content against that claim.
+    Fires only when the memory was stored as PERCEIVED but the content now
+    classifies as INFERRED with zero perceptual grounding — the same
+    reality-monitoring failure as ``violates_source_claim``, evaluated against
+    the memory's OWN recorded claim rather than a write-time parameter.
+````
+
+## inline — original line 59 (comment)
+
+````text
+# externally grounded (file/url/commit/citation/tool)
+````
+
+## module — original line 64 (comment)
+
+````text
+# Map an attribution to the store's evidence-tag vocabulary (observed/stated/
+# inferred), so C1 output is commensurate with the tags the rest of the system
+# reasons about. PERCEIVED -> observed (saw it), TOLD -> stated (was told it),
+# INFERRED -> inferred (concluded it).
+````
+
+## inline — original line 72 (comment)
+
+````text
+# conservative: unproven origin is treated as inferred
+````
+
+## module — original line 98 (comment)
+
+````text
+# Cognitive-operation markers — the trace of internally-generated content
+# (Johnson: memories of thoughts carry markers of the operations that made them).
+````
+
+## module — original line 150 (comment)
+
+````text
+# ── Feature extraction ──────────────────────────────────────────────────────
+# source: structural — git abbreviates object names to 7 hex chars by default
+# (git-rev-parse --short), and a full SHA-1 hex digest is 40 chars; tokens
+# outside that range cannot be commit hashes.
+````
+
+## module — original line 181 (comment)
+
+````text
+# ── The source-monitoring decision (Johnson 1993 heuristic branch) ──────────
+````
+
+## module — original line 263 (comment)
+
+````text
+# ── Read-side enforcement: consolidation-promotion gate ─────────────────────
+# Semantic-knowledge crystallization is the honest call site for the
+# confabulation gate. The write-path `source` is an ingestion *pathway*, not an
+# epistemic claim, so gating at write time would be wrong (that was the reason
+# C1's gate was held with no call site). But when a cluster of episodic memories
+# is abstracted into a NEW ``store_type='semantic'`` memory (consolidation_engine
+# ._try_abstract_pattern → cls._create_semantic_memories), the system IS making
+# an epistemic claim: "this recurring observation is now general knowledge/fact."
+# That is precisely Johnson & Raye's (1981) reality-monitoring failure when the
+# underlying evidence is internally generated (inferred) with no external
+# grounding — a confabulation being crystallized as fact.
+````

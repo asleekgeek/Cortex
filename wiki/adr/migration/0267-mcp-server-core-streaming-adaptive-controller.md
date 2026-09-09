@@ -1,0 +1,85 @@
+---
+title: "ADR-0267 — mcp_server/core/streaming/adaptive_controller.py rationale"
+status: accepted
+source: mcp_server/core/streaming/adaptive_controller.py
+---
+
+# ADR-0267 — mcp_server/core/streaming/adaptive_controller.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Pure business logic — no I/O.
+````
+
+## module — original line 5 (docstring)
+
+````text
+Grows the batch size additively while observed write latency stays within
+target and shrinks it multiplicatively when latency exceeds target. AIMD is
+the control law proven to converge to efficiency *and* fairness — additive
+increase / multiplicative decrease is the unique combination that does
+(Chiu & Jain 1989) — and is TCP's congestion-window algorithm (Jacobson 1988).
+Using latency (not loss) as the congestion signal follows SEDA's adaptive
+admission controller (Welsh et al. 2001).
+
+````
+
+## AdaptiveBatchController — original line 29 (docstring)
+
+````text
+    ``b_min``, ``b_max`` and ``w_target_s`` MUST come from the calibration
+    sweep (benchmarks/streaming_calibration), never invented constants.
+````
+
+## AdaptiveBatchController — original line 32 (docstring)
+
+````text
+    ``b_max`` is a hard upper bound the controller can never exceed: the
+    pipeline sizes its bounded queue from ``b_max`` (not the live B), so the
+    RAM invariant ``(Q + c + 1)·b_max·row_bytes`` holds even after B ramps up.
+````
+
+## AdaptiveBatchController — original line 36 (docstring)
+
+````text
+    ``ai_step`` — additive-increase increment per control interval. Jacobson's
+    unit is one MSS (the smallest sendable segment); the analog here is one
+    minimum batch, so it defaults to ``b_min``. source: Jacobson 1988
+    (one unit / interval).
+    
+````
+
+## adaptive_batch_controller_batch_size — original line 63 (docstring)
+
+````text
+    A free function, not a method: mutmut categorically excludes the body
+    of any `@dataclass`-decorated class (`mutmut/mutation/file_mutation.py:
+    236`), so logic placed on `AdaptiveBatchController` methods (other than
+    `__post_init__`, a dunder mutmut skips regardless) would carry zero
+    mutation coverage no matter how the test loader names the module
+    (issue #262 3rd pass; issue #282).
+    
+````
+
+## adaptive_batch_controller_observe — original line 78 (docstring)
+
+````text
+    Within target → additive increase ``B += ai_step``; over target →
+    multiplicative decrease ``B := max(b_min, floor(beta * B))``.
+    Postcondition: ``b_min <= B <= b_max``. Mutates ``controller`` in place
+    (it is the sole owner of the live batch size), matching the
+    pre-extraction method's own behavior.
+    
+````
+
+## module — original line 18 (comment)
+
+````text
+# source: Jacobson, V. (1988) "Congestion Avoidance and Control", SIGCOMM '88 —
+# multiplicative decrease halves the window on congestion. Chiu & Jain (1989)
+# prove multiplicative decrease is necessary for convergence. β = 0.5 is the
+# TCP Reno value.
+````

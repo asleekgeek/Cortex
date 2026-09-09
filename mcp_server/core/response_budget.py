@@ -1,59 +1,6 @@
 """Bounded MCP responses — total payload budget with per-item truncation.
 
-An MCP tool response that exceeds the host's tool-result ceiling is
-rejected wholesale and dumped to a file (Claude Code behaviour, observed
-2026-06-10: recall response of 324,429 chars rejected). Bounding must
-therefore happen on our side of the wire, where we control which bytes
-survive.
-
-Historical budget derivation (not a current host-token guarantee):
-
-- Claude Code enforces ``MAX_MCP_OUTPUT_TOKENS`` on MCP tool results.
-  source: Claude Code 2.1.170 binary, extracted 2026-06-10 —
-    default   ``d4O = 25000`` tokens,
-    estimator ``Xz(text) = round(len(text) / 4)`` (4 chars/token),
-    char cap  ``l4O() = limit * 4`` → 100,000 chars.
-- The historical reproduction used the compact-JSON payload:
-  ``len(json.dumps(payload, separators=(",", ":"), ensure_ascii=False))``
-  reproduced Claude Code's reported count exactly (324,429 == 324,429,
-  measured 2026-06-10 on a rejected recall response).
-- W4-4 audit, 2026-09-06: the locked MCP SDK now emits indented JSON;
-  Claude Code 2.1.263 estimates UTF-16 length / 4, then may use its
-  countTokens API above half the configured limit. Compact Python
-  character length is neither that wire length nor the model token count.
-  See docs/provenance/response-budget-audit.md for sources and the pending
-  100-response calibration. Existing constants remain pending measurement.
-- Safety factor 0.75 applied to the host cap. The host counts JS
-  ``String.length`` (UTF-16 code units) while Python ``len()`` counts
-  code points — non-BMP characters (emoji, rare CJK) count 2:1, so a
-  payload filled exactly to the host cap can overshoot it. The factor
-  guarantees no overshoot up to a 1/3 non-BMP code-point fraction
-  (host_len = len × (1 + f) ≤ cap ⟺ f ≤ 1/3 at 0.75), far above any
-  observed payload. source: ContextManager.swift budget logic
-  (``reasoner.contextWindowSize * 0.75``), ai-prd-builder commit
-  462de01 (2025-09-30) — same estimator-divergence guard, reused here
-  per author direction.
-- Secondary bound: ~1 MB MCP frame ceiling (measured 2026-04-23, see
-  handlers/query_workflow_graph.py) — the Claude Code cap binds first.
-
-Truncation policy: priority-weighted water-filling. A hard cap that
-cuts all items equally destroys exactly the high-relevance content the
-response exists to deliver, so the surviving budget is allocated
-proportionally to each item's retrieval priority (``score`` from WRRF +
-rerank fusion, ``heat`` for hot memories) and the least relevant slots
-are condensed first. source: ContextDecomposer allocation algorithm,
-ai-prd-builder commit 462de01 (2025-09-30) — "allocate remaining budget
-proportionally across priority-ranked slots; condense
-highest-priority-number [least important] slots first; iteratively
-[shrink] the least important slot until the prompt fits". Adaptation:
-slot priority = retrieval score (the system's own relevance estimate);
-equal weights reduce to plain max-min fairness (the unweighted case).
-
-Truncated items carry ``truncated: True`` plus ``content_length``
-(original size) and keep their id, so truncation is never a dead end:
-full content stays dynamically loadable by id (``recall`` ``memory_id``
-+ ``content_offset`` args, ``wiki_read`` ``offset`` arg).
-"""
+source: ADR-0246"""
 
 from __future__ import annotations
 
@@ -62,12 +9,12 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-# source: Claude Code 2.1.170 binary (see module docstring) —
-# MAX_MCP_OUTPUT_TOKENS default 25000 tokens × 4 chars/token.
+# source: ADR-0246
+# source: ADR-0246
 HOST_CAP_CHARS = 100_000
 
-# source: ai-prd-builder ContextManager.swift, commit 462de01 (see module
-# docstring) — guards the UTF-16-units vs code-points estimator divergence.
+# source: ADR-0246
+# source: ADR-0246
 SAFETY_FACTOR = 0.75
 
 MAX_RESPONSE_CHARS = int(HOST_CAP_CHARS * SAFETY_FACTOR)
@@ -108,10 +55,7 @@ class _Cell:
 def serialized_length(payload: Any) -> int:
     """Compact JSON code-point count used by this legacy allocation policy.
 
-    This is not the current SDK wire size or Claude's token count; the
-    W4-4 audit documents both mismatches and the pending calibration.
-    ``default=str`` mirrors lossy-but-total serialization of exotic
-    values; handlers ship JSON-native types so it never fires in practice.
+    source: ADR-0246
     """
     return len(
         json.dumps(payload, separators=(",", ":"), ensure_ascii=False, default=str)
@@ -125,13 +69,7 @@ def bound_payload(
 ) -> dict:
     """Mutate ``payload`` in place until it serializes within budget.
 
-    Passes: (1) water-fill truncation of target texts; (2) if every
-    target text is already empty, drop list items from the tail; (3) if
-    nothing is left to cut, return the payload as-is (a metadata-only
-    overflow is a bug upstream, not something to mask here).
-    Terminates: every pass strictly shrinks the payload or exhausts
-    cuttable material.
-    """
+    source: ADR-0246"""
     while True:
         total = serialized_length(payload)
         if total <= budget_chars:
@@ -201,16 +139,10 @@ def _flag_cost(cell: _Cell) -> int:
 
 
 def _truncate_cells(cells: list[_Cell], overflow: int) -> None:
-    """Weighted water-fill: cut contents down to a common per-weight
-    level L — each cell keeps up to ``floor(L × weight)`` chars — so the
-    freed raw chars cover ``overflow`` plus the exact cost of the flags
-    added in the worst case (every cell gets marked). Survivor budget is
-    thus proportional to priority and low-priority cells condense first
-    (ContextDecomposer allocation; see module docstring).
+    """Weighted water-fill: cut contents down to a common per-weight level L — each
+    cell keeps up to ``floor(L × weight)`` chars.
 
-    Each raw content char occupies ≥1 serialized char (escapes only
-    widen), so freeing N raw chars frees ≥N serialized chars; floor()
-    only ever cuts deeper, preserving the guarantee.
+    source: ADR-0246
     """
     needed = overflow + sum(_flag_cost(c) for c in cells)
     pairs = [(len(c.container[c.content_key]), c.weight) for c in cells]
@@ -221,8 +153,8 @@ def _truncate_cells(cells: list[_Cell], overflow: int) -> None:
         if len(content) <= allowed:
             continue
         cell.container[cell.flag_key] = True
-        # Never clobber a caller-set length (wiki_read pre-sets the full
-        # page size so offset-paging works across truncated slices).
+        # source: ADR-0246
+
         cell.container.setdefault(cell.length_key, len(content))
         cell.container[cell.content_key] = content[:allowed]
 
@@ -256,10 +188,7 @@ def _water_level(pairs: list[tuple[int, float]], needed: int) -> float:
 def _drop_tail_item(payload: dict, targets: list[ListTarget | TextTarget]) -> bool:
     """Drop one item from the tail of the longest target list.
 
-    Tail = lowest-ranked entry of the shipped ordering. Records the
-    running total in ``payload["truncation_dropped"]`` so callers can
-    surface that the list was cut. Returns False when no list has items.
-    """
+    source: ADR-0246"""
     longest: list | None = None
     for target in targets:
         if isinstance(target, ListTarget):

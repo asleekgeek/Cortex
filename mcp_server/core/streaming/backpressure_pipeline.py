@@ -1,19 +1,6 @@
 """Backpressure pipeline — bounded-queue producer/consumer with constant peak RAM.
 
-Pure orchestration logic — depends only on the StreamSource / BatchSink ports
-(DIP); does no I/O itself. The injected sinks perform the writes.
-
-Topology: one producer thread drains a StreamSource into a bounded queue;
-``concurrency`` worker threads pull batches and call ``BatchSink.write_batch``.
-The bounded queue with blocking ``put`` IS the backpressure mechanism (SEDA,
-Welsh et al. 2001): when writers fall behind, the queue fills, the producer
-blocks, and the source stops fetching. Peak resident payload is
-``(queue_cap + concurrency + 1)`` batches — independent of total row count.
-
-Shutdown: the producer emits exactly one sentinel per worker in a ``finally``
-(so it fires on the crash path too); each worker consumes exactly one sentinel
-and stops; the caller joins all workers before any pool is closed. There is no
-other end-of-stream signal in the codebase, so this protocol is load-bearing.
+source: ADR-0269
 """
 
 from __future__ import annotations
@@ -48,12 +35,7 @@ def compute_queue_cap(
 ) -> int:
     """``Q_cap = floor(RAM_budget / (b_max * row_bytes)) - reserve``.
 
-    Pinned to ``b_max`` (NOT the live B): the controller ramps B up to b_max,
-    so sizing from a smaller live B would let peak RAM overshoot the budget by
-    ``b_max / B`` once it ramps. source: Little (1961), occupancy bound applied
-    to memory rather than time. Floors at 1 so the pipeline always makes
-    progress.
-    """
+    source: ADR-0269"""
     if b_max <= 0 or row_bytes <= 0:
         raise ValueError("b_max and row_bytes must be positive")
     if ram_budget_bytes <= 0:
@@ -70,18 +52,7 @@ class BackpressurePipeline:
     connection (sharing a connection across threads is unsafe). The factory is
     injected by the handler (composition root) and binds the appropriate pool.
 
-    Data only — deliberately no methods. mutmut's mutation generator
-    categorically excludes the body of any `@dataclass`-decorated class
-    (`mutmut/mutation/file_mutation.py:236`) — including `@staticmethod`
-    members, since the exclusion fires on the decorated `ClassDef` itself,
-    before the per-method `@staticmethod` exception is ever consulted — so
-    logic placed on methods here would carry zero mutation coverage no
-    matter how the test loader names the module (issue #262 3rd pass;
-    issue #282). `backpressure_pipeline_run` (the public entry point) plus
-    the private `_bp_produce` / `_bp_consume` / `_bp_build_sink` /
-    `_bp_write_one` / `_bp_close` helpers below carry the same logic as
-    free functions instead.
-    """
+    source: ADR-0269"""
 
     source: StreamSource
     sink_factory: Callable[[], BatchSink]
@@ -100,13 +71,8 @@ def backpressure_pipeline_run(pipeline: "BackpressurePipeline") -> PipelineResul
     q: queue.Queue[Any] = queue.Queue(maxsize=pipeline.queue_cap)
     result = PipelineResult()
     lock = threading.Lock()
-    # §12 note: the `name=` kwargs below (both threads) are debug-only
-    # labels (visible via `threading.enumerate()` / crash dumps) — they do
-    # not affect the returned PipelineResult, the only contract this
-    # function's tests assert against, so a mutant that changes, drops, or
-    # nulls a thread's `name` is EQUIVALENT for that contract. Verified
-    # empirically: mutating `name=` never changed a test outcome across the
-    # full `_bp_*` mutation sweep (issue #282).
+    # source: ADR-0269
+
     producer = threading.Thread(
         target=_bp_produce, args=(pipeline, q, result, lock), name="bp-producer"
     )
@@ -133,16 +99,16 @@ def _bp_produce(
 ) -> None:
     try:
         for batch in pipeline.source.stream(pipeline.max_batch):
-            q.put(batch)  # blocks when full — this is the backpressure
+            q.put(batch)  # source: ADR-0269
             with lock:
                 result.rows_in += len(batch)
                 result.batches += 1
-    except Exception as exc:  # noqa: BLE001 — surfaced via result, not raised
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0269
         with lock:
             result.errors.append(f"producer: {exc!r}")
     finally:
-        # Exactly one sentinel per worker — in finally so a producer crash
-        # still releases every worker (no hang on an empty-but-open queue).
+        # source: ADR-0269
+
         for _ in range(pipeline.concurrency):
             q.put(_SENTINEL)
 

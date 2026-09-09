@@ -1,28 +1,6 @@
-"""Post-WRRF recall pipeline stages — paper-first-class reordering steps.
+"""Post-WRRF retrieval and reranking stages.
 
-Each stage takes a `candidates` list (the output of the PG WRRF fusion) and
-returns a possibly-reordered/expanded list. Stages are gated by
-``is_mechanism_disabled`` so an ablation run with
-``CORTEX_ABLATE_<MECH>=1`` returns the input unchanged.
-
-Blending strategy: Reciprocal Rank Fusion (Cormack, Clarke & Buettcher,
-SIGIR 2009 — "Reciprocal Rank Fusion outperforms Condorcet and individual
-rank learning methods"). Each mechanism contributes a rank vector; we
-combine the existing WRRF rank with the new mechanism's rank via
-``score = (1-beta)/(k+rel_rank) + beta/(k+mech_rank)`` with k=60 (paper
-default) and beta in [0.0, 0.5] (small enough that the existing WRRF
-ranking dominates but the new signal can break near-ties and inject
-high-relevance candidates from the spreading-activation expansion).
-
-Dendritic clusters use a multiplicative factor instead of a rank because
-Poirazi, Brannon & Mel (2003) describe soma output as a multiplicative
-nonlinearity ``g(x) = scale * x / (1 + offset * exp(-steepness * x))``,
-not a rank fusion. We apply a bounded factor in [0.9, 1.1] so the
-modulation never dominates the underlying retrieval score.
-
-Pure business logic — operates on candidate dicts, takes store/embeddings
-as parameters. No I/O of its own; the store calls go through the same
-abstractions used by ``pg_recall.recall``.
+source: ADR-0235
 """
 
 from __future__ import annotations
@@ -51,38 +29,30 @@ from mcp_server.core.reconsolidation import compute_reconsolidation_action
 
 logger = logging.getLogger(__name__)
 
-# RRF constant from Cormack et al. (SIGIR 2009). The paper recommends k=60
-# as a robust default across heterogeneous rankers; the same constant is
-# used elsewhere in pg_recall (_chronological_rerank).
+# source: ADR-0235
+
+
 _RRF_K: int = 60
 
-# Tokens at or below this length are dropped by the token-proxy filters in
-# this module (query terms, candidate entities, tag Jaccard).
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0235
+
+
 _SHORT_TOKEN_MAX_LEN: int = 2
 
-# source: structural — a rerank stage no-ops on fewer than two candidates
-# (nothing to reorder); each stage docstring states "No-op on fewer than
-# two candidates".
+# source: ADR-0235
+
+
 _MIN_RERANK_CANDIDATES: int = 2
 
-# source: adjacent comment at _resolve_query_entity_ids — only tokens of
-# length ≥ 4 are tried, to avoid swamping the entity index with junk lookups.
+# source: ADR-0235
+
 _ENTITY_FALLBACK_TOKEN_MIN_LEN: int = 4
 
 
 def _env_float(name: str, default: float) -> float:
     """Read a float from ``os.environ[name]`` falling back to ``default``.
 
-    Used by the blend-weight calibration sweep (`benchmarks/lib/blend_weight_sweep.py`)
-    to override per-cell without rebuilding the module. Source: standard
-    benchmark-time config injection per `docs/provenance/verification-protocol.md`
-    §reproducibility (manifest sidecar). Malformed values fall back to the
-    default — a calibration cell with `CORTEX_HOPFIELD_BETA=foo` is a bug,
-    not a runtime crash, and the manifest will record what was *actually*
-    used (logged separately by the harness).
-    """
+    source: ADR-0235"""
     raw = _os.environ.get(name)
     if raw is None:
         return default
@@ -92,77 +62,34 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-# Per-mechanism blend weights. Small enough that WRRF still dominates;
-# large enough that the new signal breaks ties and surfaces near-misses.
-# These are engineering defaults, not paper-prescribed — they bound the
-# perturbation each post-WRRF stage can inflict on the candidate order.
-# When a mechanism's smoke test shows zero delta on a real corpus, raise
-# its beta in 0.05 increments and re-run; do NOT remove the wiring.
-#
-# CALIBRATION OVERRIDE. The five blend constants and the dendritic delta
-# below are env-var-overridable via ``CORTEX_<NAME>``. The harness at
-# ``benchmarks/lib/blend_weight_sweep.py`` sets these per cell and runs
-# LongMemEval-S to pick the optima documented in
-# ``docs/provenance/blend-weight-calibration.md``. If unset, the engineering defaults
-# below stand.
-#
-# Calibration outcome (task #50, Phase A — 17-cell CCD, n=50 LongMemEval-S,
-# 2026-05-02): all four perception-side knobs are confirmed near-optimum at
-# their engineering defaults. Center cell (0.30, 0.20, 0.25, 0.10) is the
-# unique plateau winner at MRR=0.84, R@10=0.94. Marginal effects 0.035–0.045
-# confirm the knobs DO affect retrieval (not no-ops); the defaults happen to
-# be the optimal levels. See docs/provenance/blend-weight-calibration.md Results §A.
-# engineering default — confirmed near-optimum,
-# docs/provenance/blend-weight-calibration.md Results §HOPFIELD_BETA
+# source: ADR-0235
+
+
 _HOPFIELD_BETA: float = _env_float("CORTEX_HOPFIELD_BETA", 0.30)
-# engineering default — confirmed near-optimum,
-# docs/provenance/blend-weight-calibration.md Results §HDC_BETA
+# source: ADR-0235
+
 _HDC_BETA: float = _env_float("CORTEX_HDC_BETA", 0.20)
-# engineering default — confirmed near-optimum,
-# docs/provenance/blend-weight-calibration.md Results §SA_BETA
+# source: ADR-0235
+
 _SA_BETA: float = _env_float("CORTEX_SA_BETA", 0.25)
 
-# Dendritic multiplicative range — bounded perturbation from Poirazi (2003)
-# soma scale of 0.96. We use [1 - DELTA, 1 + DELTA] so a 1.0 baseline
-# (no cluster match) leaves the score unchanged, while high-affinity
-# matches get a +DELTA bump and conflicting branches get -DELTA.
-# engineering default — confirmed near-optimum,
-# docs/provenance/blend-weight-calibration.md Results §DENDRITIC_DELTA
+# source: ADR-0235
+
+
 _DENDRITIC_DELTA: float = _env_float("CORTEX_DENDRITIC_DELTA", 0.10)
 
-# Emotional / mood-congruent rerank blend weights.
-# Bower (1981) "Mood and Memory," Am. Psychologist 36(2) does not prescribe
-# a numeric blend weight; the paper's claim is qualitative (mood-congruent
-# recall is faster/more accurate than incongruent), so the magnitude is set
-# conservatively below the perception-side stages.
-#
-# Calibration outcome (task #50, Phase B — 25-cell 5×5 grid, n=30
-# LongMemEval-S, 2026-05-02): both affect-side knobs showed zero observable
-# effect on LongMemEval-S (all 25 cells tied at MRR=0.84, marginal=0.0).
-# This is a genuine null on this benchmark, driven by upstream gates:
-#   • EMOTIONAL_RETRIEVAL stage no-ops because LME-S queries are factual/
-#     neutral (VADER compound < _EMOTIONAL_QUERY_VALENCE_FLOOR=0.10, see
-#     floor check inside emotional_retrieval_rerank below).
-#   • MOOD_CONGRUENT_RERANK stage no-ops because PgMemoryStore has no
-#     get_user_mood() adapter (task #54). _get_user_mood(store) at
-#     pg_recall.py returns None and the stage short-circuits.
-# Constants are kept at the conservative engineering defaults for the
-# benefit of benchmarks that DO exercise these gates (emotion-laden corpora,
-# user-mood-aware deployments).
-# engineering default — no observable effect on LongMemEval-S (upstream
-# VADER gate); docs/provenance/blend-weight-calibration.md Results
-# §EMOTIONAL_RETRIEVAL_BETA
+# source: ADR-0235
+
+
 _EMOTIONAL_RETRIEVAL_BETA: float = _env_float("CORTEX_EMOTIONAL_RETRIEVAL_BETA", 0.20)
-# engineering default — no observable effect on LongMemEval-S (no
-# user-mood adapter); docs/provenance/blend-weight-calibration.md Results
-# §MOOD_CONGRUENT_BETA
+# source: ADR-0235
+
+
 _MOOD_CONGRUENT_BETA: float = _env_float("CORTEX_MOOD_CONGRUENT_BETA", 0.15)
 
-# Below this absolute compound-valence value the query is treated as
-# emotionally neutral and the EMOTIONAL_RETRIEVAL stage no-ops. VADER
-# (Hutto & Gilbert, ICWSM 2014) §4 reports |compound| ≥ 0.05 as a useful
-# positive/negative cutoff for short text; we use 0.10 so that single
-# weakly-loaded tokens do not flip the rerank.
+# source: ADR-0235
+
+
 _EMOTIONAL_QUERY_VALENCE_FLOOR: float = 0.10
 
 
@@ -181,8 +108,7 @@ def _rrf_blend(
     (0 = best). Candidates absent from mech_ranks keep their relevance
     rank only.
 
-    Source: Cormack, Clarke & Buettcher (SIGIR 2009).
-    """
+    source: ADR-0235"""
     if not candidates or beta <= 0.0:
         return candidates
 
@@ -202,22 +128,7 @@ def _rrf_blend(
     return [c for _, c in scored]
 
 
-# ── FAMILIARITY_TRIAGE stage (C2 recollection vs. familiarity) ──────────
-# Yonelinas (2002), J. Mem. Lang. 46(3):441-517; Diana, Yonelinas & Ranganath
-# (2007), Trends Cogn. Sci. 11(9):379-386. Familiarity is a fast, a-contextual
-# prior-exposure scalar (perirhinal); recollection is slow contextual
-# reconstruction (hippocampal). Two-stage retrieval — cheap recall + expensive
-# rerank — is the standard IR analogue. This stage runs EARLY, before the
-# expensive post-WRRF rerank chain, and reads a lightweight familiarity signal
-# (MAX query↔candidate cosine similarity, NO context assembly) so an
-# overwhelmingly-familiar query can OPTIONALLY skip full reconstruction.
-#
-# PARITY GUARANTEE: by default the stage only ANNOTATES each candidate with its
-# per-candidate familiarity and returns them in unchanged order/membership; the
-# recollection short-circuit is opt-in (allow_shortcut) and fires only on an
-# overwhelming, single-dominant vector hit. With the default recall() the full
-# recollection chain always runs, so recall output is byte-for-byte unchanged
-# apart from the added annotation key.
+# source: ADR-0235
 
 
 def familiarity_triage(
@@ -234,29 +145,7 @@ def familiarity_triage(
     query↔candidate cosine similarity for each, and hands the similarity vector
     to ``dual_process_retrieval.triage``. The result carries:
 
-      - ``candidates`` — annotated with per-candidate ``familiarity`` (order and
-        membership UNCHANGED);
-      - ``signal`` — the set-level FamiliaritySignal (max/mean/margin/method);
-      - ``recollection_needed`` — the decision (default assumption True);
-      - ``shortcut`` — True only when ``allow_shortcut`` AND familiarity is an
-        overwhelming single-dominant vector hit.
-
-    Disabled when ``CORTEX_ABLATE_DUAL_PROCESS=1`` — returns a TriageResult that
-    leaves the candidates untouched (no annotation), recollection_needed=True,
-    shortcut=False, so the full recollection chain always runs (identity).
-
-    Returns a ``dual_process_retrieval.TriageResult`` (NOT a bare list) because
-    the caller needs the shortcut decision, not just a reordering. It performs no
-    reordering itself — recollection is the pre-existing rerank chain in
-    ``pg_recall.recall``; this stage only gates whether that chain runs.
-
-    Honesty note: familiarity here is the max-cosine-similarity heuristic, not a
-    trained dual-process model; see dual_process_retrieval.py module docstring.
-
-    Sources:
-      - Yonelinas (2002). J. Mem. Lang. 46(3):441-517.
-      - Diana, Yonelinas & Ranganath (2007). Trends Cogn. Sci. 11(9):379-386.
-    """
+      source: ADR-0235"""
 
     # Ablation / degenerate guards: identity triage (full recollection runs).
     if is_mechanism_disabled(Mechanism.DUAL_PROCESS) or not candidates or q_emb is None:
@@ -296,7 +185,7 @@ def familiarity_triage(
             continue
         try:
             sims.append(cosine_similarity(q_emb, emb))
-        except Exception:  # noqa: BLE001 — non-load-bearing per-candidate
+        except Exception:  # noqa: BLE001 — source: ADR-0235
             sims.append(0.0)
 
     return dpr.triage(
@@ -307,9 +196,7 @@ def familiarity_triage(
     )
 
 
-# ── HOPFIELD stage ──────────────────────────────────────────────────────
-# Ramsauer et al. (2021), "Hopfield Networks Is All You Need." ICLR 2021.
-# Modern Hopfield retrieval = softmax(beta * X · query) attention.
+# source: ADR-0235
 
 
 def hopfield_complete(
@@ -328,21 +215,7 @@ def hopfield_complete(
     round-trips). Hopfield attention then ranks them by
     ``softmax(beta * X · query)``; we blend that rank with the WRRF rank.
 
-    Bulk fetch path: ``store.get_embeddings_for_memories(ids)`` →
-    ``WHERE id = ANY(%s)`` single SELECT, returns ``{id: embedding}``.
-    Falls back to per-id ``get_memory`` only if the bulk method is absent
-    (e.g., older store stub in tests). At top_k=30 this turns 30 round
-    trips into 1 — paper-claim-bearing because Hopfield wall-time was
-    untracked under production load before this refactor.
-
-    Source: Ramsauer et al. (2021), "Hopfield Networks Is All You Need."
-    ICLR 2021 — softmax attention as modern Hopfield retrieval.
-
-    Disabled when ``CORTEX_ABLATE_HOPFIELD=1`` — returns input
-    unchanged. The same env var is also checked inside
-    ``hopfield.retrieve``; this top-level guard avoids the round-trip
-    embedding fetch when ablated.
-    """
+    source: ADR-0235"""
     if is_mechanism_disabled(Mechanism.HOPFIELD):
         return candidates
     if not candidates or q_emb is None:
@@ -378,9 +251,7 @@ def hopfield_complete(
     return _rrf_blend(candidates, mech_ranks, blend_beta)
 
 
-# ── HDC stage ───────────────────────────────────────────────────────────
-# Kanerva (2009), "Hyperdimensional Computing." Cognitive Computation 1(2).
-# Bipolar (+1/-1) random hypervectors with bind/bundle algebra.
+# source: ADR-0235
 
 
 def hdc_rerank(
@@ -394,11 +265,7 @@ def hdc_rerank(
     Each candidate's content is encoded as a bipolar hypervector
     (bundle of word atoms + bigram binds); HDC similarity = dot/dim.
 
-    Disabled when ``CORTEX_ABLATE_HDC=1`` —
-    returns input unchanged. The same guard fires in
-    ``compute_hdc_scores``; this top-level early-return avoids the
-    encoding cost when ablated.
-    """
+    source: ADR-0235"""
     if is_mechanism_disabled(Mechanism.HDC):
         return candidates
     if not candidates:
@@ -413,20 +280,12 @@ def hdc_rerank(
     return _rrf_blend(candidates, mech_ranks, blend_beta)
 
 
-# ── SPREADING_ACTIVATION stage ─────────────────────────────────────────
-# Collins & Loftus (1975), "A Spreading-Activation Theory of Semantic
-# Processing." Psychological Review 82(6). Implementation: BFS over the
-# entity graph with exponential decay by depth and convergent summation.
+# source: ADR-0235
 
 
-# Non-silent failure state for the SA channel (mirrors reranker.py's
-# _flashrank_failed pattern, commit bb1c581f, 2026-07-11 incident: a bare
-# `except Exception: return candidates` here swallowed the SA channel's
-# missing-WITH-RECURSIVE bug for the channel's entire lifetime with zero
-# log signal — see pg_schema.py::SPREAD_ACTIVATION_MEMORIES_FN docstring
-# and ADR-0054). Logged once per process on first failure to avoid log
-# spam; state stays introspectable via ``spreading_activation_status()``
-# for preflight/bench-harness checks, same contract as reranker_status().
+# source: ADR-0235
+
+
 _sa_failed: bool = False
 _sa_last_error: str | None = None
 
@@ -469,13 +328,7 @@ def _run_spread_activation(
 ) -> list[tuple[int, float]]:
     """Ablation gate + terms + store call + non-silent-failure logging.
 
-    Shared by both SA injection modes (augment, tail) so the ablation
-    check, domain-scoping wiring, and failure telemetry stay in exactly
-    one place. Returns ``[]`` (never raises) on ablation, no extractable
-    terms, a store missing ``spread_activation_memories``, or a store
-    call failure -- callers treat an empty return as "inject nothing,
-    leave candidates as-is".
-    """
+    source: ADR-0235"""
     if is_mechanism_disabled(Mechanism.SPREADING_ACTIVATION):
         return []
     if not hasattr(store, "spread_activation_memories"):
@@ -496,15 +349,9 @@ def _run_spread_activation(
             domain=None if cross_domain else domain,
             include_globals=include_globals,
         )
-    except Exception as exc:  # noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
-        # First-failure-only logging (reranker.py precedent, bb1c581f):
-        # a per-query stage like this one can be called on every recall,
-        # so logging every occurrence would spam at the same rate as the
-        # calls themselves without adding information beyond "still
-        # broken" -- state stays introspectable via
-        # spreading_activation_status() for callers (bench preflight,
-        # health checks) that need to distinguish never-attempted from
-        # broken-and-suppressed.
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0235
+        # source: ADR-0235
+
         if not _sa_failed:
             logger.warning(
                 "spread_activation_memories failed (domain=%s, "
@@ -522,40 +369,13 @@ def _run_spread_activation(
         return []
 
 
-# Contract (incident 2026-07-11, garde x3 bench, LongMemEval crash at
-# pg_recall.py::_chronological_rerank -- ADR-0054 addendum): an
-# injected candidate MUST carry the same field set, with the same
-# Python types, as a WRRF candidate from store.recall_memories() --
-# its RETURNS TABLE columns are memory_id/content/score/heat/domain/
-# created_at/store_type/tags/importance/surprise_score/
-# emotional_valence/source/value/source_attribution. Two prior bugs,
-# both from building this dict as a curated 6-field subset of `mem`
-# instead of the full common contract:
-#   1. created_at came from store.get_memory() (normalized to an ISO
-#      string by _normalize_memory_row) while WRRF candidates carried
-#      a raw psycopg datetime.datetime -- sorted() on a mixed list
-#      raised TypeError. Fixed at the true source: pg_store.py's
-#      recall_memories() now normalizes too (see
-#      _isoformat_datetime_fields) -- both sides are str.
-#   2. store_type/source/source_attribution/importance/surprise_score/
-#      emotional_valence/value were silently ABSENT from injected
-#      candidates even though store.get_memory() (SELECT * FROM
-#      memories) already returns them -- a downstream consumer keyed
-#      on `mem.get("source")` (recall_helpers.py's low-signal filter)
-#      would silently misclassify every SA-injected candidate as
-#      non-auto-capture regardless of its real source.
+# source: ADR-0235
+
+
 def _sa_candidate_from_memory(mid: int, mem: dict[str, Any]) -> dict[str, Any]:
     """Build a WRRF-contract-shaped candidate dict from a get_memory() row.
 
-    Whitelist, not ``dict(mem)``: get_memory() is ``SELECT * FROM
-    memories`` (every column, including internal state -- is_stale,
-    compression_level, write_class, forgetting_pressure_accum,
-    embedding, superseded_by_id, ...) while a WRRF candidate is exactly
-    recall_memories()'s RETURNS TABLE (14 columns). Copying the full row
-    would swap the missing-fields bug for a leaked-internal-fields one --
-    this dict's KEY SET, not just each value's type, must match the
-    WRRF contract.
-    """
+    source: ADR-0235"""
     return {
         "memory_id": mid,
         "content": mem.get("content", ""),
@@ -571,11 +391,7 @@ def _sa_candidate_from_memory(mid: int, mem: dict[str, Any]) -> dict[str, Any]:
         "source": mem.get("source", ""),
         "value": mem.get("value", 0.5),
         "source_attribution": mem.get("source_attribution"),
-        # issue #368. Defaults to UNKNOWN, not to a trusted value: an
-        # injected candidate whose origin could not be read must not earn
-        # heat, per the same fail-closed rule the read path applies. This is
-        # the third field to join this whitelist after being forgotten
-        # elsewhere would have been silent — hence the contract test.
+        # source: ADR-0235
         "capture_origin": mem.get("capture_origin", ORIGIN_UNKNOWN),
         "_sa_injected": True,
     }
@@ -599,36 +415,7 @@ def spreading_activation_expand(
     """AUGMENT mode: expand the candidate pool with SA-reachable memories,
     then RRF blend (can reorder and outrank existing candidates).
 
-    Calls the ``spread_activation_memories`` PL/pgSQL stored procedure
-    (server-side BFS over the entity graph). Memories already in
-    ``candidates`` get an SA rank; new ones are appended at the bottom
-    of the candidate list before RRF blending — so a strongly SA-active
-    memory absent from the WRRF top-K can still surface, and can move
-    ABOVE existing candidates.
-
-    Opt-in only (ADR-0054 addendum, 2026-07-11): this was the DEFAULT
-    mode when spread_activation_memories first went live, and the garde
-    x3 bench's first live measurement on LongMemEval showed it is NOT
-    benchmark-neutral even with domain scoping applied -- MRR
-    0.9166->0.9009 (floor 0.914 breach) against +0.002 R@10, because
-    LongMemEval's ingestion legitimately creates entities INSIDE the
-    query's own domain (8469 counted), so domain scoping alone does not
-    stop this mode from reordering already-correct top candidates.
-    ``pg_recall.recall()``'s default ``sa_mode="tail"`` uses
-    ``spreading_activation_tail_fill`` instead (never reorders). This
-    function remains available via ``sa_mode="augment"`` for future
-    exploration (e.g. a unified_search-specific tuning campaign) but
-    requires its own dedicated benchmark campaign before any default
-    change -- "the guard wins; never lower the floor."
-
-    Domain scoping (ADR-0054, decision 2026-07-11): the entity graph is
-    shared across domains by design (see pg_schema.py module comment),
-    but the final entity->memory mapping is scoped to ``domain`` by
-    default — measured 52.8% cross-domain injection rate when unscoped
-    (scratchpad/spread-activation-scoping-design.md §2.3). Set
-    ``cross_domain=True`` to opt out explicitly and search the full
-    graph regardless of domain (mirrors the existing
-    ``include_globals`` opt-in pattern on ``recall_memories()``).
+    source: ADR-0235
 
     Disabled when ``CORTEX_ABLATE_SPREADING_ACTIVATION=1`` — returns
     input unchanged.
@@ -683,28 +470,17 @@ def spreading_activation_tail_fill(
     max_results: int = 50,
     min_heat: float = 0.05,
 ) -> list[dict[str, Any]]:
-    """TAIL mode (default, ADR-0054 addendum): append SA-reachable
-    memories ONLY to fill a short list up to ``top_k``. Never reorders,
-    never re-scores, never touches an existing candidate.
+    """TAIL mode: append SA-reachable memories ONLY to fill a short list up to
+    ``top_k``.
 
-    Precondition: ``candidates`` is the FINAL post-rerank list --
-    ``pg_recall.py::recall()`` calls this LAST, after every reranking
-    stage (FlashRank, VALUE_PRIORITY, CONFLICT_MONITOR, GOAL_MAINTENANCE,
-    ATTENTIONAL_CONTROL, and the EVENT_ORDER chronological rerank), so an
-    appended candidate can never be picked up by a later stage and moved.
-    Postcondition: ``candidates == filled[:len(candidates)]`` (same
-    dicts, same order, unchanged) and ``len(filled) <= top_k``; any
-    appended item satisfies the same WRRF field contract as
-    ``spreading_activation_expand``'s injections
-    (``_sa_candidate_from_memory``).
+    source: ADR-0235
 
-    Benchmark-neutral by construction (garde x3 incident, 2026-07-11):
-    when ``len(candidates) >= top_k`` (WRRF + reranking already filled
-    the request) this returns ``candidates`` unchanged BEFORE making any
-    store call -- zero I/O, zero effect, on any corpus dense enough to
-    already fill top_k (LongMemEval, LoCoMo, BEAM all do). Value is
-    preserved exactly where recall is sparse: small/cold domains and
-    thin corpora that WRRF alone cannot fill to top_k.
+    Precondition: candidates is the final post-rerank list, after all
+    reranking stages.
+    Postcondition: filled[:len(candidates)] equals candidates with identical
+    dictionaries and order; len(filled) <= top_k. Appended items obey the
+    same WRRF field contract as spreading_activation_expand injections.
+    source: ADR-0235
 
     Disabled when ``CORTEX_ABLATE_SPREADING_ACTIVATION=1`` — returns
     input unchanged (via ``_run_spread_activation``'s ablation gate,
@@ -749,10 +525,7 @@ def spreading_activation_tail_fill(
     return filled
 
 
-# ── DENDRITIC_CLUSTERS stage ────────────────────────────────────────────
-# Poirazi, Brannon & Mel (2003), "Pyramidal Neuron as a Two-Layer Neural
-# Network." Neuron 37:989-999. Branch subunit + soma nonlinearity.
-# Cluster admission via Jaccard (Kastellakis 2015 — engineering proxy).
+# source: ADR-0235
 
 
 def _candidate_entities(c: dict[str, Any]) -> set[str]:
@@ -778,17 +551,7 @@ def _candidate_tags(c: dict[str, Any]) -> set[str]:
 def _resolve_query_entity_ids(query: str, store: Any) -> set[int]:
     """Resolve query entities to entity_ids.
 
-    Two-stage resolution so dendritic Jaccard fires on natural-language
-    queries (not just CamelCase / path / backtick patterns):
-
-    1. ``extract_query_entities()`` — high-precision extraction of
-       CamelCase, slash paths, backtick code spans (Poirazi et al.
-       compatible: these are typically the entity-anchors a user writes).
-    2. **Token fallback** — for every alphabetic token of length ≥ 4
-       not already extracted, attempt ``get_entity_by_name(token)``.
-       This catches natural-language anchors like "authentication" or
-       "deployment" which the regex-extractor misses but which often
-       canonicalize to a real entity_id in the production graph.
+    source: ADR-0235
 
     Constant cost per recall (typical query: ≤30 candidate tokens
     after stopword filter; each is one indexed lookup against the
@@ -811,10 +574,8 @@ def _resolve_query_entity_ids(query: str, store: Any) -> set[int]:
         if row and row.get("id") is not None:
             ids.add(int(row["id"]))
 
-    # Stage 2: natural-language token fallback. Use the existing
-    # stopword-aware keyword extractor (`shared/text.py::extract_keywords`)
-    # which already filters function words; only try tokens of length ≥ 4
-    # to avoid swamping the entity index with junk lookups.
+    # source: ADR-0235
+
     try:
         for token in extract_keywords(query):
             if len(token) < _ENTITY_FALLBACK_TOKEN_MIN_LEN or token in seen_names:
@@ -840,39 +601,7 @@ def dendritic_modulate(
 ) -> list[dict[str, Any]]:
     """Apply branch-affinity multiplicative modulation to candidate scores.
 
-    Computes weighted Jaccard affinity (0.7 entity + 0.3 tag — same
-    weights as ``dendritic_clusters.compute_branch_affinity``).
-    The score is multiplied by ``1 + delta * (2 * affinity - 1)`` so
-    affinity 0.0 → factor 1 - delta, affinity 0.5 → factor 1.0,
-    affinity 1.0 → factor 1 + delta.
-
-    **Entity-set source.** When ``store`` exposes
-    ``get_entity_ids_for_memories`` AND the query resolves to ≥1 known
-    ``entity_id``, the affinity is computed on the **real entity graph**
-    (the ``memory_entities`` join) — Jaccard 1912 set similarity over
-    integer ids. This is the faithful model of Kastellakis (2015) branch
-    admission. One bulk PG round trip; no per-candidate query.
-
-    Falls back to the prior content-token Jaccard proxy when (a) the
-    store lacks the bulk method (test stub), or (b) the query has zero
-    resolvable entities — natural-language queries with no CamelCase /
-    paths / backticks. The fallback is documented in
-    ``dendritic_clusters.compute_branch_affinity`` as an engineering
-    proxy.
-
-    Sources:
-      - Poirazi, Brannon & Mel (2003). *Pyramidal Neuron as a Two-Layer
-        Neural Network.* Neuron 37:989-999. (Multiplicative soma.)
-      - Jaccard, P. (1912). *The Distribution of the Flora in the Alpine
-        Zone.* New Phytologist 11(2):37-50. (Set similarity.)
-      - Kastellakis et al. (2015). *Synaptic Clustering within Dendrites.*
-        Prog. Neurobiol. 126:19-35. (Cluster admission via overlap.)
-
-    Disabled when ``CORTEX_ABLATE_DENDRITIC_CLUSTERS=1`` — returns input
-    unchanged. Bounded perturbation: max ±delta per candidate, so the
-    modulation can break near-ties but never dominates the underlying
-    retrieval score (Poirazi 2003 soma scale = 0.96, comparable bound).
-    """
+    source: ADR-0235"""
     if is_mechanism_disabled(Mechanism.DENDRITIC_CLUSTERS):
         return candidates
     if not candidates or delta <= 0.0:
@@ -918,11 +647,7 @@ def dendritic_modulate(
     return modulated
 
 
-# ── EMOTIONAL_RETRIEVAL stage ───────────────────────────────────────────
-# Bower, G.H. (1981). "Mood and Memory." Am. Psychologist 36(2):129-148.
-# Mood-congruent recall: candidates whose stored emotional valence matches
-# the query's inferred valence are retrieved faster and more accurately.
-# Engineering blend via RRF (Cormack et al. SIGIR 2009).
+# source: ADR-0235
 
 
 def emotional_retrieval_rerank(
@@ -934,26 +659,13 @@ def emotional_retrieval_rerank(
 ) -> list[dict[str, Any]]:
     """Rerank by query-valence ↔ candidate-valence congruence.
 
-    Bower (1981): emotionally-congruent material is retrieved faster and
-    more accurately than incongruent material. We infer the query's
-    affective load via VADER (Hutto & Gilbert, ICWSM 2014), measure each
-    candidate's stored ``emotional_valence`` distance from the query
-    valence, then RRF-blend that rank with the WRRF rank.
-
-    A neutral query (|valence| < ``valence_floor``) carries no congruence
-    signal and the stage no-ops — RRF on a uniform rank would only
-    add noise.
+    source: ADR-0235
 
     Disabled when ``CORTEX_ABLATE_EMOTIONAL_RETRIEVAL=1`` — returns input
     unchanged. Distinct from MOOD_CONGRUENT_RERANK: this stage uses the
     *query's* valence (per-recall), not a session-level user mood state.
 
-    Sources:
-      - Bower, G.H. (1981). "Mood and Memory." Am. Psychologist 36(2).
-      - Hutto, C.J. & Gilbert, E. (2014). "VADER: A Parsimonious Rule-based
-        Model for Sentiment Analysis of Social Media Text." ICWSM 2014.
-      - Cormack, Clarke & Buettcher (2009). RRF blend.
-    """
+    source: ADR-0235"""
     if is_mechanism_disabled(Mechanism.EMOTIONAL_RETRIEVAL):
         return candidates
     if not candidates:
@@ -975,18 +687,7 @@ def emotional_retrieval_rerank(
     return _rrf_blend(candidates, mech_ranks, blend_beta)
 
 
-# ── VALUE_PRIORITY stage (B2 RL value learning) ─────────────────────────
-# Schultz, Dayan & Montague (1997); Sutton & Barto (1998). Each memory carries
-# a learned scalar ``value`` in [0,1] that accrues via TD credit assignment from
-# usefulness/session outcomes (see core.value_learning). A memory that has
-# repeatedly contributed to good outcomes should surface slightly ahead of an
-# equally-relevant but unproven one, and a repeatedly-unhelpful one slightly
-# behind. Unlike the emotional/mood stages this is NOT an RRF rank blend but a
-# small multiplicative nudge on the content-relevance score
-# (value_learning.retrieval_priority: score' = score·(1 + w·(value − prior))),
-# so value refines rather than reorders relevance. Runs AFTER FlashRank so it
-# adjusts the final content-relevance score, and is deliberately weak (w=0.15)
-# so it never overrides a strong content match.
+# source: ADR-0235
 
 
 def value_priority_rerank(
@@ -1020,21 +721,7 @@ def value_priority_rerank(
     return candidates
 
 
-# ── GOAL_MAINTENANCE stage (A3 goal / task-set maintenance) ─────────────
-# Miller & Cohen (2001), Annu. Rev. Neurosci. 24:167-202 — prefrontal cortex
-# holds an active task-set that biases processing toward goal-relevant
-# information. Here: while a goal is active (a GoalVector promoted from the
-# store's active prospective triggers, see pg_recall._get_active_goal), each
-# candidate's content-relevance score is scaled by a small multiplicative gain
-# ``1 + weight·goal_relevance`` (goal_maintenance.goal_recall_multiplier) so
-# goal-relevant memories surface slightly ahead of equally-relevant off-task
-# ones. Like VALUE_PRIORITY this is a multiplicative nudge, NOT an RRF rank
-# blend, and deliberately weak (weight 0.15) so it refines rather than reorders
-# relevance. No active goal / off-task candidate => gain 1.0 => list unchanged.
-#
-# DESIGN INFERENCE: the goal-match is a deterministic keyword/entity/directory
-# overlap re-weight promoted from the prospective trigger surface, not a learned
-# PFC task-set controller (see goal_maintenance module docstring).
+# source: ADR-0235
 
 
 def goal_maintenance_rerank(
@@ -1075,32 +762,7 @@ def goal_maintenance_rerank(
     return candidates
 
 
-# ── ATTENTIONAL_CONTROL stage (A1 central-executive read-side) ──────────
-# Baddeley (2003) central executive; Posner & Petersen (1990) attention
-# spotlight; Cowan (2001) focus capacity. A1 already provides the pure
-# attention-allocation pass (attentional_control.allocate_attention): a
-# top-down lexical-relevance + bottom-up salience score per item, softmaxed
-# (temperature-scaled) into an attention distribution. Here we run that SAME
-# pass over the recall candidate set with the recall query as the top-down cue,
-# then apply a small multiplicative nudge score·(1 + weight·(attn − baseline))
-# to each candidate, where attn is its attention weight and baseline = 1/n (the
-# uniform weight). Like VALUE_PRIORITY / GOAL_MAINTENANCE this is a bounded
-# multiplicative nudge, NOT an RRF rank blend.
-#
-# CRITICAL: the candidate set is NOT truncated to the Cowan FOCUS_CAPACITY
-# ceiling. That ceiling bounds the working-set spotlight (sensory_buffer.focus),
-# NOT how many memories recall returns; here attention is used only as a SOFT
-# re-weight over the FULL candidate set (allocate_attention is called with
-# capacity = n so its focus set spans every candidate, and we read only the
-# per-item weights). When attention is uniform (no query overlap and equal
-# salience → equal logits → uniform softmax) every candidate's weight equals
-# baseline, so every factor is exactly 1.0 and neither scores nor order change —
-# the behavior-preserving default. Reuses allocate_attention; the softmax is NOT
-# reimplemented here.
-#
-# DESIGN INFERENCE: the top-down term is lexical query/candidate overlap plus
-# fixed-constant salience (attentional_control), not a learned attention
-# controller — see the attentional_control module honesty note.
+# source: ADR-0235
 
 
 def attentional_focus_rerank(
@@ -1111,20 +773,7 @@ def attentional_focus_rerank(
 ) -> list[dict[str, Any]]:
     """Nudge each candidate's score by its top-down+salience attention (A1).
 
-    Runs ``attentional_control.allocate_attention`` over the FULL candidate set
-    (capacity = ``len(candidates)`` so there is NO working-set truncation — the
-    Cowan ceiling bounds the in-focus spotlight, not recall size) with ``query``
-    as the top-down cue. Each candidate's score is scaled by
-    ``1 + weight·(attn − baseline)`` where ``attn`` is its attention weight and
-    ``baseline = 1/n`` the uniform weight, then the list is re-sorted.
-
-    Behavior-preserving by default: when attention is uniform (no query overlap
-    and equal salience) every weight equals ``baseline``, so every factor is
-    exactly 1.0 and neither scores nor order change. The nudge is deliberately
-    small (weight 0.15) so attention refines rather than reorders content
-    relevance, and it REUSES A1's pure ``allocate_attention`` — the softmax is
-    not reimplemented. The soft re-weight applies to every candidate; the recall
-    result is never capped at ``FOCUS_CAPACITY``.
+    source: ADR-0235
 
     Disabled when ``CORTEX_ABLATE_ATTENTIONAL_CONTROL=1`` — returns input
     unchanged. No-op on fewer than two candidates.
@@ -1150,12 +799,8 @@ def attentional_focus_rerank(
     # per-item weights as a soft re-weight, never truncating recall.
     alloc = allocate_attention(query, items, capacity=n)
     baseline = 1.0 / n
-    # strict=True: allocate_attention always returns one weight per input
-    # item (items has len(candidates) by construction above). Documented
-    # equivalent mutant (coding-standards.md §12.1): allocate_attention's
-    # own internal precondition (see attentional_control.py) makes this
-    # length mismatch unreachable, so strict=True vs strict=False/None is
-    # not observable through this call.
+    # source: ADR-0235
+
     for c, attn in zip(candidates, alloc.weights, strict=True):
         base = c.get("score", 0.0) or 0.0
         c["score"] = base * (1.0 + weight * (attn - baseline))
@@ -1164,17 +809,7 @@ def attentional_focus_rerank(
     return candidates
 
 
-# ── RECONSOLIDATION stage ──────────────────────────────────────────────
-# Nader, Schafe & LeDoux (2000), Nature 406(6797). On retrieval a memory
-# becomes labile and may be re-stored with modifications. Wired here as
-# the final post-WRRF stage so the mutation reflects the FINAL ranking
-# (i.e., what the user actually saw), not the raw WRRF output.
-#
-# This stage MUTATES the store (heat bump + last_accessed update +
-# optional valence shift). All other post-WRRF stages are pure ranking.
-# The mutation is bounded (heat_delta ∈ [-0.10, +0.05], valence_delta ∈
-# [-0.10, +0.10] — see reconsolidation.compute_reconsolidation_action)
-# and idempotent within a recall: each candidate is touched at most once.
+# source: ADR-0235
 
 
 def reconsolidation_apply(
@@ -1184,14 +819,9 @@ def reconsolidation_apply(
     *,
     top_k: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Apply Nader-2000 reconsolidation to the top-K retrieved candidates.
+    """Apply reconsolidation to the top-K retrieved candidates.
 
-    For each candidate (up to ``top_k``, default = all): compute the
-    reconsolidation action via `compute_reconsolidation_action`, then
-    apply the resulting heat / valence / last_accessed deltas to the
-    store. The candidate list itself is returned unchanged in shape;
-    in-place mutation of the candidate dicts reflects the new heat /
-    valence values so downstream consumers see consistent state.
+    source: ADR-0235
 
     Disabled when ``CORTEX_ABLATE_RECONSOLIDATION=1`` — returns input
     unchanged with zero store writes. The same env var is also honored
@@ -1203,14 +833,7 @@ def reconsolidation_apply(
       - ``update_memory_access(memory_id)`` for last_accessed + access_count
       - ``update_memory_emotional_valence(memory_id, valence)`` (optional)
 
-    A store stub lacking any of these methods → that mutation is silently
-    skipped (test fixtures don't all implement the full A3 surface).
-    Failures inside individual store calls are caught per-candidate so
-    one bad row never fails the whole recall.
-
-    Source: Nader, Schafe & LeDoux (2000), Nature 406(6797). Bower (1981)
-    Am. Psychologist 36(2). Engineering defaults documented in
-    `reconsolidation.compute_reconsolidation_action`.
+    source: ADR-0235
     """
     if is_mechanism_disabled(Mechanism.RECONSOLIDATION):
         return candidates
@@ -1241,28 +864,14 @@ def reconsolidation_apply(
                 context_tokens=q_tokens,
                 query_valence=q_valence,
             )
-        except Exception:  # noqa: BLE001 — non-load-bearing per-candidate
+        except Exception:  # noqa: BLE001 — source: ADR-0235
             continue
 
         if outcome.action == "none" and outcome.heat_delta == 0.0:
             continue
 
-        # Heat: read current heat_base (best-effort from candidate dict),
-        # apply delta, clamp to [0, 1], write through bump_heat_raw.
-        #
-        # issue #368 — break the feedback loop for untrusted origins. Heat is
-        # a ranking signal that rises with retrieval, so without this a
-        # successful poisoning compounds: each time the hostile memory is
-        # retrieved it ranks higher next time, eventually outrunning any
-        # fixed demotion factor.
-        #
-        # Scoped to the POSITIVE delta only, and to the heat write only:
-        #   - a negative delta still applies, otherwise untrusted memories
-        #     would be exempt from cooling — frozen near their current heat
-        #     instead of decaying, the opposite of the intent;
-        #   - last_accessed / access_count below still update, because they
-        #     are not an amplifier: confidence is useful_count/access_count,
-        #     so unrated retrievals lower it rather than raise it.
+        # source: ADR-0235
+
         rewards_retrieval = outcome.heat_delta > 0.0 and not is_trusted_at_read(
             str(c.get("capture_origin", ""))
         )
@@ -1282,9 +891,8 @@ def reconsolidation_apply(
             except Exception as exc:  # noqa: BLE001
                 silent_failure.note("recall_pipeline.access_writeback", exc)
 
-        # Optional valence shift (only when the store supports it AND the
-        # outcome carries a non-zero shift — Bower 1981 mood-congruent
-        # re-storage). Clamped to [-1, +1].
+        # source: ADR-0235
+
         if has_valence and outcome.valence_delta != 0.0:
             try:
                 cur_val = float(c.get("emotional_valence", 0.0) or 0.0)
@@ -1297,11 +905,7 @@ def reconsolidation_apply(
     return candidates
 
 
-# ── MOOD_CONGRUENT_RERANK stage ────────────────────────────────────────
-# Bower (1981) mood-state-dependent recall: a person in a given mood
-# preferentially recalls memories acquired (or stored) in that same mood.
-# Distinct from EMOTIONAL_RETRIEVAL — this stage uses a USER session-level
-# mood signal, not the per-query valence.
+# source: ADR-0235
 
 
 def mood_congruent_rerank(
@@ -1317,19 +921,13 @@ def mood_congruent_rerank(
     manual ``checkpoint`` annotation). When ``None``, the stage no-ops:
     we do NOT fabricate a mood signal in the absence of one.
 
-    Default policy from Bower (1981): mood-congruent — candidates whose
-    stored valence is closer to the user's current mood get a rank boost.
-    The boost is small (RRF beta=0.15) so the underlying retrieval order
-    still dominates; this is a tie-breaker, not a filter.
+    source: ADR-0235
 
     Disabled when ``CORTEX_ABLATE_MOOD_CONGRUENT_RERANK=1`` — returns
     input unchanged. Distinct from EMOTIONAL_RETRIEVAL (which uses the
     query text's inferred valence).
 
-    Sources:
-      - Bower, G.H. (1981). "Mood and Memory." Am. Psychologist 36(2).
-      - Cormack, Clarke & Buettcher (2009). RRF blend.
-    """
+    source: ADR-0235"""
     if is_mechanism_disabled(Mechanism.MOOD_CONGRUENT_RERANK):
         return candidates
     if user_mood is None or not candidates:
@@ -1348,19 +946,7 @@ def mood_congruent_rerank(
     return _rrf_blend(candidates, mech_ranks, blend_beta)
 
 
-# ── CONFLICT_MONITOR stage (A2 conflict monitoring / cognitive control) ─────────
-# Botvinick, Braver, Barch, Carter & Cohen (2001), Psychol. Rev. 108(3):624-652;
-# Miller & Cohen (2001), Annu. Rev. Neurosci. 24(1):167-202. The ACC detects
-# response conflict — several strong, incompatible responses co-active at once —
-# and signals PFC to raise control. Here: a conflict scalar over the retrieved
-# set (softmax-entropy of the scores × lexical pairwise contradiction, see
-# core.conflict_monitor). When it crosses threshold the set is "in conflict";
-# the most-contradictory pair's lower-scoring member is down-weighted and, when
-# candidates carry typed-claim metadata, the pair is also routed to the existing
-# claim_resolver. Unlike the RRF rerank stages this does not reorder the whole
-# list — it demotes one contested-and-weaker memory. Runs after VALUE_PRIORITY
-# so it operates on the final content-relevance scores. Behaviour-preserving on
-# <2 candidates or low conflict (no-op).
+# source: ADR-0235
 
 
 def conflict_monitor_rerank(
@@ -1369,17 +955,7 @@ def conflict_monitor_rerank(
 ) -> list[dict[str, Any]]:
     """Detect conflict in the retrieved set and demote the losing memory (A2).
 
-    Computes a conflict scalar (``conflict_monitor.assess_conflict``) over the
-    candidates. When the set is "in conflict" (score >= threshold): the
-    lower-scoring member of the most-contradictory pair is down-weighted and the
-    list re-sorted (``conflict_monitor.apply_downweight``), and — when the
-    candidates carry the typed-claim metadata the resolver needs — the pair is
-    routed to ``claim_resolver.plan_conflicts`` (via
-    ``conflict_monitor.route_to_resolver``) so the disagreement is surfaced as
-    data. The resulting ConflictPlans are attached to the winning candidate's
-    ``conflict_plans`` key for downstream curation; no store write is performed
-    here (the resolver is pure planning — persistence is a curation-phase
-    concern, matching claim_resolver's design constraint).
+    source: ADR-0235
 
     Disabled when ``CORTEX_ABLATE_CONFLICT_MONITOR=1`` — returns input
     unchanged. No-op on fewer than two candidates or when conflict is below
@@ -1409,13 +985,13 @@ def conflict_monitor_rerank(
         candidates = conflict_monitor.apply_downweight(candidates, assessment)
 
         if plans and candidates:
-            # Attach plans + the assessment to the current top candidate so a
-            # downstream curation phase can act on them. Non-destructive.
+            # source: ADR-0235
+
             candidates[0].setdefault("conflict_plans", []).extend(plans)
             candidates[0]["conflict_assessment"] = (
                 conflict_monitor.conflict_assessment_as_dict(assessment)
             )
-    except Exception:  # noqa: BLE001 — non-load-bearing; never fail a recall
+    except Exception:  # noqa: BLE001 — source: ADR-0235
         return candidates
 
     return candidates

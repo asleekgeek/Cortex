@@ -1,16 +1,6 @@
-"""Calibrated streaming constants — MEASURED, not invented.
+"""Streaming buffer, batch, and concurrency constants.
 
-source: benchmark benchmarks/streaming_calibration/run.py, measured 2026-06-04
-on local PostgreSQL 15 (cortex_test). These are PROPERTIES OF THE PG INSTANCE
-(schema, indexes, hardware), not portable constants — re-run the sweep and
-update them when the environment changes (Kleinrock 1975: B_min/B_max are
-instance properties). Provenance for every number is the committed
-``benchmarks/streaming_calibration/results.json``.
-
-Sweep (p99 write latency / throughput vs batch size):
-  entity: peak 73k rows/s @ 5000 (p99 111 ms); throughput drops past 5000.
-  edge:   peak 221k rows/s @ 10000 (p99 131 ms) — 6x the 1000-row rate, which
-          is exactly why fixed sizing is wrong and AIMD is justified.
+source: ADR-0270
 """
 
 from __future__ import annotations
@@ -18,8 +8,8 @@ from __future__ import annotations
 from mcp_server.core.streaming.adaptive_controller import AdaptiveBatchController
 from mcp_server.core.streaming.adaptive_writer import compute_queue_cap
 
-# RAM budget for in-flight write buffers per ingest phase. Conservative — the
-# bounded queue + per-worker buffers stay far under this (a few MB in practice).
+# source: ADR-0270
+
 WRITE_RAM_BUDGET_BYTES = 256 * 1024 * 1024
 
 # Entity staging path (COPY → INSERT … SELECT … WHERE NOT EXISTS).
@@ -34,18 +24,24 @@ EDGE_B_MAX = 10000
 EDGE_W_TARGET_S = 0.131
 EDGE_ROW_BYTES = 206
 
-# Hard ceiling on the bounded queue regardless of budget — small queues give
-# tighter backpressure; the budget only ever *lowers* this.
+# source: ADR-0270
+
 _MAX_QUEUE_CAP = 8
 
 
 def make_entity_controller() -> AdaptiveBatchController:
-    """AIMD controller for the entity stage (measured bounds)."""
+    """Create the entity-stage AIMD controller.
+
+    source: ADR-0270
+    """
     return AdaptiveBatchController(ENTITY_B_MIN, ENTITY_B_MAX, ENTITY_W_TARGET_S)
 
 
 def make_edge_controller() -> AdaptiveBatchController:
-    """AIMD controller for the edge stage (measured bounds)."""
+    """Create the edge-stage AIMD controller.
+
+    source: ADR-0270
+    """
     return AdaptiveBatchController(EDGE_B_MIN, EDGE_B_MAX, EDGE_W_TARGET_S)
 
 

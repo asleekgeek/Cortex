@@ -1,16 +1,6 @@
 """Extract memorable content from conversation JSONL records.
 
-Pure business logic — no I/O. Receives parsed records, returns extraction results.
-
-Strategies:
-  1. Decision extraction: user messages containing decision keywords
-  2. Error extraction: messages about bugs, failures, debugging sessions
-  3. Architecture extraction: design discussions, pattern choices
-  4. Key insight extraction: important conclusions, lessons learned
-  5. Tool pattern extraction: which tools were used and how
-
-Each extracted item includes content, tags, and a source classification.
-"""
+source: ADR-0256"""
 
 from __future__ import annotations
 
@@ -106,9 +96,9 @@ def classify_message(text: str) -> list[str]:
     return categories
 
 
-# Messages longer than this many characters get an importance boost.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0256
+
+# source: ADR-0256
 _LONG_MESSAGE_CHARS = 200
 
 

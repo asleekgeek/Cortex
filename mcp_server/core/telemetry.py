@@ -1,48 +1,6 @@
 """Cortex telemetry — lightweight per-process counters for reads + writes.
 
-Captures the empirical workload distribution (read/write ratio, latency
-per op kind, cumulative byte-volume, success/failure split) so the
-paper's "100x more reads than writes" claim is grounded in measurement,
-not assertion (Popper C6).
-
-Storage:
-  * In-memory dict (per process) for fast snapshot/inspection.
-  * Size-rotated JSONL at ~/.claude/methodology/telemetry.jsonl, with one
-    previous segment (.1) for offline analysis. In-memory counters span the
-    process lifetime; the files retain only the current and previous segments.
-
-Threading:
-  Counter increments are guarded by a Lock so the MCP-thread + any
-  background threads do not race on the running totals.
-
-Opt-out:
-  Set ``CORTEX_TELEMETRY_DISABLED=1`` in the environment to disable both
-  the in-memory counters and the JSONL append.
-
-Optional export (issue #122):
-  ``TelemetryExporter`` is a port (Protocol) that outer layers may
-  implement to mirror each recorded sample onto an external sink (e.g.
-  OTLP). Core declares the port only -- it never imports an exporter
-  implementation. The composition root (mcp_server/__main__.py) wires a
-  concrete exporter via ``set_exporter()`` at startup, OFF by default
-  (``set_exporter`` is never called unless the operator opted in via
-  env var -- see infrastructure/otel_exporter.py::build_otel_exporter).
-  Export is best-effort: any exception raised by the exporter is caught
-  here and never propagates to the caller, same guarantee as the JSONL
-  append below.
-
-Layer:
-  Pure logic. No MCP, no DB, no embeddings. Filesystem write is local
-  and best-effort (try/except OSError) so a full disk or permission
-  error never propagates to the caller.
-
-Contract (record):
-  precondition: ``op`` is a non-empty string; ``latency_ms`` >= 0;
-                byte / count fields are non-negative ints.
-  postcondition: a sample is published immediately, or captured until the
-                MCP response exists. Publication updates counters atomically
-                and writes JSONL/exporter best-effort, without failing callers.
-"""
+source: ADR-0282"""
 
 from __future__ import annotations
 
@@ -98,9 +56,9 @@ def set_exporter(exporter: TelemetryExporter | None) -> None:
     _exporter = exporter
 
 
-# source: infrastructure/config.py — CORTEX_CLAUDE_DIR isolates all local data.
-# Existing filesystem ownership in this module is unchanged; no infrastructure
-# import is introduced into core to resolve the same configuration root.
+# source: ADR-0282
+
+
 _root_override = os.environ.get("CORTEX_CLAUDE_DIR", "").strip()
 _LOG_PATH = (
     (Path(_root_override).expanduser() if _root_override else Path.home() / ".claude")
@@ -147,15 +105,15 @@ def capture_records() -> Iterator[list[TelemetrySample]]:
     try:
         yield captured.samples
     finally:
-        # asyncio.to_thread copies context; a cancelled caller can finish first.
-        # Lock closure against late worker appends so no sample is stranded.
+        # source: ADR-0282
+
         with _lock:
             captured.closed = True
         _capture.reset(token)
 
 
 def _disabled() -> bool:
-    """source: opt-out contract documented in module docstring."""
+    """source: ADR-0282"""
     return os.environ.get("CORTEX_TELEMETRY_DISABLED") == "1"
 
 
@@ -221,7 +179,7 @@ def publish_record(sample: TelemetrySample) -> None:
     if _disabled():
         return
     _update_counters(sample)
-    # source: existing JSONL contract rounds latency_ms to three decimal places.
+    # source: ADR-0282
     record_line = {**sample, "latency_ms": round(sample["latency_ms"], 3)}
     try:
         line = json.dumps(record_line) + "\n"
@@ -233,7 +191,7 @@ def publish_record(sample: TelemetrySample) -> None:
     if exporter is not None:
         try:
             exporter.export(record_line)
-        except Exception:  # noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
+        except Exception:  # noqa: BLE001 — source: ADR-0282
             logger.debug("telemetry exporter raised; sample dropped", exc_info=True)
 
 
@@ -259,10 +217,7 @@ _WRITE_OPS = {"remember", "forget", "validate_memory", "rate_memory"}
 def ratio_reads_writes(snap: dict[str, dict[str, float | int]] | None = None) -> float:
     """Compute reads / max(writes, 1) over the current counters.
 
-    Reads = the canonical retrieval ops; writes = mutations + curation.
-    The denominator is clamped so a fresh process returns 0.0 instead
-    of dividing by zero.
-    """
+    source: ADR-0282"""
     s = snap if snap is not None else snapshot()
     reads = sum(int(c["count"]) for op, c in s.items() if op in _READ_OPS)
     writes = sum(int(c["count"]) for op, c in s.items() if op in _WRITE_OPS)

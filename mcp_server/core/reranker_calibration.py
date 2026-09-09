@@ -1,20 +1,6 @@
 """Per-process store for Platt calibration of FlashRank reranker scores.
 
-Collects (raw_score, label) training pairs from ``rate_memory`` feedback
-and fits Platt parameters every N pairs. The fitted parameters are cached
-and applied in the reranker blend step.
-
-Persistence to a ``reranker_calibration`` table is deferred until the
-Phase 3 A3 migration lands (pg_schema.py is currently owned by A3). The
-in-process state is reset on restart, which is acceptable:
-
-  - Calibration converges in O(MIN_SAMPLES) rate_memory calls.
-  - Cold start returns raw scores (which is the current production
-    behaviour), so restart is never worse than the pre-AF-2 baseline.
-
-Pure business logic — module-level mutable state is explicit and
-audited at the call site (engineer.md Move 3 §Construct 1 override for
-write-once-at-startup / runtime-seed configuration).
+source: ADR-0243
 """
 
 from __future__ import annotations
@@ -29,7 +15,7 @@ from mcp_server.core.platt_calibration import (
 # ── Config ──────────────────────────────────────────────────────────────
 
 REFIT_EVERY: int = 50  # Refit parameters every N new samples.
-MAX_SAMPLES: int = 2000  # FIFO cap so memory doesn't grow unboundedly.
+MAX_SAMPLES: int = 2000  # source: ADR-0243
 
 
 # ── State ───────────────────────────────────────────────────────────────
@@ -80,7 +66,10 @@ def sample_count() -> int:
 
 
 def reset_for_tests() -> None:
-    """Test-only hook: reset all in-process calibration state."""
+    """Test-only hook: reset all in-process calibration state.
+
+    source: ADR-0243
+    """
     global _PARAMS, _SAMPLES_AT_LAST_FIT
     _SAMPLES.clear()
     _PARAMS = None

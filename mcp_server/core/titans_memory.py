@@ -1,31 +1,6 @@
-"""Titans test-time learning memory (Behrouz et al., NeurIPS 2025).
+"""Titans test-time learning memory.
 
-Faithful implementation of the neural long-term memory module from
-"Titans: Learning to Memorize at Test Time" (arXiv:2501.00663).
-
-Key equations from the paper:
-  M_t = M_{t-1} - S_t                              (memory update)
-  S_t = eta * S_{t-1} - theta * grad_l(M_{t-1}; x) (surprise momentum)
-  l(M; x) = ||M * k_x - v_x||^2                    (associative memory loss)
-
-Where:
-  M = weight matrix (associative memory, maps keys to values)
-  k_x = key projection of input x (query embedding)
-  v_x = value projection (target memory embedding)
-  S = surprise momentum (accumulated gradient signal)
-  eta = momentum coefficient (past surprise decay)
-  theta = learning rate (current gradient weight)
-
-Surprise = ||grad_l|| (gradient magnitude). Large gradients mean the
-input was unexpected — the memory module couldn't predict it.
-
-The memory module M learns at test time via gradient descent. After
-each retrieval, M is updated to better predict the retrieved content,
-so future similar queries are less surprising.
-
-Requires PyTorch (already available via sentence-transformers).
-
-Pure business logic — stateful (maintains M and S across calls).
+source: ADR-0284
 """
 
 from __future__ import annotations
@@ -46,7 +21,7 @@ def _ensure_torch():
     if _torch is not None:
         return _torch
     try:
-        import torch  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+        import torch  # noqa: PLC0415 — source: ADR-0284
 
         _torch = torch
         return torch
@@ -64,17 +39,9 @@ class TitansMemory:
 
     Args:
         dim: Embedding dimension (384 for MiniLM-L6-v2).
-        eta: Momentum coefficient — decay of past surprise.
-            IMPORTANT: In the paper, η_t is data-dependent (learned as a
-            function of x_t), not a fixed constant. Using a fixed 0.9 is a
-            simplification — standard SGD momentum default (Sutskever et al.,
-            ICML 2013). This loses the adaptive property of the paper.
-        theta: Learning rate — weight of current gradient.
-            IMPORTANT: In the paper, θ_t is data-dependent, controlling how
-            much momentary surprise to incorporate. Using a fixed 0.01 is a
-            simplification. The paper's outer-loop optimizer uses lr=4e-4
-            (AdamW), but the inner-loop memory lr is learned, not fixed.
-    """
+        eta: Momentum coefficient, decaying past surprise.
+        theta: Learning rate, weighting the current gradient.
+    source: ADR-0284"""
 
     def __init__(self, dim: int = 384, eta: float = 0.9, theta: float = 0.01):
         torch = _ensure_torch()
@@ -130,7 +97,7 @@ class TitansMemory:
             v = torch.stack(vs).mean(dim=0)
 
             # Compute loss: l = ||M @ k - v||^2
-            M = self._M.clone().requires_grad_(True)  # noqa: N806 -- Titans paper notation
+            M = self._M.clone().requires_grad_(True)  # noqa: N806 — source: ADR-0284
             prediction = M @ k
             loss = torch.sum((prediction - v) ** 2)
 
@@ -141,13 +108,13 @@ class TitansMemory:
             # Surprise = ||grad||_F normalized to [0, 1]
             # Frobenius norm of gradient, scaled by dim for normalization
             surprise_raw = torch.norm(grad, p="fro").item()
-            # Normalize: empirically, grad norms for 384-dim are ~0.01-1.0
-            # Use tanh for smooth [0,1] mapping without invented thresholds
+            # source: ADR-0284
+
             surprise = float(np.tanh(surprise_raw))
 
             return max(0.0, min(1.0, surprise))
 
-        except Exception as e:  # noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
+        except Exception as e:  # noqa: BLE001 — source: ADR-0284
             logger.debug("Titans surprise computation failed: %s", e)
             return 0.5
 
@@ -166,8 +133,8 @@ class TitansMemory:
         """
 
         if is_mechanism_disabled(Mechanism.SURPRISE_MOMENTUM):
-            # No-op: no momentum update; returns 0 so downstream uses
-            # detect "no surprise signal".
+            # source: ADR-0284
+
             return 0.0
         if self._disabled or not query_emb or not result_embs:
             return 0.5
@@ -190,7 +157,7 @@ class TitansMemory:
             v = torch.stack(vs).mean(dim=0)
 
             # Compute gradient
-            M = self._M.clone().requires_grad_(True)  # noqa: N806 -- Titans paper notation
+            M = self._M.clone().requires_grad_(True)  # noqa: N806 — source: ADR-0284
             prediction = M @ k
             loss = torch.sum((prediction - v) ** 2)
             loss.backward()
@@ -211,7 +178,7 @@ class TitansMemory:
             surprise_raw = torch.norm(grad, p="fro").item()
             return max(0.0, min(1.0, float(np.tanh(surprise_raw))))
 
-        except Exception as e:  # noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
+        except Exception as e:  # noqa: BLE001 — source: ADR-0284
             logger.debug("Titans memory update failed: %s", e)
             return 0.5
 

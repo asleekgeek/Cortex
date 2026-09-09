@@ -1,0 +1,41 @@
+---
+title: "ADR-0254 — mcp_server/core/session_critique.py rationale"
+status: accepted
+source: mcp_server/core/session_critique.py
+---
+
+# ADR-0254 — mcp_server/core/session_critique.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 3 (docstring)
+
+````text
+Generates structured critique of session activity by analyzing:
+  - Tool usage patterns (diversity, over-reliance, gaps)
+  - Decision quality signals (reversals, contradictions)
+  - Coverage assessment (what was explored vs what was missed)
+  - Actionable improvement suggestions
+````
+
+## module — original line 9 (docstring)
+
+````text
+This module produces the *structure* and *analysis* for self-critique.
+No LLM calls — operates on session data and memory statistics.
+````
+
+## module — original line 12 (docstring)
+
+````text
+Pure business logic — no I/O.
+
+````
+
+## module — original line 25 (comment)
+
+````text
+# ── Heuristic thresholds ──────────────────────────────────────────────────
+# source (all constants in this block): pre-existing tuned values, extracted
+# unchanged (#197 family 3); provenance not recorded at introduction.
+````

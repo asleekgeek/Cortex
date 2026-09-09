@@ -1,37 +1,6 @@
 """Tsodyks-Markram short-term plasticity, noise injection, and phase gating.
 
-Tsodyks-Markram short-term plasticity (Tsodyks & Markram 1997, "The neural
-code between neocortical pyramidal neurons depends on neurotransmitter
-release probability", PNAS 94:719-723; Markram et al. 1998):
-
-  At each spike event:
-    u_eff = u + U * (1 - u)        (facilitation: residual Ca2+ boost)
-    x_new = x - u_eff * x          (depression: vesicle depletion)
-
-  Between spikes (continuous recovery):
-    du/dt = -u / tau_F              (facilitation decays, tau_F ~ 530ms)
-    dx/dt = (1 - x) / tau_D        (vesicles recover, tau_D ~ 130ms)
-
-  Effective release = u_eff * x (utilization * available resources)
-
-  Timescale adaptation: biological tau_F ~ 530ms, tau_D ~ 130ms
-  (tau_F/tau_D ~ 4.08). Adapted to hours: tau_F = 0.5h (30min
-  facilitation), tau_D = 2.0h (2h vesicle recovery), i.e. tau_F/tau_D =
-  0.25 — this INVERTS the biological ordering (facilitation now shorter
-  than recovery). A deliberate modeling choice for the hours-timescale
-  regime (short-lived facilitation, stretched vesicle recovery), NOT a
-  ratio-preserving rescale.
-
-Phase-gated plasticity: LTP/LTD magnitude is modulated by theta phase
-(Hasselmo 2005). Encoding phase amplifies LTP; retrieval phase suppresses it.
-
-Leaf module: imports stdlib only. The Hebbian/STDP and stochastic modules
-depend on the state, bounds, and helpers defined here; keeping this file free
-of sibling imports is what makes that dependency acyclic (issue #233).
-The public facade is ``mcp_server.core.synaptic_plasticity``.
-
-Pure business logic — no I/O.
-"""
+source: ADR-0278"""
 
 from __future__ import annotations
 
@@ -41,16 +10,16 @@ from dataclasses import dataclass
 
 # -- Tsodyks-Markram STP Constants (adapted timescale) -------------------------
 
-# U: baseline utilization increment per spike (Tsodyks & Markram 1997)
-# Biological range: 0.15-0.5 depending on synapse type
+# source: ADR-0278
+
 _U_INCREMENT: float = 0.2
 
-# tau_F: facilitation time constant. Biological: ~530ms.
-# Adapted to hours: 0.5h (30min) — residual Ca2+ decays over ~30 min.
+# source: ADR-0278
+
 _TAU_F_HOURS: float = 0.5
 
-# tau_D: depression recovery time constant. Biological: ~130ms.
-# Adapted to hours: 2.0h — vesicle replenishment takes ~2h.
+# source: ADR-0278
+
 _TAU_D_HOURS: float = 2.0
 
 _NOISE_SCALE: float = 0.01
@@ -86,7 +55,9 @@ class SynapticState:
 
 
 def compute_effective_release_probability(state: SynapticState) -> float:
-    """Effective release: u_eff * x (Tsodyks-Markram 1997).
+    """Effective release: u_eff * x.
+
+    source: ADR-0278
 
     u_eff = U + u * (1 - U): facilitation-boosted utilization.
     x: available vesicle fraction.
@@ -118,7 +89,9 @@ def update_short_term_dynamics(
     hours_elapsed: float,
     is_access: bool = False,
 ) -> SynapticState:
-    """Tsodyks-Markram STP update (Tsodyks & Markram 1997).
+    """Tsodyks-Markram STP update.
+
+    source: ADR-0278
 
     Between spikes (continuous recovery):
       u(t) = u0 * exp(-t / tau_F)
@@ -153,10 +126,7 @@ def _recover_between_spikes(
 ) -> tuple[float, float]:
     """Continuous recovery: u decays to 0, x recovers to 1.
 
-    Tsodyks-Markram 1997, between-spike analytical solution:
-      u(t) = u0 * exp(-t / tau_F)
-      x(t) = 1 - (1 - x0) * exp(-t / tau_D)
-    """
+    source: ADR-0278"""
     if hours_elapsed <= 0:
         return u, x
 
@@ -172,10 +142,7 @@ def _apply_spike(
 ) -> tuple[float, float, int, float]:
     """Spike event: facilitation boost + vesicle depletion.
 
-    Tsodyks-Markram 1997:
-      u_new = u + U * (1 - u)    (residual Ca2+ increment)
-      x_new = x - u_new * x      (release depletes available resources)
-    """
+    source: ADR-0278"""
     u_new = u + _U_INCREMENT * (1.0 - u)
     x_new = x - u_new * x
     x_new = max(0.0, x_new)
@@ -205,7 +172,7 @@ def compute_noisy_weight_update(
     return delta_w + noise
 
 
-# -- Phase-Gated Plasticity (Hasselmo 2005) ------------------------------------
+# source: ADR-0278
 
 
 def phase_modulate_plasticity(
@@ -213,7 +180,9 @@ def phase_modulate_plasticity(
     theta_phase: float,
     is_ltp: bool = True,
 ) -> float:
-    """Modulate plasticity magnitude by theta phase (Hasselmo 2005).
+    """Modulate plasticity magnitude by theta phase.
+
+    source: ADR-0278
 
     Encoding phase (0.0-0.5): LTP amplified, LTD suppressed.
     Retrieval phase (0.5-1.0): LTP suppressed, LTD amplified.

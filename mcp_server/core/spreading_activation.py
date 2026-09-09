@@ -1,14 +1,6 @@
 """Spreading activation over the entity-relationship graph.
 
-Implements Collins & Loftus (1975) semantic priming: when a node is activated
-(queried), activation propagates along edges to connected nodes with exponential
-decay by distance. Nodes receiving convergent activation from multiple sources
-get boosted, enabling multi-hop associative retrieval.
-
-This becomes Signal #7 in the WRRF retrieval fusion pipeline.
-
-Pure business logic — no I/O.
-"""
+source: ADR-0264"""
 
 from __future__ import annotations
 from mcp_server.core.ablation import Mechanism, is_mechanism_disabled
@@ -85,11 +77,7 @@ def spread_activation(
 ) -> dict[int, float]:
     """Run spreading activation from seed entities over an entity graph.
 
-    Algorithm (Collins & Loftus 1975, adapted):
-      1. Initialize activation[seed] = initial_activation for each seed.
-      2. BFS by depth -- propagate to neighbors with convergent summation.
-      3. Stop at max_depth or when no nodes exceed threshold.
-      4. Cap total activated nodes at max_nodes (keep top by activation).
+    source: ADR-0264
 
     Returns dict of {entity_id: activation_score} for all reached entities.
     """
@@ -121,9 +109,7 @@ def map_entity_activation_to_memories(
 ) -> list[tuple[int, float]]:
     """Map entity activation scores to memory scores.
 
-    A memory's score = max activation of any entity it mentions.
-    Using max (not sum) avoids over-boosting memories that happen to
-    mention many low-activation entities.
+    source: ADR-0264
 
     Parameters
     ----------

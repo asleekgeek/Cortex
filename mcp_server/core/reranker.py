@@ -1,26 +1,6 @@
 """Cross-encoder reranking via FlashRank ONNX.
 
-FlashRank (ms-marco-MiniLM-L-12-v2) provides fast cross-encoder reranking.
-Validated through LongMemEval and LoCoMo where it improves MRR by 5-15%.
-
-This module is the FlashRank lifecycle + reranking entrypoint. It owns the
-process-global singleton (``_flashrank_instance`` / ``_flashrank_failed`` /
-``_flashrank_load_error``) — a lazy-loaded singleton, no persistent I/O,
-same shape as write_post_store.py's ``_global_buffer``. Two cohesive
-companions carry the rest, and are re-exported here so the public import
-surface (``mcp_server.core.reranker.<name>``) is unchanged:
-
-    - ``reranker_model``  — model identity, durable cache_dir, offline
-      gate, ``RerankerStatus``, and the on-disk weights sha256. See that
-      module's docstring for the 2026-07-11 silent-skip incident (the
-      ``/tmp`` cache_dir root cause) and the 2026-07-27 timeout-less
-      download hang.
-    - ``reranker_scoring`` — the pure score-blending math (confidence
-      gate, adaptive alpha, WRRF/CE blend). See that module's docstring
-      for the sourced engineering defaults, the rejected Platt sigmoid
-      parameters with their benchmark numbers, and the adaptive-alpha
-      ablation results.
-"""
+source: ADR-0242"""
 
 from __future__ import annotations
 
@@ -74,23 +54,13 @@ _flashrank_load_error: str | None = None
 def _ensure_reranker() -> Any:
     """Lazy-load FlashRank ONNX reranker (singleton).
 
-    Precondition: none — safe to call unconditionally, any number of
-        times, from any thread-unsafe-but-single-process context (module
-        state is process-global, matching the existing singleton
-        pattern used elsewhere in core — see write_post_store.py).
-    Postcondition: returns the cached ``Ranker`` instance once a load has
-        succeeded; returns None on any load failure. On the FIRST
-        failure only, logs a warning naming the exact cache directory
-        searched and the underlying exception — every call thereafter is
-        silent (via the ``_flashrank_failed`` flag) to avoid log spam,
-        but the state remains introspectable via ``reranker_status()``.
-        When ``$CORTEX_RERANKER_OFFLINE`` is set (see
-        ``_offline_requested``) and the model file is absent, the
-        download is refused and that same failure path is taken —
-        bounding what would otherwise be an unbounded network block,
-        and degrading to first-stage WRRF scores exactly as a corrupted
-        or unreadable cache already does.
-    """
+    Precondition: may be called repeatedly within one process; module
+    state is process-global and is not thread-safe.
+    Postcondition: returns the cached Ranker after successful load, or None
+    on failure. Only the first failure logs its cache path and exception.
+    reranker_status() exposes the state. Offline mode refuses downloading
+    an absent model and follows the same failure path.
+    source: ADR-0242"""
     global _flashrank_instance, _flashrank_failed, _flashrank_load_error
     if _flashrank_instance is not None:
         return _flashrank_instance
@@ -105,11 +75,11 @@ def _ensure_reranker() -> Any:
                 "FlashRank's fetch has no timeout and would block this "
                 "thread indefinitely on a stalled connection"
             )
-        from flashrank import Ranker  # noqa: PLC0415 — optional dependency (flashrank (multi-second reranker model load)); imported where used so environments without it keep working
+        from flashrank import Ranker  # noqa: PLC0415 — source: ADR-0242
 
         _flashrank_instance = Ranker(model_name=_MODEL_NAME, cache_dir=str(cache))
         return _flashrank_instance
-    except Exception as exc:  # noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0242
         _flashrank_failed = True
         _flashrank_load_error = str(exc)
         logger.warning(
@@ -126,12 +96,7 @@ def _ensure_reranker() -> Any:
 def ensure_reranker_loaded() -> RerankerStatus:
     """Force a load attempt now (if not already attempted) and report status.
 
-    Public entrypoint for preflight checks — e.g. a benchmark harness
-    that must fail fast rather than silently score first-stage-only
-    results as if they were production quality (the 2026-07-10 incident
-    reranker_model.py's docstring describes). Idempotent: only the first
-    call in a process pays the load (or failure) cost.
-    """
+    source: ADR-0242"""
     _ensure_reranker()
     return reranker_status()
 
@@ -169,24 +134,19 @@ def rerank_results(
 
     Args:
         query: Search query text.
-        candidates: List of (memory_id, wrrf_score) from first-stage retrieval.
-        content_lookup: Map of memory_id → content text.
-        alpha: Base blend weight for CE vs first-stage (0.70 from BEAM ablation).
+        candidates: (memory_id, wrrf_score) first-stage results.
+        content_lookup: memory_id to content map.
+        alpha: CE/first-stage blend weight (default 0.70).
         max_content_len: Maximum content length passed to CE.
-        adaptive: If True, adjust alpha per-query based on CE score spread
-            (Shtok et al., TOIS 2012 QPP principle). Default False pending
-            ablation validation.
-        apply_platt: If True AND fitted Platt parameters exist in
-            reranker_calibration (>=50 rate_memory pairs collected),
-            calibrate CE scores to P(useful|raw_ce) before blending.
-            Default False until benchmark re-validation lands — see
-            AF-2 ablation note in reranker_scoring.py's docstring.
-    """
+        adaptive: Adjust alpha using CE score spread (default False).
+        apply_platt: If True and fitted parameters exist, calibrate CE scores
+            to P(useful|raw_ce) before blending (default False).
+    source: ADR-0242"""
     ranker = _ensure_reranker()
     if ranker is None or not candidates:
         return candidates
     try:
-        from flashrank import RerankRequest  # noqa: PLC0415 — optional dependency (flashrank (multi-second reranker model load)); imported where used so environments without it keep working
+        from flashrank import RerankRequest  # noqa: PLC0415 — source: ADR-0242
 
         passages = [
             {"id": i, "text": content_lookup.get(mid, "")[:max_content_len]}
@@ -198,7 +158,7 @@ def rerank_results(
         return _blend_scores(
             candidates, ce_scores, alpha, adaptive=adaptive, apply_platt=apply_platt
         )
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("reranker.rerank_call")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0242
         # Distinct failure point from _ensure_reranker's load failure (see
         # reranker_model.py docstring, bb1c581f): the model loaded fine but
         # THIS inference call raised (malformed passage, ONNX runtime error,
@@ -224,7 +184,7 @@ def get_raw_ce_score(
     if ranker is None or not query or not content:
         return None
     try:
-        from flashrank import RerankRequest  # noqa: PLC0415 — optional dependency (flashrank (multi-second reranker model load)); imported where used so environments without it keep working
+        from flashrank import RerankRequest  # noqa: PLC0415 — source: ADR-0242
 
         results = ranker.rerank(
             RerankRequest(
@@ -235,6 +195,6 @@ def get_raw_ce_score(
         if not results:
             return None
         return float(results[0].get("score", 0.0))
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("reranker.raw_ce_score")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0242
         silent_failure.note("reranker.raw_ce_score", exc)
         return None

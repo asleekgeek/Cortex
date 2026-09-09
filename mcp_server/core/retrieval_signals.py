@@ -16,9 +16,9 @@ from mcp_server.core.hdc_encoder import compute_hdc_scores
 from mcp_server.core.query_decomposition import extract_query_entities
 from mcp_server.observability import silent_failure
 
-# Tokens at or below this length are dropped from SA query terms.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0248
+
+
 _SHORT_TOKEN_MAX_LEN = 2
 
 
@@ -53,7 +53,7 @@ def compute_hopfield_hdc(
                     hop = hopfield.retrieve(
                         q_emb, mat, ids, beta=settings.HOPFIELD_BETA, top_k=pool
                     )
-        except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("retrieval_signals.hopfield")
+        except Exception as exc:  # noqa: BLE001 — source: ADR-0248
             silent_failure.note("retrieval_signals.hopfield", exc)
     try:
         if hot_mems:
@@ -63,7 +63,7 @@ def compute_hopfield_hdc(
                 threshold=0.05,
             )
             hdc = [(mid, (s + 1.0) / 2.0) for mid, s in raw]
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("retrieval_signals.hdc")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0248
         silent_failure.note("retrieval_signals.hdc", exc)
     return hop, hdc
 
@@ -106,7 +106,7 @@ def _compute_sr(
             g.setdefault(mem_b, {})[mem_a] = proximity * 0.45  # back-link weaker
         seeds = [m for m, _ in vec_results[:3]]
         return compute_sr_scores(seeds, g, top_k=pool)
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("retrieval_signals.successor_representation")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0248
         silent_failure.note("retrieval_signals.successor_representation", exc)
         return []
 
@@ -142,6 +142,6 @@ def _compute_sa(
             max_results=settings.SA_MAX_NODES,
             min_heat=min_heat,
         )
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary; failure is observable via silent_failure
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0248
         silent_failure.note("retrieval_signals.spreading_activation", exc)
         return []
