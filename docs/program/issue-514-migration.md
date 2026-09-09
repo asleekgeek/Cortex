@@ -65,7 +65,42 @@ and the decision to preserve behavior, without claiming a new calibration.
 - The committed known-item benchmark reports recall@1 and MRR@10 from 0 to 1 for
   five wiki-only boundary IDs, with no backend calls. This is source coverage,
   not a claim about semantic ranking quality.
-- Full LongMemEval/LoCoMo comparison against unchanged `main` is pending.
+- Full retrieval comparison against baseline `e81735de` passed the existing
+  0.005 regression tolerance for all four overall metrics. Each commit completed
+  500 LongMemEval questions and 1,982 LoCoMo questions across ten conversations.
+  The benchmarked candidate `0b70df18` and final PR head `47009d39` have the
+  identical tree `a33c97eb3718e50fb204971a1b8fddf659eab8fe`. The measured
+  candidate is a local-only snapshot; reproduce with the publicly fetchable
+  final PR head `47009d39` instead.
+
+| Dataset | Metric | Baseline | Candidate | Candidate − baseline |
+|---|---|---:|---:|---:|
+| LongMemEval | MRR | 0.904988 | 0.905655 | +0.000667 |
+| LongMemEval | Recall@10 | 0.978000 | 0.980000 | +0.002000 |
+| LoCoMo | MRR | 0.782430 | 0.780562 | −0.001868 |
+| LoCoMo | Recall@10 | 0.889506 | 0.890515 | +0.001009 |
+
+The [public comparison record](../benchmarks/issue-514-retrieval-comparison.json)
+contains exact metrics, category deltas, dataset/model/lock hashes and reproduction
+steps. Both drivers exited successfully, used separate clean PostgreSQL
+containers with the same image digest, and removed those containers afterward.
+Package versions and the package-hash lockfile matched between runs.
+
+This was one retrieval-only run per commit, with consolidation disabled and zero
+consolidation calls. It does not validate production consolidation behavior or
+establish a quality or speed improvement. The relative gate covers overall
+metrics only; category changes are reported separately. Both runs missed the
+same three nonblocking published floors: LongMemEval MRR, LoCoMo Recall@10 and
+LoCoMo MRR. The exact-ID benchmark found all five wiki-only targets at rank one,
+with zero embedding, memory-store, AP or semantic-recall calls; it measures
+source coverage rather than semantic ranking.
+
+Both manifests recorded `git_dirty=true` during a documented temporary,
+transport-only driver adaptation and result generation. The Unix-socket adapter
+changed PostgreSQL transport only. Temporary drivers were removed and tracked
+source stayed unchanged; generated untracked results do not change the verified
+candidate tree. No private transport paths or raw benchmark records are included
+in the public summary.
 
 For reproduction, install the locked test/typecheck/lint dependencies, use an
 isolated test backend, then run `python -m pytest tests_py`, `ruff check .`,
