@@ -4809,21 +4809,6 @@
     },
     {
       "file": "scripts/launcher_deps.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "scripts/launcher_deps.py",
-      "kind": "method-size",
-      "detail": "_deps_lock"
-    },
-    {
-      "file": "scripts/launcher_deps.py",
-      "kind": "method-size",
-      "detail": "ensure_deps"
-    },
-    {
-      "file": "scripts/launcher_deps.py",
       "kind": "unsourced-constant",
       "detail": "_LOCK_WAIT_SECONDS"
     },
@@ -4831,11 +4816,6 @@
       "file": "scripts/launcher_deps.py",
       "kind": "unsourced-constant",
       "detail": "_STALE_LOCK_SECONDS"
-    },
-    {
-      "file": "scripts/mcp_toplist_ranking.py",
-      "kind": "unsourced-constant",
-      "detail": "_MIN_PRINTABLE_PCT"
     },
     {
       "file": "scripts/memory_dedup_exact.py",
