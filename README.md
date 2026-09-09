@@ -21,10 +21,6 @@
   Runs locally by default. No account, no API key, no server to manage.
 </p>
 
-<p align="center">
-  <sub><em><strong>Independent project:</strong> Cortex is an independent, open-source project. It is <strong>not an Anthropic product</strong> and is not affiliated with, sponsored by, or endorsed by Anthropic.</em></sub>
-</p>
-
 ---
 
 **Sovereign is what it is today.** Everything runs on your machine: a local SQLite file by
