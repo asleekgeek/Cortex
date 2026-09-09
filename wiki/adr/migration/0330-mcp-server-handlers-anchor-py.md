@@ -1,0 +1,17 @@
+# ADR-0330: mcp_server/handlers/anchor.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `mcp_server/handlers/anchor.py`; original SHA-256 `f04fc77e545585b20823af1127697556c9361d9d218cb32d09be3a227e6301c8`.
+
+## Original comment, lines 142–146
+
+````text
+# A3 canonical anchor write: heat_base=1.0 + no_decay=TRUE preserves
+    # the anchor-resists-decay semantic via effective_heat(). heat_base_set_at
+    # refreshes the bump timestamp so recall sees a fresh anchor even after
+    # a long idle period.
+    # Source: phase-3-a3-migration-design.md §3.3. Phase 5: pooled write.
+````
+

@@ -1,10 +1,6 @@
 """Wiki page title derivation — pure text transform, no I/O.
 
-Extracted from ``wiki_classifier.py`` (issue #134, file exceeded the
-500-line hard limit in coding-standards.md §4). Deriving a title is a
-distinct concern from classifying content into a kind: it only needs
-the content, the already-decided kind, and optionally tags/entities.
-"""
+source: ADR-0317"""
 
 from __future__ import annotations
 
@@ -27,12 +23,9 @@ _TITLE_STRIP_PREFIXES = [
     re.compile(r"^(Here is|Here's|The following)\s+", re.IGNORECASE),
 ]
 
-# 2026-05-17: markdown unwrappers. Applied with ``sub(r"\1", ...)`` (keep
-# inner text) before the path-detection patterns so a line like
-# ``**File:** `/Users/.../remember.py` `` is tested against the path
-# detector as ``File: /Users/.../remember.py`` — previously the backtick
-# before ``/Users/`` wasn't whitespace so the path filter missed and the
-# raw markdown-wrapped path leaked into the wiki page title.
+# source: ADR-0317
+
+
 _TITLE_MARKDOWN_UNWRAP = [
     re.compile(r"\*\*([^*]+)\*\*"),  # **bold** → bold
     re.compile(r"`([^`]+)`"),  # `code` → code
@@ -41,18 +34,18 @@ _TITLE_MARKDOWN_UNWRAP = [
 ]
 
 
-# Lines at or below this length are too short to serve as a page title.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0317
+
+# source: ADR-0317
 _MIN_TITLE_CHARS = 10
 
-# Titles longer than this are truncated to a word boundary before the ellipsis.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0317
+
+# source: ADR-0317
 _MAX_TITLE_CHARS = 80
 
-# An entity-derived title joins this many leading entities.
-# source: structural — the title is built as "A + B" from entities[:2]
+# source: ADR-0317
+
 _ENTITY_TITLE_PARTS = 2
 
 
@@ -85,25 +78,13 @@ def derive_title(
 ) -> str:
     """Derive a meaningful title for a wiki page.
 
-    Strategy (inspired by Alexander pattern-language P4 + Eco; framing only):
-    1. Strip known prefixes
-    2. Walk lines; accept the first that passes ``_line_is_title_candidate``
-    3. Fall back to entity-based title if 2+ entities are supplied
-    4. Otherwise return "" — caller is responsible for a deterministic
-       fallback (e.g. ``memory-<hash>``). Returning a raw 80-char content
-       prefix here used to leak filesystem paths, timestamps, and sentence
-       fragments into slugs.
-    """
+    source: ADR-0317"""
     lines = content.strip().split("\n")
     first_meaningful = ""
     for line in lines:
         cleaned = line.strip()
-        # Unwrap markdown formatting first so the underlying text is
-        # what gets prefix-stripped and tested. Without this step,
-        # ``**File:** `/path` `` keeps its asterisks/backticks, the
-        # backtick blocks the path detector at line 178 from matching
-        # the embedded ``/Users/`` segment, and the raw markdown leaks
-        # through as the page title.
+        # source: ADR-0317
+
         for unwrap in _TITLE_MARKDOWN_UNWRAP:
             cleaned = unwrap.sub(r"\1", cleaned).strip()
         for pat in _TITLE_STRIP_PREFIXES:

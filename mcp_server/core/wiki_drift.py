@@ -1,29 +1,6 @@
 """Wiki drift detector — find existing pages that need re-authoring.
 
-Pure logic, no I/O orchestration beyond filesystem reads.
-
-The autonomous wiki maintenance has three reject axes (stub, classifier,
-deletion-by-rule). Drift is the **opposite** of deletion: a page that
-*should* live on but is out of sync with the codebase. Examples:
-
-  * The page cites ``mcp_server/old/foo.py`` but that file was moved or
-    deleted in a refactor. The page is now lying.
-  * The page's frontmatter ``updated`` date is older than every source
-    file it cites. The code has changed and the prose hasn't.
-  * The page's structural sections (``## Status`` / ``## Decision``) are
-    missing — the body drifted off-template.
-
-For each drift case we emit a *re-authoring job* — same wire shape as
-the coverage and cluster jobs ``auto_curator`` produces, so a single
-``curate_wiki`` call mixes new-page jobs, scope-fill jobs, and update
-jobs into one queue the LLM consumes in order.
-
-Source for the policy: user direction 2026-05-18 — "All legacy or
-preexisting documentation should be refined and verified and updated
-accordingly. Every new task, new bug, new feature, as well as all
-legacy existing element of a project should have the same level of
-importance and should be treated with the same detailed approach."
-"""
+source: ADR-0301"""
 
 from __future__ import annotations
 
@@ -40,7 +17,10 @@ from mcp_server.core.wiki_coverage import _SKIP_DIRECTORIES
 
 @dataclass
 class PageDrift:
-    """A single page that needs re-authoring, with the reason recorded."""
+    """A single page that needs re-authoring, with the reason recorded.
+
+    source: ADR-0301
+    """
 
     wiki_path: str  # relative to wiki root
     domain: str  # parsed from the path segment
@@ -52,19 +32,15 @@ class PageDrift:
     age_days: float = 0.0
 
 
-# Reason taxonomy — kept short so each entry is self-explanatory.
+# source: ADR-0301
 REASON_MISSING_SOURCE: Final[str] = "missing_source_file"
 REASON_STALE: Final[str] = "stale_content"
 REASON_OFF_TEMPLATE: Final[str] = "off_template"
 REASON_MISSING_LINK: Final[str] = "missing_source_link"
 
-# Page kinds whose entire purpose is to document a source file — these are
-# the kinds the STEP-3 backfill (core.wiki_source_backfill) targets, and
-# the ones REASON_MISSING_LINK applies to. Restricted to ``reference``
-# (the kind ``codebase_analyze``/rebucket route file-docs to, per
-# CHANGELOG 3.15.4 "File-documentation pages") — pages of other kinds
-# (adr, explanation, ...) don't claim to document one file, so an absent
-# link there is not drift.
+# source: ADR-0301
+
+
 _SOURCE_DOCUMENTING_KINDS: Final[frozenset[str]] = frozenset({"reference"})
 
 # Default re-author window. Pages older than this whose body cites
@@ -78,11 +54,9 @@ _FILE_PATH_RE = re.compile(
 )
 
 
-# Wiki-internal path prefixes — when a citation begins with one of these
-# segments, it's a cross-reference to another wiki page (often shaped as
-# ``reference/<domain>/<slug>.py.md`` flattened by the bulk migration),
-# not a source-tree path. Those must NOT trigger the missing-source-file
-# axis because they are not source files.
+# source: ADR-0301
+
+
 _WIKI_INTERNAL_PREFIXES: Final[frozenset[str]] = frozenset(
     {
         "adr",
@@ -104,11 +78,9 @@ _WIKI_INTERNAL_PREFIXES: Final[frozenset[str]] = frozenset(
 )
 
 
-# Product names that _FILE_PATH_RE captures because they end in a code
-# extension but are technologies, not files. Observed false positives:
-# a page saying "zero-dep Node.js MCP server" was flagged for a missing
-# source file ``Node.js`` (curate_wiki batch 4, 2026-06-11). Matched
-# case-insensitively against the whole token.
+# source: ADR-0301
+
+
 _TECHNOLOGY_NAMES: Final[frozenset[str]] = frozenset(
     {
         "angular.js",
@@ -134,13 +106,7 @@ def _is_likely_source_path(token: str) -> bool:
     """Filter cited paths to those that plausibly point at the source
     tree, not at another wiki page.
 
-    Rejects:
-      * Tokens whose first segment is a wiki-internal kind directory.
-      * URL fragments and protocol-prefixed strings.
-      * Bare technology names (``Node.js``, ``Three.js``) that the path
-        regex captures only because they end in a code extension.
-      * Empty tokens.
-    """
+    source: ADR-0301"""
     if not token or "://" in token:
         return False
     if token.lower() in _TECHNOLOGY_NAMES:
@@ -207,8 +173,8 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
     return meta, body
 
 
-# source: structural — the wiki layout is kind/domain/filename, so a valid
-# relative path splits into at least three segments.
+# source: ADR-0301
+# source: ADR-0301
 _KIND_DOMAIN_PATH_PARTS = 3
 
 
@@ -227,19 +193,12 @@ def _kind_and_domain_from_path(rel_path: str) -> tuple[str, str]:
 def _file_exists_under(source_root: str, cited: str) -> bool:
     """Does ``cited`` resolve to an actual file under ``source_root``?
 
-    Tries the full relative path first, then the basename anywhere
-    under the tree (rename-tolerant — a moved file still counts as
-    present so we don't fire spurious drift jobs on every refactor).
-    """
+    source: ADR-0301"""
     full = os.path.join(source_root, cited)
     if os.path.isfile(full):
         return True
     bn = os.path.basename(cited)
-    # Prune the same vendored / build dirs as list_source_files. Without this,
-    # a repo carrying a venv/, node_modules/, deps/, or site-packages/ at its
-    # root makes this per-cited-path fallback walk tens of thousands of files,
-    # turning one consolidate cycle into a multi-minute stall. The skip set is
-    # the single source of truth for "not a source tree".
+    # source: ADR-0301
 
     for _dirpath, dirnames, filenames in os.walk(source_root):
         dirnames[:] = [
@@ -265,10 +224,7 @@ def audit_page_drift(
     """Inspect one wiki page for drift. Returns None when the page is
     in sync.
 
-    Drift reasons are accumulated — a single page can hit multiple axes
-    (missing source AND off-template), and the re-authoring prompt
-    surfaces all of them so the LLM can fix everything in one pass.
-    """
+    source: ADR-0301"""
     full = os.path.join(wiki_root, page_rel_path)
     try:
         with open(full, encoding="utf-8", errors="ignore") as fp:
@@ -288,19 +244,16 @@ def audit_page_drift(
         last_updated=meta.get("updated", ""),
     )
 
-    # Reason 1: missing source files. Only check when we have a source
-    # root — domains without a checked-out tree (``_general``, etc.)
-    # can't be audited for this axis.
+    # source: ADR-0301
+
     if source_root is not None and cited:
         missing = [c for c in cited if not _file_exists_under(source_root, c)]
         if missing:
             drift.reasons.append(REASON_MISSING_SOURCE)
             drift.missing_source_files = missing[:10]
 
-    # Reason 2: stale content. Compute page age from mtime; the
-    # frontmatter ``updated`` is checked but mtime is the authoritative
-    # signal because frontmatter can lie / be groomed without prose
-    # changes.
+    # source: ADR-0301
+
     try:
         page_mtime = os.path.getmtime(full)
     except OSError:
@@ -313,26 +266,16 @@ def audit_page_drift(
         # months may still be correct.
         drift.reasons.append(REASON_STALE)
 
-    # Reason 3: off-template. Check whether every required section for
-    # this kind is present in the body. Missing sections are loud
-    # structural drift — the groomer normally fixes this, but if the
-    # groomer is disabled or the page predates the current template the
-    # re-author pass catches it.
+    # source: ADR-0301
+
     required = _required_sections_for(kind)
     if required:
         missing_sections = [s for s in required if s not in body]
         if missing_sections:
             drift.reasons.append(REASON_OFF_TEMPLATE)
 
-    # Reason 4: missing source link. A source-documenting page (kind ==
-    # "reference") that declares no documented file in its frontmatter
-    # AND has no groundable cited path in its body is a page nobody can
-    # trace to a real file — the STEP-3 backfill
-    # (core.wiki_source_backfill.derive_primary_source) either couldn't
-    # find an unambiguous candidate or hasn't run yet. Surfaced as drift
-    # so it queues as a re-authoring job. Without a source_root we can't
-    # verify any citation, so an unlinked page is flagged regardless —
-    # this only affects backlog counts, nothing is deleted.
+    # source: ADR-0301
+
     if kind in _SOURCE_DOCUMENTING_KINDS and not extract_document_paths(meta):
         groundable = source_root is not None and any(
             _file_exists_under(source_root, c) for c in cited
@@ -353,16 +296,7 @@ def audit_wiki_drift(
 ) -> list[PageDrift]:
     """Walk every wiki page and return those that need re-authoring.
 
-    ``source_root_resolver`` is a callable ``domain -> str | None`` —
-    typically ``mcp_server.core.wiki_coverage._project_source_root``.
-    Injected so this module stays unit-testable without touching the
-    registry.
-
-    ``domain_filter`` restricts the scan to one project — applied
-    *during* the walk so ``limit`` returns the first N drifts of that
-    domain rather than the first N drifts overall (which might all be
-    in other projects).
-    """
+    source: ADR-0301"""
     drifts: list[PageDrift] = []
     if not os.path.isdir(wiki_root):
         return drifts
@@ -374,8 +308,8 @@ def audit_wiki_drift(
             if not f.endswith(".md"):
                 continue
             full = os.path.join(dirpath, f)
-            # Normalize to '/' so _kind_and_domain_from_path's path parsing
-            # works on Windows. source: REPORT_..._CORTEX_WINDOWS §5.3
+            # source: ADR-0301
+
             rel = to_posix(os.path.relpath(full, wiki_root))
             kind, domain = _kind_and_domain_from_path(rel)
             if not domain or not kind:

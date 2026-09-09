@@ -81,11 +81,8 @@ def compute_temporal_novelty(
         best_idx = similarities.index(max(similarities))
         if best_idx < len(vec_hits):
             best_mem = get_memory(vec_hits[best_idx][0])
-            # Temporal novelty asks "have we seen this in MY system
-            # recently?" — that is elapsed-since-ingest, not
-            # elapsed-since-the-original-event. Use ingested_at and fall
-            # back to created_at for legacy rows.
-            # Source: docs/benchmarks/e1-v3-locomo-smoke-finding.md.
+            # source: ADR-0319
+
             if best_mem and (best_mem.get("ingested_at") or best_mem.get("created_at")):
                 ts = best_mem.get("ingested_at") or best_mem["created_at"]
                 hours = _parse_hours_since(ts)
@@ -120,48 +117,10 @@ def determine_bypass(
 ) -> tuple[bool, str | None]:
     """Determine if write gate should be bypassed and why.
 
-    ``origin`` (issue #365) is the CHANNEL the content arrived through, from
-    ``core/capture_origin.classify_capture_origin`` — never inferred from the
-    content. Content-derived bypasses (``bypass_error`` / ``bypass_decision``)
-    are refused when the origin may not claim them, because those two are read
-    out of the content itself and are therefore exactly what off-machine text
-    would forge to install itself in durable, cross-session memory. ``force``
-    and a ``deliberate`` write class are out-of-band human signals and stay
-    valid at any origin. Defaults to ``ORIGIN_UNKNOWN``, which is permissive,
-    so existing callers are unaffected; the untrusted path passes its real
-    origin explicitly.
-
-    ``write_class`` (M-D2, issue #147): a resolved ``deliberate`` write is
-    NEVER rejected by the novelty gate — this is the tool's documented
-    contract (near-duplicates are still merged/linked/superseded by
-    ``try_curation`` afterward; bypassing the gate here only skips the
-    REJECT verdict, it does not skip curation, which reads ``force``
-    independently). ``write_class`` defaults to ``""`` (no bypass) so the
-    unit tests exercising the content/tag/force bypass paths in isolation
-    are unaffected; the real call site (``remember_helpers._observed_decision``)
-    always passes the already-resolved class (never ``""`` — see
-    ``core/write_class.classify_write_class``'s postcondition: the return
-    value is always one of ``ALL_WRITE_CLASSES``).
-
-    Checked LAST (after the more specific content/tag bypasses): most
-    ``remember`` calls resolve to ``deliberate`` by default (any source not
-    in the auto/derived/mechanical sets — see ``write_class`` module
-    docstring), so checking it first would mask every content-based
-    ``bypass_error``/``bypass_decision``/``bypass_important_tag`` reason
-    behind the generic ``bypass_write_class_deliberate`` one. Ordering it
-    last preserves the more informative diagnostic reason where one
-    applies, while still guaranteeing every deliberate write bypasses
-    (falling through to the deliberate check when none of the more
-    specific conditions matched).
+    source: ADR-0319
     """
-    # A deliberate write class is an out-of-band signal a human supplied, and
-    # such a write bypasses regardless (the `write_class == "deliberate"` arm
-    # below). Refusing it the SPECIFIC content reason would therefore change no
-    # outcome — only the diagnostic, masking bypass_error behind the generic
-    # bypass_write_class_deliberate and undoing the ordering issue #147
-    # deliberately chose. So the origin allowlist governs whether content may
-    # BUY a bypass it would not otherwise get, not how an already-granted one
-    # is labelled.
+    # source: ADR-0319
+
     content_bypass_allowed = (
         capture_origin.may_bypass_write_gate_on_content(origin)
         or write_class == "deliberate"
@@ -228,7 +187,7 @@ def apply_oscillatory_context(
         store.save_oscillatory_state(
             _json.dumps(oscillatory_clock.state_to_dict(osc_state)),
         )
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_gate.oscillatory_context")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.oscillatory_context", exc)
     return heat, theta_phase, encoding_mod, osc_state
 
@@ -246,8 +205,8 @@ def apply_neuromodulation(
     """Apply coupled neuromodulation. Returns (heat, importance, composite)."""
     try:
         is_err = thermodynamics.is_error_content(content)
-        # Language-aware success cue (issue #158) — same coverage rules as
-        # the decision/error detectors; see content_cues module docstring.
+        # source: ADR-0319
+
         is_succ = content_cues.is_success_cue(content)
         novel_ent = len([n for n in new_entity_names if n not in known_entity_names])
         signals = coupled_nm.OperationSignals(
@@ -265,7 +224,7 @@ def apply_neuromodulation(
         heat = min(1.0, max(0.0, heat * composite["heat_modulation"]))
         importance = min(1.0, max(0.0, importance * composite["importance_modulation"]))
         return heat, importance, composite
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_gate.neuromodulation")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.neuromodulation", exc)
         return heat, importance, None
 
@@ -284,7 +243,7 @@ def apply_emotional_tagging(
             heat = min(1.0, heat * tag.get("decay_resistance", 1.0))
             valence = tag["valence"]
         return importance, heat, valence, tag
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_gate.emotional_tagging")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.emotional_tagging", exc)
         return importance, heat, valence, None
 
@@ -305,10 +264,9 @@ def _collect_existing_embeddings(
     return existing_embs
 
 
-# Only a separation that actually moved the embedding (index above this
-# epsilon) replaces the original vector.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0319
+
+# source: ADR-0319
 _MIN_SEPARATION_INDEX = 0.01
 
 
@@ -340,7 +298,7 @@ def apply_pattern_separation(
             if sep_index > _MIN_SEPARATION_INDEX:
                 embedding = embeddings.from_list(separated)
         interference = compute_interference_score(new_emb_list, existing_embs)
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_gate.pattern_separation")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.pattern_separation", exc)
     return embedding, sep_index, interference
 
@@ -363,7 +321,7 @@ def match_schema(
             )
             if best:
                 return score, best.schema_id
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_gate.schema_match")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.schema_match", exc)
     return 0.0, None
 
@@ -386,12 +344,12 @@ def read_active_goal(store: Any) -> Any:
         return goal_maintenance.EMPTY_GOAL
     try:
         triggers = store.get_active_prospective_memories()
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_gate.active_goal_read")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.active_goal_read", exc)
         return goal_maintenance.EMPTY_GOAL
     try:
         return goal_maintenance.build_goal_from_triggers(triggers)
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_gate.active_goal_build")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.active_goal_build", exc)
         return goal_maintenance.EMPTY_GOAL
 
@@ -406,33 +364,18 @@ def apply_goal_maintenance(
 ) -> tuple[float, dict | None]:
     """A3 goal / task-set maintenance over the write gate's novelty score.
 
-    While a goal/task-set is active (promoted from the store's active
-    prospective triggers via ``read_active_goal``), a goal-relevant input has
-    its novelty scaled up by a small multiplicative gain
-    (``goal_maintenance.goal_write_gain`` = ``1 + weight·relevance``) so it
-    clears the write threshold slightly more easily — the Miller & Cohen (2001)
-    task-set biasing processing toward goal-relevant information. Returns
-    ``(modulated_novelty, outcome_dict)``; ``outcome_dict`` is None when the
-    mechanism is ablated, no goal is active, or the pass fails.
-
-    Behavior-preserving by default: with no active goal the gain is exactly 1.0,
-    so ``novelty_score`` is returned unchanged and existing callers are
-    unaffected. An off-task input under an active goal (relevance 0) is likewise
-    unchanged — only genuinely goal-relevant inputs are favored.
+    source: ADR-0319
 
     Non-fatal: any error returns the input novelty untouched. Disabled via
     CORTEX_ABLATE_GOAL_MAINTENANCE=1.
 
-    DESIGN INFERENCE: the goal-match is a deterministic keyword/entity/directory
-    overlap re-weight promoted from the prospective trigger surface, not a
-    learned PFC task-set controller (see goal_maintenance module docstring).
-    """
+    source: ADR-0319"""
     try:
         return apply_modulation(
             novelty_score,
             prepare_goal_maintenance(content, entity_names, store, directory),
         )
-    except Exception as exc:  # noqa: BLE001 — preserve the existing non-fatal modulation boundary
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.goal_maintenance", exc)
         return novelty_score, None
 
@@ -463,7 +406,7 @@ def prepare_goal_maintenance(
                 "gain": round(gain, 4),
             },
         )
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary; errors preserve identity and remain observable
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.goal_maintenance", exc)
         return NoveltyModulation()
 
@@ -476,16 +419,7 @@ def apply_habituation(
 ) -> tuple[float, dict | None]:
     """E1 habituation & sensitization over the write gate's novelty score.
 
-    Progressively suppresses repeated low-salience identical inputs (the
-    exponential response decrement of Rankin 2009) and transiently sensitizes
-    the gate for related inputs just after a salient event. Returns
-    ``(modulated_novelty, outcome_dict)``; ``outcome_dict`` is None when the
-    mechanism is ablated or the pass fails.
-
-    Behavior-preserving by default: a first-seen signature (repeat_count 0) and
-    no recent salient event yield a combined gain of 1.0, so ``novelty_score``
-    is returned unchanged and existing callers are unaffected unless the repeat
-    pattern actually triggers.
+    source: ADR-0319
 
     Non-fatal: any error in the store read or computation returns the input
     novelty untouched. Disabled via CORTEX_ABLATE_HABITUATION=1.
@@ -494,7 +428,7 @@ def apply_habituation(
         return apply_modulation(
             novelty_score, prepare_habituation(content, importance, store)
         )
-    except Exception as exc:  # noqa: BLE001 — preserve the existing non-fatal modulation boundary
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.habituation", exc)
         return novelty_score, None
 
@@ -513,8 +447,8 @@ def prepare_habituation(
             repeat_count, hours_since_last = store.signature_repeat_stats(signature)
         if habituation.is_salient(importance):
             salience, hours_since_salient = importance, 0.0
-        # source: habituate_novelty returns its unclipped combined_gain;
-        # this unit input is an observation probe, not a measured novelty.
+        # source: ADR-0319
+
         outcome = habituation.habituate_novelty(
             1.0,
             content,
@@ -526,6 +460,6 @@ def prepare_habituation(
         details = habituation.habituation_outcome_as_dict(outcome)
         del details["modulated_novelty"]
         return NoveltyModulation(outcome.combined_gain, details)
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary; errors preserve identity and remain observable
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0319
         silent_failure.note("write_gate.habituation", exc)
         return NoveltyModulation()

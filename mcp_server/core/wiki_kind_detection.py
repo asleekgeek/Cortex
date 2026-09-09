@@ -1,12 +1,6 @@
-"""ADR-2244 modern-kind / lifecycle / audience / provenance detection.
+"""Detect wiki kind, lifecycle, audience, and provenance.
 
-Extracted from ``wiki_classifier.py`` (issue #134, file exceeded the
-500-line hard limit in coding-standards.md §4). This module assembles
-the ADR-2244 4-tuple axes by delegating to
-``mcp_server.core.wiki_axis_registry`` — the open-world registry that
-lets users add new kinds/lifecycles/audiences/provenances by writing a
-schema file instead of editing Python. ``wiki_classifier.classify_memory``
-is the only caller.
+source: ADR-0305
 """
 
 from __future__ import annotations
@@ -22,10 +16,9 @@ from mcp_server.core.wiki_axis_registry import (
 )
 from mcp_server.core.wiki_axis_registry import AXIS_KIND
 
-# Legacy → modern kind mapping. This is a one-time backward-compat shim
-# (the legacy classifier returns 5 kinds; the modern axis defines 8) and
-# stays in code rather than the registry: it is *transformational*, not
-# *configurable*. Per ADR-2244 §4.1.
+# source: ADR-0305
+
+
 LEGACY_KIND_MAP: dict[str, str] = {
     "adr": "adr",
     "lesson": "explanation",
@@ -43,20 +36,7 @@ def detect_modern_kind(
 ) -> str:
     """Pick a modern kind for a content+tags pair.
 
-    Strategy (registry-driven per user direction 2026-05-12):
-      1. Ask the registry which kinds match content/tags via
-         ``match_axis``. The first hit wins; users add new kinds (with
-         their own detection patterns) by writing
-         ``wiki/_schema/kinds/<name>.md``.
-      2. If no registered kind matches, fall back to the legacy → modern
-         map (lesson/convention/note → explanation; spec → rfc; adr/
-         reference unchanged).
-
-    The legacy fallback is intentional: the upstream
-    ``wiki_classifier._classify_to_legacy_kind`` returns one of the 5
-    legacy kinds when no registered pattern fires, so we always have a
-    kind to assign.
-    """
+    source: ADR-0305"""
 
     matches = match_axis(content, tags, AXIS_KIND, get_registry())
     if matches:
@@ -84,10 +64,7 @@ def detect_audiences(
 ) -> tuple[str, ...]:
     """Pick one or more audience values via the registry.
 
-    Audience is multi-valued: a runbook may target ops + security. Any
-    matching registered audience contributes. Falls back to the
-    default audience when nothing matches.
-    """
+    source: ADR-0305"""
     reg = get_registry()
     matches = list(match_axis(content, tags, AXIS_AUDIENCE, reg))
     if not matches:
@@ -104,10 +81,7 @@ def detect_audiences(
 def pick_lifecycle(kind: str) -> str:
     """Pick the default lifecycle for a new page of the given kind.
 
-    Asks the registry for the lifecycle value flagged ``default=true``
-    among entries that apply to this kind. ADR-applicable lifecycle
-    values are filtered separately so a non-ADR cannot inherit ``proposed``.
-    """
+    source: ADR-0305"""
     reg = get_registry()
     for v in axis_registry_values(reg, AXIS_LIFECYCLE):
         if v.default and (
@@ -115,6 +89,6 @@ def pick_lifecycle(kind: str) -> str:
             or (kind != "adr" and not v.applies_to_kinds)
         ):
             return v.name
-    # Last-resort hardcoded fallback (registry seed must always populate
-    # at least one default per axis, so this is unreachable in practice).
+    # source: ADR-0305
+
     return "proposed" if kind == "adr" else "seedling"

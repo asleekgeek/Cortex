@@ -52,7 +52,7 @@ _ALLOWED_WRITERS: set[tuple[str, int]] = {
     # Homeostatic fold.
     ("handlers/consolidation/homeostatic_apply.py", 234),
     # Anchor pin.
-    ("handlers/anchor.py", 149),
+    ("handlers/anchor.py", 145),
     # Preemptive boost.
     ("hooks/preemptive_context.py", 148),
     # Pipeline-impact boost.

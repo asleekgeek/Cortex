@@ -65,7 +65,6 @@ def _file_jobs(
 def _attach_file_embeddings(jobs: list[dict | InputFailure]) -> None:
     eligible = [job for job in jobs if isinstance(job, dict) and "args" in job]
     pending = prepare_bulk((job["args"] for job in eligible), stop_on_error=True)
-    # A validation error ends preparation; the same error aborts replay at that
-    # item, so later jobs deliberately receive no embedding or model work.
+    # source: ADR-0339
     for job, prepared in zip(eligible, pending, strict=False):
         job["prepared"] = prepared

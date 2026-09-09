@@ -146,21 +146,14 @@ def _parse_args(args: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-# Minimum content length worth importing as a memory.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0334
 _MIN_CONTENT_CHARS = 20
 
 
 def _prepare_item_content(item: dict) -> str | None:
     """Length-filter and gist one extracted item's raw content.
 
-    Split out of ``_import_single_item`` so ``_import_file`` can collect
-    every item's final content and warm the embedding cache with a single
-    ``encode_batch()`` call before the sequential ``remember()`` loop
-    below -- each ``remember()`` call used to trigger its own single-text
-    ``encode()`` (issue: green-software review 2026-09-04, Low severity).
-    """
+    source: ADR-0334"""
     content = item.get("content", "")
     if not content or len(content) < _MIN_CONTENT_CHARS:
         return None
@@ -191,14 +184,7 @@ async def _import_single_item(
         "write_class": "mechanical",
         "force": True,
     }
-    # Preserve the original session timestamp. insert_memory anchors
-    # heat_base_set_at to it (A3 decay clock), so effective_heat() decays the
-    # baseline by the memory's real age at READ time — the single canonical
-    # age-decay path (pg_schema EFFECTIVE_HEAT_FN). We deliberately do NOT
-    # pre-decay initial_heat here: that would double-count the same age (once
-    # analytically at insert, once dynamically at read). A3's read-time decay
-    # also spreads the import cohort by age, subsuming the original issue #14
-    # bimodality fix.
+    # source: ADR-0334
     timestamp = item.get("timestamp")
     if timestamp:
         remember_args["created_at"] = str(timestamp)
@@ -212,11 +198,7 @@ async def _import_single_item(
 def _warm_embedding_cache(prepared: list[tuple[dict, str | None]]) -> None:
     """One encode_batch() call for every prepared item's content.
 
-    remember()'s own encode() call in ``_store_prepared_items`` then hits
-    this warmed cache instead of invoking the model per item -- see
-    harden_content note on EmbeddingEngine.warm_cache's cache-key
-    alignment.
-    """
+    source: ADR-0334"""
     contents = [content for _, content in prepared if content is not None]
     if contents:
         get_embedding_engine().warm_cache([harden_content(c) for c in contents])
@@ -350,12 +332,7 @@ async def _process_imports(
 ) -> dict[str, Any]:
     """Import files and optionally run the wiki pipeline end-to-end.
 
-    With ``run_pipeline=True`` (the default), once imports complete we
-    invoke handlers.wiki_pipeline which chains extract → resolve →
-    emerge → synthesize → curate → compile. This is what makes
-    "install and see pages" work on fresh installs (Phase 7 cold-start
-    fix); without it, users would have to call each tool manually.
-    """
+    source: ADR-0334"""
     total_imported = 0
     total_skipped = 0
     files_processed = 0
@@ -386,11 +363,7 @@ async def _process_imports(
                 "pages_published": pipe.get("pages_published", 0),
             }
         except Exception as e:
-            # Log, don't just record. This clause ran the documented
-            # fresh-install path; swallowing the exception into a string
-            # meant a backfill that produced zero wiki pages still returned
-            # a success-shaped payload with no log line anywhere — the
-            # FlashRank silent-failure mode a third time (issue #206).
+            # source: ADR-0334
             logger.error(
                 "backfill: wiki pipeline failed after importing %d memories; "
                 "no wiki pages were produced: %s",

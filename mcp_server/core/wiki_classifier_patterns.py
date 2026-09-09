@@ -1,13 +1,6 @@
 """Wiki classifier pattern tables — pure data, no logic.
 
-Extracted from ``wiki_classifier.py`` (issue #134, file exceeded the
-500-line hard limit in coding-standards.md §4). This module holds every
-regex/constant table the admission gates and legacy-kind router consult:
-rejection patterns, legacy-kind detection patterns, hard-negative gate
-patterns, the audit-tag denylist, and the positive-quality-signal
-patterns. No behavior lives here — see ``wiki_classifier_gates.py`` for
-the functions that consume these tables.
-"""
+source: ADR-0296"""
 
 from __future__ import annotations
 
@@ -51,7 +44,7 @@ REJECT_PATTERNS = [
     re.compile(r"^\s*\[[\s\S]*\]\s*$"),  # Pure JSON array
     # Slash-command invocations — only Claude Code UI framing, no knowledge content
     re.compile(r"<command-(message|name|args)>", re.IGNORECASE),
-    # Benchmark spell content (Hogwarts benchmark artifacts)
+    # source: ADR-0296
     re.compile(r"^#*\s*Spell:\s*\w+", re.IGNORECASE),
     # Test content shape markers
     re.compile(r"^#*\s*Shape test content", re.IGNORECASE),
@@ -87,12 +80,8 @@ CONVENTION_PATTERNS = [
 
 SPEC_TAGS = {"spec", "design", "specification", "feature"}
 
-# ── Hard-negative gate (Eco + Ahrens): disqualifying patterns ─────────
-#
-# Each of these, if present, is a hard DISQUALIFICATION — single hit blocks
-# admission regardless of positive signals. Catches session chat, imperatives,
-# narration, status updates, and temporal deixis that should live in session
-# logs, not a wiki.
+# source: ADR-0296
+
 
 # Imperative verbs in title/first line (task-shaped, not knowledge-shaped)
 IMPERATIVE_TITLE_PATTERNS = [
@@ -144,8 +133,8 @@ STATUS_PATTERNS = [
     re.compile(r"in domain unknown", re.IGNORECASE),
 ]
 
-# Temporal deixis — "now", "just", "previous", "earlier" make the note
-# uninterpretable outside the session in which it was written
+# source: ADR-0296
+
 DEIXIS_PATTERNS = [
     re.compile(
         r"^\s*#*\s*("
@@ -171,43 +160,27 @@ PATH_OR_URL_TITLE_PATTERNS = [
         r"^\s*#*\s*[\w.-]+\.(pdf|png|jpg|jpeg|svg|gif|zip|tar\.gz|docx?|xlsx?|csv|log|yaml|yml)\b",
         re.IGNORECASE,
     ),
-    # Path embedded mid-line ("also on /Users/...", "fix the file at C:\\..."):
-    # any absolute POSIX path or Windows drive path anywhere in the title.
-    # Bug found 2026-05-12: pages like
-    # specs/2026-04-17-also-on-users-cdeust-documents-developments-...md
-    # passed the start-of-line check, then slugify stripped the leading "/"
-    # and folded the entire path into the slug.
+    # source: ADR-0296
     re.compile(r"(?:^|\s)/(Users|home|root|opt|var|etc|tmp)/", re.IGNORECASE),
     re.compile(r"(?:^|\s)[A-Za-z]:[\\/]"),
 ]
 
-# YAML-frontmatter / key:value lines that leaked through as titles when the
-# real title was missing. Reject lines that are purely "key: value" where
-# the value is a timestamp, identifier, or boolean — they're metadata,
-# not titles.  Bug found 2026-05-12: 10 ADRs slugged as
-# "decision-created-2026-04-15t09-29-10z" because the YAML "created:"
-# line was the first non-{}/[] line in the body.
+# source: ADR-0296
+
+
 YAML_KV_TITLE_PATTERNS = [
-    # `created: 2026-04-15T09:29:10Z`, `updated: 2026-04-15`, `date: ...`
+    # source: ADR-0296
     re.compile(
         r"^\s*(created|updated|date|timestamp|time|id|uuid|version)\s*:\s*\S",
         re.IGNORECASE,
     ),
-    # Bare ISO-8601 timestamp anywhere (would slug to t09-29-10z form)
+    # source: ADR-0296
     re.compile(r"\b\d{4}-\d{2}-\d{2}T\d{2}[:-]\d{2}[:-]\d{2}", re.IGNORECASE),
 ]
 
-# Session / audit artefact tags — these are recall-fodder, not wiki-worthy.
-# Any hit in tags auto-rejects from the wiki (memory is preserved separately).
-#
-# 2026-05-17 (user feedback "that's the same for all kind of category"):
-# PostToolUse auto-captures are journal entries — tool dumps, command
-# outputs, edit diffs — useful as memories for halo retrieval but
-# pollute the wiki with hundreds of ``Lesson: Command: `git log...```
-# pages that aren't curated knowledge. Adding ``auto-captured`` and
-# ``tool:bash``/``tool:edit`` etc. as audit tags so they stay in PG
-# memory but never become wiki pages. Real wiki pages come from
-# explicit ``remember`` calls with curated content.
+# source: ADR-0296
+
+
 AUDIT_TAGS = frozenset(
     {
         "_backfill",
@@ -226,14 +199,7 @@ AUDIT_TAGS = frozenset(
         "tool:grep",
         "tool:webfetch",
         "tool:websearch",
-        # 2026-05-17 (user feedback "wiki is still far from being curated
-        # documentation"): codebase_analyze dumped one wiki page per scanned
-        # file PER scan invocation — 2176 of 2248 notes were the same
-        # auth/middleware/crypto files repeated 290-349 times each.
-        # ``seeded`` is the tag set by seed_project; ``codebase`` is the
-        # tag set by codebase_analyze's file-level extractor. Both belong
-        # in PG memory (recall substrate, halo retrieval) but never on a
-        # wiki page meant for curated knowledge.
+        # source: ADR-0296
         "seeded",
         "codebase",
         "code-review",
@@ -289,8 +255,8 @@ FILE_OR_ENTITY_REF = re.compile(
     r"\bdef\s+[a-z_]\w+"
 )
 
-# Knowledge tags used both by the positive-signal scoring (signal 5) and by
-# the explicit-tag fast path in the legacy-kind router.
+# source: ADR-0296
+
 KNOWLEDGE_TAGS = {
     "decision",
     "adr",
@@ -306,6 +272,6 @@ KNOWLEDGE_TAGS = {
     "reference",
 }
 
-# Unsourced engineering default (calibration pending): must satisfy ≥ 4 of 8
-# positive signals. Not paper-sourced; revisit if classifier precision drifts.
+# source: ADR-0296
+
 POSITIVE_SCORE_THRESHOLD = 4

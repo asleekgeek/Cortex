@@ -2,18 +2,6 @@
 ``curate_distill`` jobs via ``claude -p``, reusing headless_authoring's
 budget/concurrency/sandbox machinery.
 
-Unlike the wiki leg (``cycle_orchestration.run_headless_authoring_cycle``),
-where the ``claude -p`` response is TEXT that the *parent* process writes
-to disk via ``wiki_write.write_governed_page``, here the LLM is expected
-to call ``remember`` itself over MCP inside the child process:
-``core.distillation_reporting.build_distill_prompt`` (reused verbatim,
-INC7.8/M-D8 — not reimplemented here) already encodes the exact required
-``remember(...)`` call shape (tags include the dossier's idempotence
-marker + one ``derived-src:<id>`` per source, ``write_class='deliberate'``)
-in the prompt text itself. This module never calls ``remember`` or
-``wiki_write`` — the child's own MCP tool call, if it makes one, is the
-only write this leg can produce; this module only counts outcomes.
-
 Precondition for any write at all: ``CORTEX_HEADLESS_AGENTS=1`` (the
 default). Solo mode (``CORTEX_HEADLESS_AGENTS=0``) passes ``--safe-mode``
 to the child, which disables MCP servers entirely (``claude_cli.py``'s own
@@ -32,7 +20,8 @@ to every prompt below is advisory defence-in-depth only (matches
 ``claude_cli.py``'s own "Advisory (NOT counted as enforcing)" language for
 its untrusted-content delimiter) — MCP tool calls are not gated by
 ``--disallowedTools``, so this is not a hard sandbox boundary.
-"""
+
+source: ADR-0356"""
 
 from __future__ import annotations
 

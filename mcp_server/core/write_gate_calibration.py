@@ -1,43 +1,13 @@
 """Write-gate threshold auto-calibration.
 
-Per Taleb antifragile audit AF-5: the write-gate threshold should respond
-to observed traffic. If too many submissions pass (90%+ acceptance), the
-gate is too loose — most "novel" attempts aren't actually novel and we
-are storing noise. If too few pass (<10%), the gate is too tight and we
-lose real signal.
-
-Target acceptance rate: 50%. The accept/reject outcome is a binary
-(Bernoulli) signal; its Shannon entropy H(p) = -p·log₂p - (1-p)·log₂(1-p)
-is maximised at p = 0.5, so a balanced acceptance rate maximises the
-information content of each gate decision. This is the most informative
-operating point: the gate is maximally discriminative when acceptance is
-balanced.
-
-Control mechanism: the calibrator holds an exponential moving average
-(EMA) of the accept signal over the last ~N gate decisions, and nudges
-the threshold by a fixed step when |acceptance - target| exceeds a
-tolerance band. EMA decay 0.95 means ~20-sample memory; step 0.02 gives
-convergence in ~50 corrections at the worst case, which is fast enough
-to respond to regime changes but slow enough to not oscillate.
-
-Pure business logic — no I/O. The state lives in-process; persistence
-is optional and gated on the A3 schema migration landing.
-
-References:
-    Shannon, C. E. (1948). "A Mathematical Theory of Communication."
-        *Bell System Technical Journal* 27. The binary entropy function
-        H(p) is maximised at p = 0.5, so 50% acceptance maximises the
-        information carried by each accept/reject decision.
-    Taleb, N. N. (2012). *Antifragile: Things That Gain from Disorder*.
-        Random House. — systems that calibrate from their own rejection
-        signal are antifragile to distribution shift.
+source: ADR-0320
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-# ── Control constants (source: operational defaults, see module docstring) ──
+# source: ADR-0320
 
 TARGET_ACCEPTANCE_RATE: float = 0.5  # Shannon binary-entropy max (H(p) peaks at p=0.5).
 EMA_DECAY: float = 0.95  # ~20-sample effective memory window.
@@ -45,12 +15,14 @@ ADJUSTMENT_STEP: float = 0.02  # Bounded per-update threshold delta.
 TOLERANCE_BAND: float = 0.15  # |observed - target| below this -> no adjustment.
 MIN_THRESHOLD: float = 0.05  # Floor — below this, almost everything stores.
 MAX_THRESHOLD: float = 0.95  # Ceiling — above this, almost nothing stores.
-MIN_SAMPLES_BEFORE_ADJUST: int = 20  # Avoid adjusting on noise.
+MIN_SAMPLES_BEFORE_ADJUST: int = 20  # source: ADR-0320
 
 
 @dataclass
 class CalibrationState:
     """Per-domain write-gate calibration state.
+
+    source: ADR-0320
 
     Invariants:
       - 0.0 <= acceptance_ema <= 1.0
@@ -59,7 +31,7 @@ class CalibrationState:
     """
 
     domain: str = ""
-    threshold: float = 0.4  # Default matches WRITE_GATE_THRESHOLD seed.
+    threshold: float = 0.4  # source: ADR-0320
     acceptance_ema: float = 0.5  # Seed at target; diverges with data.
     total_observations: int = 0
     last_adjustment_at: int = 0  # Observation count when threshold last moved.
@@ -74,6 +46,8 @@ def update_acceptance_ema(
     decay: float = EMA_DECAY,
 ) -> float:
     """Update the accept-rate EMA after one gate decision.
+
+    source: ADR-0320
 
     Contract:
       pre:  0.0 <= current_ema <= 1.0; 0 < decay < 1.
@@ -114,11 +88,7 @@ def compute_threshold_adjustment(
             If acceptance_ema < target - tolerance (too tight), lower
                 threshold by `step` (clamped to min).
 
-    The direction rule: high acceptance means gate is too permissive ->
-    raise threshold. Low acceptance means gate is too strict -> lower
-    threshold. Sign is fixed by the gate predicate ``novelty >= threshold``
-    (see ``predictive_coding_gate.gate_decision``).
-    """
+    source: ADR-0320"""
     delta = acceptance_ema - target
     if abs(delta) <= tolerance:
         return current_threshold
@@ -138,17 +108,7 @@ def observe_gate_decision(
 ) -> CalibrationState:
     """Record one gate decision and (possibly) adjust the threshold.
 
-    Contract:
-      pre:  state is a valid CalibrationState.
-      post: returned state has total_observations = prev + 1, EMA updated
-            via ``update_acceptance_ema``, and threshold adjusted IFF
-            total_observations >= min_samples AND |EMA - target| >
-            tolerance. When adjusted, last_adjustment_at is set to the
-            new total_observations.
-
-    The ``min_samples`` guard prevents adjusting on cold-start noise:
-    with EMA decay 0.95 and seed EMA=0.5, the first ~20 observations
-    carry most of the initial-condition bias.
+    source: ADR-0320
     """
     new_ema = update_acceptance_ema(state.acceptance_ema, accepted)
     new_total = state.total_observations + 1
@@ -183,9 +143,7 @@ _STATES: dict[str, CalibrationState] = {}
 def get_state(domain: str, default_threshold: float = 0.4) -> CalibrationState:
     """Fetch or lazily-initialise the calibration state for a domain.
 
-    Pure-ish: the module-level dict is process-local state; safe because
-    calibration is monotonically tolerant of restarts (seed back to the
-    default threshold -> converges again in ~50 observations).
+    source: ADR-0320
     """
     key = domain or ""
     if key not in _STATES:
@@ -202,7 +160,10 @@ def record(
     *,
     default_threshold: float = 0.4,
 ) -> CalibrationState:
-    """Convenience: observe a decision and store the updated state."""
+    """Convenience: observe a decision and store the updated state.
+
+    source: ADR-0320
+    """
     state = get_state(domain, default_threshold=default_threshold)
     new_state = observe_gate_decision(state, accepted)
     _STATES[domain or ""] = new_state
@@ -210,7 +171,10 @@ def record(
 
 
 def reset_all_states() -> None:
-    """Test hook: clear the in-process calibration registry."""
+    """Test hook: clear the in-process calibration registry.
+
+    source: ADR-0320
+    """
     _STATES.clear()
 
 
@@ -220,8 +184,7 @@ def effective_threshold(
 ) -> float:
     """Return the calibration-adjusted threshold for a domain.
 
-    Falls back to ``default_threshold`` when no calibration state exists
-    (cold start — first write ever for this domain).
+    source: ADR-0320
     """
     state = _STATES.get(domain or "")
     if state is None:

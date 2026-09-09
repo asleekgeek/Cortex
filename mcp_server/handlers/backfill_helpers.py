@@ -1,7 +1,6 @@
 """Helpers for backfill_memories -- file discovery, hashing, and concept linking.
 
-Extracted from backfill_memories.py to keep both files under 300 lines.
-"""
+source: ADR-0333"""
 
 from __future__ import annotations
 
@@ -137,13 +136,7 @@ def discover_files(project_filter: str, max_files: int) -> list[tuple[Path, str]
         slug = project_dir.name
         if project_filter and project_filter not in slug:
             continue
-        # Walk recursively to capture four legitimate session layouts:
-        #   1. Flat parent           <slug>/<uuid>.jsonl
-        #   2. UUID-dir parent       <slug>/<uuid>/<uuid>.jsonl
-        #   3. Subagent (data dir)   <slug>/<parent>/data/subagents/agent-<id>.jsonl
-        #   4. Subagent (direct)     <slug>/<parent>/agent-<id>.jsonl
-        # Pre-fix glob("*.jsonl") only saw layout 1, missing ~89% of sessions
-        # when subagent / teammate use is active. Issue #15.
+        # source: ADR-0333
         for jsonl_file in sorted(project_dir.rglob("*.jsonl"), reverse=True):
             parent = jsonl_file.parent
             accept = (
@@ -163,13 +156,7 @@ def discover_files(project_filter: str, max_files: int) -> list[tuple[Path, str]
 def slug_to_domain(slug: str) -> str:
     """Convert a project slug like '-Users-you-project-name' to a canonical domain.
 
-    Delegates to ``shared.domain_mapping.resolve_domain`` which handles
-    git-derived canonicalisation, worktree-suffix stripping, and fragment
-    matching. Previously this took ``parts[-1]`` of the slug, which for a
-    slug like ``-Users-...-worktrees-pipeline-academic-research-…-body``
-    returned ``"body"`` — every truncated slug tail polluted memory.domain
-    with a single noise word ("for", "via", "voice", "few", "large", …).
-    """
+    source: ADR-0333"""
 
     return resolve_domain(slug)
 
@@ -180,17 +167,7 @@ def slug_to_domain(slug: str) -> str:
 def gist_oversized_content(content: str) -> str:
     """Gist + artifact-pointer an extracted item's content if it is oversized.
 
-    Pre: content is the memory body string for an extracted import/backfill
-    item.
-    Post: when ``content`` fits GIST_BUDGET, returns it unchanged. When it
-    exceeds the budget, the FULL raw content is written to a content-addressed
-    artifact and the returned string is a deterministic gist plus a pointer
-    line — same write-side hygiene as the post_tool_capture hook
-    (docs/provenance/bounded-io-phase2-design.md F3). Single choke point so the
-    extractor (core) stays I/O-free: the I/O happens here, in the handler
-    (composition-root) layer. Artifact write failure falls back to the full
-    content (capture must not be lost).
-    """
+    source: ADR-0333"""
 
     if not needs_gist(content):
         return content

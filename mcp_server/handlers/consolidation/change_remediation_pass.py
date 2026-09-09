@@ -5,16 +5,12 @@ this *repairs*. Given the memories a commit impacted (from ``change_impact``'s
 matcher ∩ the diff) — each carrying the subset of its file refs that changed —
 it applies ``core.change_remediation``:
 
-  - code-derived memories → collect their changed files and re-ingest them once
-    (``reingest_fn``); ``codebase_analyze`` supersedes the stale AST facts.
-  - hand-authored memories → ``mark_memory_stale`` and leave the re-authoring to
-    a human/LLM (never silently rewritten).
-
 Composition root: pure policy (``classify_remediation``) + injected re-ingest
 callback + injected store. No direct I/O here, so it unit-tests with fakes; the
 real wiring (``codebase_analyze`` as ``reingest_fn``, the commit diff as the
 impact source) is done by the caller and validated against AP + a real codebase.
-"""
+
+source: ADR-0347"""
 
 from __future__ import annotations
 
@@ -39,9 +35,7 @@ def remediate_impacted(
 ) -> dict[str, int]:
     """Repair diff-impacted memories per the remediation policy.
 
-    Each ``impacted`` item is a memory dict plus ``changed_refs`` — the subset
-    of its file references that appear in the commit diff. Returns counts.
-    """
+    source: ADR-0347"""
     reingest_paths: set[str] = set()
     counts = {"reingest_memories": 0, "flagged_stale": 0, "reingest_paths": 0}
     for mem in impacted:

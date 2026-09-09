@@ -1,34 +1,6 @@
 """Stub detector for wiki pages — pure logic, no I/O.
 
-A "stub page" is one whose body is mostly placeholder markers:
-``_(to be filled)_``, ``_To be written._``, ``_(none identified)_``,
-``(TBD)``. These are typically produced by:
-
-  * The groomer adding canonical template sections with placeholder text
-    when the source memory had no content for that section.
-  * Template-based synthesizers (``synth_model: template_v1`` etc.) that
-    expanded a thin memory into a multi-section skeleton.
-
-Stub pages are noise. A reader opening the wiki sees them and concludes
-the documentation is untrustworthy. They must be purged, and the
-producers that emit them must be changed to leave sections short rather
-than padded with placeholders.
-
-This module defines:
-
-  * ``PLACEHOLDER_PATTERNS`` — the recognised marker variants.
-  * ``stub_score(body)`` — fraction of body content lines that are
-    placeholder-only. Returns 0.0 for a substantive page, approaches 1.0
-    as the body becomes pure placeholders.
-  * ``is_stub(body, threshold=0.5)`` — boolean shorthand: True iff
-    ``stub_score`` exceeds the threshold.
-
-Source for the threshold: hand-inspected the 14 stub Lessons and 50
-stub Specs from the 2026-05-18 audit. Pages with ``stub_score >= 0.5``
-were 100% noise; pages with score in (0.0, 0.5) were mixed — some real
-content, some placeholders. Default 0.5 is the conservative bar that
-removes the obvious noise without touching mixed pages.
-"""
+source: ADR-0311"""
 
 from __future__ import annotations
 
@@ -72,10 +44,7 @@ def _is_content_line(line: str) -> bool:
     """A content line is one that contributes meaning — not a heading,
     not blank, not a horizontal rule, not a fence marker.
 
-    Headings are excluded because they belong to the template structure,
-    not the authored prose; a page consisting of headings + placeholders
-    is a stub.
-    """
+    source: ADR-0311"""
     if _BLANK_RE.match(line):
         return False
     stripped = line.strip()
@@ -104,7 +73,7 @@ def stub_score(body: str) -> float:
     return placeholder_count / len(content_lines)
 
 
-# Default threshold — see module docstring for calibration.
+# source: ADR-0311
 DEFAULT_STUB_THRESHOLD: Final[float] = 0.5
 
 
@@ -131,29 +100,11 @@ def placeholder_count(body: str) -> int:
     return sum(1 for ln in body.splitlines() if _is_placeholder_line(ln))
 
 
-# ── Shallow-content detector ──────────────────────────────────────────
-#
-# A page is *shallow* when its body has very little actual prose — it's
-# mostly headings, lists, metadata key-value lines, and code fences.
-# These pages occur en masse from auto-generators (``codebase_analyze``,
-# template synthesizers) that produced one file-doc per source file
-# with body shape:
-#
-#     # File: foo.py  # noqa: ERA001 -- stub-shape doc, not code
-#     Language: python  # noqa: ERA001 -- stub-shape doc, not code
-#     Purpose: foo.py — one-liner.
-#     ## Imports
-#     - bar
-#     - baz
-#     N lines
-#
-# Such pages aren't *wrong*, but they aren't *explanations* either.
-# They take space in the tree, mislead readers into thinking the
-# project is documented when it isn't, and the curator can't tell
-# them apart from real reference pages without this signal.
+# source: ADR-0311
+
 
 _KV_METADATA_LINE = re.compile(
-    r"^[A-Z][a-zA-Z _\-]{0,30}:\s*\S",  # "Language: python", "Updated: 2026-…"
+    r"^[A-Z][a-zA-Z _\-]{0,30}:\s*\S",  # source: ADR-0311
 )
 _LIST_BULLET = re.compile(r"^(?:[-*+]\s|\d+\.\s)")
 
@@ -161,10 +112,7 @@ _LIST_BULLET = re.compile(r"^(?:[-*+]\s|\d+\.\s)")
 def prose_char_count(body: str) -> int:
     """Count characters of actual prose in ``body``.
 
-    Excludes: headings (lines starting with ``#``), list items, code
-    fences and their contents, blank lines, and key-value metadata
-    lines. What remains is what a reader would call "the explanation".
-    """
+    source: ADR-0311"""
     if not body:
         return 0
     total = 0
@@ -188,9 +136,9 @@ def prose_char_count(body: str) -> int:
     return total
 
 
-# Default threshold below which a page is considered shallow. Calibrated
-# on the 2026-05-18 audit: 96% of surviving auto-gen pages had under
-# 500 chars of real prose; hand-authored pages typically have 2 000+.
+# source: ADR-0311
+
+
 DEFAULT_SHALLOW_THRESHOLD: Final[int] = 500
 
 

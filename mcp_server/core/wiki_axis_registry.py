@@ -1,52 +1,6 @@
 """Wiki axis registry — data-driven classification with extensible values.
 
-User direction (2026-05-12): "having only 4 values for each is a band-aid
-fix, we should be able to manage anything using regex and recognition."
-
-This module replaces the hardcoded ``KINDS`` / ``LIFECYCLES`` / ``AUDIENCES``
-/ ``PROVENANCES`` frozensets from ``mcp_server.shared.wiki_classification``
-with an open-world registry. The set of values for each classification
-axis is the union of:
-
-    1. Python defaults declared in ``wiki_axis_defaults.py`` (bootstrap seed)
-    2. User-added markdown files under ``wiki/_schema/<axis>/<value>.md``
-
-Adding a new audience, lifecycle, kind, or provenance is done by writing
-a markdown file with frontmatter — no Python edit required. Each value
-ships its own regex detection patterns so the classifier composes the
-4-tuple from pattern matches, not from hard-coded enum checks.
-
-Schema file format::
-
-    wiki/_schema/audiences/data-scientist.md
-    ---
-    name: data-scientist
-    axis: audience
-    display_name: Data scientist
-    patterns:
-      - '\\b(dataset|train(ing)?|inference|model|notebook|jupyter)\\b'
-      - '\\b(scikit|pandas|numpy|pytorch|tensorflow)\\b'
-    tag_aliases: [ds, ml, data]
-    default: false
-    ---
-
-    # Data scientist audience
-
-    Pages targeting practitioners building or analysing ML systems.
-
-Unknown values fail validation; the error message proposes the closest
-match via ``difflib.get_close_matches`` (user direction 2026-05-12:
-"reject + suggest").
-
-Module split (issue #134, coding-standards.md §4 — this file was 705
-lines, over the 500-line hard limit): the default seed data for every
-axis (kinds/lifecycles/audiences/provenances) now lives in
-``wiki_axis_defaults.py``. This module keeps the ``AxisValue``/
-``AxisRegistry`` data model, schema-file parsing, lookup helpers
-(``match_axis``, ``did_you_mean``), and the reverse-DI wiki-root
-provider (kept here because tests monkeypatch its module-level global
-directly).
-"""
+source: ADR-0292"""
 
 from __future__ import annotations
 
@@ -79,23 +33,7 @@ _SCHEMA_FOLDER: Final[str] = "_schema"
 class AxisValue:
     """One registered value for a classification axis.
 
-    Fields:
-        name: stable identifier (kebab-case, lowercase).
-        axis: which axis this value belongs to (``kind`` / ``lifecycle`` / ...).
-        display_name: human-readable label.
-        patterns: compiled regex patterns; a content match contributes
-            this value to the classification.
-        tag_aliases: alternate names that may appear as memory tags;
-            a tag match contributes this value to the classification.
-        default: True if this is the default for new pages on this axis
-            (e.g. ``seedling`` for lifecycle on non-ADR kinds).
-        requires_generator: provenance-only — when True, a Classification
-            whose ``provenance`` is this value must include a Generator
-            block (model/version/prompt_template/generated_at).
-        applies_to_kinds: lifecycle-only — restricts this value to a
-            subset of kinds. Empty tuple = applies to all kinds.
-        description: free-form documentation extracted from the page body.
-    """
+    source: ADR-0292"""
 
     name: str
     axis: str
@@ -124,12 +62,7 @@ class AxisRegistry:
 def axis_registry_values(registry: "AxisRegistry", axis: str) -> tuple[AxisValue, ...]:
     """All registered values for an axis.
 
-    A free function, not a method: mutmut categorically excludes the body
-    of any `@dataclass`-decorated class (`mutmut/mutation/file_mutation.py:
-    236`), so logic placed on `AxisRegistry` methods would carry zero
-    mutation coverage no matter how the test loader names the module
-    (issue #262 3rd pass; issue #282).
-    """
+    source: ADR-0292"""
     return tuple(registry.by_axis.get(axis, {}).values())
 
 
@@ -180,12 +113,8 @@ def _ingest(registry: AxisRegistry, value: AxisValue) -> None:
 def build_default_registry() -> AxisRegistry:
     """Seed-only registry — no wiki file reads. Pure function.
 
-    Imports ``wiki_axis_defaults`` lazily (function-local, not at module
-    top) because that module imports ``AxisValue``/``AXIS_*`` back from
-    this one to build its default seed data — a module-level import
-    here would be circular.
-    """
-    from mcp_server.core.wiki_axis_defaults import ALL_DEFAULTS  # noqa: PLC0415 — import cycle with mcp_server.core.wiki_axis_defaults; a top-level import fails at boot
+    source: ADR-0292"""
+    from mcp_server.core.wiki_axis_defaults import ALL_DEFAULTS  # noqa: PLC0415 — source: ADR-0292
 
     reg = _empty_registry()
     for v in ALL_DEFAULTS:
@@ -219,7 +148,7 @@ def _parse_axis_value_file(rel_path: str, content: str) -> AxisValue | None:
         if list_key is not None and line.startswith("  - "):
             list_items.append(line[4:].strip().strip("'\""))
             continue
-        # End previous list if any
+        # source: ADR-0292
         if list_key is not None:
             fm[list_key] = list_items
             list_key = None
@@ -344,11 +273,7 @@ def match_axis(
     wins for axes that take a single value (kind, lifecycle, provenance).
     Caller is responsible for picking the head when single-valued.
 
-    For lifecycle, ``restrict_to_kind`` filters out values whose
-    ``applies_to_kinds`` is set and does not include the kind (so an
-    ADR cannot be classified as ``seedling`` and a non-ADR cannot be
-    ``proposed``).
-    """
+    source: ADR-0292"""
     matches: list[str] = []
     tag_set = {t.lower() for t in (tags or [])}
     for value in axis_registry_values(registry, axis):
@@ -364,8 +289,8 @@ def match_axis(
             and not value.applies_to_kinds
             and restrict_to_kind == "adr"
         ):
-            # Universal lifecycle values do not apply to ADRs (ADRs use
-            # the proposed/accepted/rejected/superseded subset).
+            # source: ADR-0292
+
             continue
         if tag_set & set(value.tag_aliases):
             matches.append(value.name)
@@ -377,15 +302,8 @@ def match_axis(
     return tuple(matches)
 
 
-# ── Lazy singleton — cached for in-process classifier calls ─────────────
-#
-# Reverse DI (issue #126): core declares the *shape* of what it needs (a
-# zero-arg callable returning the default wiki root) rather than importing
-# ``infrastructure.config.WIKI_ROOT`` directly. The composition root
-# (``mcp_server/__main__.py``) calls ``configure_default_wiki_root`` once
-# at process boot with the real path; tests inject a fixture path the same
-# way. No provider configured → ``get_registry()`` yields the seed-only
-# defaults (still correct, just without user ``_schema/`` overrides).
+# source: ADR-0292
+
 
 _REGISTRY_CACHE: AxisRegistry | None = None
 _WIKI_ROOT_PROVIDER: Callable[[], Path | str | None] | None = None
@@ -395,9 +313,7 @@ def configure_default_wiki_root(provider: Callable[[], Path | str | None]) -> No
     """Composition-root injection point: register how to obtain the
     default wiki root used by the lazy ``get_registry()`` singleton.
 
-    Call once at MCP server boot. Core never imports
-    ``infrastructure.config`` directly — see issue #126.
-    """
+    source: ADR-0292"""
     global _WIKI_ROOT_PROVIDER
     _WIKI_ROOT_PROVIDER = provider
 

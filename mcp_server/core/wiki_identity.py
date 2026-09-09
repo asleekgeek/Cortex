@@ -1,39 +1,6 @@
-"""Stable content IDs for wiki pages — Phase 3 of ADR-2244.
+"""Generate stable content identifiers for wiki pages.
 
-Every wiki page carries an immutable identifier in its frontmatter
-(``id: <uuid>``). Paths become *views* over identifiers, mirroring the
-MediaWiki and TYPO3 conventions surveyed in
-``docs/research/wiki-classification-survey.md``. When a page is renamed
-during migration (Phase 4) the identifier travels with the content; a
-redirect stub at the old path preserves inbound links — see
-``mcp_server.core.wiki_redirect``.
-
-Stable IDs unlock several downstream mechanisms:
-
-* **Backlinks survive rename.** Inbound links can be expressed as
-  ``[[id:abc-123]]`` and resolve regardless of the current slug.
-* **Bulk re-classification is reversible.** Phase 4 will re-bucket
-  thousands of pages; the ID provides the ground-truth identity for
-  before/after diffing.
-* **Audit trail.** Tools that mutate pages can record the operation
-  against the page ID rather than the path, so a rename plus an edit
-  is not double-counted as two unrelated pages.
-
-This module is pure logic — no I/O. The caller reads the page, hands
-us the parsed frontmatter, and writes any changes back.
-
-Identifier format
------------------
-
-UUID4 (RFC 9562) — 128 bits, ~5.3 × 10³⁶ space. Collisions are
-unreachable in practice for a single user's wiki. Serialised as the
-canonical 36-character hex form (e.g. ``adfb8a1f-1b58-4f0c-9a7e-
-4c5e6c8d9f12``). No structured embedding in the path — paths remain
-human-readable slugs.
-
-Pre-existing ID fields in the wiki — ``memory_id`` (numeric), ``draft_id``
-— are preserved as-is. ``id`` is a separate axis that uniquely names the
-PAGE, regardless of which memory or draft it was synthesised from.
+source: ADR-0304
 """
 
 from __future__ import annotations
@@ -83,19 +50,14 @@ def is_valid_page_id(value: str) -> bool:
 def generate_page_id() -> str:
     """Mint a fresh UUID4 in canonical hex form.
 
-    UUID4 over ``uuid.uuid1`` because the latter leaks the host MAC
-    address into the identifier, which is undesirable for a knowledge
-    base that may be exported or shared.
-    """
+    source: ADR-0304"""
     return str(uuid.uuid4())
 
 
 def extract_page_id(frontmatter: dict[str, object]) -> str | None:
     """Return the existing ``id`` field from frontmatter, if valid.
 
-    Returns None if the field is missing or malformed. Callers that
-    need a guaranteed ID should use ``ensure_page_id`` instead.
-    """
+    source: ADR-0304"""
     raw = frontmatter.get("id")
     if not isinstance(raw, str):
         return None

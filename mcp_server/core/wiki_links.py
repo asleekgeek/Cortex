@@ -1,19 +1,12 @@
 """Wiki bidirectional link maintenance — pure, deterministic.
 
-Links live inside each page under a ``## Related`` section, rendered as
-a sorted bullet list. ``apply_link`` is idempotent: adding the same link
-twice produces identical output. Every relation has a fixed inverse so
-``wiki_link(a, b, rel)`` can update both pages with the correct symmetry.
-
-The relation vocabulary is intentionally small and hardcoded — extending
-it requires a code change so consumers can rely on canonical semantics.
-"""
+source: ADR-0306"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Fixed vocabulary: relation → its inverse.
+# source: ADR-0306
 RELATIONS: dict[str, str] = {
     "supersedes": "superseded_by",
     "superseded_by": "supersedes",
@@ -85,7 +78,7 @@ def _split_body_and_related(body: str) -> tuple[str, list[LinkEntry]]:
             entries.append(parsed)
         idx += 1
     after = lines[idx:]
-    # Drop trailing blank lines from ``before`` so re-rendering is stable.
+    # source: ADR-0306
     while before and before[-1] == "":
         before.pop()
     # ``after`` keeps any subsequent sections verbatim.

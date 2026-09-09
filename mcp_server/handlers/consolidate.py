@@ -45,25 +45,24 @@ schema = {
     "title": "Consolidate memories",
     "annotations": IDEMPOTENT_WRITE,
     "description": (
+        # source: ADR-0341
         "Run scheduled memory-system maintenance cycles: thermodynamic "
-        "heat decay, full-text → gist → tag compression, episodic→semantic "
-        "CLS transfer (McClelland 1995), synaptic plasticity LTP/LTD "
-        "(Hebb 1949, Bi & Poo 1998), microglial pruning of orphan edges "
-        "(Wang 2020), homeostatic scaling (Turrigiano 2008), cascade "
-        "stage advancement (Kandel 2001), and optional deep-sleep replay. "
-        "Each cycle is delegated to a focused sub-module under "
-        "handlers/consolidation/; durations are tracked per stage with "
-        "partial-failure rollup. Use this on a daily/weekly cadence (or "
-        "after large ingest bursts) to keep recall fast and the heat "
-        "distribution healthy. Distinct from `wiki_consolidate` (operates "
-        "on wiki PAGES not memories) and `forget` (one-off deletion, no "
-        "lifecycle). Mutates memories + entities + relationships tables. "
-        "Latency varies (~5-60s typical, deep mode minutes). Returns "
-        "per-cycle counters, duration_ms per stage, status (ok|partial), "
-        "and failed_stages list. The `cls` and `memify` stages include "
-        "`reason_for_zero` / `reason_for_inaction` when the cycle "
-        "produces no mutations, distinguishing early-return from a "
-        "genuine quiet-store pass (issue #14 P2)."
+        "heat decay, full-text → gist → tag compression, "
+        "episodic→semantic CLS transfer, synaptic plasticity LTP/LTD, "
+        "microglial pruning of orphan edges, homeostatic scaling, cascade "
+        "stage advancement, and optional deep-sleep replay. Each cycle is "
+        "delegated to a focused sub-module under handlers/consolidation/; "
+        "durations are tracked per stage with partial-failure rollup. Use "
+        "this on a daily/weekly cadence (or after large ingest bursts) to "
+        "keep recall fast and the heat distribution healthy. Distinct "
+        "from `wiki_consolidate` (operates on wiki PAGES not memories) "
+        "and `forget` (one-off deletion, no lifecycle). Mutates memories "
+        "+ entities + relationships tables. Latency varies (~5-60s "
+        "typical, deep mode minutes). Returns per-cycle counters, "
+        "duration_ms per stage, status (ok|partial), and failed_stages "
+        "list. The `cls` and `memify` stages include `reason_for_zero` / "
+        "`reason_for_inaction` when the cycle produces no mutations, "
+        "distinguishing early-return from a genuine quiet-store pass."
     ),
     "inputSchema": {
         "type": "object",
@@ -155,13 +154,10 @@ schema = {
                 "type": "integer",
                 "minimum": 0,
                 "description": (
-                    "Cap on how many pages each purge axis (stubs, "
-                    "classifier rejects) may delete in a single "
-                    "consolidate cycle. Acts as a safety rail: a buggy "
-                    "classifier change costs at most one cap's worth "
-                    "of pages before the next cycle exposes the "
-                    "regression. Default 500. Pass 0 to disable the "
-                    "cap (one-shot full sweep)."
+                    # source: ADR-0341
+                    "Maximum pages each purge axis (stubs, classifier rejects) may "
+                    "delete in one consolidate cycle. Default 500. Pass 0 to disable "
+                    "the cap for a full sweep."
                 ),
                 "default": 500,
             },
@@ -204,9 +200,7 @@ def _get_store() -> MemoryStore:
 def _timed(fn, *args, **kwargs) -> dict[str, Any]:
     """Run a cycle, inject duration_ms into its result dict.
 
-    Addresses issue #13 (darval): per-stage telemetry so operators can
-    see where time actually goes on real stores.
-    """
+    source: ADR-0341"""
     t0 = time.monotonic()
     try:
         result = fn(*args, **kwargs) or {}
@@ -241,33 +235,15 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     embeddings = get_embedding_engine()
     start = time.monotonic()
 
-    # Constant-memory consolidate (sharded-popping-harbor): every stage now
-    # STREAMS the memory corpus in bounded chunks via
-    # ``store.iter_memories_for_decay()`` (decay/compression/memify/sleep/
-    # homeostatic) or a streaming reducer (emergence, wiki cluster count), so
-    # peak RAM is one chunk plus bounded accumulators rather than the whole
-    # ~1GB corpus. This trades the single issue-13 shared load for one bounded
-    # cursor scan per stage — the correct trade at scale, where the shared list
-    # would OOM. A future single-pass combined reducer can fold these scans.
+    # source: ADR-0341
     stats = _run_cycles(args, store, settings, embeddings)
     stats = _run_always_cycles(args, store, stats)
 
-    # Fact derivation (INC6.1b, 2026-07-10): gated by the same `memify` flag
-    # as the prune/strengthen/reweight cycle above (one user-facing switch,
-    # per the schema description), but tracked as its own top-level stage so
-    # the failed_stages rollup below can see it independently. Routed through
-    # the real write gate (async remember() call) — it cannot run inside the
-    # sync `_run_cycles` above, so it lives here instead.
+    # source: ADR-0341
     if args.get("memify", True):
         stats["memify_derivation"] = await _atimed(run_memify_derivation_cycle, store)
 
-    # 2026-05-18: autonomous wiki maintenance. The wiki has to stay up
-    # to date without a human in the loop, so every consolidation cycle
-    # purges stale + stub pages and reports the curation backlog
-    # (coverage gaps + cluster jobs). Existing pages get the same
-    # treatment as freshly authored ones — nothing the system produced
-    # gets a free pass once policy tightens. Failure here is non-fatal:
-    # a wiki edge case must never block memory consolidation.
+    # source: ADR-0341
     if args.get("wiki", True):
         cap_raw = args.get("wiki_max_purges_per_axis", 500)
         cap = int(cap_raw) if cap_raw is not None and int(cap_raw) > 0 else None
@@ -285,8 +261,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
             citation_seed_limit=seed_limit,
         )
         stats["wiki"] = wiki_stats
-        # Back-compat: keep ``pending_curations`` populated for callers
-        # that read the legacy key (SessionStart preamble pre-2026-05-18).
+        # source: ADR-0341
         if isinstance(wiki_stats, dict) and "pending_total" in wiki_stats:
             stats["pending_curations"] = wiki_stats["pending_total"]
         else:
@@ -295,18 +270,14 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     elapsed_ms = int((time.monotonic() - start) * 1000)
     stats["duration_ms"] = elapsed_ms
 
-    # Aggregate rollup — surfacing partial failures (issue #13, code-reviewer).
-    # Without this, a caller that only reads duration_ms cannot tell that
-    # one or more stages errored inside _timed.
+    # source: ADR-0341
     failed = [k for k, v in stats.items() if isinstance(v, dict) and "error" in v]
     stats["failed_stages"] = failed
     stats["status"] = "ok" if not failed else "partial"
 
     _log_consolidation(store, stats, elapsed_ms)
 
-    # Update the autonomy stamp so SessionStart's TTL gate sees this run.
-    # User directive 2026-05-18: consolidate must never require manual
-    # invocation; the stamp closes the loop with the SessionStart hook.
+    # source: ADR-0341
     try:
         _write_stamp()
     except Exception as exc:  # noqa: BLE001 — last-resort boundary — failure is logged; degraded mode continues
@@ -323,9 +294,7 @@ def _run_cycles(
 ) -> dict[str, Any]:
     """Run optional maintenance cycles based on args flags.
 
-    Each memory-consuming stage is passed no list, so it streams the corpus in
-    bounded chunks (constant memory) instead of sharing a single resident load.
-    """
+    source: ADR-0341"""
     stats: dict[str, Any] = {}
 
     if args.get("decay", True):

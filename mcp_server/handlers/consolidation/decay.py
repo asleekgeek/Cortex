@@ -8,8 +8,7 @@ v3.12.0 report. What remains here is *entity* decay (the
 program lands) and metabolic-modulation observability on astrocyte
 territories.
 
-Source: docs/program/phase-3-a3-migration-design.md §6.
-"""
+source: ADR-0355"""
 
 from __future__ import annotations
 
@@ -35,10 +34,7 @@ def run_decay_cycle(
 ) -> dict:
     """Decay entities and run metabolic observability.
 
-    Memory heat decay is lazy — computed by ``effective_heat()`` on read.
-    ``memories`` is kept in the signature for caller symmetry with
-    pre-A3 but is only used to compute per-domain metabolic state.
-    """
+    source: ADR-0355"""
     entity_updates = _decay_entities(store, settings)
     total_memories = _update_metabolic_state(settings, store, memories)
 

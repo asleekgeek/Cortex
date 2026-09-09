@@ -1,45 +1,28 @@
-"""Phase 2 (ADR-0046) — extract symbol references from wiki page text.
+"""Extract symbol references from wiki page text.
 
-A wiki page may cite code symbols in three forms:
-
-    1. Backtick-wrapped function or method call:    ``foo()`` / ``Bar.baz()``
-    2. Dotted qualified name (no parens):           ``module.Class.method``
-    3. Explicit ``{path}::{qualname}`` annotation inserted by extractors.
-
-This module returns the *normalized candidate set* — a deduplicated list
-of qualified names that Cortex will ask AP to verify (via ``get_symbol``).
-
-Pure logic — no AP calls, no I/O. The caller feeds page text; we return
-strings. Two signals can be combined by the handler before verification:
-
-    - this module's best-effort pattern extraction
-    - claim-evidence records the extractor already attached to the page
-
-False positives are cheap — AP returns ``not_found`` for unknown symbols
-and the verdict module applies a threshold, so noisy candidates don't
-flag a page as stale on their own.
+source: ADR-0312
 """
 
 from __future__ import annotations
 
 import re
 
-# A qualified name segment: Python/TS/Rust-style identifier. We reject
-# leading digits and single-letter fragments to cut false positives from
-# file extensions and English words.
+# source: ADR-0312
+
+
 _IDENT = r"[A-Za-z_][A-Za-z_0-9]{1,}"
 
-# ``foo()`` or ``Class.method()`` inside backticks. We require parens so
-# plain English sentences like `memory` don't get flagged.
+# source: ADR-0312
+
 _BACKTICK_CALL = re.compile(r"`([A-Za-z_][\w.]*(?:\(\)|\([^`]{0,60}\)))`")
 
-# Dotted chain of at least two identifier segments: ``a.b`` / ``a.b.c`` —
-# any length. Must be on a word boundary so ``app.py`` (file suffix)
-# doesn't match (handled by the extension blacklist below).
+# source: ADR-0312
+
+
 _DOTTED = re.compile(rf"\b({_IDENT}(?:\.{_IDENT}){{1,}})\b")
 
-# File extensions and common English bigrams that look dotted but aren't
-# code symbols. Extend if false positives appear.
+# source: ADR-0312
+
 _FILE_SUFFIXES = frozenset(
     {
         "py",

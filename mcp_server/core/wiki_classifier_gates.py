@@ -1,12 +1,6 @@
 """Wiki classifier admission gates — hard-negative and quality scoring.
 
-Extracted from ``wiki_classifier.py`` (issue #134, file exceeded the
-500-line hard limit in coding-standards.md §4). These are the pure
-functions the legacy-kind router (``wiki_classifier._classify_to_legacy_kind``)
-calls to decide whether content is admitted to the wiki, before routing
-it to a kind. No I/O, no globals — pattern tables live in
-``wiki_classifier_patterns.py``.
-"""
+source: ADR-0295"""
 
 from __future__ import annotations
 
@@ -70,35 +64,26 @@ def fails_audit_tag_gate(tags: set[str]) -> bool:
     return bool(tags & AUDIT_TAGS)
 
 
-# At least this many declarative claims are needed to earn the claims point.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0295
+
+
 _MIN_DECLARATIVE_CLAIMS = 2
 
-# Atomic-scope band. source: comment at gate 6 below — the 200–3000 char band
-# is an unsourced engineering default for "a self-contained note"
-# (calibration pending), NOT a value from Luhmann's Zettelkasten method.
+# source: ADR-0295
+
+
 _ATOMIC_SCOPE_MIN_CHARS = 200
 _ATOMIC_SCOPE_MAX_CHARS = 3000
 
-# source: comment at gate 7 below — "at least 3 distinct CamelCase/snake_case
-# technical tokens".
+# source: ADR-0295
+# source: ADR-0295
 _MIN_TECH_TOKENS = 3
 
 
 def positive_score(content: str, tags: set[str]) -> int:
     """Count how many positive quality signals the content exhibits.
 
-    Signals (8 total):
-      1. Multiple structural elements (heading/list/code)
-      2. Contains declarative claim-shaped sentences
-      3. Cites paper, ADR, URL, or function/file reference
-      4. Minimum substantive length (≥ 200 chars)
-      5. Has curated/knowledge tag
-      6. Is atomic (not too long, not too short) — 200-3000 chars
-      7. Domain vocabulary density — at least 3 distinct technical tokens
-      8. References files or code entities
-    """
+    source: ADR-0295"""
     score = 0
     length = len(content)
 
@@ -126,9 +111,8 @@ def positive_score(content: str, tags: set[str]) -> int:
     if tags & KNOWLEDGE_TAGS:
         score += 1
 
-    # 6. Atomic scope. The 200–3000 char band is an unsourced engineering
-    #    default for "a self-contained note" (calibration pending), NOT a
-    #    value from Luhmann's Zettelkasten method, which sets no char range.
+    # source: ADR-0295
+
     if _ATOMIC_SCOPE_MIN_CHARS <= length <= _ATOMIC_SCOPE_MAX_CHARS:
         score += 1
 

@@ -1,23 +1,6 @@
 """Prompt construction, response parsing, and gap-marker primitives.
 
-Pure leaf helpers for the headless authoring worker. No I/O, no
-subprocess, no patchable state — these are deterministic string
-transforms split out of ``headless_authoring`` to keep that module
-under the size limit (Fowler: Extract Function / Move Function). The
-public import surface remains ``headless_authoring``; these names are
-imported there and by the drain/orchestration siblings.
-
-Prompt-injection defence (audit B-1): any text sourced from the
-filesystem (source code, wiki frontmatter, README, manifests, gap
-descriptions derived from frontmatter) is untrusted input. Wrapping
-every such block in the delimiter below, together with the GUARD
-header, demotes the content to DATA in the model's context, not
-instructions.
-
-Reference: Anthropic prompt-injection mitigation guidance — use
-explicit content delimiters and a system-level guard line to
-separate trusted instructions from untrusted source material.
-"""
+source: ADR-0344"""
 
 from __future__ import annotations
 
@@ -40,11 +23,7 @@ _UNTRUSTED_GUARD = (
 def _wrap_untrusted(text: str) -> str:
     """Wrap ``text`` in the untrusted-source-material delimiter.
 
-    Pre-condition:  ``text`` is a string (may be empty).
-    Post-condition: returned string is delimited so the model treats
-                    its content as data, not instructions.
-    Invariant:      original text is preserved verbatim between tags.
-    """
+    source: ADR-0344"""
     return f"{_UNTRUSTED_OPEN}\n{text}\n{_UNTRUSTED_CLOSE}"
 
 
@@ -146,9 +125,7 @@ def _build_section_prompt(
     language = page_meta.get("language", "")
     title = page_meta.get("title", page_path)
 
-    # gap_description may originate from wiki frontmatter (attacker-
-    # influenceable) — always wrap as untrusted even when it matched a
-    # known slug, because the fallback path passes raw frontmatter text.
+    # source: ADR-0344
     safe_gap_desc = _wrap_untrusted(gap_description)
 
     src_block = (
@@ -424,10 +401,7 @@ def _build_page_prompt(
 def _parse_sectioned_response(response: str, gaps: list[str]) -> dict[str, str]:
     """Parse the LLM response back into ``{gap_name: content}`` dict.
 
-    The response uses ``<<<gap-slug>>>`` delimiters per the prompt
-    contract. Robust to extra whitespace, missing delimiters (gaps
-    not present in the response stay unfilled and replay later).
-    """
+    source: ADR-0344"""
     out: dict[str, str] = {}
     if not response:
         return out

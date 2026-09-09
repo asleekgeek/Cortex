@@ -1,41 +1,14 @@
 """``claude -p`` argv + child-environment construction.
 
-Split out of ``headless_authoring`` to keep that module under the 500-line
-size limit (Fowler: Extract Function). These are pure builders — no
-subprocess, no I/O beyond reading ``os.environ``. The async invocation that
-consumes them (``_claude_invoke``) stays in ``headless_authoring`` because it
-is the patchable seam tests target.
-
 Patchability contract: the runtime knobs (``CORTEX_HEADLESS_AGENTS``,
 ``CORTEX_HEADLESS_AUTH``) and ``_CLAUDE_BIN`` are read off the root module at
 CALL time, so ``monkeypatch.setattr(headless_authoring, ...)`` is observed —
 matching the scanner/drain sibling pattern documented in
 ``headless_authoring``'s module docstring.
 
-Security model (audit B-1) — the argv differs by mode:
-
 Agents mode (``CORTEX_HEADLESS_AGENTS=1``, the default) — load the user's
 zetetic agent roster and let the top-level authoring agent delegate read-only
 analysis to specialists. TWO INDEPENDENT ENFORCING CONTROLS keep it safe:
-
-  Control A — ``--setting-sources user``
-      Loads ONLY the user's settings/agents/hooks. Project and local sources
-      are NOT loaded, so a malicious repository cannot inject
-      ``permissions.allow:["Bash"]`` or a malicious hook — the original B-1
-      project-injection vector stays closed. The roster that DOES load is the
-      user's own, authored by the user, hence trusted: the threat model here
-      is malicious *source material being documented*, not malicious *user
-      config*. Verified empirically against claude CLI 2.1.197 (2026-06-30):
-      paper-writer / architect / feynman / zetetic-team-subagents:* load;
-      project/local agents do not.
-
-  Control B — ``--disallowedTools "Write,Edit,Bash,NotebookEdit"``
-      A HARD DENY ceiling. Verified empirically (2026-06-30) to PROPAGATE to
-      spawned subagents: a delegated write-capable ``engineer`` received only
-      Read/Glob/Grep + MCP; a top-level ``Write`` attempt returned "not
-      enabled" and produced no file. So the roster can analyse but never
-      write or execute, transitively. ``--tools "Read,Glob,Grep,Task"`` adds
-      ``Task`` (delegation) to the read-only built-in set.
 
   Hooks side effect: ``--setting-sources user`` also loads the user's hooks.
       They are neutralised by ``CORTEX_HEADLESS_AUTHORING_CHILD=1`` (see
@@ -76,9 +49,7 @@ Common to both modes:
       ``authoring_prompts`` demotes file content to DATA. Defence-in-depth
       only — it relies on model instruction-following, not a hard sandbox.
 
-Sources: https://code.claude.com/docs/en/cli-reference
-         https://code.claude.com/docs/en/headless
-"""
+source: ADR-0349"""
 
 from __future__ import annotations
 
@@ -87,11 +58,7 @@ import os
 # Anthropic credential keys stripped from the child env in subscription mode.
 _API_CREDENTIAL_KEYS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
 
-# Stamped into every authoring child's env so the user's Cortex hooks — loaded
-# by ``--setting-sources user`` in agents mode — early-exit instead of running
-# (recursion + pollution guard). See ``mcp_server.hooks._headless_guard``. Set
-# unconditionally: harmless in solo mode (``--safe-mode`` disables hooks), load-
-# bearing in agents mode.
+# source: ADR-0349
 _HEADLESS_CHILD_FLAG = "CORTEX_HEADLESS_AUTHORING_CHILD"
 
 # Hard tool-deny ceiling applied in agents mode. Propagates to subagents.
@@ -131,14 +98,7 @@ def _build_argv(source_root: str | None) -> list[str]:
     Post-condition: returns the option-only argv; the tool surface is
                     read-only in both modes (no Write/Edit/Bash).
     """
-    # Deferred import (issue #237): headless_authoring re-exports this
-    # function and imports back from this module at load time, so a
-    # module-top-level `from . import headless_authoring` would deadlock
-    # any fresh interpreter that imports claude_cli before headless_authoring
-    # has finished initializing (partial-module ImportError). Resolving the
-    # back-reference here, at call time, breaks the load-time cycle while
-    # keeping `monkeypatch.setattr(headless_authoring, "CORTEX_HEADLESS_AGENTS", ...)`
-    # observed — the attribute is read off the live module object, not a copy.
+    # source: ADR-0349
     from . import headless_authoring as _root  # noqa: PLC0415 — import cycle (partner: headless_authoring, #237)
 
     argv = [_root._CLAUDE_BIN, "--print", "--no-session-persistence"]

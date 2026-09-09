@@ -18,14 +18,10 @@ logger = logging.getLogger(__name__)
 
 _ADVANCEABLE_STAGES = ["labile", "early_ltp", "late_ltp", "reconsolidating"]
 
-# Source: issue #13 — cascade previously wrote a heartbeat UPDATE on
-# EVERY scanned memory (~2000) even when nothing advanced. Below this
-# delta, the hours_in_stage change is noise and the write is waste.
+# source: ADR-0346
 _HEARTBEAT_SKIP_HOURS = 1.0
 
-# Source: issue #13 — the 503-transition payload darval reported is
-# redundant with the stage_transitions table and inflates the MCP
-# response. Surface a preview + count instead.
+# source: ADR-0346
 _TRANSITION_PREVIEW_CAP = 50
 
 
@@ -139,9 +135,7 @@ def _try_advance(
     )
 
     if ready and next_stage != stage_name:
-        # Compute stage_entered_at for the new stage:
-        # For backfilled memories with real timestamps, account for the time
-        # they would have spent in the previous stage (min_dwell hours).
+        # source: ADR-0346
         dwell = _MIN_DWELL.get(stage_name, 1.0)
         remaining_hours = max(0.0, hours - dwell)
 
@@ -165,10 +159,7 @@ def _try_advance(
             "transition",
         )
 
-    # Not advancing: only write a heartbeat if the hours delta is
-    # large enough to be informative. Below _HEARTBEAT_SKIP_HOURS the
-    # change is noise and the write is wasted fsync amplification
-    # (issue #13, Feinstein audit of darval's 66K-store run).
+    # source: ADR-0346
     prev_hours = float(mem.get("hours_in_stage", 0.0) or 0.0)
     if abs(hours - prev_hours) < _HEARTBEAT_SKIP_HOURS:
         return None, "skipped"

@@ -1,0 +1,37 @@
+# ADR-0328: mcp_server/handlers/add_rule.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `mcp_server/handlers/add_rule.py`; original SHA-256 `0aa2092e418947123969966658a47283aa6fb495c40689070859809dfb65c23d`.
+
+## Original docstring, lines 1–25
+
+````text
+"""Handler: add_rule — add a neuro-symbolic rule to the memory system.
+
+Rules are stored in the memory_rules table and applied during recall (via
+mcp_server.core.memory_rules.apply_rules, invoked from
+mcp_server.handlers.recall._apply_rules_and_order on every recall) to
+hard-exclude, soft-rerank, or tag results. condition/action strings MUST use
+the grammar mcp_server.core.memory_rules actually parses — see that
+module's docstring for the canonical syntax. This handler is a thin
+persistence layer over that grammar: it validates via
+`memory_rules.validate_rule` before insert and never invents its own
+condition/action syntax (a prior version of this docstring described a
+'matcher:value' / 'exclude' shorthand no parser ever implemented; rules
+created with it were silently inert at recall time — see the
+fix/add-rule-memory-rules-drift RCA).
+
+Rule types:
+  - hard:  EXCLUDE memories whose condition matches (action must be "filter")
+  - soft:  boost or penalize matching memories (action = "boost:N" | "penalty:N")
+  - tag:   attach a tag to matching memories (action = "tag:NAME")
+
+Scopes:
+  - global:   applies everywhere
+  - domain:   applies only within a named domain (scope_value = domain name)
+  - directory: applies within a project directory
+"""
+````
+

@@ -210,11 +210,7 @@ def _parse_args(args: dict[str, Any] | None) -> tuple:
 def _build_tags(rel_path: str, analysis: Any) -> list[str]:
     """Build memory tags for a file analysis.
 
-    Every tag list carries the native-engine provenance tag (ADR-0052
-    sec 2, INC5.2) — ``codebase_analyze`` is the only handler writing one
-    memory per file, so "every memory this path writes carries a
-    provenance tag" is satisfied here, at the single tag-building site.
-    """
+    source: ADR-0338"""
     tags = [
         CODEBASE_TAG,
         *ingest_provenance.native_provenance_tags(),
@@ -363,9 +359,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     if not root.exists() or not root.is_dir():
         return {"analyzed": False, "reason": f"directory not found: {root}"}
 
-    # ADR-0052 sec 2: codebase_analyze is the EXPLICIT fallback for when AP
-    # is unreachable — never a silent alternative to ingest_codebase. State
-    # which case this run is, every time, before any file is processed.
+    # source: ADR-0338
     fallback_status, fallback_warning = ingest_provenance.native_fallback_status()
     if fallback_warning:
         _log(f"WARNING: {fallback_warning}")
@@ -402,7 +396,7 @@ async def handler(args: dict[str, Any] | None = None) -> dict[str, Any]:
     )
     stale = _mark_deleted(existing, seen, store, incremental)
 
-    # Phase 2: cross-file resolution, type references, communities
+    # source: ADR-0338
     graph_stats = _run_graph_analysis(analyses, contents, store, domain or "code")
 
     _log(f"done: {new_c} new, {upd_c} updated, {unch_c} unchanged, {stale} stale")

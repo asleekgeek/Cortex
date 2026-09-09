@@ -1,46 +1,6 @@
 """`cortex-doctor mcp` — end-to-end MCP startup diagnostics.
 
-Helps Discord/issue-tracker users diagnose "MCP server failed to start"
-without staring at silent errors. Every check reports what command was
-attempted and the exact error if it failed — never just "broken."
-
-Checks performed (in order):
-  * Python interpreter — `which python3`, `which python`, `python --version`
-  * `~/.claude/plugins/installed_plugins.json` — exists, parses, key
-    `hypermnesia-mcp@cortex-plugins` present, installPath valid, launcher present
-  * `CLAUDE_PLUGIN_ROOT` env var presence (informational — only set by
-    Claude Code at hook/MCP spawn time, normally absent in shells)
-  * Launcher smoke probe: spawn the launcher with no module argv and
-    assert the usage-and-exit-1 contract.
-  * `DATABASE_URL` presence + URL parse
-  * PostgreSQL reachable — `SELECT 1` against the configured DSN
-  * PostgreSQL extensions — enumerate `vector`, `pg_trgm` via pg_extension
-  * Critical Python deps importable (psycopg, pgvector, mcp, pydantic,
-    sentence_transformers)
-
-What we explicitly do NOT check (Feynman discipline — say "I don't know"
-when a probe is unreliable):
-  * MCP stdio handshake. Spawning the actual server, sending an
-    `initialize` JSON-RPC frame, and reading the response is a moving
-    target (MCP SDK version, transport buffering, race against the
-    server's own dependency-install step in launcher.py). A flaky check
-    is worse than no check — it sends users chasing phantom failures.
-    Status: not implemented; reported as "I don't know" in --json so the
-    consumer knows it was deliberately skipped.
-
-Output:
-  - Human-readable by default (one line per check + actionable fix).
-    ANSI colour when stdout is a TTY (green=ok, red=fail, yellow=warn).
-  - `--json` flag emits a machine-readable report (Discord-paste friendly).
-  - `--copy` flag adds a header that tells users where to paste the output.
-
-This module is invoked from `cortex-doctor mcp` via `mcp_server.doctor.run`
-(the entry point registered in pyproject.toml).
-
-Source: Discord report 2026-05-09 (MCP server "✘ failed" with no
-actionable error). Root cause was a fragile inline `python -c` wrapper in
-`.mcp.json` that swallowed launcher startup errors.
-"""
+source: ADR-0323"""
 
 from __future__ import annotations
 
@@ -73,15 +33,7 @@ class McpCheck:
 class McpReport:
     """Aggregated report from all MCP checks.
 
-    Data only — deliberately no methods. mutmut's mutation generator
-    categorically excludes the body of any `@dataclass`-decorated class
-    (`mutmut/mutation/file_mutation.py:236`, confirmed empirically: issue
-    #262's 3rd pass, `RepoBadge` in scripts/generate_repo_badges.py), so
-    logic placed on methods here would carry zero mutation coverage no
-    matter how the test loader names the module. `mcp_report_required_fails`
-    / `mcp_report_warnings` / `mcp_report_to_dict` below carry the same
-    logic as free functions instead (issue #282).
-    """
+    source: ADR-0323"""
 
     checks: list[McpCheck] = field(default_factory=list)
     skipped: list[dict] = field(default_factory=list)  # "I don't know" probes
@@ -118,8 +70,7 @@ def _check_python_interpreter() -> McpCheck:
     of `python3`/`python` exists. We report which were found AND the
     version reported by the first found.
 
-    Source: mcp_server/doctor_mcp.py — Discord triage rule #1.
-    """
+    source: ADR-0323"""
     found = []
     version_str = ""
     for cmd in ("python3", "python", "py"):
@@ -166,9 +117,7 @@ def _installed_plugins_path() -> Path:
 def _check_installed_plugins_json() -> tuple[McpCheck, dict | None]:
     """Validate ~/.claude/plugins/installed_plugins.json shape.
 
-    Returns the check + the parsed JSON (or None) so subsequent checks
-    can reuse it without re-reading.
-    """
+    source: ADR-0323"""
     path = _installed_plugins_path()
     attempted = str(path)
     if not path.exists():
@@ -211,7 +160,7 @@ def _check_installed_plugins_json() -> tuple[McpCheck, dict | None]:
             ),
             None,
         )
-    # Print a compact shape summary so the Discord paste is self-contained.
+    # source: ADR-0323
     plugins = data.get("plugins", {}) if isinstance(data, dict) else {}
     keys = (
         list(plugins.keys()) if isinstance(plugins, dict) else "(plugins not an object)"
@@ -326,11 +275,7 @@ def _check_install_path(install_path: str | None) -> McpCheck:
 def _check_claude_plugin_root_env() -> McpCheck:
     """Report CLAUDE_PLUGIN_ROOT presence (informational).
 
-    This var is set by Claude Code only at hook/MCP spawn time, so its
-    absence from a shell is normal. We report it for completeness — when
-    debugging from inside a hook or MCP context, its presence confirms
-    Claude Code is doing variable substitution correctly.
-    """
+    source: ADR-0323"""
     val = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
     if val:
         return McpCheck(
@@ -358,8 +303,7 @@ def _check_launcher_smoke(install_path: str | None) -> McpCheck:
     Any other state — non-1 exit, missing usage, stack trace — is a real
     launcher problem the user needs to see.
 
-    Source: scripts/launcher.py:127-134 (the usage-and-exit-1 branch).
-    """
+    source: ADR-0323"""
     if not install_path:
         return McpCheck(
             name="launcher import smoke",
@@ -374,10 +318,8 @@ def _check_launcher_smoke(install_path: str | None) -> McpCheck:
             detail="launcher.py missing",
             attempted=str(launcher),
         )
-    # Never resolve "python3"/"python" by name: on Windows PATH those hit the
-    # Microsoft Store stub (exit 9009, no interpreter), making this smoke test
-    # spuriously fail. The launcher must run under THIS interpreter anyway.
-    # source: RAPPORT_INSTALLATION_CORTEX_WINDOWS.md §5.2
+    # source: ADR-0323
+
     py = python_executable()
     cmd = [py, str(launcher)]
     attempted = " ".join(cmd)
@@ -444,8 +386,7 @@ def _check_pg_reachable() -> McpCheck:
     failures are the most common Discord-paste root cause and the user
     needs to see psycopg's actual error string, not a paraphrase.
 
-    Source: psycopg 3 docs — psycopg.connect(dsn, connect_timeout=...).
-    """
+    source: ADR-0323"""
     url = os.environ.get("DATABASE_URL", "")
     if not url:
         return McpCheck(
@@ -455,7 +396,7 @@ def _check_pg_reachable() -> McpCheck:
             fix="Set DATABASE_URL first.",
         )
     try:
-        import psycopg  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+        import psycopg  # noqa: PLC0415 — source: ADR-0323
     except ImportError as exc:
         return McpCheck(
             name="postgresql reachable",
@@ -468,12 +409,9 @@ def _check_pg_reachable() -> McpCheck:
     try:
         with psycopg.connect(url, connect_timeout=5) as conn:
             row = conn.execute("SELECT 1").fetchone()
-    except Exception as exc:  # noqa: BLE001 — diagnostic probe — any failure becomes the check's failure report
-        # Catch-all here is intentional: psycopg raises a wide variety of
-        # subclasses (OperationalError, DatabaseError, etc.) and we want
-        # the precise exception type + message in the report.
-        # scrub_secrets guards against psycopg OperationalError embedding the
-        # full DSN (including password) in its message on connection failure.
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0323
+        # source: ADR-0323
+
         return McpCheck(
             name="postgresql reachable",
             ok=False,
@@ -503,9 +441,7 @@ def _check_pg_reachable() -> McpCheck:
 def _check_pg_extensions() -> McpCheck:
     """Enumerate installed extensions; report whether vector + pg_trgm exist.
 
-    Cortex requires both. Source: mcp_server/infrastructure/pg_schema.py
-    (CREATE EXTENSION IF NOT EXISTS vector / pg_trgm).
-    """
+    source: ADR-0323"""
     url = os.environ.get("DATABASE_URL", "")
     if not url:
         return McpCheck(
@@ -514,7 +450,7 @@ def _check_pg_extensions() -> McpCheck:
             detail="DATABASE_URL not set",
         )
     try:
-        import psycopg  # noqa: PLC0415 — optional-feature probe: ImportError here is a handled degraded mode
+        import psycopg  # noqa: PLC0415 — source: ADR-0323
     except ImportError as exc:
         return McpCheck(
             name="postgresql extensions",
@@ -526,9 +462,9 @@ def _check_pg_extensions() -> McpCheck:
     try:
         with psycopg.connect(url, connect_timeout=5) as conn:
             rows = conn.execute(attempted).fetchall()
-    except Exception as exc:  # noqa: BLE001 — diagnostic probe — any failure becomes the check's failure report
-        # scrub_secrets guards against psycopg OperationalError embedding the
-        # full DSN (including password) in its message on connection failure.
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0323
+        # source: ADR-0323
+
         return McpCheck(
             name="postgresql extensions",
             ok=False,
@@ -556,10 +492,9 @@ def _check_pg_extensions() -> McpCheck:
     )
 
 
-# Critical imports the MCP server pulls in at startup. sentence_transformers
-# is heavy (downloads ML weights) but session_start hook needs it; we check
-# it as warn rather than fail because a non-session-start MCP startup will
-# still work without it.
+# source: ADR-0323
+
+
 _HARD_DEPS = ("mcp", "pydantic", "psycopg", "pgvector")
 _SOFT_DEPS = ("sentence_transformers",)
 
@@ -567,9 +502,7 @@ _SOFT_DEPS = ("sentence_transformers",)
 def _check_critical_imports() -> McpCheck:
     """Verify the Python deps the MCP server hard-imports at startup.
 
-    Source: scripts/launcher.py:_ensure_deps for the hard list,
-    _ensure_all_deps for sentence_transformers (session_start path).
-    """
+    source: ADR-0323"""
     missing = []
     errs = []
     for mod in _HARD_DEPS:
@@ -599,11 +532,7 @@ def _check_critical_imports() -> McpCheck:
 def _check_optional_imports() -> McpCheck:
     """Verify ML deps used by the SessionStart hook.
 
-    Reported as warn (not fail) because the MCP server itself starts
-    fine without sentence_transformers — only the SessionStart hook
-    needs it. Users hitting "MCP server failed" usually have a hard-dep
-    failure; sentence_transformers is informational.
-    """
+    source: ADR-0323"""
     missing = []
     errs = []
     for mod in _SOFT_DEPS:
@@ -637,10 +566,7 @@ def _check_optional_imports() -> McpCheck:
 def _skipped_stdio_handshake() -> dict:
     """Return the structured "I don't know" record for the MCP handshake.
 
-    Feynman discipline: a flaky check is worse than no check. We declare
-    this skipped explicitly so the consumer of --json knows it's a
-    deliberate omission, not a bug.
-    """
+    source: ADR-0323"""
     return {
         "name": "MCP stdio handshake (initialize → response)",
         "skipped": True,
@@ -679,9 +605,9 @@ def collect_mcp_report() -> McpReport:
 
 # --- output formatting -------------------------------------------------
 
-# ANSI codes — only emitted when stdout is a TTY (prevents garbage in
-# pipes, files, and Discord pastes; users running interactively still
-# see the colour cues).
+# source: ADR-0323
+
+
 _ANSI_RESET = "\033[0m"
 _ANSI_GREEN = "\033[32m"
 _ANSI_RED = "\033[31m"

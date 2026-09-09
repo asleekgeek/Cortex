@@ -45,8 +45,7 @@ def _response_bytes(result: dict[str, Any] | None) -> int:
     if result is None:
         return 0
     try:
-        # source: MCP SDK utilities/func_metadata.py::_convert_to_content;
-        # safe_handler normalizes JSON-native values before SDK serialization.
+        # source: ADR-0326
         return len(to_json(to_json_native(result), fallback=str, indent=2))
     except (TypeError, ValueError):
         logger.warning("Cannot serialize telemetry output", exc_info=True)
@@ -96,7 +95,7 @@ def instrument(
             finally:
                 telemetry.record(
                     op,
-                    # source: SI prefix milli; perf_counter returns seconds.
+                    # source: ADR-0326
                     latency_ms=(time.perf_counter() - t0) * 1000.0,
                     bytes_in=_safe_json_len(args),
                     bytes_out=_response_bytes(result),

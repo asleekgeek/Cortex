@@ -1,13 +1,6 @@
 """Bootstrap seed data for the wiki axis registry — pure data, no logic.
 
-Extracted from ``wiki_axis_registry.py`` (issue #134, file exceeded the
-500-line hard limit in coding-standards.md §4). Holds the default
-``AxisValue`` entries for every axis (kind, lifecycle, audience,
-provenance) that seed the registry before any user ``wiki/_schema/``
-overrides are applied. See ``wiki_axis_registry.py`` for the
-``AxisValue``/``AxisRegistry`` data model and registry-construction
-mechanics that consume this data.
-"""
+source: ADR-0291"""
 
 from __future__ import annotations
 
@@ -39,19 +32,14 @@ DEFAULT_KINDS: tuple[AxisValue, ...] = (
         axis=AXIS_KIND,
         display_name="ADR (Architecture Decision Record)",
         patterns=(
-            # Inline decision markers (Nygard prose).
+            # source: ADR-0291
             _re(r"\b(decided to|decision:|the decision is|chose .+ because)\b"),
             _re(r"\b(rejected .+ (due to|because)|we will use|selected .+ over)\b"),
-            # Nygard heading skeleton — the canonical ADR section structure.
-            # Pilot 2026-05-13 found that 3 of 8 sampled ADRs had ``## Decision``
-            # heading without a colon, so the prose-only patterns missed them.
+            # source: ADR-0291
             _re_ml(r"^##+\s*Decision\s*$"),
             _re_ml(r"^##+\s*Consequences\s*$"),
         ),
-        # ``architecture`` removed (pilot 2026-05-13): it is too broad to be an
-        # ADR-only tag — 8 of 8 sampled rfc/ pages were misrouted to adr/
-        # because they carried the ``architecture`` tag. Architecture-tagged
-        # content is more often spec/rfc/explanation than a single decision.
+        # source: ADR-0291
         tag_aliases=("decision", "adr"),
         description="Nygard/MADR-style record of a single architectural decision.",
     ),
@@ -82,10 +70,7 @@ DEFAULT_KINDS: tuple[AxisValue, ...] = (
         axis=AXIS_KIND,
         display_name="Reference",
         patterns=(),  # reference is usually identified by tags / producer, not content
-        # Producer audit (ADR-2244 Phase 6): ``codebase`` is the bare tag
-        # written by ``codebase_analyze``; without it here, file-doc pages
-        # got routed to ``explanation`` instead of ``reference``, producing
-        # the 8734-page misroute Phase 4.2 had to clean up.
+        # source: ADR-0291
         tag_aliases=("reference", "api", "spec", "code-reference", "codebase"),
         description="Authoritative lookup table — API docs, file docs, schema refs.",
     ),
@@ -95,7 +80,7 @@ DEFAULT_KINDS: tuple[AxisValue, ...] = (
         display_name="Explanation",
         patterns=(
             _re(r"\b(what is|why does|the reason|conceptually|under the hood)\b"),
-            # Lesson-shaped content collapses into explanation per ADR-2244 §4.1.
+            # source: ADR-0291
             _re(r"\b(the bug was|root cause|lesson learned|fix:|fixed by)\b"),
             # Convention-shaped content also collapses into explanation.
             _re(r"\b(always use|never |the canonical|convention:|rule:|standard:)\b"),
@@ -259,11 +244,7 @@ DEFAULT_AUDIENCES: tuple[AxisValue, ...] = (
         name="security",
         axis=AXIS_AUDIENCE,
         display_name="Security",
-        # Pilot 2026-05-13 found bare ``crypto`` (Node built-in module) false-
-        # positiving as a security signal. The patterns now require the full
-        # suffix (``cryptograph(y|ic)``) or the longer security-domain words.
-        # Same for ``auth`` — must be ``authentication``/``authorization`` to
-        # count, not the abbreviation.
+        # source: ADR-0291
         patterns=(
             _re(
                 r"\b(authentication|authorization|cryptograph(y|ic)|"

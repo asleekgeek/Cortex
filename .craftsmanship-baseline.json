@@ -2679,11 +2679,6 @@
     },
     {
       "file": "mcp_server/core/value_learning.py",
-      "kind": "method-size",
-      "detail": "assign_credit"
-    },
-    {
-      "file": "mcp_server/core/value_learning.py",
       "kind": "unsourced-constant",
       "detail": "TRACE_LAMBDA"
     },
@@ -2718,16 +2713,6 @@
       "detail": "_parse_axis_value_file"
     },
     {
-      "file": "mcp_server/core/wiki_axis_registry.py",
-      "kind": "method-size",
-      "detail": "match_axis"
-    },
-    {
-      "file": "mcp_server/core/wiki_classifier.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
       "file": "mcp_server/core/wiki_classifier.py",
       "kind": "layer-violation",
       "detail": "mcp_server.observability"
@@ -2758,11 +2743,6 @@
       "detail": "_ATOMIC_SCOPE_MIN_CHARS"
     },
     {
-      "file": "mcp_server/core/wiki_classifier_patterns.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
       "file": "mcp_server/core/wiki_coverage.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
@@ -2779,16 +2759,6 @@
     },
     {
       "file": "mcp_server/core/wiki_coverage.py",
-      "kind": "method-size",
-      "detail": "audit_domain"
-    },
-    {
-      "file": "mcp_server/core/wiki_coverage.py",
-      "kind": "method-size",
-      "detail": "audit_files"
-    },
-    {
-      "file": "mcp_server/core/wiki_coverage.py",
       "kind": "unsourced-constant",
       "detail": "_DEFAULT_MAX_AGE_DAYS"
     },
@@ -2796,11 +2766,6 @@
       "file": "mcp_server/core/wiki_coverage.py",
       "kind": "unsourced-constant",
       "detail": "_MIN_PAGE_BYTES"
-    },
-    {
-      "file": "mcp_server/core/wiki_coverage_dashboard.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "mcp_server/core/wiki_coverage_dashboard.py",
@@ -2844,11 +2809,6 @@
     },
     {
       "file": "mcp_server/core/wiki_drift.py",
-      "kind": "method-size",
-      "detail": "audit_wiki_drift"
-    },
-    {
-      "file": "mcp_server/core/wiki_drift.py",
       "kind": "unsourced-constant",
       "detail": "_DEFAULT_REAUTHOR_AGE_DAYS"
     },
@@ -2871,11 +2831,6 @@
       "file": "mcp_server/core/wiki_groomer.py",
       "kind": "method-size",
       "detail": "audit_page"
-    },
-    {
-      "file": "mcp_server/core/wiki_redirect.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "mcp_server/core/wiki_redirect.py",
@@ -2918,11 +2873,6 @@
       "detail": "DEFAULT_SHALLOW_THRESHOLD"
     },
     {
-      "file": "mcp_server/core/wiki_stub_detector.py",
-      "kind": "unsourced-constant",
-      "detail": "DEFAULT_STUB_THRESHOLD"
-    },
-    {
       "file": "mcp_server/core/wiki_symbol_verify.py",
       "kind": "method-size",
       "detail": "evaluate_symbol_staleness"
@@ -2936,11 +2886,6 @@
       "file": "mcp_server/core/wiki_symbol_verify.py",
       "kind": "unsourced-constant",
       "detail": "STALE_THRESHOLD"
-    },
-    {
-      "file": "mcp_server/core/wiki_sync.py",
-      "kind": "method-size",
-      "detail": "build_from_memory"
     },
     {
       "file": "mcp_server/core/wiki_sync.py",
@@ -2961,11 +2906,6 @@
       "file": "mcp_server/core/wiki_thermodynamics.py",
       "kind": "unsourced-constant",
       "detail": "ACTIVE_TO_AREA_IDLE_DAYS"
-    },
-    {
-      "file": "mcp_server/core/wiki_thermodynamics.py",
-      "kind": "unsourced-constant",
-      "detail": "ARCHIVED_REVIVAL_HEAT"
     },
     {
       "file": "mcp_server/core/wiki_thermodynamics.py",
@@ -3023,16 +2963,6 @@
       "detail": "mcp_server.observability"
     },
     {
-      "file": "mcp_server/core/write_gate.py",
-      "kind": "method-size",
-      "detail": "determine_bypass"
-    },
-    {
-      "file": "mcp_server/core/write_gate_calibration.py",
-      "kind": "method-size",
-      "detail": "observe_gate_decision"
-    },
-    {
       "file": "mcp_server/core/write_gate_calibration.py",
       "kind": "unsourced-constant",
       "detail": "ADJUSTMENT_STEP"
@@ -3046,11 +2976,6 @@
       "file": "mcp_server/core/write_gate_calibration.py",
       "kind": "unsourced-constant",
       "detail": "MAX_THRESHOLD"
-    },
-    {
-      "file": "mcp_server/core/write_gate_calibration.py",
-      "kind": "unsourced-constant",
-      "detail": "MIN_SAMPLES_BEFORE_ADJUST"
     },
     {
       "file": "mcp_server/core/write_gate_calibration.py",
@@ -3141,11 +3066,6 @@
       "file": "mcp_server/errors/__init__.py",
       "kind": "layer-violation",
       "detail": "__future__"
-    },
-    {
-      "file": "mcp_server/handlers/anchor.py",
-      "kind": "method-size",
-      "detail": "handler"
     },
     {
       "file": "mcp_server/handlers/assess_coverage.py",
@@ -3273,11 +3193,6 @@
       "detail": "mcp_server.observability"
     },
     {
-      "file": "mcp_server/handlers/codebase_analyze_helpers.py",
-      "kind": "unsourced-constant",
-      "detail": "CANDIDATE_MULTIPLIER"
-    },
-    {
       "file": "mcp_server/handlers/consolidate.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
@@ -3338,11 +3253,6 @@
       "detail": "run_cascade_advancement"
     },
     {
-      "file": "mcp_server/handlers/consolidation/cascade.py",
-      "kind": "unsourced-constant",
-      "detail": "_TRANSITION_PREVIEW_CAP"
-    },
-    {
       "file": "mcp_server/handlers/consolidation/cls.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
@@ -3365,11 +3275,6 @@
     {
       "file": "mcp_server/handlers/consolidation/cls.py",
       "kind": "method-size",
-      "detail": "_discover_causal_edges"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/cls.py",
-      "kind": "method-size",
       "detail": "run_cls_cycle"
     },
     {
@@ -3380,22 +3285,12 @@
     {
       "file": "mcp_server/handlers/consolidation/cls.py",
       "kind": "unsourced-constant",
-      "detail": "_EPISODIC_SAMPLE_CAP"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/cls.py",
-      "kind": "unsourced-constant",
       "detail": "_MIN_ENTITIES_FOR_PC"
     },
     {
       "file": "mcp_server/handlers/consolidation/cls.py",
       "kind": "unsourced-constant",
       "detail": "_MIN_PATTERN_SIZE"
-    },
-    {
-      "file": "mcp_server/handlers/consolidation/cls.py",
-      "kind": "unsourced-constant",
-      "detail": "_PC_MIN_OBSERVATIONS"
     },
     {
       "file": "mcp_server/handlers/consolidation/cls.py",

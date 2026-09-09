@@ -1,7 +1,6 @@
 """Core post-storage operations — entity persistence, synaptic tagging, engrams.
 
-Extracted from the remember handler to keep each function under 40 lines.
-"""
+source: ADR-0321"""
 
 from __future__ import annotations
 
@@ -13,12 +12,9 @@ from mcp_server.core.synaptic_tagging import apply_synaptic_tags as _apply_tags
 from mcp_server.observability import silent_failure
 
 
-# Memory sources whose content is machine-generated tool output, not user
-# intent. Harvesting "TODO"/"later"/"make sure" phrases from raw tool dumps
-# minted 317 garbage keyword triggers (100% of sampled conditions were shell
-# fragments / regex shards, production DB audit 2026-06-10) which then flooded
-# recall via inject_triggered_memories. See
-# docs/provenance/bounded-io-phase2-design.md M1.
+# source: ADR-0321
+
+
 _AUTO_CAPTURE_SOURCES = frozenset({"post_tool_capture"})
 
 
@@ -79,7 +75,7 @@ def persist_entities(
     return entity_ids
 
 
-# source: structural — a co-occurrence pair needs at least two entities.
+# source: ADR-0321
 _MIN_CO_OCCURRENCE_ENTITIES = 2
 
 
@@ -108,9 +104,9 @@ def _create_co_occurrences(
             )
 
 
-# Only memories at or above this importance trigger retroactive tagging.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0321
+
+# source: ADR-0321
 _MIN_TAGGING_IMPORTANCE = 0.7
 
 
@@ -120,7 +116,10 @@ def run_synaptic_tagging(
     new_entity_names: list[str],
     store: Any,
 ) -> list[dict]:
-    """Retroactively boost weak memories sharing entities (Frey & Morris 1997)."""
+    """Retroactively boost weak memories sharing entities.
+
+    source: ADR-0321
+    """
     tagged: list[dict] = []
     try:
         if importance < _MIN_TAGGING_IMPORTANCE or not new_entity_names:
@@ -142,7 +141,7 @@ def run_synaptic_tagging(
             store.update_memory_importance(tag["memory_id"], tag["new_importance"])
             store.update_memory_heat(tag["memory_id"], tag["new_heat"])
             tagged.append(tag)
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_post_store.synaptic_tagging")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0321
         silent_failure.note("write_post_store.synaptic_tagging", exc)
     return tagged
 
@@ -159,11 +158,8 @@ def _build_tagging_candidates(
         if mem["id"] == exclude_id:
             continue
         mem_ents = _find_shared_entities(mem["id"], entity_names, store)
-        # Synaptic-tagging window is cadence-relative to ingest time, not
-        # original-event time. For backfilled memories with a backdated
-        # created_at this prevents the tagging window from collapsing
-        # immediately on first consolidation pass.
-        # Source: docs/benchmarks/e1-v3-locomo-smoke-finding.md.
+        # source: ADR-0321
+
         hours_ago = _hours_since_creation(
             mem.get("ingested_at") or mem.get("created_at", "")
         )
@@ -186,22 +182,12 @@ def _find_shared_entities(
 ) -> set[str]:
     """Find which entities a memory mentions.
 
-    Phase 2 B2: replaces the pre-Phase-2 O(N_candidates × 50) substring
-    scan (via get_memories_mentioning_entity) with a single JOIN query
-    on memory_entities. Requires the Phase 0.4.5 backfill (I4 coverage
-    ≥ 99%); pre-backfill the JOIN would miss pairs. Falls back to the
-    empty set on any error (caller handles "no shared entities").
-
-    Source: docs/program/phase-5-pool-admission-design.md (Phase 2 B2);
-            docs/invariants/cortex-invariants.md §I4.
-    """
+    source: ADR-0321"""
     if not mem_id:
         return set()
 
-    # Resolve both the caller-supplied names and the full entity set
-    # to IDs once. We need the full entity set because the caller
-    # is asking "which entities does this memory mention from the
-    # entire catalog", not just "from entity_names".
+    # source: ADR-0321
+
     id_to_name: dict[int, str] = {}
     try:
         for ename in entity_names or []:
@@ -211,7 +197,7 @@ def _find_shared_entities(
         for ent in store.get_all_entities(min_heat=0.0) or []:
             if ent.get("id") is not None and ent.get("name"):
                 id_to_name[int(ent["id"])] = ent["name"]
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_post_store.entity_id_resolution")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0321
         silent_failure.note("write_post_store.entity_id_resolution", exc)
         return set()
 
@@ -221,14 +207,14 @@ def _find_shared_entities(
     try:
         shared_ids = store.find_shared_entities(mem_id, list(id_to_name.keys()))
     except AttributeError:
-        # SQLite stores without the JOIN method fall back to legacy scan.
-        # Expected/legitimate branch (not a failure) — no instrumentation.
+        # source: ADR-0321
+
         shared_ids = []
         for eid, ename in id_to_name.items():
             mentioning = store.get_memories_mentioning_entity(ename, limit=50)
             if any(m["id"] == mem_id for m in mentioning):
                 shared_ids.append(eid)
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_post_store.shared_entities_lookup")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0321
         silent_failure.note("write_post_store.shared_entities_lookup", exc)
         return set()
 
@@ -248,14 +234,9 @@ def _hours_since_creation(iso_str: str) -> float:
         return 0.0
 
 
-# Module-level slot cache for engram allocation.  Avoids re-fetching all
-# 5 000 engram_slots rows on every remember() call — a pure performance
-# optimisation with no change in behaviour.  The cache is invalidated
-# whenever the store instance changes and kept in sync by applying the
-# same excitability update to both the DB and the cached list.
-#
-# Precedent: sensory_buffer._global_buffer, reranker._flashrank_instance,
-# pg_recall._titans all use the same module-level cache pattern.
+# source: ADR-0321
+
+
 _slot_cache: list[dict] | None = None
 _slot_cache_store_id: int | None = None
 _slots_initialised: bool = False
@@ -329,6 +310,6 @@ def allocate_engram_slot(
             "slot_index": best_slot,
             "temporally_linked": linked_count,
         }
-    except Exception as exc:  # noqa: BLE001 — mechanism boundary — failure is observable via silent_failure ("write_post_store.engram_allocation")
+    except Exception as exc:  # noqa: BLE001 — source: ADR-0321
         silent_failure.note("write_post_store.engram_allocation", exc)
         return None

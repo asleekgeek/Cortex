@@ -1,19 +1,5 @@
 """Concurrent cycle orchestration for the headless authoring worker.
 
-The original cycle called drain functions SEQUENTIALLY on the event
-loop, spawning up to ~38 ``claude -p`` subprocesses one-at-a-time.
-The new design:
-  1. Builds the full candidate list (no claude calls yet).
-  2. Scatters all candidates concurrently via asyncio.gather, bounded
-     by CORTEX_HEADLESS_CONCURRENCY (asyncio.Semaphore).
-  3. Each coroutine checks CycleBudget before calling invoke;
-     exhausted candidates return status="skipped" immediately.
-  4. cost_usd from InvokeResult charges the budget after each call.
-
-Split out of ``headless_authoring`` (Fowler: Move Function); the public
-import surface remains ``headless_authoring``, which re-exports
-``run_headless_authoring_cycle``.
-
 Patchability contract: the throttle tests do
 ``monkeypatch.setattr(ha, "CORTEX_HEADLESS_CONCURRENCY", 2)`` (and
 similarly for ``_collect_anchor_candidates`` / ``_scan_pages_with_gaps``)
@@ -21,14 +7,7 @@ then call ``run_headless_authoring_cycle`` — every name below MUST
 resolve off the live ``headless_authoring`` module at CALL time for
 those patches to be observed.
 
-Import-cycle note (issue #237): a module-top ``from . import
-headless_authoring as _root`` would deadlock a fresh interpreter (it
-imports ``run_headless_authoring_cycle`` back at load time). ``_root``
-is bound once, in ``run_headless_authoring_cycle``, and passed
-explicitly to every helper below (Extract Function, issue #276 — the
-two coroutines that used to close over it as a local now take it as a
-parameter) — every ``_root.X`` access still resolves at call time.
-"""
+source: ADR-0353"""
 
 from __future__ import annotations
 
@@ -273,16 +252,15 @@ async def run_headless_authoring_cycle(
     invoke: Callable[..., Awaitable[Any]] | None = None,
 ) -> Any:
     """One autonomous cycle: author missing anchor pages, then drain
-    file-doc gaps, concurrently under a shared semaphore + per-cycle
-    budget. Anchor pages first (more visibly incomplete than one
-    missing file-doc section). Invariant: <=CORTEX_HEADLESS_CONCURRENCY
-    in-flight calls.
-    """
-    # Deferred import (issue #237): see module docstring's import-cycle note.
+        file-doc gaps, concurrently under a shared semaphore + per-cycle
+        budget.
+
+    source: ADR-0353"""
+    # source: ADR-0353
     from . import headless_authoring as _root  # noqa: PLC0415 — import cycle (partner: headless_authoring, #237)
 
     # Stays inline: _root's concrete type here is what lets pyright narrow
-    # away `| None` (an extracted helper taking `_root: Any` cannot).
+    # source: ADR-0353
     if max_drains is None:
         max_drains = _root.CORTEX_HEADLESS_MAX_FILE_DRAINS
     if max_anchor_drains is None:

@@ -1,22 +1,6 @@
 """Anchor-page authoring for the headless authoring worker.
 
-A project missing its architecture / services / api / ci-cd / mcp /
-ai-usage / prd / decisions anchor page has no gap marker to drain — the
-page simply doesn't exist. This module detects missing anchors via the
-coverage audit, feeds Claude a project-level overview (file tree,
-README, key config files, source file counts), and asks it to author
-the anchor from scratch. Split out of ``drain_operations`` (Fowler:
-Move Function, issue #276) to keep that module under the size limit;
-the public import surface stays ``headless_authoring``, which
-re-exports ``drain_missing_anchors``.
-
-Import-cycle note (issue #237 family): a module-top ``from . import
-headless_authoring as _root`` would deadlock a fresh interpreter
-importing this module before ``headless_authoring`` finishes (it
-imports ``drain_missing_anchors`` back at load time). ``_root`` is
-resolved lazily at call time instead — every
-``monkeypatch.setattr(headless_authoring, ...)`` stays observed.
-"""
+source: ADR-0343"""
 
 from __future__ import annotations
 
@@ -111,9 +95,7 @@ async def _drain_domain_anchors(
     for sc in cov.scopes:
         if sc.covered:
             continue
-        # Groundable-only filter: content that can't be derived from the
-        # source tree alone (prd, decisions, changelog, roadmap, ...) is
-        # skipped entirely rather than fabricated (zetetic-forbidden).
+        # source: ADR-0343
         if not sc.scope.groundable:
             continue
         if _filled_count(results) >= max_drains:
@@ -145,7 +127,7 @@ async def drain_missing_anchors(
     ``_claude_invoke``'s signature.
     Post: up to ``max_drains`` new anchor pages written to disk.
     """
-    # Deferred import (issue #237): see module docstring's import-cycle note.
+    # source: ADR-0343
     from . import headless_authoring as _root  # noqa: PLC0415 — import cycle (partner: headless_authoring, #237)
 
     if invoke is None:

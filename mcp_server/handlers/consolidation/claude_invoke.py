@@ -1,17 +1,6 @@
 """``claude -p`` subprocess invocation for the headless authoring worker.
 
-Split out of ``headless_authoring`` (Fowler: Move Function, issue #276)
-to keep that module under the size limit. The public import surface
-stays ``headless_authoring``, which re-exports ``_claude_invoke``.
-
-Import-cycle note (issue #237 family): ``headless_authoring`` defines
-``InvokeResult``/``CLAUDE_CALL_TIMEOUT_SEC`` and imports
-``_claude_invoke`` back at its own module top, so a module-top ``from .
-import headless_authoring as _root`` here would deadlock a fresh
-interpreter importing ``claude_invoke`` first. ``_root`` is resolved
-lazily inside ``_claude_invoke`` instead, exactly like the other four
-siblings in this package.
-"""
+source: ADR-0350"""
 
 from __future__ import annotations
 
@@ -82,10 +71,7 @@ def _parse_invoke_response(
 ) -> Any:
     """Decode the subprocess output and parse ``--output-format json``.
 
-    Documented fields (source: code.claude.com/docs/en/headless):
-    ``result`` (str, assistant text), ``total_cost_usd`` (float, client-side
-    cost estimate). ``usage``/``is_error`` are NOT guaranteed — returncode only.
-    """
+    source: ADR-0350"""
     stdout = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
     stderr = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
 
@@ -104,10 +90,7 @@ def _parse_invoke_response(
         text: str | None = data.get("result") or None
         cost_usd = float(data.get("total_cost_usd") or 0.0)
     except (json.JSONDecodeError, ValueError):
-        # Defensive: returncode==0 but JSON parse failed. Can happen if
-        # --output-format json isn't supported by an older claude CLI build.
-        # Treat raw stdout as the text to degrade gracefully rather than
-        # losing a successful response.
+        # source: ADR-0350
         logger.debug(
             "headless-authoring: JSON parse failed (returncode=0); "
             "treating raw stdout as text (cost unknown)"
@@ -127,14 +110,8 @@ async def _claude_invoke(
 ) -> Any:
     """Run ``claude -p`` asynchronously and return an InvokeResult.
 
-    Non-blocking on the event loop; on timeout the subprocess is killed
-    and an empty InvokeResult is returned. The argv/child environment —
-    including the audit-B-1 security argument and auth mode — are built
-    by ``claude_cli``. The prompt is fed via STDIN, not a positional argv
-    element: the variadic ``--add-dir`` would otherwise swallow a
-    trailing prompt (see ``claude_cli._build_argv``).
-    """
-    # Deferred import (issue #237 family): see module docstring's note.
+    source: ADR-0350"""
+    # source: ADR-0350
     from . import headless_authoring as _root  # noqa: PLC0415 — import cycle (partner: headless_authoring, #237)
 
     argv = _build_argv(source_root)

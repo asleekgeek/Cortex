@@ -1,19 +1,6 @@
 """Generate file-doc skeletons that EXPOSE their curation gaps.
 
-User direction 2026-05-18: a file-doc page is not "remove it because
-it's thin" — it's "show what's missing so the curation queue is
-visible at the document." This module produces skeletons that
-declare every canonical section as a heading + an explicit
-``_(missing — needs: <description>)_`` marker the LLM (or human author)
-sees and fills in.
-
-The skeletons are NOT stubs in the placeholder sense — the stub
-detector targets ``_(to be filled)_`` / ``_To be written._``. These
-skeletons use ``_(missing — needs:`` so they're distinguishable; the
-purge defaults will leave them alone.
-
-Pure logic — produces a string. Callers write to disk.
-"""
+source: ADR-0302"""
 
 from __future__ import annotations
 
@@ -24,10 +11,9 @@ from typing import Iterable
 from mcp_server.core.wiki_curation_gaps import FILE_DOC_SECTIONS
 
 
-# Tags safe to add — these do NOT trigger the classifier's audit-tag
-# rejection. ``codebase-skeleton`` is a distinct provenance marker
-# from the legacy ``codebase`` tag so the new skeletons are
-# admitted while old auto-gen pages remain rejected.
+# source: ADR-0302
+
+
 _DEFAULT_TAGS: tuple[str, ...] = (
     "file-doc",
     "codebase-skeleton",
@@ -153,11 +139,7 @@ def _frontmatter(
 def _missing_marker(description: str) -> str:
     """Marker the LLM and human reader both recognise as 'fill me in'.
 
-    Deliberately distinct from the stub markers (`_(to be filled)_` /
-    `_To be written._`) so the stub detector / purge doesn't sweep
-    these skeletons. The wiki view renders pages with these markers
-    with a "curation needed" banner — see ``wiki_curation_gaps``.
-    """
+    source: ADR-0302"""
     return f"_(missing — needs: {description})_"
 
 
@@ -184,9 +166,8 @@ def build_file_doc(
     # Sections we can pre-populate skip the "missing" marker.
     auto_populated: dict[str, str] = {}
 
-    # Dependencies — we can list the raw imports; the curation gap
-    # is the "why each import is here" annotation, so we leave the
-    # heading as "needs curation" if there are imports we can't annotate.
+    # source: ADR-0302
+
     if imports:
         deps = "\n".join(f"* `{i}`" for i in imports)
         auto_populated["dependencies"] = (
