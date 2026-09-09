@@ -69,7 +69,9 @@ and the decision to preserve behavior, without claiming a new calibration.
   0.005 regression tolerance for all four overall metrics. Each commit completed
   500 LongMemEval questions and 1,982 LoCoMo questions across ten conversations.
   The benchmarked candidate `0b70df18` and final PR head `47009d39` have the
-  identical tree `a33c97eb3718e50fb204971a1b8fddf659eab8fe`.
+  identical tree `a33c97eb3718e50fb204971a1b8fddf659eab8fe`. The measured
+  candidate is a local-only snapshot; reproduce with the publicly fetchable
+  final PR head `47009d39` instead.
 
 | Dataset | Metric | Baseline | Candidate | Candidate − baseline |
 |---|---|---:|---:|---:|

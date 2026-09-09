@@ -315,7 +315,7 @@
       }
     },
     "reproduction": [
-      "Use separate checkouts of the baseline and candidate commits, the identical locked benchmark dependencies, the dataset hashes above, and the recorded model revisions.",
+      "Use separate checkouts of the public baseline commit and public final_pr_head commit (47009d39c297b7e60ed529eec54a3541ede31e30), the identical locked benchmark dependencies, the dataset hashes above, and the recorded model revisions. The measured candidate commit is a local-only snapshot; final_pr_head is its publicly fetchable, byte-identical tree equivalent.",
       "Run bash benchmarks/reproduce.sh --only longmemeval,locomo --no-ablation separately in each checkout, with a separate clean PostgreSQL container per run. Do not set --quick, --limit, or --with-consolidation.",
       "On the candidate, run uv run --extra benchmarks python -m benchmarks.decision_ids.run_bench --output decision-ids.json.",
       "Compare the two complete result directories using check_regression in benchmarks/lib/bench_regression.sh and its existing 0.005 tolerance; verify question and conversation counts before accepting the result."
