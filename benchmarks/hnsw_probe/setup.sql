@@ -1,6 +1,6 @@
--- Setup bench table matching Cortex memories schema for HNSW probe.
--- Source: pg_schema.py lines 20-65 (MEMORIES_DDL) and lines 476-477 (HNSW index).
--- HNSW index: USING hnsw (embedding vector_cosine_ops) WITH (m=16, ef_construction=64)
+-- source: ADR-0835
+
+
 
 \timing on
 
@@ -12,7 +12,7 @@ CREATE TABLE _bench_memories_hnsw (
     embedding       vector(384)
 );
 
--- Disable autovacuum on this table to avoid contaminating measurements.
+-- source: ADR-0835
 ALTER TABLE _bench_memories_hnsw SET (autovacuum_enabled = false);
 
 -- Helper: generate an L2-normalized random 384-dim vector as text "[v1,v2,...]".

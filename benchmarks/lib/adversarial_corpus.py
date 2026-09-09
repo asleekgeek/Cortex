@@ -1,15 +1,8 @@
-"""Adversarial retrieval-poisoning corpus (issue #368).
+"""Adversarial retrieval-poisoning corpus.
 
 Pure data + construction helpers, zero I/O. Imported by both the test suite
 (`tests_py/`) and the trust-weight ablation, so the passages that prove the
 attack and the passages that measure the defence are the same passages.
-
-Source: arXiv 2604.16548, *retrieve-phase* threat class — "RAG poisoning
-(malicious entries ranked highest by embedding similarity)" and "memory
-entries overriding explicit user instructions". The survey's operative claim
-for this module is that "Retrieval-time filtering alone is insufficient": a
-fixture that only checked a post-ranking filter would not test the property
-under defence.
 
 Design constraint that shapes every passage here: an adversarial passage must
 be **more** retrievable than its legitimate counterpart, never less. A corpus
@@ -22,16 +15,14 @@ than trusting the literals to stay ordered as the file is edited.
 The payloads are inert by construction — they are strings stored in a test
 database and scored by a ranking function. Nothing here is executed, fetched,
 or interpreted; the hostile property under test is *rank*, not effect.
-"""
+
+source: ADR-0064"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-# ── Capture origins (mirrors mcp_server/core/capture_origin.py) ────────────
-# Duplicated as literals rather than imported: benchmarks must not depend on
-# the server package's import graph, and a divergence here should surface as
-# a failing test in tests_py/, not as a silent skew between corpus and code.
+# source: ADR-0064
 ORIGIN_NETWORK = "network"
 ORIGIN_DELIBERATE = "deliberate"
 
@@ -40,10 +31,7 @@ ORIGIN_DELIBERATE = "deliberate"
 class AdversarialPair:
     """One attack scenario: a hostile passage against a legitimate one.
 
-    `query` is what the user asks. `legitimate` is the memory that *should*
-    win. `adversarial` is the memory crafted to win instead, and it is given
-    the higher embedding similarity — the attack the defence must survive.
-    """
+    source: ADR-0064"""
 
     scenario: str
     query: str
@@ -158,15 +146,10 @@ ADVERSARIAL_PAIRS: tuple[AdversarialPair, ...] = (
 def assert_pair_is_adversarial(pair: AdversarialPair) -> None:
     """Fail loudly if a pair stopped being an attack.
 
-    Pre: `pair` is any AdversarialPair.
-    Post: returns None, or raises ValueError naming the scenario.
+        Pre: `pair` is any AdversarialPair.
+        Post: returns None, or raises ValueError naming the scenario.
 
-    Guards the corpus's one load-bearing property. If an edit ever left the
-    adversarial entry less retrievable than the legitimate one, every test
-    built on that pair would pass against a system with no defence — a green
-    suite asserting nothing. Checked here rather than in one test so the
-    ablation gets the same guarantee.
-    """
+    source: ADR-0064"""
     if pair.adversarial_similarity <= pair.legitimate_similarity:
         raise ValueError(
             f"{pair.scenario}: adversarial similarity "

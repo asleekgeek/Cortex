@@ -1,28 +1,8 @@
 """Blend-weight calibration sweep for the 6 post-WRRF rerank stages.
 
-Calibrates the engineering-default blend constants in
-``mcp_server/core/recall_pipeline.py`` against LongMemEval-S so paper
-§6.3 ships with cited optima rather than placeholders.
-
 Methodology
 -----------
 Two-phase coordinate-descent (Fisher §Move 2):
-
-* **Phase A** — central-composite design over the 4 perception-side knobs
-  (HOPFIELD × HDC × SA × DENDRITIC). 17 cells = 1 center + 16 corners.
-  Holds the affect-side knobs at their engineering default.
-* **Phase B** — full 5×5 grid over the 2 affect-side knobs
-  (EMOTIONAL_RETRIEVAL × MOOD_CONGRUENT) with the perception-side knobs
-  fixed at the Phase A optimum.
-
-A full 4-D 4-level grid would be 256 cells — infeasible at ~30 s/q × 100 q.
-The CCD cuts 4-knob exploration to 17 cells while still admitting all
-2-factor interaction effects within the design region. Source for CCD:
-Box & Wilson (1951), *On the Experimental Attainment of Optimum
-Conditions*, J. Royal Stat. Soc. B 13(1):1-45 — original central-composite
-construction. We use the 2-level fractional-factorial face-centered
-variant (no axial points beyond the corners) so all 17 cells remain on the
-[0.10, 0.40] grid the engineering defaults already span.
 
 Each cell runs in a fresh subprocess so the module-level reads in
 ``recall_pipeline.py`` pick up that cell's env vars cleanly. Cross-cell
@@ -54,13 +34,7 @@ Usage
     python -m benchmarks.lib.blend_weight_sweep \\
       --phase smoke --n-queries 5
 
-References
-----------
-- Box, G. E. P. & Wilson, K. B. (1951). Central-composite designs.
-- Cormack, Clarke & Buettcher (2009). RRF blend constant k=60.
-- ``docs/provenance/verification-protocol.md`` — Fisher discipline for sweeps.
-- ``docs/provenance/blend-weight-calibration.md`` — pre-registration of THIS sweep.
-"""
+source: ADR-0068"""
 
 from __future__ import annotations
 
@@ -92,10 +66,7 @@ DEFAULTS = {
     "MOOD_CONGRUENT_BETA": 0.15,
 }
 
-# Phase A central-composite design points.
-# Center + 16 face-centered corners on [low, high] for each of 4 knobs.
-# DENDRITIC uses a tighter range [0.05, 0.20] per the spec.
-# source: docs/provenance/blend-weight-calibration.md §Phase A grid.
+# source: ADR-0068
 PHASE_A_LOW = {
     "HOPFIELD_BETA": 0.10,
     "HDC_BETA": 0.10,
@@ -140,8 +111,7 @@ def build_phase_a_cells() -> list[Cell]:
     cells.append(Cell(idx=0, label="A_center", weights={**DEFAULTS, **PHASE_A_CENTER}))
     for i, combo in enumerate(itertools.product([0, 1], repeat=4), start=1):
         weights = dict(DEFAULTS)
-        # strict=True: keys is a fixed 4-tuple and combo is a
-        # repeat=4 itertools.product entry — always 4 elements each.
+        # source: ADR-0068
         for k, hl in zip(keys, combo, strict=True):
             weights[k] = PHASE_A_HIGH[k] if hl else PHASE_A_LOW[k]
         label = "A_" + "".join("H" if hl else "L" for hl in combo)
@@ -229,8 +199,7 @@ def run_cell(cell: Cell, n_queries: int, out_dir: Path) -> dict[str, Any]:
         **metrics,
     }
     if proc.returncode != 0:
-        # Persist the failure log alongside the cell record so a crashed
-        # cell is investigated rather than silently averaged in.
+        # source: ADR-0068
         (out_dir / f"cell_{cell.idx:03d}_stderr.log").write_text(proc.stderr)
     (out_dir / f"cell_{cell.idx:03d}.json").write_text(json.dumps(record, indent=2))
     return record
@@ -293,8 +262,7 @@ def write_summary_csv(records: list[dict[str, Any]], out_dir: Path) -> None:
             w.writerow(row)
 
 
-# source: structural — a marginal effect needs at least two distinct levels of
-# a knob to have a range at all
+# source: ADR-0068
 _MIN_LEVELS_FOR_EFFECT = 2
 
 
@@ -345,12 +313,7 @@ def write_manifest(
     code_hash = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=str(REPO_ROOT), text=True
     ).strip()
-    # Dirtiness measured against TRACKED source files only (matches the
-    # pre-registration definition in docs/provenance/blend-weight-calibration.md
-    # §Reproducibility manifest). Excluded by design:
-    # - Untracked files (benchmark result archives, agent caches, node_modules)
-    # - Submodule internal state (.claude/worktrees/agent-* — agent
-    #   infrastructure, not benchmark source) via --ignore-submodules=all.
+    # source: ADR-0068
     dirty = bool(
         subprocess.check_output(
             ["git", "diff", "--stat", "--ignore-submodules=all", "HEAD"],

@@ -1,0 +1,49 @@
+---
+title: "ADR-0824 — benchmarks/entity_dedup/run_benchmark.py rationale"
+status: accepted
+source: benchmarks/entity_dedup/run_benchmark.py
+---
+
+# ADR-0824 — benchmarks/entity_dedup/run_benchmark.py
+
+Migrated source rationale. The excerpts below are preserved verbatim from the source snapshot; historical identifiers inside quotations are not current identities.
+
+## module — original line 1 (docstring)
+
+````text
+Dup-collapse benchmark for the fuzzy entity deduplicator.
+````
+
+## module — original line 3 (docstring)
+
+````text
+Measures how many near-duplicate *concept* entities the 3-pass MinHash/LSH/
+Jaro-Winkler deduplicator (``mcp_server.core.entity_dedup``) collapses that the
+exact-name + case-canonical insert policy leaves behind.
+````
+
+## module — original line 7 (docstring)
+
+````text
+READ-ONLY: loads entities via ``get_all_entities`` and runs the pure planner.
+It never mutates the store — it reports the remap that a future merge pass would
+apply, so the before/after collapse can be reviewed before any FK rewiring.
+````
+
+## inline — original line 49 (directive-rationale)
+
+````text
+# noqa: PLC0415 — deferred: module hard-imports pgvector/psycopg/psycopg_pool at top level; hoisting would break installs without it
+````
+
+## module — original line 65 (comment)
+
+````text
+# Deterministic slice (sorted by name) so runs are reproducible.
+````
+
+## inline — original line 117 (directive-rationale)
+
+````text
+# noqa: BLE001 — benchmark CLI, surface and exit
+````

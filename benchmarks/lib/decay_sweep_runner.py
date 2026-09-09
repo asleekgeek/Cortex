@@ -58,10 +58,7 @@ _PFACTOR_RE = re.compile(r"p_factor\s+REAL\s+DEFAULT\s+[\d.]+")
 def _build_effective_heat_ddl(p_factor: float) -> str:
     """Re-emit canonical EFFECTIVE_HEAT_FN with overridden p_factor default.
 
-    We substitute the DEFAULT clause on the canonical DDL string from
-    pg_schema.py rather than duplicating the function body — this avoids
-    semantic drift if the production formula ever changes.
-    """
+    source: ADR-0073"""
 
     replaced = _PFACTOR_RE.sub(
         f"p_factor    REAL DEFAULT {p_factor!r}", EFFECTIVE_HEAT_FN, count=1
@@ -117,8 +114,7 @@ def run_beam(quick: bool) -> dict:
     return _parse_beam_output(buf.getvalue())
 
 
-# source: structural — a BEAM table row is
-# "<ability> <mrr> <r5> <r10> <n_questions>"
+# source: ADR-0073
 _BEAM_ROW_MIN_FIELDS = 5
 
 
@@ -202,17 +198,13 @@ def analyze_curve(points: list[tuple[float, float]]) -> dict:
     }
 
 
-# ── Provenance ───────────────────────────────────────────────────────────
+# source: ADR-0073
 
 
 def _collect_provenance() -> dict:
     """Record what produced this artefact: commit, DB, environment.
 
-    Added after the 2026-06-11 dirty-DB confound forensics: the
-    20260430T111134Z artefact carried no record of which database or
-    commit produced it, which cost a day of factor isolation.
-    Credentials are stripped from the DB URL before recording.
-    """
+    source: ADR-0073"""
 
     try:
         sha = subprocess.run(

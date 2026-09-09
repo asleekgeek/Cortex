@@ -27,17 +27,10 @@ from mcp_server.infrastructure.pg_store import PgMemoryStore
 
 
 def _apply_capture_origin_mix(memories: list[dict[str, Any]]) -> None:
-    """Stamp every memory lacking `capture_origin` with a value drawn from
-    the measured production mixture, in place.
+    """Stamp every memory lacking `capture_origin` with a value drawn from the
+    configured production mixture, in place.
 
-    Extracted as a free function (rather than inlined in `load_memories`) so
-    it is testable without a live PostgreSQL connection — see
-    `tests_py/benchmarks/test_bench_db_capture_origin.py`.
-
-    A memory that already sets `capture_origin` (e.g. the adversarial-corpus
-    montage, which needs specific per-pair values, not the aggregate mix) is
-    left untouched — `setdefault` only fills what's missing.
-    """
+    source: ADR-0066"""
     origins = assign_capture_origins(len(memories))
     for mem, origin in zip(memories, origins, strict=True):
         mem.setdefault("capture_origin", origin)
@@ -46,60 +39,35 @@ def _apply_capture_origin_mix(memories: list[dict[str, Any]]) -> None:
 class BenchmarkDB:
     """Thin passthrough to the production PG pipeline.
 
-    on_connection_open: optional callback(connection) invoked once after
-    the underlying psycopg connection is created. Used by the ablation
-    runner to apply deterministic per-session GUCs (playbook §8). Must
-    NOT be wired in production callers — this is benchmark-only.
+        on_connection_open: optional callback(connection) invoked once after
+        the underlying psycopg connection is created. Used by the ablation
+        runner to apply deterministic per-session GUCs (playbook §8). Must
+        NOT be wired in production callers — this is benchmark-only.
 
-    require_reranker: when True, ``open()`` fails fast (RuntimeError) if
-    the FlashRank cross-encoder is not loaded, instead of silently
-    scoring first-stage-only results as if they were production quality.
-    Fix for the 2026-07-10 incident (see mcp_server.core.reranker module
-    docstring): a bare-except swallow in the reranker singleton let 6
-    LongMemEval runs execute — and get reported — with reranking silently
-    disabled (MRR 0.9163 -> 0.8636, no signal anywhere in the run).
-    Production-parity harnesses (LongMemEval, LoCoMo, BEAM — the ones
-    reproduce.sh gates against published floors) must set this True.
-    Harnesses that intentionally test a mechanism in isolation (e.g.
-    gate_precision) leave it False.
+        Reviewed and left False (documented, not an oversight):
+          - benchmarks/gate_precision/run_benchmark.py — measures the write
+            gate's novelty score (evaluate_gate), never calls recall/rerank;
+            the reranker is not in this harness's dependency graph at all.
+          - benchmarks/locomo/run_benchmark_agents.py — self-declared "NOT an
+            official benchmark" (module docstring); compares scoped vs
+            unscoped retrieval against EACH OTHER, so the reranker's
+            load-state is a constant nuisance factor across both arms, not a
+            differential bias.
+          - benchmarks/lib/longitudinal_runner.py — diagnostic decay-pipeline
+            harness, not falsifiability-registered or reproduce.sh-gated;
+            borderline case, flagged for a future increment to reconsider.
+          - benchmarks/llm_head_to_head/pilot.py — Stage-1 dry-run stress test
+            (module docstring: "not load-bearing for the GO/NO-GO gate"); its
+            live-mode B condition calls the real
+            ``mcp_server.handlers.recall.handler`` (production entrypoint,
+            already reranker-aware), not a bare ``BenchmarkDB.recall`` — the
+            ``BenchmarkDB()`` instance at this call site is only used for
+            memory seeding, not scored retrieval.
+          - benchmarks/spell_alteration/run_benchmark.py — standalone
+            user-invoked script (requires a ``--pdf`` path arg), not part of
+            any automated gate; recall-quality claims are informal.
 
-    INC7.2 audit (2026-07-11) of every ``BenchmarkDB(...)`` call site under
-    ``benchmarks/`` — which ones claim production parity and therefore need
-    ``require_reranker=True``:
-
-    Enabled by this audit (each claims a falsifiable/production-fidelity
-    result that a silently-degraded first-stage-only pipeline would
-    corrupt — see the inline comment at each call site for the specific
-    claim):
-      - benchmarks/lib/e2_subsample_runner.py  (E2 claim-bearing retrieval)
-      - benchmarks/lib/e2_zipf_runner.py        (E2 claim-bearing retrieval)
-      - benchmarks/lib/latency_runner.py        (production wall-time claim)
-      - benchmarks/beam/ablation.py             (sweeps rerank_alpha itself)
-      - benchmarks/lib/_xb_drivers.py           (sweeps FlashRank top-K)
-
-    Reviewed and left False (documented, not an oversight):
-      - benchmarks/gate_precision/run_benchmark.py — measures the write
-        gate's novelty score (evaluate_gate), never calls recall/rerank;
-        the reranker is not in this harness's dependency graph at all.
-      - benchmarks/locomo/run_benchmark_agents.py — self-declared "NOT an
-        official benchmark" (module docstring); compares scoped vs
-        unscoped retrieval against EACH OTHER, so the reranker's
-        load-state is a constant nuisance factor across both arms, not a
-        differential bias.
-      - benchmarks/lib/longitudinal_runner.py — diagnostic decay-pipeline
-        harness, not falsifiability-registered or reproduce.sh-gated;
-        borderline case, flagged for a future increment to reconsider.
-      - benchmarks/llm_head_to_head/pilot.py — Stage-1 dry-run stress test
-        (module docstring: "not load-bearing for the GO/NO-GO gate"); its
-        live-mode B condition calls the real
-        ``mcp_server.handlers.recall.handler`` (production entrypoint,
-        already reranker-aware), not a bare ``BenchmarkDB.recall`` — the
-        ``BenchmarkDB()`` instance at this call site is only used for
-        memory seeding, not scored retrieval.
-      - benchmarks/spell_alteration/run_benchmark.py — standalone
-        user-invoked script (requires a ``--pdf`` path arg), not part of
-        any automated gate; recall-quality claims are informal.
-    """
+    source: ADR-0066"""
 
     def __init__(
         self,
@@ -182,18 +150,10 @@ class BenchmarkDB:
     ) -> tuple[list[int], dict[int, str]]:
         """Delegate to mcp_server.core.memory_ingest.ingest_memories_batch().
 
-        Returns (ids, source_map) where source_map maps memory_id → source string.
+                Returns (ids, source_map) where source_map maps memory_id → source
+                string.
 
-        Assigns a `capture_origin` to every memory that does not already carry
-        one, drawn from the measured production mixture
-        (benchmarks/lib/capture_origin_mix.py) instead of falling through to
-        insert_memory's "unknown" default. Without this every LME/LoCoMo/BEAM
-        row landed in `capture_origin='unknown'`, which
-        core.capture_origin.trust_factor demotes uniformly — a uniform
-        multiplier cannot change WRRF order, so the trust-factor W sweep
-        (docs/provenance/trust-factor-calibration.md) could not discriminate
-        between values of W (issue #368 follow-up).
-        """
+        source: ADR-0066"""
         assert self._store is not None, "Call open() first"
         _apply_capture_origin_mix(memories)
         ids, source_map = ingest_memories_batch(

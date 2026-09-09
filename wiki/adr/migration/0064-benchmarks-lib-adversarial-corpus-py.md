@@ -1,0 +1,73 @@
+# ADR-0064: benchmarks/lib/adversarial_corpus.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `benchmarks/lib/adversarial_corpus.py`; original SHA-256 `49e227ee76b09bee0a509426f1ea1527daa4384f50841fe039a8d0988071639e`.
+
+## Original docstring, lines 1–25
+
+````text
+"""Adversarial retrieval-poisoning corpus (issue #368).
+
+Pure data + construction helpers, zero I/O. Imported by both the test suite
+(`tests_py/`) and the trust-weight ablation, so the passages that prove the
+attack and the passages that measure the defence are the same passages.
+
+Source: arXiv 2604.16548, *retrieve-phase* threat class — "RAG poisoning
+(malicious entries ranked highest by embedding similarity)" and "memory
+entries overriding explicit user instructions". The survey's operative claim
+for this module is that "Retrieval-time filtering alone is insufficient": a
+fixture that only checked a post-ranking filter would not test the property
+under defence.
+
+Design constraint that shapes every passage here: an adversarial passage must
+be **more** retrievable than its legitimate counterpart, never less. A corpus
+whose hostile entries lose on similarity would pass against a system with no
+defence at all, and would therefore measure nothing. Each pair below is
+declared with the adversarial similarity strictly above the legitimate one,
+and `assert_pair_is_adversarial` enforces that at construction time rather
+than trusting the literals to stay ordered as the file is edited.
+
+The payloads are inert by construction — they are strings stored in a test
+database and scored by a ranking function. Nothing here is executed, fetched,
+or interpreted; the hostile property under test is *rank*, not effect.
+"""
+````
+
+## Original comment, lines 31–34
+
+````text
+# ── Capture origins (mirrors mcp_server/core/capture_origin.py) ────────────
+# Duplicated as literals rather than imported: benchmarks must not depend on
+# the server package's import graph, and a divergence here should surface as
+# a failing test in tests_py/, not as a silent skew between corpus and code.
+````
+
+## Original docstring, lines 41–46
+
+````text
+"""One attack scenario: a hostile passage against a legitimate one.
+
+    `query` is what the user asks. `legitimate` is the memory that *should*
+    win. `adversarial` is the memory crafted to win instead, and it is given
+    the higher embedding similarity — the attack the defence must survive.
+    """
+````
+
+## Original docstring, lines 159–169
+
+````text
+"""Fail loudly if a pair stopped being an attack.
+
+    Pre: `pair` is any AdversarialPair.
+    Post: returns None, or raises ValueError naming the scenario.
+
+    Guards the corpus's one load-bearing property. If an edit ever left the
+    adversarial entry less retrievable than the legitimate one, every test
+    built on that pair would pass against a system with no defence — a green
+    suite asserting nothing. Checked here rather than in one test so the
+    ablation gets the same guarantee.
+    """
+````
+

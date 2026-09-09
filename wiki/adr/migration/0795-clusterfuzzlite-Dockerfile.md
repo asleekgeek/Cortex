@@ -1,0 +1,20 @@
+---
+title: "ADR-0795 — .clusterfuzzlite/Dockerfile rationale"
+status: accepted
+source: .clusterfuzzlite/Dockerfile
+---
+
+# ADR-0795 — .clusterfuzzlite/Dockerfile
+
+Source rationale preserved verbatim. Identifiers inside historical quotations are not current identities.
+
+## .clusterfuzzlite/Dockerfile — original line 8
+
+````text
+# Base image pinned by digest, exactly as the other four Dockerfiles in this
+# repository are: an unpinned base makes the build non-reproducible and is
+# itself an OpenSSF Scorecard Pinned-Dependencies finding, so adding fuzzing
+# with a floating base would trade one finding for another.
+#   source: gcr.io/v2/oss-fuzz-base/base-builder-python/manifests/latest,
+#           docker-content-digest header, fetched 2026-07-28.
+````

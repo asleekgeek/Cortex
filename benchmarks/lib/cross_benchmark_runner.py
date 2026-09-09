@@ -5,10 +5,6 @@ Hypothesis (pre-registered):
     without retuning. Specifically: Phase-B (LongMemEval-tuned, applied
     AS-IS to LoCoMo) MRR ≥ 0.92 × Phase-C (LoCoMo-tuned ceiling) MRR.
 
-Falsifier:
-    Phase-B MRR < 0.92 × Phase-C MRR → the config overfits the
-    calibration corpus; the cross-benchmark claim is rejected.
-
 Knobs (load-bearing per benchmarks-detail.md and memory_config.py):
     - decay λ          → CORTEX_DECAY_LAMBDA / CORTEX_MEMORY_DECAY_FACTOR
     - heat-prior weight → CORTEX_MEMORY_WRRF_HEAT_WEIGHT
@@ -16,23 +12,12 @@ Knobs (load-bearing per benchmarks-detail.md and memory_config.py):
 
 Grid: 3 × 3 × 3 = 27 cells (auditable).
 
-Subprocess isolation per cell: each cell launches a fresh Python process
-with the env-var override. Required because mcp_server.core.thermodynamics
-reads CORTEX_DECAY_LAMBDA at import time (thermodynamics.py:49) and
-get_memory_settings is lru_cache'd, so in-process env mutation does not
-take effect. See benchmarks/lib/_xb_drivers.py for the driver.
-
 CLI:
     python -m benchmarks.lib.cross_benchmark_runner [--quick] [--seed 42]
                                                     [--out-dir <path>]
                                                     [--lm-limit N] [--loc-limit N]
 
-Outputs (under <out-dir>/<timestamp>/):
-    calibration.json     — Phase A: full grid × LongMemEval, with MRR/R@10
-    evaluation.json      — Phase B: Phase-A winner applied AS-IS to LoCoMo
-    reference.json       — Phase C: full grid × LoCoMo (oracle ceiling)
-    summary.md           — human-readable verdict
-"""
+source: ADR-0070"""
 
 from __future__ import annotations
 

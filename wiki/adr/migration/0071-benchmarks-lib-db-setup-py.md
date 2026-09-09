@@ -1,0 +1,225 @@
+# ADR-0071: benchmarks/lib/db_setup.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `benchmarks/lib/db_setup.py`; original SHA-256 `0dfbf16231a6033a1b9cae989c7278e8e20dd6a26623aae865e22377d9c71bce`.
+
+## Original docstring, lines 1–10
+
+````text
+"""Deterministic Postgres session/database setup for benchmark runs.
+
+Companion to db_snapshot.py. Snapshot owns dump/restore + manifest; this
+module owns the runtime GUCs that affect results but are NOT baked into
+the dump (parallel workers, work_mem, ef_search, etc.).
+Source: docs/provenance/hnsw-determinism-playbook.md §8 (SRP split).
+
+API: apply_deterministic_session, apply_deterministic_database,
+     analyze_after_restore, capture_session_state, verify_session_matches_snapshot.
+"""
+````
+
+## Original docstring, lines 23–29
+
+````text
+"""Execute SHOW/SELECT-of-one-column and return scalar string.
+
+    Uses an explicit tuple_row cursor so we work against connections that
+    were opened with dict_row (PgMemoryStore in the prod stack) without
+    silently breaking. Returns "" when no row is present.
+    Source: PG psycopg3 docs https://www.psycopg.org/psycopg3/docs/api/rows.html
+    """
+````
+
+## Original comment, lines 36–36
+
+````text
+# Frozen GUC values; every line cites docs/provenance/hnsw-determinism-playbook.md.
+````
+
+## Original comment, lines 37–37
+
+````text
+# source: playbook §4.6
+````
+
+## Original comment, lines 38–38
+
+````text
+# source: playbook §4.7
+````
+
+## Original comment, lines 39–39
+
+````text
+# source: playbook §4.5
+````
+
+## Original comment, lines 40–40
+
+````text
+# source: playbook §4.4
+````
+
+## Original comment, lines 41–41
+
+````text
+# source: playbook §4.8
+````
+
+## Original comment, lines 42–42
+
+````text
+# source: playbook §4.9
+````
+
+## Original comment, lines 43–43
+
+````text
+# source: playbook §4.9
+````
+
+## Original comment, lines 44–44
+
+````text
+# source: playbook §4.9
+````
+
+## Original comment, lines 45–45
+
+````text
+# source: playbook §4.9
+````
+
+## Original comment, lines 46–46
+
+````text
+# source: playbook §5 manifest
+````
+
+## Original comment, lines 47–47
+
+````text
+# source: playbook §7 Q4; pgvector default per https://github.com/pgvector/pgvector#hnsw
+````
+
+## Original comment, lines 50–51
+
+````text
+# Must stay in sync with db_snapshot.SnapshotMeta.pg_settings_relevant.
+# source: playbook §5 manifest field list.
+````
+
+## Original docstring, lines 86–92
+
+````text
+"""Outcome of apply_deterministic_session.
+
+    mode: 'transaction' (SET LOCAL — settings die at end of tx) or
+          'session' (SET — settings live for connection lifetime). The
+          autocommit branch produces 'session' because SET LOCAL would
+          evaporate at the end of each implicit single-statement tx.
+    """
+````
+
+## Original docstring, lines 112–120
+
+````text
+"""Pin per-session GUCs; mode chosen from conn.autocommit.
+
+    autocommit=False → SET LOCAL (tx-scoped; caller keeps the tx open).
+    autocommit=True  → SET (session-scoped, lives until DISCARD/close).
+    SET LOCAL on autocommit is a placebo because each implicit tx ends
+    immediately (PG docs: https://www.postgresql.org/docs/current/sql-set.html).
+    A self-check at the end SHOWs every tracked GUC and warns on any
+    mismatch. Source: playbook §4.5–§4.12.
+    """
+````
+
+## Original comment, lines 125–127
+
+````text
+# source: playbook §4.11 — flush prior plan cache before pinning.
+    # DISCARD ALL must run outside a tx; SET LOCAL only takes effect inside
+    # one. So: temporarily flip autocommit if needed for DISCARD, then back.
+````
+
+## Original comment, lines 165–165
+
+````text
+# source: playbook §4.12 — application_name keys plan cache by run.
+````
+
+## Original docstring, lines 171–177
+
+````text
+"""Read every tracked GUC back; append warnings for placebo SET failures.
+
+    If a SET silently failed (e.g. SET LOCAL on an autocommit connection —
+    the historical bug), SHOW reports the cluster default and we surface
+    a warning. This is the Feynman-integrity check that makes placebo
+    failure discoverable instead of silent.
+    """
+````
+
+## Original comment, lines 194–195
+
+````text
+# source: PG docs https://www.postgresql.org/docs/current/config-setting.html
+# §"Numeric with Unit" — full set of memory unit suffixes PG may echo.
+````
+
+## Original comment, lines 204–204
+
+````text
+# source: PG docs §"Numeric with Unit" — all duration unit suffixes.
+````
+
+## Original comment, lines 213–213
+
+````text
+# Memory-typed GUCs we may compare. source: PG docs §"Resource Consumption".
+````
+
+## Original comment, lines 226–226
+
+````text
+# Duration-typed GUCs we may compare. source: PG docs §"Connections and Auth".
+````
+
+## Original docstring, lines 242–249
+
+````text
+"""Compare a requested GUC value against what SHOW returns.
+
+    PG echoes values in canonical units that may differ from the input
+    (`64MB` may come back as `64MB` or `65536kB`; `1s` as `1000ms`).
+    Strategy: case-insensitive raw match → integer match → unit-typed
+    normalisation by GUC name. Returns False (not raises) on parse fail
+    so the self-check surfaces a warning instead of crashing.
+    """
+````
+
+## Original docstring, lines 359–365
+
+````text
+"""Run ANALYZE on benchmark-relevant tables; refresh pg_statistic.
+
+    Pre: db_url points to a freshly-restored DB. Post: stats are up to
+    date for `memories` and `entities`; missing tables are warned via
+    print and skipped (idempotent across repeated calls).
+    Source: playbook §4.10.
+    """
+````
+
+## Reviewed remaining docstring (benchmarks/lib/db_setup.py, interim lines 246–251)
+
+````text
+Parse any PG memory string into bytes; None on parse fail.
+
+Bare integer is interpreted as 8kB blocks per PG convention
+(PG docs §"Numeric with Unit": memory GUCs without a suffix are
+counted in 8kB units when the GUC's `unit` column is `8kB`).
+````
+

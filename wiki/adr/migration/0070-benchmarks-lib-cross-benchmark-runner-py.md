@@ -1,0 +1,47 @@
+# ADR-0070: benchmarks/lib/cross_benchmark_runner.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `benchmarks/lib/cross_benchmark_runner.py`; original SHA-256 `6406cc0cea3d72d329eb2f424bf3d1c475176b55f6956dd615ef38906d871b14`.
+
+## Original docstring, lines 1–35
+
+````text
+"""Cross-benchmark generalization runner (Popper C5 verification).
+
+Hypothesis (pre-registered):
+    A configuration calibrated on LongMemEval-S generalizes to LoCoMo
+    without retuning. Specifically: Phase-B (LongMemEval-tuned, applied
+    AS-IS to LoCoMo) MRR ≥ 0.92 × Phase-C (LoCoMo-tuned ceiling) MRR.
+
+Falsifier:
+    Phase-B MRR < 0.92 × Phase-C MRR → the config overfits the
+    calibration corpus; the cross-benchmark claim is rejected.
+
+Knobs (load-bearing per benchmarks-detail.md and memory_config.py):
+    - decay λ          → CORTEX_DECAY_LAMBDA / CORTEX_MEMORY_DECAY_FACTOR
+    - heat-prior weight → CORTEX_MEMORY_WRRF_HEAT_WEIGHT
+    - FlashRank top-K   → CORTEX_MEMORY_WRRF_CANDIDATE_MULTIPLIER
+
+Grid: 3 × 3 × 3 = 27 cells (auditable).
+
+Subprocess isolation per cell: each cell launches a fresh Python process
+with the env-var override. Required because mcp_server.core.thermodynamics
+reads CORTEX_DECAY_LAMBDA at import time (thermodynamics.py:49) and
+get_memory_settings is lru_cache'd, so in-process env mutation does not
+take effect. See benchmarks/lib/_xb_drivers.py for the driver.
+
+CLI:
+    python -m benchmarks.lib.cross_benchmark_runner [--quick] [--seed 42]
+                                                    [--out-dir <path>]
+                                                    [--lm-limit N] [--loc-limit N]
+
+Outputs (under <out-dir>/<timestamp>/):
+    calibration.json     — Phase A: full grid × LongMemEval, with MRR/R@10
+    evaluation.json      — Phase B: Phase-A winner applied AS-IS to LoCoMo
+    reference.json       — Phase C: full grid × LoCoMo (oracle ceiling)
+    summary.md           — human-readable verdict
+"""
+````
+

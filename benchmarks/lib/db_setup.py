@@ -1,13 +1,9 @@
 """Deterministic Postgres session/database setup for benchmark runs.
 
-Companion to db_snapshot.py. Snapshot owns dump/restore + manifest; this
-module owns the runtime GUCs that affect results but are NOT baked into
-the dump (parallel workers, work_mem, ef_search, etc.).
-Source: docs/provenance/hnsw-determinism-playbook.md §8 (SRP split).
-
 API: apply_deterministic_session, apply_deterministic_database,
      analyze_after_restore, capture_session_state, verify_session_matches_snapshot.
-"""
+
+source: ADR-0071"""
 
 from __future__ import annotations
 
@@ -22,33 +18,28 @@ from urllib.parse import urlparse
 def _scalar(conn: psycopg.Connection, sql: str) -> str:
     """Execute SHOW/SELECT-of-one-column and return scalar string.
 
-    Uses an explicit tuple_row cursor so we work against connections that
-    were opened with dict_row (PgMemoryStore in the prod stack) without
-    silently breaking. Returns "" when no row is present.
-    Source: PG psycopg3 docs https://www.psycopg.org/psycopg3/docs/api/rows.html
-    """
+    source: ADR-0071"""
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(sql)
         row = cur.fetchone()
     return "" if row is None else str(row[0])
 
 
-# Frozen GUC values; every line cites docs/provenance/hnsw-determinism-playbook.md.
-_WORK_MEM = "64MB"  # source: playbook §4.6
-_MAINTENANCE_WORK_MEM = "512MB"  # source: playbook §4.7
-_MAX_PARALLEL_WORKERS_PER_GATHER = 0  # source: playbook §4.5
-_MAX_PARALLEL_MAINTENANCE_WORKERS = 0  # source: playbook §4.4
-_EFFECTIVE_IO_CONCURRENCY = 0  # source: playbook §4.8
-_ENABLE_SEQSCAN = "on"  # source: playbook §4.9
-_ENABLE_HASHAGG = "on"  # source: playbook §4.9
-_ENABLE_INDEXSCAN = "on"  # source: playbook §4.9
-_ENABLE_BITMAPSCAN = "on"  # source: playbook §4.9
-_JIT = "off"  # source: playbook §5 manifest
-# source: playbook §7 Q4; pgvector default per https://github.com/pgvector/pgvector#hnsw
+# source: ADR-0071
+_WORK_MEM = "64MB"  # source: ADR-0071
+_MAINTENANCE_WORK_MEM = "512MB"  # source: ADR-0071
+_MAX_PARALLEL_WORKERS_PER_GATHER = 0  # source: ADR-0071
+_MAX_PARALLEL_MAINTENANCE_WORKERS = 0  # source: ADR-0071
+_EFFECTIVE_IO_CONCURRENCY = 0  # source: ADR-0071
+_ENABLE_SEQSCAN = "on"  # source: ADR-0071
+_ENABLE_HASHAGG = "on"  # source: ADR-0071
+_ENABLE_INDEXSCAN = "on"  # source: ADR-0071
+_ENABLE_BITMAPSCAN = "on"  # source: ADR-0071
+_JIT = "off"  # source: ADR-0071
+# source: ADR-0071
 _HNSW_EF_SEARCH = 40
 
-# Must stay in sync with db_snapshot.SnapshotMeta.pg_settings_relevant.
-# source: playbook §5 manifest field list.
+# source: ADR-0071
 _SNAPSHOT_TRACKED_SETTINGS = (
     "work_mem",
     "maintenance_work_mem",
@@ -85,11 +76,7 @@ _SELF_CHECK_KEYS = (
 class SessionApplied:
     """Outcome of apply_deterministic_session.
 
-    mode: 'transaction' (SET LOCAL — settings die at end of tx) or
-          'session' (SET — settings live for connection lifetime). The
-          autocommit branch produces 'session' because SET LOCAL would
-          evaporate at the end of each implicit single-statement tx.
-    """
+    source: ADR-0071"""
 
     run_id: str
     mode: str = "transaction"
@@ -111,20 +98,12 @@ def apply_deterministic_session(
 ) -> SessionApplied:
     """Pin per-session GUCs; mode chosen from conn.autocommit.
 
-    autocommit=False → SET LOCAL (tx-scoped; caller keeps the tx open).
-    autocommit=True  → SET (session-scoped, lives until DISCARD/close).
-    SET LOCAL on autocommit is a placebo because each implicit tx ends
-    immediately (PG docs: https://www.postgresql.org/docs/current/sql-set.html).
-    A self-check at the end SHOWs every tracked GUC and warns on any
-    mismatch. Source: playbook §4.5–§4.12.
-    """
+    source: ADR-0071"""
     autocommit = bool(conn.autocommit)
     mode = "session" if autocommit else "transaction"
     set_keyword = "SET" if autocommit else "SET LOCAL"
 
-    # source: playbook §4.11 — flush prior plan cache before pinning.
-    # DISCARD ALL must run outside a tx; SET LOCAL only takes effect inside
-    # one. So: temporarily flip autocommit if needed for DISCARD, then back.
+    # source: ADR-0071
     if not autocommit:
         conn.commit()  # close any implicit tx so DISCARD ALL is legal
         conn.autocommit = True
@@ -162,7 +141,7 @@ def _session_guc_pairs(run_id: str) -> list[tuple[str, str]]:
         ("enable_bitmapscan", _ENABLE_BITMAPSCAN),
         ("jit", _JIT),
         ("hnsw.ef_search", str(_HNSW_EF_SEARCH)),
-        # source: playbook §4.12 — application_name keys plan cache by run.
+        # source: ADR-0071
         ("application_name", f"cortex_bench_{run_id}"),
     ]
 
@@ -170,11 +149,7 @@ def _session_guc_pairs(run_id: str) -> list[tuple[str, str]]:
 def _self_check_settings(conn: psycopg.Connection, out: SessionApplied) -> None:
     """Read every tracked GUC back; append warnings for placebo SET failures.
 
-    If a SET silently failed (e.g. SET LOCAL on an autocommit connection —
-    the historical bug), SHOW reports the cluster default and we surface
-    a warning. This is the Feynman-integrity check that makes placebo
-    failure discoverable instead of silent.
-    """
+    source: ADR-0071"""
     expected = dict(out.settings_set)
     for name in _SELF_CHECK_KEYS:
         want = expected.get(name)
@@ -191,8 +166,7 @@ def _self_check_settings(conn: psycopg.Connection, out: SessionApplied) -> None:
             )
 
 
-# source: PG docs https://www.postgresql.org/docs/current/config-setting.html
-# §"Numeric with Unit" — full set of memory unit suffixes PG may echo.
+# source: ADR-0071
 _MEM_UNITS_BYTES: tuple[tuple[str, int], ...] = (
     ("pb", 1024**5),
     ("tb", 1024**4),
@@ -201,7 +175,7 @@ _MEM_UNITS_BYTES: tuple[tuple[str, int], ...] = (
     ("kb", 1024),
     ("b", 1),
 )
-# source: PG docs §"Numeric with Unit" — all duration unit suffixes.
+# source: ADR-0071
 _TIME_UNITS_MS: tuple[tuple[str, int], ...] = (
     ("d", 86_400_000),
     ("h", 3_600_000),
@@ -210,7 +184,7 @@ _TIME_UNITS_MS: tuple[tuple[str, int], ...] = (
     ("ms", 1),
     ("us", 0),  # sub-ms; collapsed to 0 (PG echoes via min unit anyway)
 )
-# Memory-typed GUCs we may compare. source: PG docs §"Resource Consumption".
+# source: ADR-0071
 _MEMORY_GUCS = frozenset(
     {
         "work_mem",
@@ -223,7 +197,7 @@ _MEMORY_GUCS = frozenset(
         "logical_decoding_work_mem",
     }
 )
-# Duration-typed GUCs we may compare. source: PG docs §"Connections and Auth".
+# source: ADR-0071
 _TIME_GUCS = frozenset(
     {
         "statement_timeout",
@@ -241,12 +215,7 @@ _TIME_GUCS = frozenset(
 def _guc_equal(name: str, want: str, live: str) -> bool:
     """Compare a requested GUC value against what SHOW returns.
 
-    PG echoes values in canonical units that may differ from the input
-    (`64MB` may come back as `64MB` or `65536kB`; `1s` as `1000ms`).
-    Strategy: case-insensitive raw match → integer match → unit-typed
-    normalisation by GUC name. Returns False (not raises) on parse fail
-    so the self-check surfaces a warning instead of crashing.
-    """
+    source: ADR-0071"""
     if want == live:
         return True
     if want.lower() == live.lower():
@@ -276,10 +245,9 @@ def _split_value_unit(val: str) -> tuple[str, str]:
 def _to_bytes(val: str) -> int | None:
     """Parse any PG memory string into bytes; None on parse fail.
 
-    Bare integer is interpreted as 8kB blocks per PG convention
-    (PG docs §"Numeric with Unit": memory GUCs without a suffix are
-    counted in 8kB units when the GUC's `unit` column is `8kB`).
-    """
+    Bare integer values are interpreted as 8kB blocks.
+
+    source: ADR-0071"""
     digits, suffix = _split_value_unit(val)
     if not digits:
         return None
@@ -358,11 +326,7 @@ def apply_deterministic_database(db_url: str, *, run_id: str) -> DatabaseApplied
 def analyze_after_restore(db_url: str) -> None:
     """Run ANALYZE on benchmark-relevant tables; refresh pg_statistic.
 
-    Pre: db_url points to a freshly-restored DB. Post: stats are up to
-    date for `memories` and `entities`; missing tables are warned via
-    print and skipped (idempotent across repeated calls).
-    Source: playbook §4.10.
-    """
+    source: ADR-0071"""
     t0 = time.monotonic()
     targets = ("memories", "entities")
     with psycopg.connect(db_url, autocommit=True) as conn:

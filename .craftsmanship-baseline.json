@@ -70,11 +70,6 @@
     {
       "file": "benchmarks/beam/run_benchmark.py",
       "kind": "method-size",
-      "detail": "_current_stage_for_question"
-    },
-    {
-      "file": "benchmarks/beam/run_benchmark.py",
-      "kind": "method-size",
       "detail": "evaluate_retrieval"
     },
     {
@@ -129,18 +124,8 @@
     },
     {
       "file": "benchmarks/forgetting_curve/criteria.py",
-      "kind": "method-size",
-      "detail": "criterion_benna_fusi_sqrt_t"
-    },
-    {
-      "file": "benchmarks/forgetting_curve/criteria.py",
       "kind": "unsourced-constant",
       "detail": "COLLAPSE_THRESHOLD"
-    },
-    {
-      "file": "benchmarks/gate_precision/run_benchmark.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "benchmarks/gate_precision/run_benchmark.py",
@@ -151,11 +136,6 @@
       "file": "benchmarks/gate_precision/run_benchmark.py",
       "kind": "unsourced-constant",
       "detail": "MIN_CHARS"
-    },
-    {
-      "file": "benchmarks/gate_precision/run_benchmark.py",
-      "kind": "unsourced-constant",
-      "detail": "PASS_BAND"
     },
     {
       "file": "benchmarks/gate_precision/run_benchmark.py",

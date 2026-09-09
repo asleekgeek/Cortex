@@ -10,12 +10,12 @@
 -- Plus probe F) HNSW present, per-row UPDATE with per-row COMMIT
 --             (matches production exactly)  — only measure once due to runtime.
 --
--- Measurement: server-side clock_timestamp() deltas. No psycopg/round-trip noise.
--- This is strictly a LOWER bound on production cost (prod has network+python overhead).
--- If HNSW signal is strong here, it's strong in prod.
+-- source: ADR-0834
+
+
 --
--- Gating: each replicate uses a unique delta so every UPDATE changes the heat value.
--- This ensures we never hit an IS DISTINCT FROM no-op by accident.
+-- source: ADR-0834
+
 
 \timing off
 SET client_min_messages = WARNING;
@@ -121,8 +121,8 @@ BEGIN
 END;
 $$;
 
--- Helper to keep heat values bounded: normalize heat back into a tight band
--- (we don't want heat to drift across many replicates and saturate).
+-- source: ADR-0834
+
 CREATE OR REPLACE FUNCTION _bench_reset_heat()
 RETURNS VOID AS $$
 BEGIN
@@ -131,8 +131,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Helper to drop / recreate HNSW (used between conditions).
--- Drop: instant. Create: ~100s on 66K rows (measured in setup).
--- We'll cache this by running WITH-HNSW conditions consecutively, then WITHOUT.
+-- source: ADR-0834
+
+
 
 SELECT 'Helpers installed' AS status;

@@ -1,52 +1,6 @@
 """Active-forgetting benchmark — two independent DA forgetting circuits (A2).
 
-Acceptance instrument for Tier-A item A2: a consolidation settlement pass that,
-faithful to the *Drosophila* dopaminergic active-forgetting literature, applies
-TWO anatomically/molecularly DISTINCT forgetting circuits — not a severity
-ladder. Full design rationale lives in ADR-017; this docstring fixes only the
-testable contract.
-
-This revision replaces a synthetic-abstraction benchmark that abstracted
-``chronic`` into a hand-labelled [0, 1] value and so NEVER exercised the
-raw-similarity → chronic construction. Against the live 6989-memory corpus that
-omission hid a saturation bug: a plain noisy-OR over the 10 nearest newer
-neighbours marked 46% of the corpus PERMANENT-stale in one cycle and never fired
-the transient circuit. Two load-bearing changes close that gap:
-
-  - PERMANENT fixtures now carry RAW newer-neighbour similarity lists and the
-    benchmark computes ``chronic`` through the core ``chronic_interference``
-    (redundancy-gated excess noisy-OR), so the aggregator is exercised
-    end-to-end. A non-saturation fixture makes the old failure fail loudly forever.
-  - PERMANENT firing is SUSTAINED (a leaky integrator over cycles), so it is
-    tested by S1–S5 *time-series* fixtures from which ``derive_thresholds`` reads
-    the leak λ and accumulation threshold Θ_accum as the max-margin pair
-    reproducing every label.
-
-Primary sources (open-access via PMC; quotes verified against raw text):
-  - Sabandal, Berry & Davis (2021), Nature 591:426-430 (PMC8522469): transient
-    and permanent forgetting are "two separate DA-based circuits"; transient
-    (DAMB / PPL1-α2α'2) "blocks retrieval" and is "triggered by interfering
-    stimuli presented just prior to retrieval", recovering spontaneously;
-    permanent (PPL1-γ2α'1 / Rac1) erodes the trace. Sustained transient
-    stimulation did NOT convert to permanent loss ("returned to normal by day 14").
-    Transient forgetting acts on consolidated PSD-LTM ⇒ it is STAGE-INDEPENDENT.
-  - Davis & Zhong (2017), Neuron 95:490-503 (PMC5657245): "This does not
-    necessarily mean that consolidated memories are immune … just much more
-    resistant" ⇒ GRADED resistance, not a hard immunity gate. The intrinsic
-    forgetting DA signal is "ongoing", "increased robustly with locomotor
-    activity"/sensory input (interference) and "inhibit[ed]" by "sleep and rest".
-  - Berry, Phan & Davis (2018), Cell Reports 25:651-662.e4 (PMC6239218): "strong
-    memories … more resistant … weaker memories … more vulnerable" — ordinal
-    ONLY; no quantitative strength→rate law exists in any of these papers.
-
-Benchmark-FIRST rationale: no biological rate constant exists at hours/days, so
-every threshold traces to "source: benchmark <path>". This file IS that source —
-the labelled fixtures fix ground truth and ``derive_thresholds`` reads
-τ_dup-provenance, (λ, Θ_accum), X and W off them; the core
-(mcp_server/core/active_forgetting.py) bakes them and is verified here.
-
-Run:
-    Cortex/.venv/bin/python3 benchmarks/active_forgetting/run_benchmark.py
+source: ADR-0815
 """
 
 from __future__ import annotations
@@ -78,13 +32,9 @@ RESULTS_DIR = REPO / "benchmarks" / "results" / "active_forgetting"
 
 GRID_LAMBDAS = [round(0.05 * i, 2) for i in range(1, 19)]  # 0.05 … 0.90
 
-# ── Permanent SIGNAL pool ───────────────────────────────────────────────────────
-# Each row carries the RAW newer-neighbour cosine list ``newer_sims`` and the
-# expected redundancy-gated ``chronic`` BAND (zero vs positive). This exercises
-# the aggregator that the old abstracted pool never touched. τ_dup = 0.85, so only
-# genuine near-duplicates (sim ≥ 0.85) contribute; the ~0.5 background band is
-# excluded. ``acute`` (strongest newer sim, its age) feeds the disjoint transient
-# circuit and lets the same neighbour list drive both circuits.
+# source: ADR-0815
+
+
 SIGNAL_POOL = [
     {
         "id": "G1",
@@ -121,12 +71,9 @@ SIGNAL_POOL = [
 ]
 
 
-# ── Permanent TIME-SERIES pool (S1–S5): derives (λ, Θ_accum) ─────────────────────
-# Each series is a per-cycle list of (chronic, recently_active) at a fixed stage.
-# ``fire_by`` is the cycle index (1-based) at which the memory MUST be stale;
-# ``recovers`` asserts the accumulator leaks back below Θ by the final cycle
-# (reinstatement). chronic 0.667 ≈ one 0.95 near-dup ⇒ labile pressure ≈ 0.60.
-# per-cycle chronic when a genuine interferer is present (labile pressure 0.60)
+# source: ADR-0815
+
+
 _P = 0.667
 SERIES_POOL = [
     {
@@ -244,12 +191,9 @@ TRANSIENT_POOL = [
 ]
 
 
-# ── CLS-B gate C pool: cortical_availability modulation of the PERMANENT
-# circuit (see cortex:remember memory_id 4261603 and core.active_forgetting
-# module docstring for the design). Reuses the S1 sustained-interference
-# series (same chronic, same stage, same fire_by=3 at dep=0.0) so
-# non-regression is checked against the EXACT baked S1 fixture above, not a
-# new hand-picked one — the only variable introduced is hippocampal_dependency.
+# source: ADR-0815
+
+
 _S1 = next(s for s in SERIES_POOL if s["id"] == "S1")
 
 
@@ -280,23 +224,19 @@ def _trajectory(
     return out
 
 
-# ── Constant derivation (this benchmark IS the source for the core constants) ─────
+# source: ADR-0815
 
-# Age ceiling that makes a negative fixture count as "recent", so it isolates the
-# overlap axis X from the recency axis W.
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0815
+
+
+# source: ADR-0815
 _RECENT_NEGATIVE_AGE_HOURS = 12.0
 
 
 def derive_thresholds() -> dict:
     """Read every separating constant off the labelled fixtures.
 
-    (λ, Θ_accum) — grid-search the leak λ; for each, the firing fixtures impose a
-    floor (accum at their required-fire cycle) and the never/recovery fixtures a
-    ceiling (their peak / recovered-tail accum). The admissible band is
-    ``ceiling < Θ ≤ floor``; the chosen λ maximises ``floor − ceiling`` and Θ is
-    its midpoint — the 2-D max-margin separator for a by-construction labelled set.
+    source: ADR-0815
 
     X, W — acute-overlap / recency max-margin midpoints on the transient pool.
     """
@@ -382,15 +322,18 @@ def signal_reproduced() -> dict:
     return {"passed": not mismatches, "mismatches": mismatches, "n": len(SIGNAL_POOL)}
 
 
-# Chronic value above which a single near-exact duplicate counts as "high".
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0815
+
+# source: ADR-0815
 _CHRONIC_HIGH_BAND = 0.5
 
 
 def fixture_non_saturation() -> dict:
-    """A full field of background neighbours stays at chronic 0; one exact
-    duplicate alone goes high. The exact guard against the 46%-saturation bug."""
+    """A full field of background neighbours stays at chronic 0; one exact duplicate
+    alone goes high.
+
+    source: ADR-0815
+    """
     background = chronic_interference([0.5] * 10, TAU_DUP)
     one_dup = chronic_interference([0.5] * 10 + [0.99], TAU_DUP)
     return {
@@ -466,13 +409,15 @@ def transient_reproduced() -> dict:
     }
 
 
-# ── Falsifier fixtures (paper predictions; require the core) ──────────────────────
+# source: ADR-0815
 
 
 def fixture_consolidated_graded_not_immune() -> dict:
-    """Consolidated RESISTS permanent even under sustained strong chronic (graded),
-    yet is NOT globally immune: the transient circuit still fires on it
-    (Davis&Zhong 2017 + Sabandal 2021)."""
+    """Consolidated RESISTS permanent even under sustained strong chronic (graded), yet
+    is NOT globally immune: the transient circuit still fires on it.
+
+    source: ADR-0815
+    """
     accum = 0.0
     for _ in range(20):  # sustained, strong chronic, consolidated stage
         accum = update_pressure_accum(accum, "consolidated", 0.95, False)
@@ -510,8 +455,10 @@ def fixture_zero_chronic_no_permanent() -> dict:
 
 
 def fixture_transient_stage_independent() -> dict:
-    """An acute recent interferer triggers transient regardless of stage
-    (stage is not even an argument; Sabandal 2021)."""
+    """An acute recent interferer triggers transient regardless of stage.
+
+    source: ADR-0815
+    """
     fires = is_transient_forgetting(0.90, 1.0, False, False)
     return {"passed": fires, "note": "stage not an arg"}
 
@@ -530,8 +477,10 @@ def fixture_transient_needs_recency_and_overlap() -> dict:
 
 
 def fixture_circuits_independent_no_conversion() -> dict:
-    """The circuits read disjoint signals; a purely transient (acute-only,
-    chronic 0) history NEVER becomes permanent (Sabandal: no conversion)."""
+    """Check that transient and permanent forgetting circuits remain independent.
+
+    source: ADR-0815
+    """
     accum = 0.0
     for _ in range(20):  # repeated acute interference but chronic 0 ⇒ accum stays 0
         accum = update_pressure_accum(accum, "labile", 0.0, False)
@@ -569,12 +518,9 @@ def fixture_reversibility() -> dict:
 
 
 def fixture_hippocampal_dependency_non_regression() -> dict:
-    """(i) NON-REGRESSION: a cortically-independent memory (dep=0.0, the
-    default cortical_availability produces no modulation) under S1's sustained
-    interference still fires PERMANENT by cycle 3 — identical to the baked
-    series_reproduced() result with no CLS-B involvement. If this ever
-    diverges from the baseline S1 trajectory, gate C has changed pre-existing
-    (non-CLS-B) forgetting behaviour, which is the one thing it must never do.
+    """Check the permanent-forgetting trigger for zero hippocampal dependency.
+
+    source: ADR-0815
     """
     baseline = _trajectory(_S1, PRESSURE_LEAK_LAMBDA)
     cortical = _trajectory(_S1, PRESSURE_LEAK_LAMBDA, hippocampal_dependency=0.0)
@@ -593,17 +539,14 @@ def fixture_hippocampal_dependency_non_regression() -> dict:
 
 
 def fixture_hippocampal_dependency_protects() -> dict:
-    """(ii) PROTECTION: the SAME S1 interference applied to a fully
-    hippocampally-dependent memory (dep=1.0, today's production value for
-    100% of memories — see decision memory 4261278/4261481) accumulates
-    strictly less pressure every cycle and does NOT fire by S1's fire_by=3 —
-    it resists longer under identical interference, without being exempted
-    (the accumulator still grows, just more slowly)."""
+    """Check that full hippocampal dependency reduces accumulated pressure.
+
+    source: ADR-0815
+    """
     cortical = _trajectory(_S1, PRESSURE_LEAK_LAMBDA, hippocampal_dependency=0.0)
     hippocampal = _trajectory(_S1, PRESSURE_LEAK_LAMBDA, hippocampal_dependency=1.0)
-    # strict=True: both trajectories are produced by the same _trajectory
-    # call shape (only hippocampal_dependency differs), so they always
-    # have equal length.
+    # source: ADR-0815
+
     less_pressure_every_cycle = all(
         h < c for h, c in zip(hippocampal, cortical, strict=True)
     )
@@ -620,11 +563,10 @@ def fixture_hippocampal_dependency_protects() -> dict:
 
 
 def fixture_hippocampal_dependency_never_zeroes_pressure() -> dict:
-    """Regression guard on the constant itself: at dep=1.0 (today's prod
-    value everywhere) the modulated pressure must be STRICTLY POSITIVE, not
-    zero — a naive (1-dep) factor would zero the permanent circuit corpus-wide
-    until the CLS-B producer has decayed dependency, which is the exact
-    regression this design rejected (see core.active_forgetting docstring)."""
+    """Check that full hippocampal dependency leaves pressure strictly positive.
+
+    source: ADR-0815
+    """
     accum = update_pressure_accum(
         0.0, "labile", 0.667, False, hippocampal_dependency=1.0
     )

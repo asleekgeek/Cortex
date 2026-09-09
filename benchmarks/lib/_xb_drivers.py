@@ -6,10 +6,7 @@ in a fresh subprocess. Env vars (CORTEX_DECAY_LAMBDA, CORTEX_MEMORY_*) are set
 by the parent before exec — the driver does not parse them. The driver runs
 the inner benchmark loop and emits a single line `__JSON__{...}` to stdout.
 
-Subprocess isolation is required because mcp_server.core.thermodynamics
-reads CORTEX_DECAY_LAMBDA at module import time and the lru_cache(maxsize=1)
-on get_memory_settings pins the first observed value.
-"""
+source: ADR-0062"""
 
 from __future__ import annotations
 
@@ -22,10 +19,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from benchmarks.locomo.data import extract_sessions, load_locomo
 
-# source: structural — the K in the reported recall_at_10 metric
+# source: ADR-0062
 _RECALL_AT_10_K = 10
 
-# source: structural — argv is [script, bench, data_path, limit]
+# source: ADR-0062
 _EXPECTED_ARGC = 4
 
 
@@ -52,11 +49,7 @@ def _drive_locomo(data_path: str, limit: int) -> dict:
 
     agg: dict[str, list[dict]] = defaultdict(list)
     t0 = time.time()
-    # require_reranker=True: this driver backs cross_benchmark_runner's
-    # Popper C5 generalization claim, which explicitly sweeps FlashRank
-    # top-K as one of its load-bearing knobs (cross_benchmark_runner.py
-    # docstring) -- the claim is meaningless without a genuinely loaded
-    # cross-encoder (INC7.2 audit).
+    # source: ADR-0062
     with BenchmarkDB(require_reranker=True) as db:
         for conv in data:
             sessions = extract_sessions(conv["conversation"])

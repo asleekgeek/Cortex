@@ -1,0 +1,43 @@
+# ADR-0063: benchmarks/lib/ablation_runner.py implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `benchmarks/lib/ablation_runner.py`; original SHA-256 `c2a0cd1bdeaabd8dfd15ebcea334a94324f4f805025be167a460994c0820cc35`.
+
+## Original comment, lines 40–40
+
+````text
+# source: smoke-test default; matches deliverable spec.
+````
+
+## Original comment, lines 41–42
+
+````text
+# source: spec §Deliverable 3 (HNSW determinism follow-up) — schema v3 adds
+# settings_drift + db_setup fields populated alongside db_seed.
+````
+
+## Original docstring, lines 125–129
+
+````text
+"""Extract R@10, MRR, n_queries from benchmark stdout.
+
+    Pre: stdout has 'Recall@10 X%'+'MRR Y' (longmemeval) OR an
+    'OVERALL MRR R@5 R@10 Qs' line. Post: BenchMetrics; missing -> 0.
+    """
+````
+
+## Original comment, lines 284–285
+
+````text
+# source: spec §Deliverable 2 — db_seed becomes a dict with
+        # snapshot sha256 + meta when --from-snapshot is used.
+````
+
+## Rationale attached to lint directive (interim line 449)
+
+````text
+# noqa: BLE001 — source: ablation must be fail-soft per mech
+````
+

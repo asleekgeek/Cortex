@@ -1,43 +1,21 @@
 """Pure curve-fitting helpers for the forgetting-curve fidelity benchmark.
 
-Two competing models for a retention trajectory h(t) over elapsed hours t:
-
-  - EXPONENTIAL (single-rate null):  h(t) = a · exp(-b · t)
-        linearised as  ln h = ln a - b · t      (OLS of ln h on t)
-  - POWER LAW (heavy-tailed):        h(t) = a · t^(-b)
-        linearised as  ln h = ln a - b · ln t    (OLS of ln h on ln t)
-
-The exponential linearisation is exactly what
-``mcp_server.core.emergence_metrics._fit_log_linear`` computes — note that
-emergence_metrics.compute_forgetting_curve's DOCSTRING calls that a "power
-law R=a·t^-b" but its CODE regresses ln(heat) on age (linear t), i.e. it is
-the EXPONENTIAL model. This module keeps the two models distinct and adds a
-genuine power-law fit (ln h on ln t).
-
-Model selection follows Wixted & Ebbesen (1991, Psych. Science 2:409): the
-falsifiable claim is the ORDERING — does the power law fit human/biomimetic
-retention at least as well as a single exponential? We compare both r² and
-AIC. Goodness-of-fit (RSS, r², AIC) is evaluated in the COMMON original
-h-space (predicted h vs actual h) so the two linearisations are compared
-fairly rather than in their own transformed spaces.
-
-Pure logic — no I/O.
+source: ADR-0829
 """
 
 from __future__ import annotations
 
 import math
 
-# ΔAIC convention: models within 2 of the minimum are empirically
-# indistinguishable; 4-7 considerably less support; >10 essentially none.
-# source: Burnham & Anderson (2002), Model Selection and Multimodel
-# Inference, 2nd ed., §2.6 (the "rules of thumb" for ΔAIC).
+# source: ADR-0829
+
+
 AIC_INDISTINGUISHABLE = 2.0
 
-# Magnitude at or below which a float counts as zero, guarding the degenerate
-# cases (singular OLS denominator, zero total variance, zero decay rate).
-# source: pre-existing tuned value, extracted unchanged (#197 family 3);
-# provenance not recorded at introduction
+# source: ADR-0829
+
+
+# source: ADR-0829
 _NEAR_ZERO_TOL = 1e-12
 
 
@@ -46,8 +24,8 @@ def _ols(xs: list[float], ys: list[float]) -> tuple[float, float, float]:
     n = len(xs)
     sx = sum(xs)
     sy = sum(ys)
-    # strict=True: xs/ys are paired observations for OLS; unequal lengths
-    # would mean mismatched (x, y) pairs, a data bug worth raising on.
+    # source: ADR-0829
+
     sxy = sum(x * y for x, y in zip(xs, ys, strict=True))
     sx2 = sum(x * x for x in xs)
     denom = n * sx2 - sx * sx

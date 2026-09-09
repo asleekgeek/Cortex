@@ -1,10 +1,8 @@
 """Postgres snapshot/restore with fingerprint + version-drift enforcement.
 pg_dump --format=custom round-trips index bytes so dump+restore collapses
 HNSW build non-determinism to a single outcome.
-Source: docs/provenance/hnsw-determinism-playbook.md §2 mechanism, §5 manifest.
-API: create_snapshot, restore_snapshot, fingerprint, verify_fingerprint,
-     verify_compatibility.
-"""
+
+source: ADR-0072"""
 
 from __future__ import annotations
 
@@ -22,10 +20,10 @@ from urllib.parse import urlparse, urlunparse
 
 import psycopg
 
-# source: spec — refuse non-allow-listed prod DB names without --allow-prod.
+# source: ADR-0072
 _PROD_DBNAME_RE = re.compile(r"^cortex(_cowork)?$")
 _DUMP_READ_CHUNK = 1 << 20  # 1 MiB; standard hashlib idiom.
-# source: playbook §5 — 10 GUCs the manifest must capture.
+# source: ADR-0072
 _TRACKED_SETTINGS = (
     "work_mem",
     "maintenance_work_mem",
@@ -58,12 +56,8 @@ class SnapshotMeta:
     source_db_url: str
     hnsw_indexes: list = field(default_factory=list)
     pg_settings_relevant: dict = field(default_factory=dict)
-    # source: PG docs https://www.postgresql.org/docs/current/view-pg-config.html
-    # pg_config() exposes PKGLIBDIR which locates the loaded extension binary.
-    # SHA-256 of the actual .so/.dylib catches distro patches that share an
-    # upstream extversion label — closes the "same version, different code"
-    # gap that pgvector_version alone cannot detect.
-    pgvector_lib_path: str = ""  # "" = unresolved (remote DB, missing pg_config)
+    # source: ADR-0072
+    pgvector_lib_path: str = ""  # source: ADR-0072
     pgvector_lib_sha256: str = ""  # "" = file unreadable; "absent" = no pgvector
 
 
@@ -189,28 +183,21 @@ def _hnsw_indexes(conn: psycopg.Connection) -> list[dict]:
     return out
 
 
-# source: pgvector installs as `vector.so` / `.dylib` / `.dll` per platform.
-# Order matters only if multiple are present (shouldn't happen on a single host).
+# source: ADR-0072
 _VECTOR_LIB_NAMES = ("vector.so", "vector.dylib", "vector.dll")
 
 
 def _resolve_pgvector_lib(conn: psycopg.Connection) -> tuple[str, str]:
     """Return (path, sha256) of the pgvector shared library on disk.
 
-    Strategy: query pg_config view for PKGLIBDIR (PG docs: pg_config view
-    exposes the same info as the pg_config CLI). Probe for vector.{so,
-    dylib,dll} in that directory; sha256 the first one found.
+        Strategy: query pg_config view for PKGLIBDIR (PG docs: pg_config view
+        exposes the same info as the pg_config CLI). Probe for vector.{so,
+        dylib,dll} in that directory; sha256 the first one found.
 
-    Critically, this is DECOUPLED from `pg_extension` presence — the
-    binary file exists on disk for the cluster regardless of which DBs
-    have run CREATE EXTENSION. This matters because the version-drift
-    check runs against the admin `postgres` DB, which typically has no
-    user extensions installed. Without this decoupling, the lib SHA
-    check would silently skip with `live_sha == "absent"`.
+        Returns ("", "") if pg_config unavailable; (libdir, "") if no
+        vector.* found in PKGLIBDIR; (path, sha256) on success.
 
-    Returns ("", "") if pg_config unavailable; (libdir, "") if no
-    vector.* found in PKGLIBDIR; (path, sha256) on success.
-    """
+    source: ADR-0072"""
     try:
         row = conn.execute(
             "SELECT setting FROM pg_config WHERE name = 'PKGLIBDIR'"
@@ -236,7 +223,7 @@ def _capture_db_state(db_url: str) -> dict:
         ext = conn.execute(
             "SELECT extversion FROM pg_extension WHERE extname='vector'"
         ).fetchone()
-        # Locale is per-database (source: PG docs, pg_database catalog).
+        # source: ADR-0072
         loc = conn.execute(
             "SELECT datcollate, datctype FROM pg_database "
             "WHERE datname = current_database()"

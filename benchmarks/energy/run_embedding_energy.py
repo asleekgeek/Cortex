@@ -1,9 +1,6 @@
 """Validate the energy protocol before importing optional model dependencies.
 
-Use run.sh to authorize and manage the sensor, or supply an existing sensor
-stream with --external-power-file. This process never requests privileges.
-The model/workload imports are deliberately deferred until CLI validation.
-"""
+source: ADR-0822"""
 
 from __future__ import annotations
 
@@ -15,11 +12,11 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parent.parent.parent
-# source: tasks/codex-green-remediation-plan.md W3-2's scalar/batch(32) probe.
+# source: ADR-0822
 DEFAULT_BATCH_SIZE = 32
-# source: macOS powermetrics(1), --sample-rate default, /usr/share/man/man1/.
+# source: ADR-0822
 DEFAULT_SAMPLE_RATE_MS = 5000
-# source: sample standard deviation requires two independent observations.
+# source: ADR-0822
 MIN_REPETITIONS = 2
 
 
@@ -63,7 +60,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _run(args: argparse.Namespace) -> dict[str, object]:
-    # Direct script invocation must resolve the sibling benchmarks package.
+    # source: ADR-0822
     if str(REPO) not in sys.path:
         sys.path.insert(0, str(REPO))
     # Deferred: these modules require NumPy and the optional embedding stack.

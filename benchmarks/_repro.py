@@ -1,32 +1,6 @@
 """Reproducibility sidecar for Cortex benchmark manifests.
 
-Every benchmark manifest must include sufficient metadata for an independent
-researcher to reproduce a reported score.  This module captures that metadata
-at runtime: the exact code revision, working-tree cleanliness, key library
-versions, Python interpreter, hardware platform, and wall-clock timestamp.
-
-It also provides the ``multi_run_stats`` helper: given a list of per-run scalar
-results it computes mean, std, and a 95 % confidence interval so callers can
-report variance alongside a single headline figure.
-
-Design notes
-------------
-- All captures are *best-effort*: missing or uninstallable libraries produce
-  sentinel strings rather than raising.  The manifest writer must not fail
-  because a library is absent in the current environment.
-- ``git rev-parse HEAD`` is executed via subprocess so the SHA is always the
-  actual on-disk commit, not something baked at import time.
-- Library versions are read from ``importlib.metadata``; the same package name
-  used by ``pip``/``pyproject.toml`` is used here, not the import name.
-- The CI formula for a 95 % normal-approximation CI is:
-    mean ± 1.96 * std / sqrt(n)
-  The multiplier 1.96 is z_{0.975}, the 97.5th percentile of the standard
-  normal distribution, yielding a two-sided 95 % interval.
-  Source: Casella & Berger (2002) "Statistical Inference", 2nd ed., §8.3.
-  For n < 30 the approximation is reported as-is; callers should interpret
-  it with caution.  Bootstrap CI would be more accurate for small n but is
-  not needed for the reproducibility metadata use-case (documenting
-  measurement uncertainty, not statistical inference).
+source: ADR-0814
 """
 
 from __future__ import annotations
@@ -79,8 +53,8 @@ def _git_dirty() -> bool | None:
             timeout=5,
         )
         if result.returncode != 0:
-            # git is present but the call failed (not a repo, permission error,
-            # etc.) — fall back to None (unknown) rather than falsely claiming clean.
+            # source: ADR-0814
+
             return None
         return bool(result.stdout.strip())
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
@@ -91,19 +65,14 @@ def _lib_version(package_name: str) -> str:
     """Return the installed version of *package_name*, or 'not-installed'."""
     try:
         return version(package_name)
-    except Exception:  # noqa: BLE001 — best-effort, no specific exception set
+    except Exception:  # noqa: BLE001 — source: ADR-0814
         return "not-installed"
 
 
 def _reranker_manifest_fields() -> dict[str, Any]:
     """Capture the FlashRank reranker's load state for the manifest.
 
-    Fix for the 2026-07-10 incident (see mcp_server.core.reranker module
-    docstring): a benchmark run with reranking silently disabled produced
-    numbers indistinguishable, in the reported metrics, from a normal run.
-    Recording ``reranker_active`` + the loaded model's sha256 makes that
-    failure mode visible in every manifest going forward, mirroring the
-    existing ``embedding_model_revision`` field for the embedding model.
+    source: ADR-0814
 
     Best-effort: does not raise if mcp_server.core.reranker is unimportable
     in the calling environment (e.g. a stripped-down repro checkout).
@@ -116,7 +85,7 @@ def _reranker_manifest_fields() -> dict[str, Any]:
             "reranker_model_path": status.model_path,
             "reranker_model_sha256": model_sha256(),
         }
-    except Exception:  # noqa: BLE001 — best-effort manifest field, never blocks the run
+    except Exception:  # noqa: BLE001 — source: ADR-0814
         return {
             "reranker_active": False,
             "reranker_state": "unresolved",
@@ -172,12 +141,7 @@ def multi_run_stats(values: list[float]) -> dict[str, float | int | None]:
         mean ± 1.96 * std / sqrt(n).
     When n == 1, std == 0.0 and the CI equals the mean (degenerate case).
 
-    Source: normal approximation to the mean's sampling distribution.
-    Valid asymptotically (CLT); reported as approximation for n < 30.
-    The 1.96 multiplier is the 97.5th percentile of the standard normal
-    distribution (z_{0.975}), yielding a two-sided 95 % interval.
-    Source: Casella & Berger (2002) "Statistical Inference", 2nd ed., §8.3.
-    """
+    source: ADR-0814"""
     n = len(values)
     if n == 0:
         return {
@@ -200,8 +164,8 @@ def multi_run_stats(values: list[float]) -> dict[str, float | int | None]:
 
     variance = sum((x - mean) ** 2 for x in values) / (n - 1)  # Bessel-corrected
     std = math.sqrt(variance)
-    # z_{0.975} = 1.96; source: Casella & Berger (2002) §8.3
-    z = 1.96  # source: Casella & Berger (2002), Statistical Inference, §8.3
+    # source: ADR-0814
+    z = 1.96  # source: ADR-0814
     margin = z * std / math.sqrt(n)
     return {
         "mean": mean,

@@ -1,0 +1,79 @@
+# ADR-0067: benchmarks/lib/bench_regression.sh implementation decisions
+
+Status: accepted; preserved from the existing implementation during issue #514.
+
+These are historical implementation records, not new algorithm or threshold choices.
+Source: `benchmarks/lib/bench_regression.sh`; original SHA-256 `aeac114807f760a997399f674f245aad5ed0cc5ebb75ecf46cb32f1f2a414290`.
+
+## Original shell-comment, lines 2–14
+
+````text
+# No-regression gate: compares the checked-out tree's benchmark scores
+# against the SAME benchmarks run on a baseline ref (default origin/main),
+# in the SAME ephemeral container/DB, instead of gating on the fixed
+# FLOOR_* constants in reproduce.sh.
+#
+# Why this exists (source: cdeust/Cortex PR #492, 2026-09-07): the
+# published floors (README benchmark tables, E1 v3 campaign) no longer
+# match what main itself measures — LongMemEval MRR 0.904988 vs floor
+# 0.914, LoCoMo MRR 3-run mean 0.779868 vs floor 0.805, LoCoMo Recall@10
+# 0.889506 vs floor 0.915 — all measured on main@6ec76a0e via this same
+# reproduce.sh. That gap predates and is independent of any pending PR:
+# every PR built on top of that commit inherits an already-failing floor
+# gate it did not cause and cannot pass by itself. Lowering FLOOR_* to
+
+````
+
+## Original shell-comment, lines 16–39
+
+````text
+# ratchet in issue #188: "raising the floor would just hide the debt").
+# The fix is the same shape as that issue's resolution and as
+# scripts/check_craftsmanship.py's own baseline discipline (diff against
+# the base ref, never the working tree, never a hand-edited threshold):
+# gate on whether THIS tree is worse than its own baseline, not on
+# whether it clears a number nothing currently clears.
+#
+# Contract with the caller (reproduce.sh):
+#   REPO_ROOT, RESULTS_DIR, BENCH_DB_URL, PASSTHROUGH[]   (read)
+#   ONLY, QUICK, LIMIT                                    (read, scope which
+#                                                           benchmarks/limits
+#                                                           the baseline run
+#                                                           mirrors)
+#   want_bench(), run_bench()                             (read, reused so
+#                                                           the baseline run
+#                                                           takes the exact
+#                                                           same code path)
+#   REGRESSION_TOLERANCE                                  (read; reproduce.sh
+#                                                           default below)
+#
+# source: tolerance reuses FLOOR_TOLERANCE's own provenance (0.5 percentage
+# points, benchmarks/results/a3_longmemeval_post_refactor.md design §8) —
+# a regression gate has no reason to be stricter than the floor gate it
+# replaces as the blocking check.
+
+````
+
+## Original shell-comment, lines 97–99
+
+````text
+    # Inside the repo, under the directory Claude Code's own worktree tooling
+    # uses (gitignored via .claude/*) — never /tmp or a sibling directory, where
+    # a killed run leaves a worktree nothing reclaims (owner correction 2026-09-08).
+
+````
+
+## Original shell-comment, lines 148–155
+
+````text
+# Compare $RESULTS_DIR/<stem>.json (HEAD, already produced by run_bench)
+# against $RESULTS_DIR/baseline/<stem>.json (just produced above). Fails
+# only when HEAD is more than REGRESSION_TOLERANCE below its own baseline —
+# never against a fixed published number. BEAM is intentionally excluded,
+# matching FLOOR check_floors' own scope note (its numbers predate the
+# 200->395-question split rebasing and are within-system comparison only,
+# which is exactly what this gate does — but BEAM still has no committed
+# per-question stability data to size a tolerance from).
+
+````
+

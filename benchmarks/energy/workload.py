@@ -52,7 +52,7 @@ def texts(round_id: int, count: int) -> list[str]:
 def _float32_row(blob: bytes | None) -> NDArray[np.float32]:
     if not blob:
         raise ValueError("missing or empty embedding output")
-    # source: numpy.frombuffer docs; engine.encode serializes native float32.
+    # source: ADR-0823
     row = np.frombuffer(blob, dtype=np.float32)
     if not np.isfinite(row).all():
         raise ValueError("non-finite embedding output")
@@ -65,8 +65,8 @@ def verify_equivalence(engine: Encoder, batch_size: int) -> float:
     batched = engine.encode_batch(probes)
     if len(batched) != len(scalar):
         raise ValueError("scalar/batch output count mismatch")
-    # source: numpy.finfo documents eps as spacing above 1. No model-wide claim:
-    # this strict absolute error budget is checked for this run's probe only.
+    # source: ADR-0823
+
     tolerance = float(np.finfo(np.float32).eps)
     max_delta = 0.0
     for scalar_blob, batch_blob in zip(scalar, batched, strict=True):
@@ -75,7 +75,7 @@ def verify_equivalence(engine: Encoder, batch_size: int) -> float:
             raise ValueError("scalar/batch embedding shape mismatch")
         delta = float(np.max(np.abs(left.astype(np.float64) - right)))
         max_delta = max(max_delta, delta)
-        # source: numpy.allclose; explicit atol and zero rtol avoid its defaults.
+        # source: ADR-0823
         if not np.allclose(left, right, rtol=0, atol=tolerance, equal_nan=False):
             raise ValueError(
                 f"scalar/batch float32 mismatch: max_abs_delta={delta}, "
@@ -85,8 +85,8 @@ def verify_equivalence(engine: Encoder, batch_size: int) -> float:
 
 
 def count_tokens(model: TokenizingModel, values: list[str]) -> int:
-    # source: SentenceTransformer.tokenize returns attention_mask; its sum counts
-    # non-padding tokens after the model's truncation, including special tokens.
+    # source: ADR-0823
+
     mask = cast(SummableMask, model.tokenize(values)["attention_mask"])
     count = int(mask.sum().item())
     if count <= 0:
@@ -145,13 +145,13 @@ def _measure_phase(
 def run_phases(engine: EmbeddingEngine, args: argparse.Namespace) -> list[Phase]:
     phases = []
     for repetition in range(args.repetitions):
-        # source: original protocol: alternate the two inference conditions.
+        # source: ADR-0823
         modes = ("scalar", "batch")
         order = modes if repetition % len(modes) == 0 else tuple(reversed(modes))
         for condition in ("idle", *order):
             phases.append(_measure_phase(engine, condition, args, repetition))
     model = cast(TokenizingModel, engine._model)
-    # Tokenize after ALL timed phases: counting does not inflate measured energy.
+    # source: ADR-0823
     for phase in phases:
         phase.tokens = sum(
             count_tokens(model, texts(round_id, args.batch_size))
@@ -163,7 +163,7 @@ def run_phases(engine: EmbeddingEngine, args: argparse.Namespace) -> list[Phase]
 def wait_for_stream(args: argparse.Namespace) -> None:
     # One phase duration is the caller's readiness budget; no invented timeout.
     deadline = time.monotonic() + args.duration_seconds
-    # source: SI milli prefix: 1000 ms/s (NIST SP 811, chapter 4).
+    # source: ADR-0823
     interval = args.sample_rate_ms / 1000
     while time.monotonic() < deadline:
         if "*** Sampled system activity" in args.external_power_file.read_text():

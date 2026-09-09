@@ -1,46 +1,6 @@
 """Gate-precision benchmark — flat vs hierarchical write-gate novelty scoring.
 
-The three retrieval benchmarks (LongMemEval/LoCoMo/BEAM) ingest with
-``is_benchmark=True``, which calls ``store.insert_memory`` directly and
-NEVER ``evaluate_gate`` — so they cannot detect a regression in the write
-gate. This benchmark exercises the gate itself: it measures how well each
-novelty scorer separates genuinely novel content from duplicates of
-already-stored content.
-
-Methodology:
-  1. Extract distinct conversational messages (>= 80 chars) from the real
-     LongMemEval-S corpus (Wu et al., ICLR 2025). No fabricated data.
-  2. SEED set (150 distinct messages) warms the store via the production
-     ingest path (decompose=False so stored content is verbatim).
-  3. POSITIVES (100 held-out distinct messages): novel by construction —
-     label = accept.
-  4. NEGATIVES (100 duplicates of SEED entries): exact copies plus
-     trivially perturbed copies (trailing space / one-word synonym swap).
-     A duplicate of stored content is non-novel BY DEFINITION — labels
-     are definitional, not invented.
-  5. Run the production ``evaluate_gate`` on every candidate, twice:
-     flat mode (CORTEX_MEMORY_WRITE_GATE_HIERARCHICAL unset) and
-     hierarchical mode (=1), each against an identically re-seeded store.
-
-Metric: ROC-AUC of the gate's novelty score (positive class = novel).
-AUC equals the Wilcoxon-Mann-Whitney statistic (Hanley & McNeil 1982,
-Radiology 143(1)) — threshold-independent, so it measures exactly the
-thing the flag changes: the score. Secondary: accept-accuracy at the
-default threshold (WRITE_GATE_THRESHOLD = 0.4) and the production gate
-decision (which includes bypass + calibration drift, reported for
-observability).
-
-PASS criterion (build spec, user decision 2026-06-11):
-    AUC_hierarchical >= AUC_flat - 0.02   (noise band)
-
-Reproducibility: fixed RNG seed for sampling/order, single process,
-clean dedicated DB (run with DATABASE_URL=postgresql://127.0.0.1:5432/cortex_gateeval),
-identical candidate order in both modes so in-process calibration drift
-(write_gate_calibration) is order-fair.
-
-Run:
-    DATABASE_URL=postgresql://127.0.0.1:5432/cortex_gateeval \
-        python3 benchmarks/gate_precision/run_benchmark.py
+source: ADR-0831
 """
 
 from __future__ import annotations
@@ -74,8 +34,8 @@ MIN_CHARS = 80  # build spec: only substantive messages
 SEED_N = 150  # build spec: store-warming set
 POS_N = 100  # build spec: held-out novel candidates
 NEG_N = 100  # build spec: duplicate candidates
-RNG_SEED = 0  # reproducibility anchor (arbitrary fixed value, not tuned)
-PASS_BAND = 0.02  # build spec noise band, user decision 2026-06-11
+RNG_SEED = 0  # source: ADR-0831
+PASS_BAND = 0.02  # source: ADR-0831
 HIER_FLAG = "CORTEX_MEMORY_WRITE_GATE_HIERARCHICAL"
 
 
@@ -85,10 +45,7 @@ HIER_FLAG = "CORTEX_MEMORY_WRITE_GATE_HIERARCHICAL"
 def extract_corpus(path: Path) -> list[str]:
     """Distinct message contents (>= MIN_CHARS) from LongMemEval-S.
 
-    Haystack sessions are shared across questions, so iterate unique
-    session ids in file order; dedupe contents on a whitespace/case
-    normalised key. Deterministic given the file.
-    """
+    source: ADR-0831"""
     with open(path) as f:
         questions = json.load(f)
     seen_sessions: set[str] = set()
@@ -148,7 +105,7 @@ def build_dataset(
     for i in range(NEG_N):
         content, kind = make_negative(seeds[i], i)
         candidates.append({"content": content, "label": 0, "kind": kind})
-    rng.shuffle(candidates)  # order-fair calibration drift, same in both modes
+    rng.shuffle(candidates)  # source: ADR-0831
     return seeds, candidates
 
 
@@ -156,7 +113,10 @@ def build_dataset(
 
 
 def _set_mode(mode: str) -> None:
-    """Toggle the hierarchical flag and bust the settings/calibration caches."""
+    """Toggle the hierarchical flag and bust the settings/calibration caches.
+
+    source: ADR-0831
+    """
 
     if mode == "hierarchical":
         os.environ[HIER_FLAG] = "1"
@@ -176,7 +136,7 @@ def run_mode(mode: str, seeds: list[str], candidates: list[dict]) -> list[dict]:
         db.load_memories(
             [{"content": s, "source": "gateeval_seed"} for s in seeds],
             domain="gateeval",
-            decompose=False,  # store verbatim so duplicates are duplicates
+            decompose=False,  # source: ADR-0831
         )
         for cand in candidates:
             emb = db._embeddings.encode(cand["content"])
@@ -208,9 +168,7 @@ def run_mode(mode: str, seeds: list[str], candidates: list[dict]) -> list[dict]:
 def roc_auc(labels: list[int], scores: list[float]) -> float:
     """AUC via the rank-sum (Wilcoxon-Mann-Whitney) statistic.
 
-    Hanley & McNeil (1982): AUC = P(score_pos > score_neg) with ties
-    counted half. Average ranks handle ties exactly.
-    """
+    source: ADR-0831"""
     n_pos = sum(labels)
     n_neg = len(labels) - n_pos
     if n_pos == 0 or n_neg == 0:
@@ -238,13 +196,13 @@ def summarize(results: list[dict], default_threshold: float) -> dict:
     labels = [r["label"] for r in results]
     scores = [r["score"] for r in results]
     auc = roc_auc(labels, scores)
-    # Accuracy at the static default threshold (spec metric, deterministic).
+    # source: ADR-0831
     tp = sum(1 for r in results if r["label"] == 1 and r["score"] >= default_threshold)
     fn = sum(1 for r in results if r["label"] == 1 and r["score"] < default_threshold)
     tn = sum(1 for r in results if r["label"] == 0 and r["score"] < default_threshold)
     fp = sum(1 for r in results if r["label"] == 0 and r["score"] >= default_threshold)
 
-    # Production decision accuracy, excluding bypasses (gate didn't decide).
+    # source: ADR-0831
     def is_bypass(r: dict) -> bool:
         return r["gate_reason"].startswith(("bypass", "forced"))
 

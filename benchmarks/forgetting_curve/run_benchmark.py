@@ -1,39 +1,6 @@
-"""Forgetting-curve fidelity benchmark — paper-form validation of effective_heat.
+"""Measure forgetting-curve fidelity of effective_heat.
 
-WHAT THIS TESTS (and why the retrieval benchmarks cannot)
----------------------------------------------------------
-LongMemEval / LoCoMo / BEAM and the longitudinal harness measure RANKING,
-not the decay LAW: at year-scale ages heat collapses to its stage floor
-regardless of law, and on synthetic corpora vector/lexical similarity
-dominates ranking so the heat signal is never decisive (A/B on the
-longitudinal runner: ±1 hit/100 = noise). The biomimetic forgetting law must
-therefore be validated on PAPER FIDELITY — does the curve effective_heat()
-produces over real elapsed time match the FORM of published retention curves?
-
-NON-CIRCULARITY: ground truth = published curve FORMS + parameter ranges, NOT
-Cortex's own heat/importance/stage signals. The target is external:
-  - Wixted & Ebbesen 1991 (Psych. Sci. 2:409): human forgetting is fit BETTER
-    by a power law R=a·t^-b than by a single exponential. Falsifiable claim =
-    the ORDERING (power ≥ exponential). b is small, ~0.1-0.5.
-  - Anderson & Schooler 1991 / ACT-R: retention follows a power law, d≈0.5.
-  - Benna & Fusi 2016 (Nat. Neurosci. 19:1697): cascade synapse decays ∝ 1/√t
-    (power law b≈0.5) via a continuum of separated timescales. The α-ladder
-    (2.0→1.2→0.8→0.5) is a 4-level discrete analog — does it approximate the
-    power law, or just a piecewise/single exponential?
-  - Bahrick 1984 (JEP:General 113:1): "permastore" — a residual retention
-    floor that persists for decades and does NOT decay to zero.
-
-ARTIFACT UNDER TEST: effective_heat() + effective_stage() in
-mcp_server/infrastructure/pg_schema.py. Probed directly via SQL against a
-single synthetic row per signal-profile, varying t_now across an age grid.
-
-This benchmark CAN FAIL. If the cascade produces only a single exponential
-plus a floor (no power-law character), criterion 1 fails — and that is
-reported as a (partial) falsification, not hidden.
-
-Run:
-    .venv/bin/python3 benchmarks/forgetting_curve/run_benchmark.py
-    .venv/bin/python3 benchmarks/forgetting_curve/run_benchmark.py --quick
+source: ADR-0830
 """
 
 from __future__ import annotations
@@ -60,10 +27,9 @@ RESULTS_ROOT = REPO / "benchmarks" / "results" / "forgetting_curve"
 PROD_URL = "postgresql://localhost:5432/cortex"
 DB_NAME = "cortex_curve_test"
 
-# Age grid in hours. Dense in the 0-8h stage-transition window (captures the
-# α-ladder) then logarithmic out to 365d (captures the floor regime).
-# source: task spec grid (1h,6h,1d,3d,7d,14d,30d,60d,90d,180d,270d,365d)
-# enriched with sub-day points to resolve the cascade transitions.
+# source: ADR-0830
+
+
 AGES_HOURS_FULL = [
     0.5,
     1,
@@ -138,7 +104,7 @@ def run(quick: bool) -> Path:
     ages = AGES_HOURS_QUICK if quick else AGES_HOURS_FULL
     reset_database(PROD_URL, DB_NAME)
     url = configure_environment(PROD_URL, DB_NAME)
-    from mcp_server.infrastructure.pg_store import PgMemoryStore  # noqa: PLC0415 — deferred: module hard-imports pgvector/psycopg/psycopg_pool at top level; hoisting would break installs without it
+    from mcp_server.infrastructure.pg_store import PgMemoryStore  # noqa: PLC0415 — source: ADR-0830
 
     store = PgMemoryStore(database_url=url)  # applies schema + SQL functions
     conn = psycopg.connect(url, autocommit=True)

@@ -37,9 +37,8 @@ from benchmarks.lib.db_snapshot import (  # noqa: E402
 from benchmarks.lib import db_setup  # noqa: E402
 
 RESULTS_DIR = _ROOT / "benchmarks" / "results" / "ablation"
-QUICK_LIMIT = 20  # source: smoke-test default; matches deliverable spec.
-# source: spec §Deliverable 3 (HNSW determinism follow-up) — schema v3 adds
-# settings_drift + db_setup fields populated alongside db_seed.
+QUICK_LIMIT = 20  # source: ADR-0063
+# source: ADR-0063
 RESULT_SCHEMA_VERSION = 3
 
 # Benchmark IDs accepted on the CLI and their dispatch metadata.
@@ -124,9 +123,7 @@ _RE_QUESTIONS = re.compile(r"^Questions:\s+(\d+)", re.MULTILINE)
 def _parse_metrics(stdout: str) -> BenchMetrics:
     """Extract R@10, MRR, n_queries from benchmark stdout.
 
-    Pre: stdout has 'Recall@10 X%'+'MRR Y' (longmemeval) OR an
-    'OVERALL MRR R@5 R@10 Qs' line. Post: BenchMetrics; missing -> 0.
-    """
+    source: ADR-0063"""
     r10 = mrr = 0.0
     n = 0
     if m := _RE_R10.search(stdout):
@@ -281,8 +278,7 @@ def _save(
         "git_sha": _git_sha(),
         "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
         "embedding_dim": 384,
-        # source: spec §Deliverable 2 — db_seed becomes a dict with
-        # snapshot sha256 + meta when --from-snapshot is used.
+        # source: ADR-0063
         "db_seed": db_seed,
     }
     path.write_text(json.dumps(payload, indent=2))
@@ -450,7 +446,8 @@ def main() -> int:
                 quick=args.quick,
                 run_id=run_id if snapshot else None,
             )
-        except Exception as exc:  # noqa: BLE001 — source: ablation must be fail-soft per mech
+        # source: ADR-0063
+        except Exception as exc:  # noqa: BLE001
             print(f"  [{mech.name}] FAILED: {exc!r}")
             continue
         out = _save(args.benchmark, mech, metrics, baseline, wall, rss, db_seed=db_seed)

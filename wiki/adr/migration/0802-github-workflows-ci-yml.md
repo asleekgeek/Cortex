@@ -1,0 +1,919 @@
+---
+title: "ADR-0802 — .github/workflows/ci.yml rationale"
+status: accepted
+source: .github/workflows/ci.yml
+---
+
+# ADR-0802 — .github/workflows/ci.yml
+
+Source rationale preserved verbatim. Identifiers inside historical quotations are not current identities.
+
+## .github/workflows/ci.yml — original line 9
+
+````text
+# source: W1-4 in tasks/codex-green-remediation-plan.md requires weekly
+# builds; reuse fuzz.yml's Monday 04:17 UTC window as a config choice.
+````
+
+## .github/workflows/ci.yml — original line 24
+
+````text
+# source: run 34035713474 (2026-09-06), max 9s; ceil(2 * 9 / 60).
+````
+
+## .github/workflows/ci.yml — original line 40
+
+````text
+# Classify each file independently. Unknown paths conservatively count
+# as code; a docs file cannot hide code changed in the same PR.
+# source: https://github.com/dorny/paths-filter/tree/v4.0.1#usage
+# `every` applies all code exclusions to each file, not to the PR.
+````
+
+## .github/workflows/ci.yml — original line 61
+
+````text
+# Uses the composite action at .github/actions/test-suite/action.yml for
+# the step-level rationale, including why the shared unit is a composite
+# action and not a reusable workflow: a job delegating via `uses:` reports
+# its check as "<caller job name> / <called job name>", which would rename
+# all four required contexts on `main`. Sharing at the step level leaves
+# this job's name — and therefore its status-check context — untouched.
+# Originally shared with release.yml's own `test` job (issue #336); issue
+# #392 removed that second caller (see the action's header comment) —
+# `requirements/ci-postgresql.txt` and tree-sitter grammars are now
+# installed unconditionally inside the action rather than passed in.
+````
+
+## .github/workflows/ci.yml — original line 76
+
+````text
+# source: W1-7 review and successful W2 runs cited per matrix leg.
+# Each limit is ceil(twice that leg's maximum elapsed seconds / 60).
+````
+
+## .github/workflows/ci.yml — original line 85
+
+````text
+# source: run 34047249647 (2026-09-06), max 980s; ceil(2 * 980 / 60).
+````
+
+## .github/workflows/ci.yml — original line 88
+
+````text
+# source: run 33806380625 (2026-09-03), max 1931s; ceil(2 * 1931 / 60).
+````
+
+## .github/workflows/ci.yml — original line 91
+
+````text
+# source: run 34046091095 (2026-09-06), max 1197s; ceil(2 * 1197 / 60).
+````
+
+## .github/workflows/ci.yml — original line 94
+
+````text
+# source: run 33688337476 (2026-09-02), max 1637s; ceil(2 * 1637 / 60).
+````
+
+## .github/workflows/ci.yml — original line 98
+
+````text
+# A local `uses: ./...` is resolved from the checked-out tree, so the
+# checkout cannot itself live inside the shared action.
+````
+
+## .github/workflows/ci.yml — original line 105
+
+````text
+# Coverage, the MCP host contract check, and the advertised-test-count
+# check are expensive and gain nothing from running on all four legs —
+# ci.yml has always scoped them to Python 3.12 only; the shared action
+# makes that scoping an explicit input instead of an inline `if:` per
+# step.
+````
+
+## .github/workflows/ci.yml — original line 114
+
+````text
+# `docs` is in this condition and NOT in the other test jobs' on purpose.
+# Part of the suite this job runs takes documentation as its INPUT and
+# asserts on its content — tests_py/scripts/test_codex_plugin_contract.py
+# reads README.md and checks the canonical published identities (the
+# hypermnesia-mcp-viz anchor, the viz/spec migration strings). Excluding
+# '*.md' from the `code` filter therefore switched those guards OFF exactly
+# when their subject changed: PR #509 was a README-only diff, every test job
+# was skipped, it merged green, and the push to main went red on that test
+# across five jobs (run 34238410970, 2026-09-08 — 7663 passed, 1 failed;
+# fixed by #510).
+````
+
+## .github/workflows/ci.yml — original line 125
+
+````text
+# This job, not the 3.10-3.13 matrix, because it already runs THE FULL SUITE
+# (see the "Scope" note on its pytest step) in one ~5-minute job, so it
+# covers the doc-contract tests at the smallest cost that still closes the
+# gap. Waking the whole matrix on every prose edit would undo the CI work in
+# #475-#481.
+````
+
+## .github/workflows/ci.yml — original line 133
+
+````text
+# source: run 33806380625 (2026-09-03), max 292s; ceil(2 * 292 / 60).
+````
+
+## .github/workflows/ci.yml — original line 136
+
+````text
+# Force the SQLite fallback path — no PostgreSQL installed or started.
+# The conftest detects PG-unreachable and sets CORTEX_MEMORY_STORE_BACKEND=sqlite
+# automatically; this env var makes the selection explicit and observable in logs.
+# source: mcp_server/infrastructure/memory_store.py _construct_store() — the
+# 'sqlite' backend branch is always reachable without PG; conftest.py line 99
+# mirrors this override when _USE_PG is False.
+````
+
+## .github/workflows/ci.yml — original line 167
+
+````text
+# The `codebase` extra is included even though this job is about the
+# storage backend: without tree-sitter/leidenalg, 9 tests SKIP here that
+# the PostgreSQL job runs, so the two gates would not be equal and a
+# codebase-analysis regression could reach the default backend unseen.
+# Measured 2026-07-28 locally: 8 skips from tree-sitter, 1 from leidenalg.
+````
+
+## .github/workflows/ci.yml — original line 173
+
+````text
+# Hash-pinned from uv.lock (scripts/generate_pip_constraints.py).
+# --no-deps on BOTH installs: the file is the complete, uv-resolved
+# dependency graph, so pip must not re-derive it. Without --no-deps
+# here, pip re-validates every listed package's declared metadata
+# dependencies against the rest of the file — which breaks the
+# moment pyproject.toml's [tool.uv] override-dependencies steers a
+# package (mpmath) past a bound another package's metadata still
+# declares (sympy's `mpmath<1.4`): uv's resolver honours the
+# override, but the exported requirements.txt format cannot carry
+# it, so pip's own re-derivation sees only the unresolved conflict
+# (issue: PR #332, `ResolutionImpossible` on every install job).
+````
+
+## .github/workflows/ci.yml — original line 188
+
+````text
+# Retry-with-backoff, fail-loudly: see the `test` job's pre-download step
+# for the root-cause rationale (CI run 28495801728, 2026-07-01).
+````
+
+## .github/workflows/ci.yml — original line 200
+
+````text
+# Same rationale as the `test` job's identically-named steps (CI run
+# 30592244731, 2026-07-31): this job also installs the `codebase` extra
+# (comment above), so it is equally exposed to a cold-cache mid-suite
+# `DownloadError` without this.
+````
+
+## .github/workflows/ci.yml — original line 227
+
+````text
+# SQLite is the plugin's DEFAULT backend, so it gets the same gate
+# PostgreSQL does. Explicit rather than inferred: this job has no PG
+# service container, and conftest would select SQLite on its own, but
+# a future runner with PG reachable must not silently turn this into
+# a second PostgreSQL run.
+````
+
+## .github/workflows/ci.yml — original line 235
+
+````text
+# Scope: THE FULL SUITE. This job previously ran one file
+# (test_sqlite_backend.py) and deferred the rest to a "full-parity
+# effort" that named no issue. That gap let three real defects ship on
+# the default backend — missing acquire_interactive/acquire_batch, the
+# PG-only lesson-promotion query, and a bare except that reported the
+# resulting failure as an empty backlog (issue #220).
+````
+
+## .github/workflows/ci.yml — original line 242
+
+````text
+# Measured 2026-07-28 on this tree (rebased onto 575f2f1, so it
+# includes the tests #229/#230 added), macOS 15 / Python 3.13,
+# `CORTEX_MEMORY_STORE_BACKEND=sqlite`: 6103 passed, 96 skipped,
+# exit 0 in 247s.
+````
+
+## .github/workflows/ci.yml — original line 247
+
+````text
+# Those 96 skips, counted (not estimated) from a `-rs` run:
+#   84  PostgreSQL-only — the test's SUBJECT is the PG implementation
+#       (pg_store_* dialect modules, PG-only maintenance passes). These
+#       SHOULD skip here; making them "backend-agnostic" would mean
+#       testing PG code without PG.
+#   12  optional deps absent from that local env (8 tree-sitter,
+#       1 leidenalg, 3 sqlite-vec). All three ARE installed on this
+#       job, so it should report ~84 skips, not 96 — if it reports
+#       more, an extra is missing and the gate has silently narrowed.
+````
+
+## .github/workflows/ci.yml — original line 281
+
+````text
+# source: run 34217620888 job 102033099129 (2026-09-08), whole job 52s;
+# run 34210128951 job 102009142706 (2026-09-08), whole job 194s.
+# ceil(2 * 194 / 60) = 7.
+````
+
+## .github/workflows/ci.yml — original line 285
+
+````text
+# The former bound was ceil(2 * 61 / 60) = 3 from run 33951959734
+# (2026-09-05, max 61s). That 2x margin was computed against a sample
+# that never saw this job's real tail, and 180s sits INSIDE the range
+# of a legitimate passing run: the dominant cost is the last step's
+# `scripts/verify_mcp_hosts.py`, which boots the plugin through `uvx`
+# against a deliberately COLD uv cache (UV_CACHE_DIR/UV_TOOL_DIR under
+# RUNNER_TEMP, --allow-bootstrap-network), so it pays a full network
+# package resolve+build every run. Both samples above PASS the same
+# assertions and differ only in that bootstrap: 23.98s vs 179.86s
+# ("PASS codex-cli/lean: initialize + discovery + memory_stats
+# (10 tools, …)"), a 7.5x spread. The coldness is the point of the
+# test — it is the path a first-time user hits — so the variance
+# cannot be engineered away without destroying what the job asserts;
+# the bound has to cover the measured tail instead.
+````
+
+## .github/workflows/ci.yml — original line 314
+
+````text
+# source: https://github.com/actions/setup-node/tree/v7.0.0#caching-global-packages-data
+# Cache downloads, not node_modules.
+````
+
+## .github/workflows/ci.yml — original line 324
+
+````text
+# Vendor parsers catch configuration drift that a generic MCP client
+# cannot: Claude's custom plugin component path, Gemini's extension
+# schema, and Codex's config.toml transport/timeouts. Versions and bytes
+# are pinned in package-lock.json. This isolated, contents-read-only job
+# intentionally permits install scripts: Claude Code's package uses its
+# postinstall to replace a non-executable error stub with the pinned
+# platform-native validator binary. `--ignore-scripts` was verified to
+# leave `claude plugin validate` unusable.
+````
+
+## .github/workflows/ci.yml — original line 376
+
+````text
+# source: https://github.com/actions/setup-python/tree/v7.0.0#caching-packages-dependencies
+# pip caches below hash each job's exact exported constraints. Requirement
+# installs still use --require-hashes; no installed environment is restored.
+````
+
+## .github/workflows/ci.yml — original line 384
+
+````text
+# source: run 33990473565 (2026-09-05), max 426s; ceil(2 * 426 / 60).
+````
+
+## .github/workflows/ci.yml — original line 387
+
+````text
+# Real NT proof for the cross-platform fixes (fcntl→msvcrt, sys.executable,
+# NTFS exec bits, $HOME override, path separators). We use the SQLite
+# fallback so no PostgreSQL has to be provisioned on the Windows runner —
+# the conftest selects it when PG is unreachable; the env var makes it
+# explicit. source: RAPPORT_INSTALLATION_CORTEX_WINDOWS.md §10 (CI Windows)
+````
+
+## .github/workflows/ci.yml — original line 412
+
+````text
+# Hash-pinned from uv.lock (scripts/generate_pip_constraints.py).
+# --no-deps on BOTH installs — see the "Install dependencies (no
+# postgresql extra)" step above (SQLite job) for why the
+# requirements-file install needs it too, not just the local -e .
+````
+
+## .github/workflows/ci.yml — original line 420
+
+````text
+# Import smoke: the modules that previously crashed at load on Windows
+# (fcntl import) or silently misbehaved. If any fails to import, the
+# platform branches are wrong — fail fast before the suite.
+````
+
+## .github/workflows/ci.yml — original line 431
+
+````text
+# Retry-with-backoff, fail-loudly: see the `test` job's pre-download step
+# for the root-cause rationale (CI run 28495801728, 2026-07-01). shell: bash
+# so the retry loop runs under Git Bash rather than the Windows default pwsh.
+````
+
+## .github/workflows/ci.yml — original line 445
+
+````text
+# Real postInstall proof (issue #113). Before this step, no CI job ever
+# ran plugin.json's actual postInstall command
+# (`bash scripts/install-plugin.sh`) on any OS — the ubuntu `test` job
+# above installs deps directly via `pip install -e`, bypassing it
+# entirely. That gap is why scripts/setup.sh's "Unsupported OS" failure
+# on native Windows (Git Bash reports uname -s as MINGW64_NT-*/
+# MSYS_NT-*/CYGWIN_NT-*, matched by neither its Darwin nor Linux branch)
+# went undetected. The job-level CORTEX_MEMORY_STORE_BACKEND: sqlite
+# (above) makes install-plugin.sh/scripts/setup.py take the SQLite
+# path — now the plugin's production DEFAULT, not a CI-only mode —
+# so this runs without provisioning a PostgreSQL server on the
+# runner, while still exercising the real backend selection +
+# marker write in install-plugin.sh and the real scripts/setup.py
+# subprocess calls. The embedding model is deliberately NOT cached
+# by this path anymore (lazy first-use download); the HF
+# pre-download step above provides the model for the test steps.
+````
+
+## .github/workflows/ci.yml — original line 484
+
+````text
+# Validates `requirements/release.txt` — the dependency set release.yml
+# installs before publishing (issue #392). Removing release.yml's own test
+# job (see release-gate below) would otherwise leave that narrower
+# dependency set validated NOWHERE until a PyPI/uvx install broke on it.
+````
+
+## .github/workflows/ci.yml — original line 489
+
+````text
+# Deliberately NOT the full pytest suite: this job's subject is the
+# DEPENDENCY SET, not the suite — ci.yml's `test` matrix already covers the
+# suite itself, against a wider dependency set. Re-running pytest here
+# would duplicate that coverage at the release-narrowed dependency set's
+# cost without adding a new claim.
+````
+
+## .github/workflows/ci.yml — original line 495
+
+````text
+# release.txt deliberately omits tree-sitter, tree-sitter-language-pack,
+# igraph, leidenalg and texttable (`.github/actions/test-suite/action.yml`
+# header comment) — so nothing this job runs may import from those
+# packages, and it must not exercise codebase_analyze/AST paths.
+````
+
+## .github/workflows/ci.yml — original line 500
+
+````text
+# The check itself reuses the cheapest existing mechanism instead of
+# inventing a new one: `scripts/verify_mcp_hosts.py`'s stdio initialize +
+# tools/list + memory_stats round-trip (the same invocation the
+# `test-sqlite` job's "Verify hook-free MCP host contract" step already
+# runs) proves the server imports and its full tool surface registers
+# under this narrower dependency set, with no PostgreSQL service needed
+# (`--storage-selection sqlite` is the default).
+````
+
+## .github/workflows/ci.yml — original line 512
+
+````text
+# source: run 33806380625 (2026-09-03), max 109s; ceil(2 * 109 / 60).
+````
+
+## .github/workflows/ci.yml — original line 531
+
+````text
+# --no-deps on BOTH installs — see the SQLite job's "Install
+# dependencies" step above for why the requirements-file install
+# needs it too, not just the local -e .
+````
+
+## .github/workflows/ci.yml — original line 538
+
+````text
+# Retry-with-backoff, fail-loudly: see the `test` job's pre-download
+# step for the root-cause rationale (CI run 28495801728, 2026-07-01).
+````
+
+## .github/workflows/ci.yml — original line 560
+
+````text
+# source: run 33951959734 (2026-09-05), max 17s; ceil(2 * 17 / 60).
+````
+
+## .github/workflows/ci.yml — original line 573
+
+````text
+# Pinned: ruff's formatter output changes across minor versions
+# (0.15.6 vs 0.15.20 divergence broke Lint on PR #83). The repo is
+# formatted with 0.15.20; bump this pin and reformat together.
+# --no-deps: the file is the complete, uv-resolved dependency graph
+# (see the SQLite job's "Install dependencies" step above) — pip
+# must install it as-is rather than re-deriving it from metadata.
+````
+
+## .github/workflows/ci.yml — original line 587
+
+````text
+# Advertised counts (tools, references, mechanisms) must match the
+# repository. Runs here — on every push and PR — because doc drift is
+# introduced at commit time, not at release time: on 2026-07-27 README,
+# CONTRIBUTING, CLAUDE.md and the MCPB manifest each advertised a
+# different tool count, and nothing failed. Static only (no imports).
+````
+
+## .github/workflows/ci.yml — original line 595
+
+````text
+# [project].version in pyproject.toml against every one of the 14
+# version sites across 11 files (manifests, plugin.jsons, the
+# marketplace's metadata AND primary-entry version, the MCP registry
+# package entry, the four textual occurrences in the version badge,
+# and uv.lock's own root-package version). Two of these sites
+# (server.json packages[0].version, marketplace.json metadata.version)
+# were covered by nothing before this gate existed, and the one gate
+# that came closest — marketplace-pins.yml — is path-filtered, so it
+# sits outside ci-green and only fires on its weekly cron (issue #392).
+# Static only (no imports), same reason as the doc-claim gate above.
+````
+
+## .github/workflows/ci.yml — original line 608
+
+````text
+# The `ci-green` job below is the single status check branch protection
+# names; the list of jobs it covers lives in its `needs:`. A job added
+# to ci.yml but not to that list would run outside the gate and could
+# fail without blocking a merge. Static only (no imports), same reason
+# as the doc-claim gate above.
+````
+
+## .github/workflows/ci.yml — original line 616
+
+````text
+# The README's repo-derived badges are committed SVGs, not hotlinked
+# images, so nothing regenerates them on view: a figure that moves
+# leaves the badge asserting the old one. Checked here, on every push
+# and PR, because that drift is introduced at commit time. Static only
+# (no network, no suite) — the tests badge needs a collected count and
+# is checked in the test job instead.
+````
+
+## .github/workflows/ci.yml — original line 625
+
+````text
+# The requirements/ files are the ONLY thing standing between a pip
+# install and an unpinned one, and they are generated — so a lock
+# change that is not re-exported leaves them describing dependencies
+# nobody resolved. Checked here, on every push and PR, because that
+# drift is introduced at commit time. Static: reads uv.lock, installs
+# nothing.
+# uv arrives via the SHA-pinned action, not `pip install uv==0.11.3`:
+# Scorecard scores a bare version specifier as "pipCommand not pinned
+# by hash" (an `==` resolves to whatever bytes the index serves under
+# that version today), so installing the pinning tool with pip would
+# have minted the 22nd Pinned-Dependencies alert in the very commit
+# that closes the other 21 — and the policy clears the check only at
+# score 10. Same form as release.yml's SBOM job.
+````
+
+## .github/workflows/ci.yml — original line 643
+
+````text
+# Runs BEFORE the requirements-file check below on purpose: that check
+# only compares the committed requirements/*.txt against whatever
+# uv.lock CURRENTLY says, so a stale uv.lock and its stale export agree
+# with each other and the check stays green. `uv lock --check` instead
+# re-resolves pyproject.toml and fails if uv.lock would change — the
+# half of "lockfile is current" the other check cannot see.
+````
+
+## .github/workflows/ci.yml — original line 650
+
+````text
+# This exact drift shipped (issue #251): Dependabot's `deps` PR #218
+# widened tree-sitter-language-pack's upper bound in pyproject.toml
+# (`<1.7` -> `<1.14`) but touched no other file — its "pip" ecosystem
+# entry rewrites the version specifier only, it does not re-run `uv
+# lock`. uv.lock kept resolving 1.6.2 (still valid under the wider
+# range, and `uv lock`'s incremental resolution prefers the existing
+# pin over the newest compatible one), so `.venv/bin/python -m pyright
+# mcp_server/` reported a real diagnostic for a contributor who ran
+# `uv sync --locked` while CI — which back then installed the package
+# editable with its extras resolved straight from pyproject.toml's
+# ranges, unconstrained by the lock (the exact pattern
+# test_job_does_not_pip_install_an_extra_range now forbids below) —
+# silently resolved 1.13.5 and stayed green on the same commit.
+````
+
+## .github/workflows/ci.yml — original line 664
+
+````text
+# Reproduced 2026-07-29 by checking out pyproject.toml + uv.lock as of
+# 9e293baa (#218, the commit right after the widening) into a scratch
+# directory and running `uv lock --check` there:
+#   Resolved 196 packages in 186ms
+#   The lockfile at `uv.lock` needs to be updated, but `--check` was
+#   provided. To update the lockfile, run `uv lock`.
+# — i.e. this step would have failed, at commit time, on the PR that
+# introduced the drift. Static: reads pyproject.toml + uv.lock,
+# resolves, installs nothing (~200ms locally).
+````
+
+## .github/workflows/ci.yml — original line 679
+
+````text
+# actionlint (which shells out to the runner's preinstalled shellcheck for
+# each `run:` block) was never wired into any gate — issue #247, found by
+# hand after these findings had been latent since before the Node24 action
+# bump. Pinned by release tag + checksum (not `go install @latest` /
+# curl|bash), matching this repo's supply-chain-hardening stance (release.yml).
+# source: https://github.com/rhysd/actionlint/releases/tag/v1.7.12,
+# actionlint_1.7.12_checksums.txt, linux_amd64 entry, verified 2026-07-29.
+# Cache only the release archive; verify its checksum on every run.
+# source: https://github.com/actions/cache/tree/v6.1.0#usage
+````
+
+## .github/workflows/ci.yml — original line 716
+
+````text
+# Deterministic enforcement of CLAUDE.md § Code Style — file size, method
+# size, layer-boundary imports, and unsourced magic numbers — which that
+# section admitted was "enforced by code review today; no automated
+# pre-commit hook checks this yet" until this job. Measured on a single
+# PR the night before this job was added: a 301-line file reported as
+# 280, three of four over-40-line methods unseen, one layer violation
+# justified by a fabricated citation — each caught only by a human or
+# agent re-reading the diff, never by a machine. See
+# scripts/check_craftsmanship.py's module docstring for the rules and
+# scripts/craftsmanship_baseline.py for why pre-existing debt (recorded
+# in .craftsmanship-baseline.json) does not retroactively block.
+````
+
+## .github/workflows/ci.yml — original line 732
+
+````text
+# source: run 33951959734 (2026-09-05), max 9s; ceil(2 * 9 / 60).
+````
+
+## .github/workflows/ci.yml — original line 735
+
+````text
+# fetch-depth: 0 so `origin/main` — the diff base the gate compares
+# the PR's changed files against — is resolvable locally, not just
+# the single commit a shallow checkout would leave.
+````
+
+## .github/workflows/ci.yml — original line 747
+
+````text
+# Standard library only (scripts/check_craftsmanship.py's module
+# docstring) — no dependency install needed, matching the
+# doc-claim/version-surface/ci-gate-completeness gates in `lint`
+# below, which are static for the same reason.
+````
+
+## .github/workflows/ci.yml — original line 762
+
+````text
+# source: run 33990473565 (2026-09-05), max 94s; ceil(2 * 94 / 60).
+````
+
+## .github/workflows/ci.yml — original line 776
+
+````text
+# Pyright resolves third-party imports from ./.venv (pinned in
+# pyrightconfig.json: venvPath="."/venv=".venv"). The full stub set MUST
+# be installed or every import collapses to Unknown — and Unknown
+# SUPPRESSES downstream type errors, silently masking real defects.
+# source: measured 2026-06-18 — an unresolved env reports 566 errors, a
+# fully-resolved env reports 593 (Unknown was masking 27+ real errors).
+# flashrank (core reranker) + sqlite-vec live outside dev/postgresql/
+# codebase; [otel] resolves the opentelemetry exporter imports.
+````
+
+## .github/workflows/ci.yml — original line 785
+
+````text
+# --no-deps on every requirements-file install here — see the
+# SQLite job's "Install dependencies" step above for why: each
+# file is the complete, uv-resolved dependency graph, and pip must
+# not re-derive it from metadata.
+````
+
+## .github/workflows/ci.yml — original line 797
+
+````text
+# The gate's verdict is a property of THIS environment, so the log has to
+# name it. Issue #253: a contributor and CI read two different
+# `tree-sitter-language-pack` type surfaces on the same commit, and
+# nothing in either log said which one had been analysed. One grep per
+# package, not one alternation: a miss then exits non-zero on the
+# package that is actually absent, so an install that silently dropped
+# one fails here instead of degrading to Unknown inside pyright.
+````
+
+## .github/workflows/ci.yml — original line 812
+
+````text
+# pyright IS the gate: the backlog was burned to zero (issue #197,
+# 568 baselined diagnostics -> 0 measured 2026-07-28), so ANY
+# diagnostic — any rule, any severity-error — fails the build via
+# pyright's own exit code. The former per-rule ratchet
+# (scripts/check_pyright_ratchet.py + typecheck-baseline.json) is
+# retired: a floor file only exists to tolerate a backlog.
+````
+
+## .github/workflows/ci.yml — original line 826
+
+````text
+# source: run 33951905125 (2026-09-05), max 19s; ceil(2 * 19 / 60).
+````
+
+## .github/workflows/ci.yml — original line 839
+
+````text
+# --no-deps: the file is the complete, uv-resolved dependency graph
+# (see the SQLite job's "Install dependencies" step above) — pip
+# must install it as-is rather than re-deriving it from metadata.
+````
+
+## .github/workflows/ci.yml — original line 847
+
+````text
+# The two images below had NO CI build at all until this change, so a
+# regression in either was invisible until someone built it by hand. That
+# is not hypothetical: docker/Dockerfile copied a python3.12 site-packages
+# path against a python:3.14 base and could not build, and nothing said so.
+````
+
+## .github/workflows/ci.yml — original line 862
+
+````text
+# source: run 33951905125 (2026-09-05), max 514s; ceil(2 * 514 / 60).
+````
+
+## .github/workflows/ci.yml — original line 888
+
+````text
+# source: https://docs.docker.com/build/cache/backends/#cache-mode
+# min exports image layers; intermediate build layers are omitted.
+````
+
+## .github/workflows/ci.yml — original line 897
+
+````text
+# source: run 33951905125 (2026-09-05), max 349s; ceil(2 * 349 / 60).
+````
+
+## .github/workflows/ci.yml — original line 919
+
+````text
+# source: https://docs.docker.com/build/cache/backends/#cache-mode
+# min exports image layers; intermediate build layers are omitted.
+````
+
+## .github/workflows/ci.yml — original line 928
+
+````text
+# source: run 34217523633 job 102032799571 (2026-09-08, push to main,
+# warm cache): whole job 242s, of which the build step 225s — the steady
+# state this bound is sized against; ceil(2 * 242 / 60) = 9, kept at 13
+# for headroom over the 369s tail measured on run 33951959734
+# (2026-09-05). The bound is NOT sized against a cold `mode=max` cache
+# EXPORT: run 34225008423 job 102057139452 (2026-09-08, PR #492) finished
+# building at 70.8s and was still in `exporting to GitHub Actions Cache`
+# when the 13-minute bound fired at 827s, so the smoke-test body never
+# ran. That export is removed from pull_request runs below rather than
+# budgeted for — see the cache-to comment.
+````
+
+## .github/workflows/ci.yml — original line 939
+
+````text
+# BLOCKING: this job asserts the exact contract that silently broke for
+# two months (fix/bare-container-contract, commit 5d71069c) — third-party
+# registry indexers (Glama et al.) `docker build` the bare repo, then
+# `docker run` with zero env vars and zero external services, and expect
+# `tools/list` to answer. No other CI job exercises this path: `test` and
+# `test-sqlite` both install from source with dev extras and never build
+# the production image; nothing else runs the image with psycopg absent
+# and no DATABASE_URL. continue-on-error is intentionally NOT set.
+````
+
+## .github/workflows/ci.yml — original line 953
+
+````text
+# GitHub Actions cache (type=gha) persists Docker layer cache across
+# workflow runs, scoped to this repo. Without it, every run repeats the
+# torch CPU-wheel download (~200MB, pinned via the CPU-only index in
+# the Dockerfile) and the full pip install layer. With a warm cache,
+# only changed layers (COPY mcp_server, pip install of the local
+# package) rebuild.
+# source: docker/build-push-action README, "GitHub Cache" backend
+# (https://github.com/docker/build-push-action#cache-backend-api),
+# type=gha is the documented zero-config option for GHA runners.
+````
+
+## .github/workflows/ci.yml — original line 970
+
+````text
+# Write the layer cache only on pushes to a branch, never on a
+# pull_request run. GitHub Actions scopes a cache entry to the ref
+# that created it: the default branch's entries are readable from
+# every branch, but an entry a PR run writes is readable only by
+# that same PR's later runs. This job runs once per head commit, so
+# a PR-written entry is exported and then never read — pure cost on
+# the critical path. `cache-from` is unconditional, so PRs keep
+# reading main's warm cache and the torch CPU-wheel layer is still
+# not re-downloaded.
+# source: GitHub Actions cache "Restrictions for accessing a cache"
+# (docs.github.com/actions/writing-workflows/choosing-what-your-
+# workflow-does/caching-dependencies-to-speed-up-workflows), and
+# the measurement below.
+# The condition is written as `!= 'pull_request' && <value> || ''`
+# and not `== 'pull_request' && '' || <value>`: GitHub expressions
+# return the operand, not a boolean, and the empty string is
+# falsy, so the latter form would fall through to <value> on
+# every event and disable nothing.
+````
+
+## .github/workflows/ci.yml — original line 990
+
+````text
+# Reuses the build above (load: true made it visible to the local
+# docker daemon) instead of rebuilding — scripts/docker_smoke.sh is the
+# single source of truth for the build+run+assert sequence, shared with
+# local dev (`scripts/docker_smoke.sh` with no args builds AND smokes).
+````
+
+## .github/workflows/ci.yml — original line 999
+
+````text
+# The aggregate required check for this workflow. CodeQL remains an
+# independent required check outside ci.yml. Everything else here is reached
+# through its `needs:` list, so renaming a job,
+# resizing the matrix, or delegating steps to a reusable workflow (which
+# rewrites check names to "<caller> / <callee>", issue #336) no longer
+# touches the protection settings — the contract is this file, in git,
+# visible in review, instead of eleven job-name strings in GitHub settings
+# that no diff ever shows.
+````
+
+## .github/workflows/ci.yml — original line 1008
+
+````text
+# `if: always()` is load-bearing: without it this job is itself skipped the
+# moment any need fails, the required context is never reported, and the PR
+# blocks with no explanation instead of a red X naming the culprit.
+````
+
+## .github/workflows/ci.yml — original line 1019
+
+````text
+# source: run 33806380625 (2026-09-03), max 4s; ceil(2 * 4 / 60).
+````
+
+## .github/workflows/ci.yml — original line 1040
+
+````text
+# Path skips are valid only for irrelevant PRs. mcp-host-config
+# additionally skips fork PRs to avoid untrusted npm postinstall.
+# The checker verifies these reasons against this run's inputs.
+````
+
+## .github/workflows/ci.yml — original line 1046
+
+````text
+# The tag-as-output half of issue #392: a green push to `main` tags the
+# exact SHA that just passed CI Green, instead of a human hand-picking
+# which (possibly-unvalidated) tree to tag — the v4.17.0 root cause
+# (release run 30741657854 tagged a tree release.yml's own test job had
+# never actually validated against ci.yml's hardening).
+````
+
+## .github/workflows/ci.yml — original line 1052
+
+````text
+# ci-gate-exempt: this job runs ONLY on a push to `main`, i.e. AFTER the PR
+# it belongs to has already merged. There is nothing left for it to gate —
+# it cannot block a PR that is already closed — so it does not appear in
+# ci-green.needs (see scripts/check_ci_gate_complete.py's ci-gate-exempt
+# marker convention). Putting it there would make the branch-protection
+# context depend on a job that never runs on a PR in the first place,
+# permanently blocking every PR.
+````
+
+## .github/workflows/ci.yml — original line 1066
+
+````text
+# source: run 33990473565 (2026-09-05), max 12s; ceil(2 * 12 / 60).
+````
+
+## .github/workflows/ci.yml — original line 1068
+
+````text
+# `contents: read`, NOT write, and that is deliberate. The tag is pushed
+# with the RELEASE_TAG_SSH_KEY deploy key (persisted by the checkout step
+# below), never
+# with GITHUB_TOKEN — granting GITHUB_TOKEN `contents: write` here would
+# be an unused permission (issue #178 least-privilege), and worse, it
+# would let a future edit that drops `ssh-key:` from the checkout push the
+# tag with GITHUB_TOKEN and SUCCEED — producing a tag that silently never
+# starts release.yml. Read-only makes that mistake fail loudly instead.
+````
+
+## .github/workflows/ci.yml — original line 1078
+
+````text
+# A DEDICATED group — not this workflow's `${{ github.workflow }}-${{
+# github.ref }}` group above, which sets `cancel-in-progress: true`. A
+# push to main that lands mid-tag-push would be cancelled by the very
+# next push to main under that group, leaving a partially-created tag on
+# the remote (a tag object pushed but no corresponding release started,
+# or the reverse) — exactly the half-state a release process must never
+# produce. This group instead serializes tag operations one at a time
+# without ever cancelling one already in flight.
+````
+
+## .github/workflows/ci.yml — original line 1090
+
+````text
+# secrets.RELEASE_TAG_SSH_KEY is the PRIVATE half of a repository deploy
+# key (ed25519, read_only=false, created 2026-08-08). A deploy key, and
+# not a PAT or a GitHub App token, because neither of those can be
+# minted through the API — both require a browser — and the deploy key
+# is the tighter credential anyway: scoped to this ONE repository,
+# carrying no account access, and with no expiry to silently break
+# releases. Per
+# GitHub's docs, a ref pushed with the default GITHUB_TOKEN (unlike
+# workflow_dispatch/repository_dispatch) does NOT start a new workflow
+# run — a GITHUB_TOKEN-pushed tag would therefore never reach
+# release.yml's `push: tags` trigger. Same guarded-optional-secret
+# shape as sync-ccplugins-fork.yml's `has_pat` step: absence is a
+# clean, loud skip, not a red job.
+````
+
+## .github/workflows/ci.yml — original line 1118
+
+````text
+# fetch-depth: 0 so `git rev-parse --verify refs/tags/vX` below can see
+# every existing tag, not just the tip commit. `ssh-key:` installs the
+# deploy key as the credential `git push` uses later in this
+# job (actions/checkout persists it by default) — the non-GITHUB_TOKEN
+# credential the tag push requires (see the guard step's comment).
+````
+
+## .github/workflows/ci.yml — original line 1137
+
+````text
+# Reuses doc_claim_sources.canonical_version — the same reader
+# check_version_surfaces.py and check_doc_claims.py already trust —
+# instead of re-deriving a second pyproject.toml version regex here.
+# A push to `main` for a commit that does not bump the version is the
+# NOMINAL case (most commits are not releases): tag v$VERSION already
+# exists, and this step's job is to detect that and skip silently
+# rather than fail or re-tag.
+````
+
+## .github/workflows/ci.yml — original line 1164
+
+````text
+# The last line of defence before a tag: `main` should never carry a
+# partial bump anyway (the identical gate already runs in `lint` on
+# every push and PR — commit 4781c134), so reaching this step with a
+# mismatch means something bypassed the PR gate (a direct push, an
+# admin-merge override). A failure here is a RED job, not a skip —
+# silently tagging a mismatched tree is exactly the v4.17.0 failure
+# mode this workflow exists to make structurally impossible.
+````
+
+## .github/workflows/ci.yml — original line 1181
+
+````text
+# Annotated (not lightweight): carries its own object, author, and
+# message, which `git tag -a` computes but `git tag` alone does not —
+# the shape release.yml's changelog step and GitHub's own release UI
+# expect. Tagged at `github.sha` explicitly (not the checkout's
+# working-tree HEAD) so the released commit is provably the one that
+# went green, even if a future edit changes what this job checks out.
+````
+
+## .github/workflows/ci.yml — original line 1195
+
+````text
+# Visible without opening logs: the decision (tagged / no-bump /
+# no-token) is exactly the property issue #392's acceptance criteria
+# ask to verify ("a green push to main with no version change tags
+# nothing" — verifiable in the release-gate logs).
+````
+
+## .github/workflows/ci.yml:jobs.typecheck.steps.2.run — original line 4
+
+````text
+# Pin pyright — diagnostic output drifts between releases, so a
+# zero-diagnostic tree is only comparable against the pinned version.
+````

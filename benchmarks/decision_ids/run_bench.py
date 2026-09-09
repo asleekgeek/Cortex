@@ -1,9 +1,6 @@
-"""Known-item wiki source-coverage benchmark for issue #514.
+"""Measure exact wiki-identity known-item retrieval coverage.
 
-The baseline is the actual pre-change unified_search handler, with an empty
-memory store and AP disabled. Pages deliberately exist ONLY in the wiki.
-This measures the missing-source bug, not PostgreSQL ranking or model quality.
-Run: python -m benchmarks.decision_ids.run_bench --output result.json
+source: ADR-0819
 """
 
 from __future__ import annotations
@@ -20,9 +17,9 @@ from unittest.mock import AsyncMock, Mock, patch
 from mcp_server.handlers import recall, unified_search
 from mcp_server.infrastructure.wiki_decision_index import write_decision_index
 
-# source: issue #514 branch base; immutable pre-change handler, not a simulation.
+# source: ADR-0819
 BASELINE_REF = "e81735de3eb2248c134980008b2485d7d2a6dcc9"
-# source: canonical identity contract boundary cases and the affected issue's IDs.
+# source: ADR-0819
 KNOWN_IDS = ("ADR-0001", "ADR-0055", "ADR-0056", "ADR-2019", "ADR-9999")
 
 
