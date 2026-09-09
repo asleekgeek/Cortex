@@ -4448,11 +4448,6 @@
       "detail": "update_draft"
     },
     {
-      "file": "mcp_server/infrastructure/pg_store_wiki_notes.py",
-      "kind": "method-size",
-      "detail": "list_uncited_deliberate_memories"
-    },
-    {
       "file": "mcp_server/infrastructure/pg_store_wiki_pages.py",
       "kind": "method-size",
       "detail": "upsert_page"
@@ -4461,11 +4456,6 @@
       "file": "mcp_server/infrastructure/pg_store_wiki_sources.py",
       "kind": "method-size",
       "detail": "upsert_page_sources"
-    },
-    {
-      "file": "mcp_server/infrastructure/pipeline_discovery.py",
-      "kind": "method-size",
-      "detail": "discover_pipeline_command"
     },
     {
       "file": "mcp_server/infrastructure/pipeline_discovery.py",
@@ -4506,21 +4496,6 @@
       "file": "mcp_server/infrastructure/scanner.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/infrastructure/session_registry.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
-    },
-    {
-      "file": "mcp_server/infrastructure/session_registry.py",
-      "kind": "method-size",
-      "detail": "has_active_session_window"
-    },
-    {
-      "file": "mcp_server/infrastructure/session_registry.py",
-      "kind": "unsourced-constant",
-      "detail": "_MAX_ANCESTOR_DEPTH"
     },
     {
       "file": "mcp_server/infrastructure/sqlite_schema.py",
@@ -4570,27 +4545,12 @@
     {
       "file": "mcp_server/infrastructure/sqlite_store.py",
       "kind": "method-size",
-      "detail": "SqliteMemoryStore.supersede_atomic"
-    },
-    {
-      "file": "mcp_server/infrastructure/sqlite_store.py",
-      "kind": "method-size",
       "detail": "SqliteMemoryStore.update_memory_compression"
     },
     {
       "file": "mcp_server/infrastructure/sqlite_store.py",
       "kind": "unsourced-constant",
       "detail": "_CHAIN_HEAD_MAX_DEPTH"
-    },
-    {
-      "file": "mcp_server/infrastructure/sqlite_store.py",
-      "kind": "unsourced-constant",
-      "detail": "_SUPERSEDE_REBASE_ATTEMPTS"
-    },
-    {
-      "file": "mcp_server/infrastructure/sqlite_store_auxiliary.py",
-      "kind": "file-size",
-      "detail": "exceeds 300-line cap"
     },
     {
       "file": "mcp_server/infrastructure/sqlite_store_entity_merge.py",
@@ -4633,11 +4593,6 @@
       "detail": "SqliteSearchMixin.get_temporal_co_access"
     },
     {
-      "file": "mcp_server/infrastructure/sqlite_store_search.py",
-      "kind": "method-size",
-      "detail": "SqliteSearchMixin.recall_memories"
-    },
-    {
       "file": "mcp_server/infrastructure/sqlite_store_stats.py",
       "kind": "file-size",
       "detail": "exceeds 300-line cap"
@@ -4646,16 +4601,6 @@
       "file": "mcp_server/infrastructure/viz_client.py",
       "kind": "method-size",
       "detail": "fetch_live_graph"
-    },
-    {
-      "file": "mcp_server/infrastructure/viz_client.py",
-      "kind": "unsourced-constant",
-      "detail": "_PAGE_LIMIT"
-    },
-    {
-      "file": "mcp_server/infrastructure/viz_client.py",
-      "kind": "unsourced-constant",
-      "detail": "_TIMEOUT_S"
     },
     {
       "file": "mcp_server/infrastructure/wiki_reindex_io.py",
