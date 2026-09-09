@@ -329,9 +329,14 @@ class TestGradeReportFields:
 class TestBuildReason:
     """`_build_reason` maps (grade, dead, uncheckable) to the stored reason.
 
-    Three of its four branches are unreachable through `grade_provenance`'s
-    empty-outcome path, which hardcodes its own reason rather than calling
-    this — so they are pinned here directly (issue #389).
+    One of its four branches is unreachable through `grade_provenance`:
+    every path that appends an UNVERIFIABLE outcome also appends to `dead`,
+    so `grade == UNVERIFIABLE and not dead` never reaches this helper, and
+    the empty-outcome path hardcodes the same string rather than calling it.
+    The other three are reachable and are also pinned end-to-end by
+    `TestGradeReportFields`; they are asserted here as well because these
+    unit-level cases carry the boundary inputs (the three-ref join cap in
+    particular) the end-to-end tests do not supply (issue #389).
     """
 
     def test_unverifiable_with_dead_refs_names_them(self):
