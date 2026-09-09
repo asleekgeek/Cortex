@@ -3399,6 +3399,10 @@
     "ADR-1057": {
       "mirror": "ADR-1057-tests-py-shared-test-wiki-classification-py.md",
       "path": "adr/migration/1057-tests-py-shared-test-wiki-classification-py.md"
+    },
+    "ADR-1058": {
+      "mirror": "ADR-1058-python-decorator-call-attribution.md",
+      "path": "adr/cortex/1058-python-decorator-call-attribution.md"
     }
   },
   "project": "cortex",
